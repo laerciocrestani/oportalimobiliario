@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { DashboardShell } from '@/components/layout/DashboardShell'
 import { construtoraApi, type Empreendimento, type Unidade } from '@/lib/api'
 
 export function ConstrutoraHome() {
@@ -50,12 +51,8 @@ export function ConstrutoraHome() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-semibold">Construtora</h2>
-        <p className="mt-2 text-muted-foreground">Gestão de empreendimentos e unidades.</p>
-      </div>
-
+    <DashboardShell role="construtora" title="Empreendimentos">
+      <div className="space-y-8">
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <section className="space-y-4">
@@ -125,6 +122,7 @@ export function ConstrutoraHome() {
           <Button type="submit">Enviar convite</Button>
         </form>
       </section>
-    </div>
+      </div>
+    </DashboardShell>
   )
 }

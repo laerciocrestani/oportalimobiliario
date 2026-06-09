@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { DashboardShell } from '@/components/layout/DashboardShell'
 import { adminApi, type Tenant } from '@/lib/api'
 
 export function AdminHome() {
@@ -36,12 +37,8 @@ export function AdminHome() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-semibold">Admin SaaS</h2>
-        <p className="mt-2 text-muted-foreground">Gestão de construtoras e tenants.</p>
-      </div>
-
+    <DashboardShell role="admin" title="Tenants">
+      <div className="space-y-8">
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <form onSubmit={handleCreate} className="flex flex-wrap gap-2">
@@ -74,6 +71,7 @@ export function AdminHome() {
           </li>
         ))}
       </ul>
-    </div>
+      </div>
+    </DashboardShell>
   )
 }

@@ -26,12 +26,14 @@
 | Git branch | `main` |
 | Git workflow | Commit atômico por feature/etapa + push após cada etapa |
 | Route binding tenancy | `SetTenantFromUser` priorizado antes de `SubstituteBindings` |
+| Portais por subdomínio | `construtora` / `corretor` / `admin` / `www` + API em `api.localhost` |
+| Sessão multi-portal | Bearer + `localStorage` isolado por subdomínio (sem cookie compartilhado) |
 
 ## Sessão atual
 
-- **Fase:** 2–5 concluídas — MVP v1 funcional
-- **Última etapa concluída:** empreendimentos, reservas, corretor-convites, admin-tenants, portal-publico
-- **Próxima etapa:** deploy + hardening (scheduler reservas, policies granulares)
+- **Fase:** 6 concluída — `subdomain-portals`
+- **Última etapa concluída:** subdomínios dev, CORS, ProfileGuard, testes (39 BE + 15 FE)
+- **Próxima etapa:** smoke manual nos 5 hosts + deploy produção (REQ-SUB-012)
 
 ## Blockers
 
@@ -43,4 +45,7 @@ Nenhum.
 
 ## Ideias adiadas
 
-- Deploy `diadimoveis.com.br` (REQ-PUB-005)
+- Deploy `diadimoveis.com.br` (REQ-PUB-005 / REQ-SUB-012)
+- Tenant por subdomínio (`alpha.construtora.localhost`)
+- Cookie auth compartilhada entre portais (`domain=.localhost`)
+- Middleware backend `Host` vs `role` (hardening)

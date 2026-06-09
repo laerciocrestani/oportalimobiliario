@@ -18,9 +18,22 @@ docker compose exec backend php artisan migrate
 
 ### URLs
 
-- API: http://localhost:8000
-- API health: http://localhost:8000/api/health
-- Frontend: http://localhost:5173
+| Portal | URL |
+|--------|-----|
+| Construtora | http://construtora.localhost:5173 |
+| Corretor | http://corretor.localhost:5173 |
+| Admin SaaS | http://admin.localhost:5173 |
+| Público | http://www.localhost:5173 |
+| API | http://api.localhost:8000 |
+| API health | http://api.localhost:8000/api/health |
+
+Chrome resolve `*.localhost` automaticamente. Em outros browsers, adicione ao `/etc/hosts`:
+
+```
+127.0.0.1 construtora.localhost corretor.localhost admin.localhost www.localhost api.localhost
+```
+
+Acessar `http://localhost:5173` exibe orientação com links para cada portal.
 
 ## Comandos (sempre via Docker)
 

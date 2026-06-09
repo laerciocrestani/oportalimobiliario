@@ -2,14 +2,24 @@
 
 ## API
 
-- Base URL dev: `http://localhost:8000/api`
+- Base URL dev: `http://api.localhost:8000/api` (legado: `http://localhost:8000/api`)
 - Health: `GET /api/health`
-- OpenAPI: `docs/api/openapi.yaml` (a criar por feature)
+- OpenAPI: `docs/api/openapi.yaml`
+
+## Portais (dev)
+
+| Host | Perfil |
+|------|--------|
+| `construtora.localhost:5173` | Construtora |
+| `corretor.localhost:5173` | Corretor |
+| `admin.localhost:5173` | Admin SaaS |
+| `www.localhost:5173` | Público |
 
 ## Frontend → API
 
-- Variável: `VITE_API_URL` (default `http://localhost:8000/api`)
-- Cliente: `frontend/src/lib/api.ts` (a criar)
+- Variável: `VITE_API_URL` (default `http://api.localhost:8000/api`)
+- Cliente: `frontend/src/lib/api.ts`
+- CORS: origens dos 4 hosts FE em `CORS_ALLOWED_ORIGINS`
 
 ## Database
 

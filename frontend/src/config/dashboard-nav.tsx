@@ -37,24 +37,24 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
     navMain: [
       {
         title: 'Visão geral',
-        url: '/construtora',
+        url: '/',
         icon: <LayoutDashboardIcon />,
       },
       {
         title: 'Empreendimentos',
-        url: '/construtora',
+        url: '/',
         icon: <Building2Icon />,
       },
       {
         title: 'Convites',
-        url: '/construtora',
+        url: '/',
         icon: <UsersIcon />,
       },
     ],
     navSecondary: [
       {
         title: 'Configurações',
-        url: '/construtora',
+        url: '/',
         icon: <Settings2Icon />,
       },
     ],
@@ -68,24 +68,24 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
     navMain: [
       {
         title: 'Visão geral',
-        url: '/corretor',
+        url: '/',
         icon: <LayoutDashboardIcon />,
       },
       {
         title: 'Minhas unidades',
-        url: '/corretor',
+        url: '/',
         icon: <Building2Icon />,
       },
       {
         title: 'Convites',
-        url: '/corretor',
+        url: '/',
         icon: <HandshakeIcon />,
       },
     ],
     navSecondary: [
       {
         title: 'Configurações',
-        url: '/corretor',
+        url: '/',
         icon: <Settings2Icon />,
       },
     ],
@@ -99,19 +99,19 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
     navMain: [
       {
         title: 'Visão geral',
-        url: '/admin',
+        url: '/',
         icon: <LayoutDashboardIcon />,
       },
       {
         title: 'Tenants',
-        url: '/admin',
+        url: '/',
         icon: <ShieldIcon />,
       },
     ],
     navSecondary: [
       {
         title: 'Configurações',
-        url: '/admin',
+        url: '/',
         icon: <Settings2Icon />,
       },
     ],

@@ -13,4 +13,14 @@ export default defineConfig({
       '@': path.resolve(dirname, './src'),
     },
   },
+  server: {
+    host: true,
+    port: 5173,
+    allowedHosts: [
+      'construtora.localhost',
+      'corretor.localhost',
+      'admin.localhost',
+      'www.localhost',
+    ],
+  },
 })

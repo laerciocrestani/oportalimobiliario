@@ -25,9 +25,18 @@ Single database + `tenant_id`. `TenantContext` por request. Trait `BelongsToTena
 
 ## Perfis
 
-| Perfil | Contexto tenant |
-|--------|-----------------|
-| Construtora | Sim (user.tenant_id) |
-| Corretor | Não (acessos explícitos) |
-| Admin | Não (cross-tenant por policy) |
-| Público | Filtro publicado |
+| Perfil | Contexto tenant | Portal (dev) |
+|--------|-----------------|--------------|
+| Construtora | Sim (user.tenant_id) | `construtora.localhost:5173` |
+| Corretor | Não (acessos explícitos) | `corretor.localhost:5173` |
+| Admin | Não (cross-tenant por policy) | `admin.localhost:5173` |
+| Público | Filtro publicado | `www.localhost:5173` |
+
+## API host
+
+- Dev: `api.localhost:8000/api`
+- Prefixos por perfil inalterados (`/construtora/*`, `/corretor/*`, `/admin/*`, `/public/*`)
+
+## Portais por subdomínio
+
+Feature `subdomain-portals`: escopo de acesso por host, não por path. Sessão Bearer isolada por subdomínio (`localStorage` origin-scoped). Ver `.specs/features/subdomain-portals/`.

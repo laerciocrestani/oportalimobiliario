@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api'
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://api.localhost:8000/api'
 
 export type AuthUser = {
   id: number
@@ -102,6 +102,14 @@ export function saveToken(token: string): void {
 
 export function getToken(): string | null {
   return localStorage.getItem('opim_token')
+}
+
+export function clearToken(): void {
+  localStorage.removeItem('opim_token')
+}
+
+export async function fetchMe(): Promise<AuthUser> {
+  return apiFetch<AuthUser>('/auth/me')
 }
 
 export const construtoraApi = {

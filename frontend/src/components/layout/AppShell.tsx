@@ -1,11 +1,17 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 
-const navItems = [
-  { label: 'Construtora', href: '/construtora' },
-  { label: 'Corretor', href: '/corretor' },
-  { label: 'Admin', href: '/admin' },
-  { label: 'Público', href: '/publico' },
+type NavItem = {
+  label: string
+  href: string
+  external?: boolean
+}
+
+const navItems: NavItem[] = [
+  { label: 'Construtora', href: 'http://construtora.localhost:5173', external: true },
+  { label: 'Corretor', href: 'http://corretor.localhost:5173', external: true },
+  { label: 'Admin', href: 'http://admin.localhost:5173', external: true },
+  { label: 'Público', href: 'http://www.localhost:5173', external: true },
 ]
 
 export function AppShell() {
@@ -19,18 +25,28 @@ export function AppShell() {
           <p className="text-xs text-muted-foreground">Shell compartilhado</p>
         </div>
         <nav className="flex flex-col gap-1">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              to={item.href}
-              className={cn(
-                'rounded-lg px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent',
-                location.pathname.startsWith(item.href) && 'bg-sidebar-accent font-medium',
-              )}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {navItems.map((item) =>
+            item.external ? (
+              <a
+                key={item.href}
+                href={item.href}
+                className="rounded-lg px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent"
+              >
+                {item.label}
+              </a>
+            ) : (
+              <Link
+                key={item.href}
+                to={item.href}
+                className={cn(
+                  'rounded-lg px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent',
+                  location.pathname.startsWith(item.href) && 'bg-sidebar-accent font-medium',
+                )}
+              >
+                {item.label}
+              </Link>
+            ),
+          )}
         </nav>
       </aside>
       <div className="flex min-w-0 flex-1 flex-col">

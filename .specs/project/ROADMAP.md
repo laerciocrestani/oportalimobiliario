@@ -13,6 +13,7 @@
 | 3 | `corretor-convites` | Large/Complex | Convites + acessos cross-tenant |
 | 4 | `admin-tenants` | Medium | Gestão de construtoras |
 | 5 | `portal-publico` | Large | Listagem read-only + SEO |
+| 6 | `subdomain-portals` | Large | Acesso por subdomínio (construtora/corretor/admin/www + api) |
 
 ## Ordem de dependências
 
@@ -23,6 +24,7 @@
 5. `corretor-convites` (após empreendimentos + auth)
 6. `admin-tenants` (após tenancy)
 7. `portal-publico` (após empreendimentos publicados)
+8. `subdomain-portals` (após frontend-shell + auth + portal-publico)
 
 ## Status atual
 
@@ -37,9 +39,11 @@
 | corretor-convites | done | inline | inline | done |
 | admin-tenants | done | inline | inline | done |
 | portal-publico | done | inline | inline | done |
+| subdomain-portals | done | done | done | done |
 
 ## Próximos passos (pós-MVP v1)
 
-- Deploy domínio `diadimoveis.com.br`
+- Executar `subdomain-portals` (subdomínios dev + CORS + guards FE)
+- Deploy domínio `diadimoveis.com.br` (REQ-SUB-012)
 - Policies Spatie granulares por permission
 - `schedule:work` ou cron em produção para expiração de reservas

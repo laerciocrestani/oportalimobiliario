@@ -1,21 +1,26 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { GalleryVerticalEnd } from 'lucide-react'
 import { LoginForm } from '@/components/login-form'
 import { login, saveToken } from '@/lib/api'
+import { isRoleAllowedOnProfile, PORTAL_LABELS, type PortalProfile } from '@/lib/profile'
 
-const roleHome: Record<string, string> = {
-  construtora: '/construtora',
-  corretor: '/corretor',
-  admin: '/admin',
+type LoginPageProps = {
+  profile: PortalProfile
 }
 
-export function LoginPage() {
+type LoginLocationState = {
+  error?: string
+}
+
+export function LoginPage({ profile }: LoginPageProps) {
   const navigate = useNavigate()
+  const location = useLocation()
+  const locationState = location.state as LoginLocationState | null
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(locationState?.error ?? null)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -25,8 +30,14 @@ export function LoginPage() {
 
     try {
       const result = await login(email, password)
+
+      if (!isRoleAllowedOnProfile(result.user.role, profile)) {
+        setError('Conta não autorizada neste portal.')
+        return
+      }
+
       saveToken(result.token)
-      navigate(roleHome[result.user.role] ?? '/construtora')
+      navigate('/')
     } catch {
       setError('Não foi possível entrar. Verifique e-mail e senha.')
     } finally {
@@ -45,7 +56,10 @@ export function LoginPage() {
             Oportalimobiliário
           </a>
         </div>
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-1 flex-col items-center justify-center gap-2">
+          <p className="w-full max-w-xs text-sm text-muted-foreground">
+            Portal {PORTAL_LABELS[profile]}
+          </p>
           <div className="w-full max-w-xs">
             <LoginForm
               email={email}

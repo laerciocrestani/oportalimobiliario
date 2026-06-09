@@ -4,7 +4,7 @@
 
 Convites de construtoras para corretores e acessos cross-tenant via `acessos_unidades`.
 
-## Requisitos (rascunho)
+## Requisitos
 
 - `REQ-CONV-001`: Construtora gera link/convite para corretor
 - `REQ-CONV-002`: Corretor aceita convite e ganha acesso ao tenant
@@ -15,3 +15,7 @@ Convites de construtoras para corretores e acessos cross-tenant via `acessos_uni
 ## Dependências
 
 - empreendimentos, auth, tenancy
+
+## Status
+
+done — backend + frontend construtora/corretor

@@ -4,7 +4,7 @@
 
 CRUD de empreendimentos e unidades para perfil construtora, com isolamento por tenant.
 
-## Requisitos (rascunho)
+## Requisitos
 
 - `REQ-EMP-001`: CRUD empreendimentos scoped por tenant
 - `REQ-EMP-002`: CRUD unidades vinculadas a empreendimento
@@ -15,3 +15,7 @@ CRUD de empreendimentos e unidades para perfil construtora, com isolamento por t
 ## Dependências
 
 - tenancy, auth
+
+## Status
+
+done — backend + frontend construtora

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { DashboardShell } from '@/components/layout/DashboardShell'
 import { corretorApi, type Unidade } from '@/lib/api'
 
 export function CorretorHome() {
@@ -35,12 +36,8 @@ export function CorretorHome() {
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-semibold">Corretor</h2>
-        <p className="mt-2 text-muted-foreground">Acesso cross-tenant a unidades liberadas.</p>
-      </div>
-
+    <DashboardShell role="corretor" title="Minhas unidades">
+      <div className="space-y-8">
       {error && <p className="text-sm text-destructive">{error}</p>}
       {message && <p className="text-sm text-green-600">{message}</p>}
 
@@ -83,6 +80,7 @@ export function CorretorHome() {
           )}
         </ul>
       </section>
-    </div>
+      </div>
+    </DashboardShell>
   )
 }

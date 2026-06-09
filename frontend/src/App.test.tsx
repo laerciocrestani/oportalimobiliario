@@ -6,23 +6,27 @@ import { AppShell } from '@/components/layout/AppShell'
 
 describe('frontend-shell', () => {
   it('renders construtora dashboard', () => {
-    render(<ConstrutoraHome />)
-    expect(screen.getByText('Construtora')).toBeInTheDocument()
+    render(
+      <MemoryRouter>
+        <ConstrutoraHome />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('heading', { name: 'Empreendimentos', level: 1 })).toBeInTheDocument()
+    expect(screen.getByText('Oportalimobiliário')).toBeInTheDocument()
   })
 
-  it('renders shared shell navigation', () => {
+  it('renders shared shell navigation for public area', () => {
     render(
-      <MemoryRouter initialEntries={['/construtora']}>
+      <MemoryRouter initialEntries={['/publico']}>
         <Routes>
           <Route element={<AppShell />}>
-            <Route path="/construtora" element={<ConstrutoraHome />} />
+            <Route path="publico" element={<div>Portal público</div>} />
           </Route>
         </Routes>
       </MemoryRouter>,
     )
 
     expect(screen.getByText('Oportalimobiliário')).toBeInTheDocument()
-    expect(screen.getAllByText('Construtora').length).toBeGreaterThan(0)
     expect(screen.getByText('Corretor')).toBeInTheDocument()
   })
 })

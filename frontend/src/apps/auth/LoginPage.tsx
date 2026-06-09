@@ -1,8 +1,15 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Button } from '@/components/ui/button'
+import { GalleryVerticalEnd } from 'lucide-react'
+import { LoginForm } from '@/components/login-form'
 import { login, saveToken } from '@/lib/api'
+
+const roleHome: Record<string, string> = {
+  construtora: '/construtora',
+  corretor: '/corretor',
+  admin: '/admin',
+}
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -19,7 +26,7 @@ export function LoginPage() {
     try {
       const result = await login(email, password)
       saveToken(result.token)
-      navigate('/construtora')
+      navigate(roleHome[result.user.role] ?? '/construtora')
     } catch {
       setError('Não foi possível entrar. Verifique e-mail e senha.')
     } finally {
@@ -28,42 +35,38 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-background p-6">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-sm space-y-4 rounded-xl border border-border bg-card p-6 shadow-sm"
-      >
-        <div>
-          <h1 className="text-xl font-semibold">Entrar</h1>
-          <p className="text-sm text-muted-foreground">Oportalimobiliário</p>
+    <div className="grid min-h-svh lg:grid-cols-2">
+      <div className="flex flex-col gap-4 p-6 md:p-10">
+        <div className="flex justify-center gap-2 md:justify-start">
+          <a href="/" className="flex items-center gap-2 font-medium">
+            <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <GalleryVerticalEnd className="size-4" />
+            </div>
+            Oportalimobiliário
+          </a>
         </div>
-        <label className="block space-y-1 text-sm">
-          <span>E-mail</span>
-          <input
-            aria-label="E-mail"
-            className="w-full rounded-lg border border-input bg-background px-3 py-2"
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
-        </label>
-        <label className="block space-y-1 text-sm">
-          <span>Senha</span>
-          <input
-            aria-label="Senha"
-            className="w-full rounded-lg border border-input bg-background px-3 py-2"
-            type="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
-        </label>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        <Button type="submit" disabled={loading} className="w-full">
-          {loading ? 'Entrando...' : 'Entrar'}
-        </Button>
-      </form>
+        <div className="flex flex-1 items-center justify-center">
+          <div className="w-full max-w-xs">
+            <LoginForm
+              email={email}
+              password={password}
+              loading={loading}
+              error={error}
+              onEmailChange={setEmail}
+              onPasswordChange={setPassword}
+              onSubmit={handleSubmit}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="relative hidden bg-muted lg:block">
+        <div className="absolute inset-0 flex flex-col justify-end bg-linear-to-t from-black/60 to-black/10 p-10 text-white">
+          <p className="text-lg font-medium">Gestão de lançamentos imobiliários</p>
+          <p className="text-sm text-white/80">
+            Conecte construtoras, corretores e consumidores em um único ecossistema.
+          </p>
+        </div>
+      </div>
     </div>
   )
 }

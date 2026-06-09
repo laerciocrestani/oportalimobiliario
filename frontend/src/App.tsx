@@ -11,11 +11,11 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/construtora" element={<ConstrutoraHome />} />
+        <Route path="/corretor" element={<CorretorHome />} />
+        <Route path="/admin" element={<AdminHome />} />
         <Route path="/" element={<AppShell />}>
           <Route index element={<Navigate to="/construtora" replace />} />
-          <Route path="construtora" element={<ConstrutoraHome />} />
-          <Route path="corretor" element={<CorretorHome />} />
-          <Route path="admin" element={<AdminHome />} />
           <Route path="publico" element={<PublicoHome />} />
         </Route>
       </Routes>

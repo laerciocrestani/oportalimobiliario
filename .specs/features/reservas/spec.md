@@ -4,7 +4,7 @@
 
 Reservas soft com TTL configurável (default 48h).
 
-## Requisitos (rascunho)
+## Requisitos
 
 - `REQ-RES-001`: Criar reserva temporária em unidade disponível
 - `REQ-RES-002`: Expiração automática via job/command
@@ -14,3 +14,7 @@ Reservas soft com TTL configurável (default 48h).
 ## Dependências
 
 - empreendimentos, auth
+
+## Status
+
+done — command `opim:expire-reservas` + API corretor + frontend

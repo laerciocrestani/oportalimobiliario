@@ -7,6 +7,10 @@
 .DS_Store
 Thumbs.db
 
+# Agent skills (Cursor only)
+.claude/
+.windsurf/
+
 # IDE
 .idea/
 .vscode/

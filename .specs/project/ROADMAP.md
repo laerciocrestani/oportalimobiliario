@@ -32,8 +32,14 @@
 | frontend-shell | done | done | done | done |
 | tenancy | done | done | done | done |
 | auth | done | done | done | done |
-| empreendimentos | draft | pending | pending | pending |
-| reservas | draft | inline | pending | pending |
-| corretor-convites | draft | pending | pending | pending |
-| admin-tenants | draft | inline | pending | pending |
-| portal-publico | draft | pending | pending | pending |
+| empreendimentos | done | inline | inline | done |
+| reservas | done | inline | inline | done |
+| corretor-convites | done | inline | inline | done |
+| admin-tenants | done | inline | inline | done |
+| portal-publico | done | inline | inline | done |
+
+## Próximos passos (pós-MVP v1)
+
+- Deploy domínio `diadimoveis.com.br`
+- Policies Spatie granulares por permission
+- `schedule:work` ou cron em produção para expiração de reservas

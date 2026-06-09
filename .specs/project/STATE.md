@@ -25,12 +25,13 @@
 | Git remote | `git@github.com:laerciocrestani/oportalimobiliario.git` |
 | Git branch | `main` |
 | Git workflow | Commit atômico por feature/etapa + push após cada etapa |
+| Route binding tenancy | `SetTenantFromUser` priorizado antes de `SubstituteBindings` |
 
 ## Sessão atual
 
-- **Fase:** 1 — Fundação concluída; pronto para fase 2 (empreendimentos)
-- **Última etapa concluída:** auth + seeders base + specs features restantes
-- **Próxima etapa:** execute `empreendimentos`
+- **Fase:** 2–5 concluídas — MVP v1 funcional
+- **Última etapa concluída:** empreendimentos, reservas, corretor-convites, admin-tenants, portal-publico
+- **Próxima etapa:** deploy + hardening (scheduler reservas, policies granulares)
 
 ## Blockers
 
@@ -38,8 +39,8 @@ Nenhum.
 
 ## Lições aprendidas
 
-_(vazio — preencher durante execução)_
+- Route model binding executa antes dos middlewares de rota por padrão; tenancy exige `middleware->priority()` com `SetTenantFromUser` antes de `SubstituteBindings`.
 
 ## Ideias adiadas
 
-_(vazio)_
+- Deploy `diadimoveis.com.br` (REQ-PUB-005)

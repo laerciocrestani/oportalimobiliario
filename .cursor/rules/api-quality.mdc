@@ -1,0 +1,14 @@
+---
+description: Qualidade de API — testes, seeds, OpenAPI
+globs: backend/**/*
+alwaysApply: false
+---
+
+# API Quality
+
+1. Toda rota nova/alterada exige Feature test (Pest)
+2. Toda model com seeder exige Factory
+3. Policy/Middleware exige teste dedicado
+4. Cobrir: happy path, 401/403, 422, tenant isolation
+5. Atualizar `docs/api/openapi.yaml` em mudanças de endpoint
+6. Gate: `docker compose exec backend php artisan test` antes de concluir task

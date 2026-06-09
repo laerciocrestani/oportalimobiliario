@@ -1,0 +1,12 @@
+---
+description: Orquestração multi-agent por feature
+alwaysApply: true
+---
+
+# Multi-agents
+
+1. Orquestrador delega; 1 agent = 1 feature = 1 frente (BE ou FE)
+2. Máximo 1 spec de feature carregada por sub-agent
+3. Backend antes de frontend que consome a API
+4. Sub-agent retorna: Status, Files, Gate, SPEC_DEVIATION, Blockers
+5. Apenas orquestrador atualiza `.specs/project/STATE.md`

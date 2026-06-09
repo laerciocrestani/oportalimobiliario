@@ -1,0 +1,11 @@
+---
+description: Comandos backend/frontend sempre via docker compose exec
+alwaysApply: true
+---
+
+# Docker exec obrigatório
+
+- Todo comando de backend: `docker compose exec backend ...`
+- Todo comando de frontend: `docker compose exec frontend ...`
+- Nunca sugerir `php artisan`, `composer`, `pnpm` sem prefixo docker
+- Exceções no host: `docker compose up/down/build`, `git`

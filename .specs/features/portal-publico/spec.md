@@ -4,7 +4,7 @@
 
 Listagem read-only de empreendimentos publicados com SEO básico.
 
-## Requisitos (rascunho)
+## Requisitos
 
 - `REQ-PUB-001`: `GET /api/public/empreendimentos` apenas `publicado=true`
 - `REQ-PUB-002`: Sem autenticação
@@ -15,3 +15,7 @@ Listagem read-only de empreendimentos publicados com SEO básico.
 ## Dependências
 
 - empreendimentos
+
+## Status
+
+done — REQ-PUB-005 permanece para deploy

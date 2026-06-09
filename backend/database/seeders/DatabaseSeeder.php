@@ -12,6 +12,11 @@ class DatabaseSeeder extends Seeder
             TenantSeeder::class,
             RolePermissionSeeder::class,
             UserSeeder::class,
+            EmpreendimentoSeeder::class,
+            UnidadeSeeder::class,
+            ConviteCorretorSeeder::class,
+            AcessoUnidadeSeeder::class,
+            ReservaSeeder::class,
         ]);
     }
 }

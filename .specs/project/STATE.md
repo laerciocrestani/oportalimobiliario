@@ -28,9 +28,9 @@
 
 ## Sessão atual
 
-- **Fase:** 0 — Fundação
-- **Última etapa concluída:** install-skill
-- **Próxima etapa:** init-specs-project (este commit)
+- **Fase:** 1 — Fundação concluída; pronto para fase 2 (empreendimentos)
+- **Última etapa concluída:** auth + seeders base + specs features restantes
+- **Próxima etapa:** execute `empreendimentos`
 
 ## Blockers
 

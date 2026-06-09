@@ -28,12 +28,12 @@
 
 | Feature | Spec | Design | Tasks | Execute |
 |---------|------|--------|-------|---------|
-| infra-docker | pending | — | pending | pending |
-| frontend-shell | pending | pending | pending | pending |
-| tenancy | pending | pending | pending | pending |
-| auth | pending | pending | pending | pending |
-| empreendimentos | pending | pending | pending | pending |
-| reservas | pending | inline | pending | pending |
-| corretor-convites | pending | pending | pending | pending |
-| admin-tenants | pending | inline | pending | pending |
-| portal-publico | pending | pending | pending | pending |
+| infra-docker | done | — | done | done |
+| frontend-shell | done | done | done | done |
+| tenancy | done | done | done | done |
+| auth | done | done | done | done |
+| empreendimentos | draft | pending | pending | pending |
+| reservas | draft | inline | pending | pending |
+| corretor-convites | draft | pending | pending | pending |
+| admin-tenants | draft | inline | pending | pending |
+| portal-publico | draft | pending | pending | pending |

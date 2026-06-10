@@ -10,6 +10,7 @@ Thumbs.db
 # Agent skills (Cursor only)
 .claude/
 .windsurf/
+skills-lock.json
 
 # IDE
 .idea/

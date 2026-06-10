@@ -1,4 +1,4 @@
-# Feature: empreendimentos
+# Feature: buildings
 
 ## Objetivo
 
@@ -6,11 +6,11 @@ CRUD de empreendimentos e unidades para perfil construtora, com isolamento por t
 
 ## Requisitos
 
-- `REQ-EMP-001`: CRUD empreendimentos scoped por tenant
-- `REQ-EMP-002`: CRUD unidades vinculadas a empreendimento
-- `REQ-EMP-003`: Status unidade: disponível, reservada, vendida
-- `REQ-EMP-004`: Flag `publicado` para portal público
-- `REQ-EMP-005`: Feature tests + EmpreendimentoSeeder + UnidadeSeeder
+- `REQ-EMP-001`: CRUD `buildings` scoped por tenant (`/api/builder/buildings`)
+- `REQ-EMP-002`: CRUD `units` vinculadas a building (`/api/builder/buildings/{building}/units`)
+- `REQ-EMP-003`: Status unit: `available`, `reserved`, `sold` (`UnitStatus`)
+- `REQ-EMP-004`: Flag `published` para portal público
+- `REQ-EMP-005`: Feature tests + `BuildingSeeder` + `UnitSeeder`
 
 ## Dependências
 
@@ -18,4 +18,4 @@ CRUD de empreendimentos e unidades para perfil construtora, com isolamento por t
 
 ## Status
 
-done — backend + frontend construtora
+done — backend + frontend construtora (`builderApi`)

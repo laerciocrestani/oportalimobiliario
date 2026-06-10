@@ -27,10 +27,10 @@ flowchart LR
 
 | Host | Perfil | App montado | Auth |
 |------|--------|-------------|------|
-| `construtora.localhost:5173` | construtora | `ConstrutoraHome` | Sim |
-| `corretor.localhost:5173` | corretor | `CorretorHome` | Sim |
+| `construtora.localhost:5173` | `builder` | `BuilderHome` | Sim |
+| `corretor.localhost:5173` | `broker` | `BrokerHome` | Sim |
 | `admin.localhost:5173` | admin | `AdminHome` | Sim |
-| `www.localhost:5173` | publico | `PublicoHome` | Não |
+| `www.localhost:5173` | `public` | `PublicHome` | Não |
 | `api.localhost:8000` | — | Laravel API | — |
 
 ## Componentes novos (frontend)
@@ -38,7 +38,7 @@ flowchart LR
 ```
 frontend/src/
 ├── lib/
-│   ├── profile.ts          # hostname → 'construtora' | 'corretor' | 'admin' | 'publico' | null
+│   ├── profile.ts          # hostname PT → 'builder' | 'broker' | 'admin' | 'public' | null
 │   └── profile.test.ts
 └── components/auth/
     ├── ProfileGuard.tsx    # valida token presente + role === perfilDoHost
@@ -50,10 +50,10 @@ frontend/src/
 ```ts
 // Mapeamento fixo dev/prod
 const HOST_PROFILE: Record<string, PortalProfile> = {
-  'construtora.localhost': 'construtora',
-  'corretor.localhost': 'corretor',
+  'construtora.localhost': 'builder',
+  'corretor.localhost': 'broker',
   'admin.localhost': 'admin',
-  'www.localhost': 'publico',
+  'www.localhost': 'public',
 }
 
 export function resolveProfile(hostname: string): PortalProfile | null
@@ -67,8 +67,8 @@ Cada subdomínio monta **apenas** as rotas do seu perfil:
 
 | Perfil | Rotas |
 |--------|-------|
-| construtora, corretor, admin | `/login`, `/` (guard) |
-| publico | `/` |
+| builder, broker, admin (roles) | `/login`, `/` (guard) |
+| `public` | `/` |
 | host desconhecido (`localhost`) | página de orientação com links para subdomínios |
 
 ### `ProfileGuard.tsx`
@@ -144,12 +144,13 @@ Publicar `backend/config/cors.php` lendo `CORS_ALLOWED_ORIGINS` (env hoje existe
 
 Feature test Pest: preflight `OPTIONS` com `Origin: http://construtora.localhost:5173` retorna `Access-Control-Allow-Origin`.
 
-## O que não muda
+## API e domínio (EN)
 
-- [`backend/routes/api.php`](../../../backend/routes/api.php) — prefixos `/construtora`, `/corretor`, `/admin`, `/public`
-- Middlewares `EnsureConstrutora`, `EnsureCorretor`, `EnsureAdmin`, tenancy
-- `construtoraApi`, `corretorApi`, `adminApi`, `publicApi` em `api.ts` (paths internos iguais)
-- Modelo `acessos_unidades` para corretor cross-tenant
+- [`backend/routes/api.php`](../../../backend/routes/api.php) — prefixos `/api/builder/*`, `/api/broker/*`, `/api/admin/*`, `/api/public/*`
+- Middlewares `EnsureBuilder`, `EnsureBroker`, `EnsureAdmin`, tenancy
+- `builderApi`, `brokerApi`, `adminApi`, `publicApi` em `api.ts`
+- Modelo `unit_access` para broker cross-tenant
+- Subdomínios de dev permanecem PT; profile keys e roles usam EN (`builder`, `broker`)
 
 ## Produção (deferred — REQ-SUB-012)
 

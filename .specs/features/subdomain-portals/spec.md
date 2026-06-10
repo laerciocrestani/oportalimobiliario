@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Migrar o escopo de acesso de perfis de **paths** (`/construtora`, `/corretor`, `/admin`, `/publico`) para **subdomínios** dedicados, mantendo a API com prefixos por perfil e o modelo de autorização existente (role + tenancy + `acessos_unidades`).
+Migrar o escopo de acesso de perfis de **paths** (`/construtora`, `/corretor`, `/admin`, `/publico`) para **subdomínios** dedicados, mantendo a API com prefixos EN por perfil (`/api/builder/*`, `/api/broker/*`, etc.) e o modelo de autorização existente (role + tenancy + `unit_access`).
 
 ## Decisões registradas
 
@@ -41,8 +41,8 @@ Migrar o escopo de acesso de perfis de **paths** (`/construtora`, `/corretor`, `
 - Tenant por subdomínio (`alpha.construtora.localhost`) — feature futura
 - Cookie auth compartilhada entre subdomínios (`domain=.localhost`)
 - Middleware backend validando `Host` vs `role` (hardening opcional pós-MVP)
-- Alteração de prefixos API (`/api/construtora/*`, etc.)
-- Alteração de middlewares de tenancy ou `acessos_unidades`
+- ~~Alteração de prefixos API~~ — concluído: prefixos EN (`/api/builder/*`, `/api/broker/*`, `/api/admin/*`, `/api/public/*`)
+- Alteração de middlewares de tenancy ou `unit_access`
 
 ## Critérios de aceite
 

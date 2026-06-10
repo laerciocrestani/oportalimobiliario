@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 
-export type DashboardRole = 'construtora' | 'corretor' | 'admin'
+export type DashboardRole = 'builder' | 'broker' | 'admin'
 
 export type DashboardNavItem = {
   title: string
@@ -28,7 +28,7 @@ export type DashboardNavConfig = {
 }
 
 export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
-  construtora: {
+  builder: {
     brand: 'Construtora',
     user: {
       name: 'Construtora Alpha',
@@ -59,7 +59,7 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
       },
     ],
   },
-  corretor: {
+  broker: {
     brand: 'Corretor',
     user: {
       name: 'Corretor Demo',

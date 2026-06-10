@@ -14,7 +14,7 @@ describe('LoginPage', () => {
         id: 1,
         name: 'Demo',
         email: 'demo@test.com',
-        role: 'construtora',
+        role: 'builder',
         tenant_id: 1,
       },
     })
@@ -22,7 +22,7 @@ describe('LoginPage', () => {
 
     render(
       <MemoryRouter>
-        <LoginPage profile="construtora" />
+        <LoginPage profile="builder" />
       </MemoryRouter>,
     )
 
@@ -42,7 +42,7 @@ describe('LoginPage', () => {
         id: 1,
         name: 'Demo',
         email: 'demo@test.com',
-        role: 'corretor',
+        role: 'broker',
         tenant_id: null,
       },
     })
@@ -50,7 +50,7 @@ describe('LoginPage', () => {
 
     render(
       <MemoryRouter>
-        <LoginPage profile="construtora" />
+        <LoginPage profile="builder" />
       </MemoryRouter>,
     )
 

@@ -13,26 +13,26 @@ export type LoginResponse = {
   user: AuthUser
 }
 
-export type Empreendimento = {
+export type Building = {
   id: number
-  nome: string
-  descricao: string | null
-  cidade: string | null
-  estado: string | null
-  publicado: boolean
+  name: string
+  description: string | null
+  city: string | null
+  state: string | null
+  published: boolean
   seo_title: string | null
   seo_description: string | null
-  unidades_count?: number
+  units_count?: number
 }
 
-export type Unidade = {
+export type Unit = {
   id: number
-  codigo: string
-  andar: number | null
+  code: string
+  floor: number | null
   area_m2: string | null
-  preco: string | null
+  price: string | null
   status: string
-  empreendimento?: Empreendimento
+  building?: Building
 }
 
 export type Tenant = {
@@ -112,41 +112,41 @@ export async function fetchMe(): Promise<AuthUser> {
   return apiFetch<AuthUser>('/auth/me')
 }
 
-export const construtoraApi = {
-  listEmpreendimentos: () => apiFetch<Empreendimento[]>('/construtora/empreendimentos'),
-  createEmpreendimento: (data: Partial<Empreendimento>) =>
-    apiFetch<Empreendimento>('/construtora/empreendimentos', {
+export const builderApi = {
+  listBuildings: () => apiFetch<Building[]>('/builder/buildings'),
+  createBuilding: (data: Partial<Building>) =>
+    apiFetch<Building>('/builder/buildings', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  listUnidades: (empreendimentoId: number) =>
-    apiFetch<Unidade[]>(`/construtora/empreendimentos/${empreendimentoId}/unidades`),
-  createUnidade: (empreendimentoId: number, data: Partial<Unidade>) =>
-    apiFetch<Unidade>(`/construtora/empreendimentos/${empreendimentoId}/unidades`, {
+  listUnits: (buildingId: number) =>
+    apiFetch<Unit[]>(`/builder/buildings/${buildingId}/units`),
+  createUnit: (buildingId: number, data: Partial<Unit>) =>
+    apiFetch<Unit>(`/builder/buildings/${buildingId}/units`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  createConvite: (email: string) =>
-    apiFetch<{ token: string; email: string }>('/construtora/convites', {
+  createInvite: (email: string) =>
+    apiFetch<{ token: string; email: string }>('/builder/invites', {
       method: 'POST',
       body: JSON.stringify({ email }),
     }),
-  grantAcesso: (corretorId: number, unidadeId: number) =>
-    apiFetch('/construtora/acessos', {
+  grantAccess: (brokerId: number, unitId: number) =>
+    apiFetch('/builder/access', {
       method: 'POST',
-      body: JSON.stringify({ corretor_id: corretorId, unidade_id: unidadeId }),
+      body: JSON.stringify({ broker_id: brokerId, unit_id: unitId }),
     }),
 }
 
-export const corretorApi = {
-  listUnidades: () => apiFetch<Unidade[]>('/corretor/unidades'),
-  createReserva: (unidadeId: number) =>
-    apiFetch('/corretor/reservas', {
+export const brokerApi = {
+  listUnits: () => apiFetch<Unit[]>('/broker/units'),
+  createReservation: (unitId: number) =>
+    apiFetch('/broker/reservations', {
       method: 'POST',
-      body: JSON.stringify({ unidade_id: unidadeId }),
+      body: JSON.stringify({ unit_id: unitId }),
     }),
-  acceptConvite: (token: string) =>
-    apiFetch('/corretor/convites/accept', {
+  acceptInvite: (token: string) =>
+    apiFetch('/broker/invites/accept', {
       method: 'POST',
       body: JSON.stringify({ token }),
     }),
@@ -161,7 +161,7 @@ export const adminApi = {
 }
 
 export const publicApi = {
-  listEmpreendimentos: () => apiFetch<Empreendimento[]>('/public/empreendimentos', {}, false),
-  getEmpreendimento: (id: number) =>
-    apiFetch<Empreendimento & { unidades?: Unidade[] }>(`/public/empreendimentos/${id}`, {}, false),
+  listBuildings: () => apiFetch<Building[]>('/public/buildings', {}, false),
+  getBuilding: (id: number) =>
+    apiFetch<Building & { units?: Unit[] }>(`/public/buildings/${id}`, {}, false),
 }

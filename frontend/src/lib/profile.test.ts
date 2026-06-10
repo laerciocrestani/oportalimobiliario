@@ -7,10 +7,10 @@ import {
 
 describe('resolveProfile', () => {
   it('maps known hostnames to portal profiles', () => {
-    expect(resolveProfile('construtora.localhost')).toBe('construtora')
-    expect(resolveProfile('corretor.localhost')).toBe('corretor')
+    expect(resolveProfile('construtora.localhost')).toBe('builder')
+    expect(resolveProfile('corretor.localhost')).toBe('broker')
     expect(resolveProfile('admin.localhost')).toBe('admin')
-    expect(resolveProfile('www.localhost')).toBe('publico')
+    expect(resolveProfile('www.localhost')).toBe('public')
   })
 
   it('returns null for unknown hostnames', () => {
@@ -21,24 +21,24 @@ describe('resolveProfile', () => {
 
 describe('isRoleAllowedOnProfile', () => {
   it('allows matching roles on authenticated portals', () => {
-    expect(isRoleAllowedOnProfile('construtora', 'construtora')).toBe(true)
-    expect(isRoleAllowedOnProfile('corretor', 'corretor')).toBe(true)
+    expect(isRoleAllowedOnProfile('builder', 'builder')).toBe(true)
+    expect(isRoleAllowedOnProfile('broker', 'broker')).toBe(true)
     expect(isRoleAllowedOnProfile('admin', 'admin')).toBe(true)
   })
 
   it('rejects mismatched roles', () => {
-    expect(isRoleAllowedOnProfile('corretor', 'construtora')).toBe(false)
-    expect(isRoleAllowedOnProfile('admin', 'corretor')).toBe(false)
+    expect(isRoleAllowedOnProfile('broker', 'builder')).toBe(false)
+    expect(isRoleAllowedOnProfile('admin', 'broker')).toBe(false)
   })
 
   it('rejects any role on public portal', () => {
-    expect(isRoleAllowedOnProfile('construtora', 'publico')).toBe(false)
+    expect(isRoleAllowedOnProfile('builder', 'public')).toBe(false)
   })
 })
 
 describe('PORTAL_URLS', () => {
   it('defines dev URLs for every portal', () => {
-    expect(PORTAL_URLS.construtora).toContain('construtora.localhost')
-    expect(PORTAL_URLS.publico).toContain('www.localhost')
+    expect(PORTAL_URLS.builder).toContain('construtora.localhost')
+    expect(PORTAL_URLS.public).toContain('www.localhost')
   })
 })

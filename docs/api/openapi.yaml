@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Oportalimobiliário API
-  version: 0.2.0
+  version: 0.3.0
 paths:
   /api/health:
     get:
@@ -9,15 +9,15 @@ paths:
       responses:
         '200':
           description: OK
-  /api/public/empreendimentos:
+  /api/public/buildings:
     get:
-      summary: List published empreendimentos (no auth)
+      summary: List published buildings (no auth)
       responses:
         '200':
-          description: List of empreendimentos
-  /api/public/empreendimentos/{id}:
+          description: List of buildings
+  /api/public/buildings/{id}:
     get:
-      summary: Show published empreendimento
+      summary: Show published building
       parameters:
         - name: id
           in: path
@@ -26,7 +26,7 @@ paths:
             type: integer
       responses:
         '200':
-          description: Empreendimento detail
+          description: Building detail
         '404':
           description: Not found
   /api/auth/login:
@@ -47,71 +47,71 @@ paths:
           description: User profile
         '401':
           description: Unauthenticated
-  /api/construtora/empreendimentos:
+  /api/builder/buildings:
     get:
-      summary: List empreendimentos (construtora)
+      summary: List buildings (builder role)
       security:
         - bearerAuth: []
       responses:
         '200':
           description: Tenant-scoped list
     post:
-      summary: Create empreendimento
+      summary: Create building
       security:
         - bearerAuth: []
       responses:
         '201':
           description: Created
-  /api/construtora/empreendimentos/{empreendimento}/unidades:
+  /api/builder/buildings/{building}/units:
     get:
-      summary: List unidades
+      summary: List units
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Unidades list
+          description: Units list
     post:
-      summary: Create unidade
+      summary: Create unit
       security:
         - bearerAuth: []
       responses:
         '201':
           description: Created
-  /api/construtora/convites:
+  /api/builder/invites:
     post:
-      summary: Create corretor invite
+      summary: Create broker invite
       security:
         - bearerAuth: []
       responses:
         '201':
           description: Created
-  /api/construtora/acessos:
+  /api/builder/access:
     post:
-      summary: Grant corretor access to unidade
+      summary: Grant broker access to unit
       security:
         - bearerAuth: []
       responses:
         '201':
           description: Created
-  /api/corretor/unidades:
+  /api/broker/units:
     get:
-      summary: List unidades by acesso
+      summary: List units by access
       security:
         - bearerAuth: []
       responses:
         '200':
-          description: Unidades list
-  /api/corretor/reservas:
+          description: Units list
+  /api/broker/reservations:
     post:
-      summary: Create soft reserva
+      summary: Create soft reservation
       security:
         - bearerAuth: []
       responses:
         '201':
           description: Created
-  /api/corretor/convites/accept:
+  /api/broker/invites/accept:
     post:
-      summary: Accept corretor invite
+      summary: Accept broker invite
       security:
         - bearerAuth: []
       responses:

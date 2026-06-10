@@ -33,9 +33,9 @@
 - Infra Docker + bootstrap apps
 - Tenancy customizado (TenantContext, middlewares, BelongsToTenant)
 - Auth e-mail/senha com Sanctum + roles por perfil
-- CRUD empreendimentos e unidades
-- Reservas soft com TTL configurável (default 48h)
-- Convites e acessos cross-tenant para corretores
+- CRUD buildings e units (`/api/builder/*`)
+- Reservations soft com TTL configurável (default 48h; `opim:expire-reservations`)
+- Convites e `unit_access` cross-tenant para brokers (`/api/broker/*`)
 - Admin de tenants (construtoras)
 - Portal público read-only com SEO
 

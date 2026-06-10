@@ -11,14 +11,17 @@ docker compose exec frontend pnpm dlx shadcn@latest init --preset b3kI323Ky --te
 ```
 frontend/src/
 ├── apps/
-│   ├── construtora/
-│   ├── corretor/
+│   ├── builder/       # portal construtora.localhost
+│   ├── broker/        # portal corretor.localhost
 │   ├── admin/
-│   └── publico/
+│   ├── public/        # portal www.localhost
+│   └── auth/          # LoginPage, guards
 ├── components/
 │   ├── ui/          # shadcn
 │   └── layout/      # AppShell, Sidebar, Header
 ├── lib/
+│   ├── api.ts       # builderApi, brokerApi, adminApi, publicApi
+│   ├── profile.ts   # hostname PT → profile key EN
 │   └── utils.ts
 └── main.tsx         # React Router
 ```
@@ -28,11 +31,13 @@ frontend/src/
 - `AppShell`: sidebar fixa + área de conteúdo
 - Identidade visual única entre perfis (tokens do preset)
 
-## Rotas
+## Rotas (pós subdomain-portals)
 
-| Path | App |
-|------|-----|
-| `/construtora/*` | Construtora dashboard |
-| `/corretor/*` | Corretor dashboard |
-| `/admin/*` | Admin dashboard |
-| `/publico/*` | Portal público |
+| Host (dev) | App |
+|------------|-----|
+| `construtora.localhost:5173` | Builder dashboard |
+| `corretor.localhost:5173` | Broker dashboard |
+| `admin.localhost:5173` | Admin dashboard |
+| `www.localhost:5173` | Portal público |
+
+Paths legados `/construtora`, `/corretor`, etc. exibem orientação para o subdomínio correto.

@@ -12,5 +12,5 @@
 
 - [ ] shadcn init com preset b3kI323Ky
 - [ ] AppShell com sidebar + header
-- [ ] Rotas `/construtora`, `/corretor`, `/admin`, `/publico`
+- [ ] Portais por subdomínio (`construtora`/`corretor`/`admin`/`www`); profile keys EN (`builder`/`broker`/`admin`/`public`)
 - [ ] Vitest passando

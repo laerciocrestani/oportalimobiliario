@@ -43,17 +43,17 @@ class UserFactory extends Factory
         ]);
     }
 
-    public function construtora(): static
+    public function builder(): static
     {
         return $this->state(fn () => [
-            'role' => 'construtora',
+            'role' => 'builder',
         ]);
     }
 
-    public function corretor(): static
+    public function broker(): static
     {
         return $this->state(fn () => [
-            'role' => 'corretor',
+            'role' => 'broker',
             'tenant_id' => null,
         ]);
     }

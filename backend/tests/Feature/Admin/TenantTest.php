@@ -29,7 +29,7 @@ it('creates tenant as admin', function () {
 });
 
 it('denies admin routes to non admin', function () {
-    Sanctum::actingAs(User::factory()->construtora()->create());
+    Sanctum::actingAs(User::factory()->builder()->create());
 
     $this->getJson('/api/admin/tenants')->assertForbidden();
 });

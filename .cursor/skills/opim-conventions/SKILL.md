@@ -1,6 +1,6 @@
 ---
 name: opim-conventions
-description: Convenções do monorepo Oportalimobiliário (Laravel API + React SPA multi-perfil). Use ao implementar features de backend, frontend, tenancy, auth, empreendimentos, reservas ou ao criar rotas/controllers/components neste projeto.
+description: Convenções do monorepo Oportalimobiliário (Laravel API + React SPA multi-perfil). Use ao implementar features de backend, frontend, tenancy, auth, buildings, reservations ou ao criar rotas/controllers/components neste projeto.
 ---
 
 # Oportalimobiliário — Convenções do Projeto
@@ -15,20 +15,32 @@ description: Convenções do monorepo Oportalimobiliário (Laravel API + React S
 
 ## Perfis e rotas API
 
-| Perfil | Prefixo API | Tenant context | Middleware principal |
-|--------|-------------|----------------|----------------------|
-| Construtora | `/api/construtora/*` | Sim (`tenant.from.user` + `tenant.ensure`) | `construtora` |
-| Corretor | `/api/corretor/*` | Não (`tenant.ensure.none`) | `corretor` |
-| Admin SaaS | `/api/admin/*` | Não | `admin` |
-| Público | `/api/public/*` | Não (filtro `publicado=true`) | sem auth |
+| Perfil (UI) | Role (code) | Prefixo API | Tenant context | Middleware principal |
+|-------------|-------------|-------------|----------------|----------------------|
+| Construtora | `builder` | `/api/builder/*` | Sim (`tenant.from.user` + `tenant.ensure`) | `builder` |
+| Corretor | `broker` | `/api/broker/*` | Não (`tenant.ensure.none`) | `broker` |
+| Admin SaaS | `admin` | `/api/admin/*` | Não | `admin` |
+| Público | — | `/api/public/*` | Não (filtro `published=true`) | sem auth |
 
-Controllers em `backend/app/Http/Controllers/Api/{Perfil}/`. Não misturar lógica de perfis.
+Controllers em `backend/app/Http/Controllers/Api/{Builder|Broker|Admin|Public}/`. Não misturar lógica de perfis.
+
+Subdomínios de dev permanecem em PT (`construtora.localhost`, `corretor.localhost`); chaves internas de perfil usam EN (`builder`, `broker`). Ver `.specs/codebase/GLOSSARY.md`.
+
+## Domínio (models / tabelas)
+
+| Conceito (UI pt-BR) | Model / tabela (EN) |
+|---------------------|---------------------|
+| Empreendimento | `Building` / `buildings` |
+| Unidade | `Unit` / `units` |
+| Reserva | `Reservation` / `reservations` |
+| Convite corretor | `BrokerInvite` / `broker_invites` |
+| Acesso unidade | `UnitAccess` / `unit_access` |
 
 ## Tenancy
 
 - Single database + `tenant_id`; **não** usar stancl/tenancy
-- Models de domínio da construtora usam trait `BelongsToTenant`
-- Corretor acessa unidades via `acessos_unidades`, não via tenant scope global
+- Models de domínio do builder usam trait `BelongsToTenant`
+- Broker acessa unidades via `unit_access`, não via tenant scope global
 - Admin é cross-tenant por policy, sem `TenantContext`
 
 ## Qualidade de API (obrigatório)
@@ -41,16 +53,16 @@ Controllers em `backend/app/Http/Controllers/Api/{Perfil}/`. Não misturar lógi
 
 ## Frontend
 
-- Apps por perfil em `frontend/src/apps/{perfil}/`
-- Cliente HTTP centralizado em `frontend/src/lib/api.ts` — tipos e funções por perfil (`construtoraApi`, `corretorApi`, `adminApi`, `publicApi`)
+- Apps por perfil em `frontend/src/apps/{builder,broker,admin,publico}/` (pastas FE podem manter nome PT legado; profile keys são EN)
+- Cliente HTTP centralizado em `frontend/src/lib/api.ts` — tipos e funções por perfil (`builderApi`, `brokerApi`, `adminApi`, `publicApi`)
 - Auth via Sanctum: token em `localStorage` (`opim_token`), header `Authorization: Bearer`
-- `VITE_API_URL` aponta para `http://localhost:8000/api`
+- `VITE_API_URL` aponta para `http://api.localhost:8000/api`
 - Componentes UI: shadcn em `frontend/src/components/ui/`
 - Testes: Vitest + React Testing Library em `*.test.tsx`
 
 ## Padrões de implementação
 
-- Backend: Form Requests para validação, enums para status (`UnidadeStatus`, etc.), Services para lógica transacional (ex.: expiração de reservas)
+- Backend: Form Requests para validação, enums para status (`UnitStatus`, etc.), Services para lógica transacional (ex.: expiração de reservations)
 - Não adicionar dependências sem necessidade
 - Não refatorar código adjacente não relacionado à task
 - Seguir estrutura existente em `backend/routes/api.php` e `backend/bootstrap/app.php`

@@ -1,21 +1,21 @@
-# Feature: corretor-convites
+# Feature: broker-invites
 
 ## Objetivo
 
-Convites de construtoras para corretores e acessos cross-tenant via `acessos_unidades`.
+Convites de construtoras para corretores e acessos cross-tenant via `unit_access`.
 
 ## Requisitos
 
-- `REQ-CONV-001`: Construtora gera link/convite para corretor
-- `REQ-CONV-002`: Corretor aceita convite e ganha acesso ao tenant
-- `REQ-CONV-003`: Tabela `acessos_unidades` liga corretor + unidade + tenant
-- `REQ-CONV-004`: Rotas corretor sem global scope, filtro por acessos
-- `REQ-CONV-005`: ConviteCorretorSeeder + AcessoUnidadeSeeder
+- `REQ-CONV-001`: Builder gera convite para broker (`POST /api/builder/invites`)
+- `REQ-CONV-002`: Broker aceita convite (`POST /api/broker/invites/accept`)
+- `REQ-CONV-003`: Tabela `unit_access` liga broker + unit + tenant
+- `REQ-CONV-004`: Rotas broker sem global scope, filtro por `unit_access`
+- `REQ-CONV-005`: `BrokerInviteSeeder` + `UnitAccessSeeder`
 
 ## Dependências
 
-- empreendimentos, auth, tenancy
+- buildings, auth, tenancy
 
 ## Status
 
-done — backend + frontend construtora/corretor
+done — backend + frontend construtora/corretor (`builderApi`, `brokerApi`)

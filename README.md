@@ -50,6 +50,19 @@ docker compose exec frontend pnpm test
 docker compose exec frontend pnpm build
 ```
 
+## API (prefixos em inglês)
+
+Rotas e identificadores de código usam vocabulário EN; labels de UI e subdomínios de dev permanecem em português.
+
+| Perfil (portal) | Role | Prefixo API |
+|-----------------|------|-------------|
+| Construtora | `builder` | `/api/builder/*` |
+| Corretor | `broker` | `/api/broker/*` |
+| Admin SaaS | `admin` | `/api/admin/*` |
+| Público | — | `/api/public/buildings` |
+
+Contrato completo: [`docs/api/openapi.yaml`](docs/api/openapi.yaml). Mapeamento PT↔EN: [`.specs/codebase/GLOSSARY.md`](.specs/codebase/GLOSSARY.md).
+
 ## Governança
 
 Especificações em [`.specs/`](.specs/). Decisões em [`.specs/project/STATE.md`](.specs/project/STATE.md).

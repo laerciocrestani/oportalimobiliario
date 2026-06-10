@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->foreignId('tenant_id')->nullable()->after('id')->constrained()->nullOnDelete();
-            $table->string('role')->default('construtora')->after('email');
+            $table->string('role')->default('builder')->after('email');
         });
     }
 

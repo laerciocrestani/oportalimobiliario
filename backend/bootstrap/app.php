@@ -22,8 +22,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.from.user' => \App\Tenancy\Middleware\SetTenantFromUser::class,
             'tenant.ensure' => \App\Tenancy\Middleware\EnsureTenantContext::class,
             'tenant.ensure.none' => \App\Tenancy\Middleware\EnsureNoTenantContext::class,
-            'corretor' => \App\Tenancy\Middleware\EnsureCorretor::class,
-            'construtora' => \App\Tenancy\Middleware\EnsureConstrutora::class,
+            'broker' => \App\Tenancy\Middleware\EnsureBroker::class,
+            'builder' => \App\Tenancy\Middleware\EnsureBuilder::class,
             'admin' => \App\Tenancy\Middleware\EnsureAdmin::class,
         ]);
 

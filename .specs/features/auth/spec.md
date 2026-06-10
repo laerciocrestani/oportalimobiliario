@@ -3,7 +3,7 @@
 ## Requisitos
 
 - `REQ-AUTH-001`: Login e-mail + senha via Laravel Sanctum (token API)
-- `REQ-AUTH-002`: Roles admin, construtora, corretor via spatie/laravel-permission
+- `REQ-AUTH-002`: Roles `admin`, `builder`, `broker` via spatie/laravel-permission
 - `REQ-AUTH-003`: Teams Spatie usam `tenant_id` como team scope
 - `REQ-AUTH-004`: Endpoint `POST /api/auth/login` retorna token + user
 - `REQ-AUTH-005`: Endpoint `GET /api/auth/me` retorna usuário autenticado

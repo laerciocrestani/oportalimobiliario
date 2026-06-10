@@ -5,6 +5,6 @@
 - [ ] [BE] TenantContext + BelongsToTenant + TenantAwareJob
 - [ ] [BE] Middlewares (4)
 - [ ] [BE] Tenant model + factory + TenantSeeder
-- [ ] [BE] Rotas construtora/corretor de teste
+- [ ] [BE] Rotas builder/broker de teste
 - [ ] [BE] Feature + Unit tests isolamento
 - [ ] [QA] php artisan test

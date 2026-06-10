@@ -16,8 +16,8 @@ class UserSeeder extends Seeder
         $registrar = app(PermissionRegistrar::class);
 
         $adminRole = Role::query()->where('name', 'admin')->first();
-        $construtoraRole = Role::query()->where('name', 'construtora')->first();
-        $corretorRole = Role::query()->where('name', 'corretor')->first();
+        $builderRole = Role::query()->where('name', 'builder')->first();
+        $brokerRole = Role::query()->where('name', 'broker')->first();
 
         $systemTenant = Tenant::query()->firstOrCreate(
             ['slug' => 'system'],
@@ -45,12 +45,12 @@ class UserSeeder extends Seeder
                 [
                     'name' => 'Construtora Alpha',
                     'password' => Hash::make('password'),
-                    'role' => 'construtora',
+                    'role' => 'builder',
                     'tenant_id' => $alpha->id,
                 ],
             );
             $registrar->setPermissionsTeamId($alpha->id);
-            $alphaUser->syncRoles([$construtoraRole]);
+            $alphaUser->syncRoles([$builderRole]);
         }
 
         if ($beta !== null) {
@@ -59,25 +59,25 @@ class UserSeeder extends Seeder
                 [
                     'name' => 'Construtora Beta',
                     'password' => Hash::make('password'),
-                    'role' => 'construtora',
+                    'role' => 'builder',
                     'tenant_id' => $beta->id,
                 ],
             );
             $registrar->setPermissionsTeamId($beta->id);
-            $betaUser->syncRoles([$construtoraRole]);
+            $betaUser->syncRoles([$builderRole]);
         }
 
-        $corretor = User::query()->firstOrCreate(
+        $broker = User::query()->firstOrCreate(
             ['email' => 'corretor@demo.com'],
             [
                 'name' => 'Corretor Demo',
                 'password' => Hash::make('password'),
-                'role' => 'corretor',
+                'role' => 'broker',
                 'tenant_id' => null,
             ],
         );
         $registrar->setPermissionsTeamId($systemTenant->id);
-        $corretor->syncRoles([$corretorRole]);
+        $broker->syncRoles([$brokerRole]);
 
         $registrar->setPermissionsTeamId(null);
     }

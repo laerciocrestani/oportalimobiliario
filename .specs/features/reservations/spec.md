@@ -1,4 +1,4 @@
-# Feature: reservas
+# Feature: reservations
 
 ## Objetivo
 
@@ -6,15 +6,15 @@ Reservas soft com TTL configurável (default 48h).
 
 ## Requisitos
 
-- `REQ-RES-001`: Criar reserva temporária em unidade disponível
-- `REQ-RES-002`: Expiração automática via job/command
+- `REQ-RES-001`: Criar reservation temporária em unit `available` (`POST /api/broker/reservations`)
+- `REQ-RES-002`: Expiração automática via command `opim:expire-reservations`
 - `REQ-RES-003`: TTL configurável em `config/opim.php`
-- `REQ-RES-004`: ReservaSeeder + testes de expiração
+- `REQ-RES-004`: `ReservationSeeder` + testes de expiração
 
 ## Dependências
 
-- empreendimentos, auth
+- buildings, auth
 
 ## Status
 
-done — command `opim:expire-reservas` + API corretor + frontend
+done — command `opim:expire-reservations` + API broker + frontend (`brokerApi`)

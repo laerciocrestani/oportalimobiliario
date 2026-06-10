@@ -8,7 +8,7 @@ use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 
 it('logs in with valid credentials', function () {
-    $user = User::factory()->construtora()->create([
+    $user = User::factory()->builder()->create([
         'email' => 'login@demo.com',
         'password' => 'password',
     ]);

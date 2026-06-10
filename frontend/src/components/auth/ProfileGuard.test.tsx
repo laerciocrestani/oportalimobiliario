@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ProfileGuard } from '@/components/auth/ProfileGuard'
 import * as api from '@/lib/api'
 
-function renderGuard(profile: 'construtora' | 'corretor' | 'admin') {
+function renderGuard(profile: 'builder' | 'broker' | 'admin') {
   return render(
     <MemoryRouter initialEntries={['/']}>
       <Routes>
@@ -30,7 +30,7 @@ describe('ProfileGuard', () => {
   it('redirects to login when token is missing', async () => {
     vi.spyOn(api, 'getToken').mockReturnValue(null)
 
-    renderGuard('construtora')
+    renderGuard('builder')
 
     await waitFor(() => {
       expect(screen.getByText('Login page')).toBeInTheDocument()
@@ -43,11 +43,11 @@ describe('ProfileGuard', () => {
       id: 1,
       name: 'Demo',
       email: 'demo@test.com',
-      role: 'construtora',
+      role: 'builder',
       tenant_id: 1,
     })
 
-    renderGuard('construtora')
+    renderGuard('builder')
 
     await waitFor(() => {
       expect(screen.getByText('Protected content')).toBeInTheDocument()
@@ -60,12 +60,12 @@ describe('ProfileGuard', () => {
       id: 1,
       name: 'Demo',
       email: 'demo@test.com',
-      role: 'corretor',
+      role: 'broker',
       tenant_id: null,
     })
     const clearToken = vi.spyOn(api, 'clearToken').mockImplementation(() => {})
 
-    renderGuard('construtora')
+    renderGuard('builder')
 
     await waitFor(() => {
       expect(screen.getByText('Login page')).toBeInTheDocument()

@@ -1,7 +1,7 @@
 import { GalleryVerticalEnd } from 'lucide-react'
 import { PORTAL_LABELS, PORTAL_URLS, type PortalProfile } from '@/lib/profile'
 
-const portalOrder: PortalProfile[] = ['construtora', 'corretor', 'admin', 'publico']
+const portalOrder: PortalProfile[] = ['builder', 'broker', 'admin', 'public']
 
 export function PortalGuidePage() {
   return (

@@ -18,7 +18,8 @@
 ## Frontend → API
 
 - Variável: `VITE_API_URL` (default `http://api.localhost:8000/api`)
-- Cliente: `frontend/src/lib/api.ts`
+- Cliente: `frontend/src/lib/api.ts` (`builderApi`, `brokerApi`, `adminApi`, `publicApi`)
+- Prefixos API: `/api/builder/*`, `/api/broker/*`, `/api/admin/*`, `/api/public/buildings`
 - CORS: origens dos 4 hosts FE em `CORS_ALLOWED_ORIGINS`
 
 ## Database

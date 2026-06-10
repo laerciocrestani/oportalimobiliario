@@ -1,14 +1,14 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { describe, expect, it } from 'vitest'
-import { ConstrutoraHome } from '@/apps/construtora/ConstrutoraHome'
+import { BuilderHome } from '@/apps/builder/BuilderHome'
 import { AppShell } from '@/components/layout/AppShell'
 
 describe('frontend-shell', () => {
-  it('renders construtora dashboard', () => {
+  it('renders builder dashboard', () => {
     render(
       <MemoryRouter>
-        <ConstrutoraHome />
+        <BuilderHome />
       </MemoryRouter>,
     )
     expect(screen.getByRole('heading', { name: 'Empreendimentos', level: 1 })).toBeInTheDocument()

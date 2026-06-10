@@ -12,12 +12,12 @@ oportalimobiliario/
 └── .specs/           # Governança spec-driven
 ```
 
-## Rotas API (planejado)
+## Rotas API
 
-- `/api/construtora/*` — tenant scoped via SetTenantFromUser
-- `/api/corretor/*` — cross-tenant via acessos_unidades
+- `/api/builder/*` — tenant scoped via `SetTenantFromUser` (role `builder`)
+- `/api/broker/*` — cross-tenant via `unit_access` (role `broker`)
 - `/api/admin/*` — role admin SaaS
-- `/api/public/*` — read-only, publicado=true
+- `/api/public/*` — read-only, `published=true`
 
 ## Tenancy
 
@@ -25,17 +25,17 @@ Single database + `tenant_id`. `TenantContext` por request. Trait `BelongsToTena
 
 ## Perfis
 
-| Perfil | Contexto tenant | Portal (dev) |
-|--------|-----------------|--------------|
-| Construtora | Sim (user.tenant_id) | `construtora.localhost:5173` |
-| Corretor | Não (acessos explícitos) | `corretor.localhost:5173` |
-| Admin | Não (cross-tenant por policy) | `admin.localhost:5173` |
-| Público | Filtro publicado | `www.localhost:5173` |
+| Perfil (UI) | Role (code) | Contexto tenant | Portal (dev) |
+|-------------|-------------|-----------------|--------------|
+| Construtora | `builder` | Sim (`user.tenant_id`) | `construtora.localhost:5173` |
+| Corretor | `broker` | Não (`unit_access` explícitos) | `corretor.localhost:5173` |
+| Admin | `admin` | Não (cross-tenant por policy) | `admin.localhost:5173` |
+| Público | — | Filtro `published` | `www.localhost:5173` |
 
 ## API host
 
 - Dev: `api.localhost:8000/api`
-- Prefixos por perfil inalterados (`/construtora/*`, `/corretor/*`, `/admin/*`, `/public/*`)
+- Prefixos por perfil: `/builder/*`, `/broker/*`, `/admin/*`, `/public/*`
 
 ## Portais por subdomínio
 

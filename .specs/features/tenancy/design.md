@@ -12,25 +12,26 @@ backend/app/Tenancy/
     ├── SetTenantFromUser.php
     ├── EnsureTenantContext.php
     ├── EnsureNoTenantContext.php
-    └── EnsureCorretor.php
+    ├── EnsureBuilder.php
+    └── EnsureBroker.php
 ```
 
-## Fluxo construtora
+## Fluxo builder (construtora)
 
 ```
 Request → auth → SetTenantFromUser → TenantContext.set → BelongsToTenant scope
 ```
 
-## Fluxo corretor
+## Fluxo broker (corretor)
 
 ```
-Request → auth → EnsureNoTenantContext → policy + acessos_unidades
+Request → auth → EnsureNoTenantContext → policy + unit_access
 ```
 
 ## Modelagem
 
 - `tenants`: id, name, slug, active
-- `users.tenant_id`: nullable FK (null para admin/corretor)
+- `users.tenant_id`: nullable FK (null para admin/broker)
 - Models de domínio usam trait `BelongsToTenant`
 
 ## Middleware aliases
@@ -40,4 +41,5 @@ Registrados em `bootstrap/app.php`:
 - `tenant.from.user`
 - `tenant.ensure`
 - `tenant.ensure.none`
-- `corretor`
+- `builder`
+- `broker`

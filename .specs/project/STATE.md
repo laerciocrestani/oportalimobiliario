@@ -8,9 +8,9 @@
 |---------|-------|
 | Multitenancy | Single DB + `tenant_id`, **sem** stancl/tenancy |
 | Implementação tenancy | Middleware + `TenantContext` + trait `BelongsToTenant` |
-| Corretor | 1 conta, N tenants via `acessos_unidades` |
+| Corretor | 1 conta, N tenants via `unit_access` (role `broker`) |
 | Auth | E-mail + senha, Laravel Sanctum |
-| Reservas | Soft/temporárias com TTL configurável (default 48h) |
+| Reservas | Soft/temporárias com TTL configurável (default 48h); command `opim:expire-reservations` |
 | Estrutura repo | `frontend/` + `backend/` + `docker-compose.yml` na raiz |
 | Portal público | Módulo dentro de `frontend/`, não pasta separada |
 | Permissões | spatie/laravel-permission com teams (`tenant_id`) |

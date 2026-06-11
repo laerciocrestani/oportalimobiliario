@@ -2,16 +2,17 @@ import type { ReactNode } from 'react'
 import { AppSidebar } from '@/components/app-sidebar'
 import { SiteHeader } from '@/components/site-header'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
-import { dashboardNav, type DashboardRole } from '@/config/dashboard-nav'
+import { dashboardNav, type DashboardNavConfig, type DashboardRole } from '@/config/dashboard-nav'
 
 type DashboardShellProps = {
   role: DashboardRole
   title: string
   children: ReactNode
+  navConfig?: DashboardNavConfig
 }
 
-export function DashboardShell({ role, title, children }: DashboardShellProps) {
-  const config = dashboardNav[role]
+export function DashboardShell({ role, title, children, navConfig }: DashboardShellProps) {
+  const config = navConfig ?? dashboardNav[role]
 
   return (
     <SidebarProvider

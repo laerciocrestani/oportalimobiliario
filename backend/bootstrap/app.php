@@ -14,12 +14,15 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->priority([
+            \Illuminate\Auth\Middleware\Authenticate::class,
             \App\Tenancy\Middleware\SetTenantFromUser::class,
+            \App\Tenancy\Middleware\SetPermissionsTeamId::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ]);
 
         $middleware->alias([
             'tenant.from.user' => \App\Tenancy\Middleware\SetTenantFromUser::class,
+            'permissions.team' => \App\Tenancy\Middleware\SetPermissionsTeamId::class,
             'tenant.ensure' => \App\Tenancy\Middleware\EnsureTenantContext::class,
             'tenant.ensure.none' => \App\Tenancy\Middleware\EnsureNoTenantContext::class,
             'broker' => \App\Tenancy\Middleware\EnsureBroker::class,

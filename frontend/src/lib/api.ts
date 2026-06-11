@@ -6,11 +6,38 @@ export type AuthUser = {
   email: string
   role: string
   tenant_id: number | null
+  permissions?: string[]
+}
+
+export type TeamMember = {
+  id: number
+  name: string
+  email: string
+  permissions: string[]
+  created_at?: string
 }
 
 export type LoginResponse = {
   token: string
   user: AuthUser
+}
+
+export type UnitsSummary = {
+  total: number
+  available: number
+  pre_reserved: number
+  reserved: number
+  sold: number
+  unavailable: number
+}
+
+export type Tower = {
+  id: number
+  name: string
+  sort_order: number
+  building_id?: number
+  units_summary?: UnitsSummary
+  units?: Unit[]
 }
 
 export type Building = {
@@ -23,6 +50,9 @@ export type Building = {
   seo_title: string | null
   seo_description: string | null
   units_count?: number
+  units_summary?: UnitsSummary
+  towers?: Tower[]
+  units?: Unit[]
 }
 
 export type Unit = {
@@ -32,6 +62,8 @@ export type Unit = {
   area_m2: string | null
   price: string | null
   status: string
+  tower_id?: number
+  tower?: Pick<Tower, 'id' | 'name'>
   building?: Building
 }
 
@@ -114,9 +146,25 @@ export async function fetchMe(): Promise<AuthUser> {
 
 export const builderApi = {
   listBuildings: () => apiFetch<Building[]>('/builder/buildings'),
+  getBuilding: (id: number) => apiFetch<Building>(`/builder/buildings/${id}`),
   createBuilding: (data: Partial<Building>) =>
     apiFetch<Building>('/builder/buildings', {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateBuilding: (id: number, data: Partial<Building>) =>
+    apiFetch<Building>(`/builder/buildings/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  createTower: (buildingId: number, data: Partial<Tower>) =>
+    apiFetch<Tower>(`/builder/buildings/${buildingId}/towers`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateTower: (buildingId: number, towerId: number, data: Partial<Tower>) =>
+    apiFetch<Tower>(`/builder/buildings/${buildingId}/towers/${towerId}`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     }),
   listUnits: (buildingId: number) =>
@@ -124,6 +172,11 @@ export const builderApi = {
   createUnit: (buildingId: number, data: Partial<Unit>) =>
     apiFetch<Unit>(`/builder/buildings/${buildingId}/units`, {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateUnit: (buildingId: number, unitId: number, data: Partial<Unit>) =>
+    apiFetch<Unit>(`/builder/buildings/${buildingId}/units/${unitId}`, {
+      method: 'PATCH',
       body: JSON.stringify(data),
     }),
   createInvite: (email: string) =>
@@ -136,6 +189,27 @@ export const builderApi = {
       method: 'POST',
       body: JSON.stringify({ broker_id: brokerId, unit_id: unitId }),
     }),
+  listTeam: () => apiFetch<TeamMember[]>('/builder/team'),
+  createTeamMember: (data: {
+    name: string
+    email: string
+    password: string
+    permissions: string[]
+  }) =>
+    apiFetch<TeamMember>('/builder/team', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateTeamMember: (
+    id: number,
+    data: { name?: string; password?: string; permissions?: string[] },
+  ) =>
+    apiFetch<TeamMember>(`/builder/team/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteTeamMember: (id: number) =>
+    apiFetch<void>(`/builder/team/${id}`, { method: 'DELETE' }),
 }
 
 export const brokerApi = {

@@ -14,7 +14,7 @@ use Laravel\Sanctum\Sanctum;
 
 it('creates invite as builder', function () {
     $tenant = Tenant::factory()->create();
-    $user = User::factory()->builder()->for($tenant)->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
 
     Sanctum::actingAs($user);
 
@@ -25,7 +25,7 @@ it('creates invite as builder', function () {
 
 it('accepts invite as broker', function () {
     $tenant = Tenant::factory()->create();
-    $builder = User::factory()->builder()->for($tenant)->create();
+    $builder = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
     $broker = User::factory()->broker()->create(['email' => 'aceite@demo.com']);
 
     $invite = BrokerInvite::factory()->create([
@@ -64,7 +64,7 @@ it('lists units by access for broker', function () {
 
 it('grants access from builder', function () {
     $tenant = Tenant::factory()->create();
-    $builder = User::factory()->builder()->for($tenant)->create();
+    $builder = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
     $broker = User::factory()->broker()->create();
     $unit = Unit::factory()->for($tenant)->create();
 

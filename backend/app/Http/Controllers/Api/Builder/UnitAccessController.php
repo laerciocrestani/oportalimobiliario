@@ -16,6 +16,8 @@ class UnitAccessController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
+        $this->authorize('create', UnitAccess::class);
+
         $data = $request->validate([
             'broker_id' => ['required', 'integer', Rule::exists('users', 'id')->where('role', 'broker')],
             'unit_id' => ['required', 'integer', 'exists:units,id'],
@@ -35,6 +37,8 @@ class UnitAccessController extends Controller
 
     public function destroy(UnitAccess $access): JsonResponse
     {
+        $this->authorize('delete', $access);
+
         $access->delete();
 
         return response()->json(null, 204);

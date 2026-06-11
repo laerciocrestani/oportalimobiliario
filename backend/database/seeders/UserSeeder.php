@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\BuilderPermissions;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -51,6 +52,38 @@ class UserSeeder extends Seeder
             );
             $registrar->setPermissionsTeamId($alpha->id);
             $alphaUser->syncRoles([$builderRole]);
+            BuilderPermissions::assign($alphaUser, BuilderPermissions::all());
+
+            User::query()->firstOrCreate(
+                ['email' => 'comercial@alpha.demo'],
+                [
+                    'name' => 'Comercial Alpha',
+                    'password' => Hash::make('password'),
+                    'role' => 'builder',
+                    'tenant_id' => $alpha->id,
+                ],
+            );
+            $comercial = User::query()->where('email', 'comercial@alpha.demo')->first();
+            BuilderPermissions::assign($comercial, [
+                BuilderPermissions::VIEW_BUILDINGS,
+                BuilderPermissions::SEND_INVITES,
+            ]);
+
+            User::query()->firstOrCreate(
+                ['email' => 'supervisor@alpha.demo'],
+                [
+                    'name' => 'Supervisor Alpha',
+                    'password' => Hash::make('password'),
+                    'role' => 'builder',
+                    'tenant_id' => $alpha->id,
+                ],
+            );
+            $supervisor = User::query()->where('email', 'supervisor@alpha.demo')->first();
+            BuilderPermissions::assign($supervisor, [
+                BuilderPermissions::VIEW_BUILDINGS,
+                BuilderPermissions::UPDATE_UNIT_STATUS,
+                BuilderPermissions::CANCEL_RESERVATIONS,
+            ]);
         }
 
         if ($beta !== null) {
@@ -65,6 +98,7 @@ class UserSeeder extends Seeder
             );
             $registrar->setPermissionsTeamId($beta->id);
             $betaUser->syncRoles([$builderRole]);
+            BuilderPermissions::assign($betaUser, BuilderPermissions::all());
         }
 
         $broker = User::query()->firstOrCreate(

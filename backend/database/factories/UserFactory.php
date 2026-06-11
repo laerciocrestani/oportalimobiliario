@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\User;
+use App\Support\BuilderPermissions;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -64,5 +65,19 @@ class UserFactory extends Factory
             'role' => 'admin',
             'tenant_id' => null,
         ]);
+    }
+
+    /**
+     * @param  list<string>|null  $permissions
+     */
+    public function withBuilderPermissions(?array $permissions = null): static
+    {
+        return $this->afterCreating(function (User $user) use ($permissions): void {
+            if ($user->role !== 'builder' || $user->tenant_id === null) {
+                return;
+            }
+
+            BuilderPermissions::assign($user, $permissions ?? BuilderPermissions::all());
+        });
     }
 }

@@ -3,7 +3,10 @@ import { LoginPage } from '@/apps/auth/LoginPage'
 import { LegacyPathNotice } from '@/apps/auth/LegacyPathNotice'
 import { PortalGuidePage } from '@/apps/auth/PortalGuidePage'
 import { AdminHome } from '@/apps/admin/AdminHome'
+import { BuildingDetailPage } from '@/apps/builder/BuildingDetailPage'
 import { BuilderHome } from '@/apps/builder/BuilderHome'
+import { BuildingsPage } from '@/apps/builder/BuildingsPage'
+import { TeamPage } from '@/apps/builder/TeamPage'
 import { BrokerHome } from '@/apps/broker/BrokerHome'
 import { PublicHome } from '@/apps/public/PublicHome'
 import { ProfileGuard } from '@/components/auth/ProfileGuard'
@@ -28,14 +31,51 @@ function AuthenticatedPortal() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage profile={profile} />} />
-        <Route
-          path="/"
-          element={
-            <ProfileGuard profile={profile}>
-              <Home />
-            </ProfileGuard>
-          }
-        />
+        {profile === 'builder' ? (
+          <>
+            <Route
+              path="/"
+              element={
+                <ProfileGuard profile={profile}>
+                  <BuilderHome />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/buildings"
+              element={
+                <ProfileGuard profile={profile}>
+                  <BuildingsPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/buildings/:buildingId"
+              element={
+                <ProfileGuard profile={profile}>
+                  <BuildingDetailPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/team"
+              element={
+                <ProfileGuard profile={profile}>
+                  <TeamPage />
+                </ProfileGuard>
+              }
+            />
+          </>
+        ) : (
+          <Route
+            path="/"
+            element={
+              <ProfileGuard profile={profile}>
+                <Home />
+              </ProfileGuard>
+            }
+          />
+        )}
       </Routes>
     </BrowserRouter>
   )

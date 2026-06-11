@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\BuilderPermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -44,6 +45,10 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
+        $permissions = $user->role === 'builder' && $user->tenant_id !== null
+            ? BuilderPermissions::namesFor($user)
+            : [];
+
         return response()->json([
             'id' => $user->id,
             'name' => $user->name,
@@ -51,6 +56,7 @@ class AuthController extends Controller
             'role' => $user->role,
             'tenant_id' => $user->tenant_id,
             'roles' => $user->getRoleNames(),
+            'permissions' => $permissions,
         ]);
     }
 

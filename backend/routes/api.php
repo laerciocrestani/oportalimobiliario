@@ -7,7 +7,10 @@ use App\Http\Controllers\Api\Broker\ReservationController;
 use App\Http\Controllers\Api\Broker\UnitController as BrokerUnitController;
 use App\Http\Controllers\Api\Builder\BrokerInviteController as BuilderBrokerInviteController;
 use App\Http\Controllers\Api\Builder\BuildingController;
+use App\Http\Controllers\Api\Builder\TowerController;
 use App\Http\Controllers\Api\Builder\UnitAccessController;
+use App\Http\Controllers\Api\Builder\ReservationController as BuilderReservationController;
+use App\Http\Controllers\Api\Builder\TeamMemberController;
 use App\Http\Controllers\Api\Builder\UnitController;
 use App\Http\Controllers\Api\Public\BuildingController as PublicBuildingController;
 use App\Models\TenantNote;
@@ -33,18 +36,25 @@ Route::prefix('auth')->group(function () {
     });
 });
 
-Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'builder'])->prefix('builder')->group(function () {
+Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permissions.team', 'builder'])->prefix('builder')->group(function () {
     Route::get('/notes', function () {
         return TenantNote::query()->orderBy('id')->get();
     });
 
     Route::apiResource('buildings', BuildingController::class);
+    Route::apiResource('buildings.towers', TowerController::class);
     Route::apiResource('buildings.units', UnitController::class);
 
     Route::get('/invites', [BuilderBrokerInviteController::class, 'index']);
     Route::post('/invites', [BuilderBrokerInviteController::class, 'store']);
     Route::post('/access', [UnitAccessController::class, 'store']);
     Route::delete('/access/{access}', [UnitAccessController::class, 'destroy']);
+
+    Route::apiResource('team', TeamMemberController::class)
+        ->parameters(['team' => 'teamMember'])
+        ->except(['show']);
+
+    Route::delete('/reservations/{reservation}', [BuilderReservationController::class, 'destroy']);
 });
 
 Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('broker')->group(function () {

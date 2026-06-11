@@ -45,5 +45,5 @@
 
 - Executar `subdomain-portals` (subdomínios dev + CORS + guards FE)
 - Deploy domínio `diadimoveis.com.br` (REQ-SUB-012)
-- Policies Spatie granulares por permission
+- ~~Policies Spatie granulares por permission~~ → feature `builder-team` (em andamento)
 - `schedule:work` ou cron em produção para expiração de reservations

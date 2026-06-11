@@ -3,6 +3,7 @@
 /**
  * @see REQ-TEN-005
  */
+use App\Models\Building;
 use App\Models\Tenant;
 use App\Models\TenantNote;
 use App\Models\User;
@@ -12,8 +13,8 @@ it('isolates builder notes between tenants', function () {
     $alpha = Tenant::factory()->create();
     $beta = Tenant::factory()->create();
 
-    $alphaUser = User::factory()->builder()->for($alpha)->create();
-    $betaUser = User::factory()->builder()->for($beta)->create();
+    $alphaUser = User::factory()->builder()->withBuilderPermissions()->for($alpha)->create();
+    $betaUser = User::factory()->builder()->withBuilderPermissions()->for($beta)->create();
 
     TenantNote::factory()->for($alpha)->create(['title' => 'Alpha only']);
     TenantNote::factory()->for($beta)->create(['title' => 'Beta only']);
@@ -31,6 +32,20 @@ it('isolates builder notes between tenants', function () {
         ->assertOk()
         ->assertJsonCount(1)
         ->assertJsonPath('0.title', 'Beta only');
+});
+
+it('sets tenant context from sanctum bearer token', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    Building::factory()->for($tenant)->create(['name' => 'Bearer Building']);
+    $token = $user->createToken('api')->plainTextToken;
+
+    $this->getJson('/api/builder/buildings', [
+        'Authorization' => "Bearer {$token}",
+    ])
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.name', 'Bearer Building');
 });
 
 it('denies builder routes without tenant context', function () {
@@ -54,7 +69,7 @@ it('allows broker routes without tenant context', function () {
 
 it('denies broker routes when tenant context would be set', function () {
     $tenant = Tenant::factory()->create();
-    $user = User::factory()->builder()->for($tenant)->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
 
     Sanctum::actingAs($user);
 

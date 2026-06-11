@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'tenant_id',
     'building_id',
+    'tower_id',
     'code',
     'floor',
     'area_m2',
@@ -47,6 +48,11 @@ class Unit extends Model
     public function building(): BelongsTo
     {
         return $this->belongsTo(Building::class);
+    }
+
+    public function tower(): BelongsTo
+    {
+        return $this->belongsTo(Tower::class);
     }
 
     public function reservation(): HasOne

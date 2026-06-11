@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             RolePermissionSeeder::class,
             UserSeeder::class,
             BuildingSeeder::class,
+            TowerSeeder::class,
             UnitSeeder::class,
             BrokerInviteSeeder::class,
             UnitAccessSeeder::class,

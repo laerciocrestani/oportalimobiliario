@@ -11,7 +11,7 @@ describe('frontend-shell', () => {
         <BuilderHome />
       </MemoryRouter>,
     )
-    expect(screen.getByRole('heading', { name: 'Empreendimentos', level: 1 })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Visão geral', level: 1 })).toBeInTheDocument()
     expect(screen.getByText('Oportalimobiliário')).toBeInTheDocument()
   })
 

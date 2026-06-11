@@ -15,6 +15,8 @@ class BrokerInviteController extends Controller
 {
     public function index(): JsonResponse
     {
+        $this->authorize('viewAny', BrokerInvite::class);
+
         $invites = BrokerInvite::query()
             ->orderByDesc('created_at')
             ->get();
@@ -24,6 +26,8 @@ class BrokerInviteController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        $this->authorize('create', BrokerInvite::class);
+
         $data = $request->validate([
             'email' => ['required', 'email', 'max:255'],
         ]);

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\ComputesUnitsSummary;
 use App\Tenancy\Concerns\BelongsToTenant;
 use Database\Factories\BuildingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -23,7 +24,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Building extends Model
 {
     /** @use HasFactory<BuildingFactory> */
-    use BelongsToTenant, HasFactory;
+    use BelongsToTenant, ComputesUnitsSummary, HasFactory;
 
     protected function casts(): array
     {
@@ -35,6 +36,11 @@ class Building extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function towers(): HasMany
+    {
+        return $this->hasMany(Tower::class);
     }
 
     public function units(): HasMany

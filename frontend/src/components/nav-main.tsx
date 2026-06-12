@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Badge } from '@/components/ui/badge'
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -14,6 +15,7 @@ export function NavMain({
     title: string
     url: string
     icon?: React.ReactNode
+    badge?: number
   }[]
 }) {
   return (
@@ -24,7 +26,12 @@ export function NavMain({
             <SidebarMenuItem key={item.title}>
               <SidebarMenuButton tooltip={item.title} render={<Link to={item.url} />}>
                 {item.icon}
-                <span>{item.title}</span>
+                <span className="flex-1">{item.title}</span>
+                {item.badge && item.badge > 0 ? (
+                  <Badge variant="destructive" className="ml-auto min-w-5 justify-center px-1.5">
+                    {item.badge}
+                  </Badge>
+                ) : null}
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}

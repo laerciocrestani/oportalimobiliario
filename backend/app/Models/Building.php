@@ -47,4 +47,9 @@ class Building extends Model
     {
         return $this->hasMany(Unit::class);
     }
+
+    public function media(): HasMany
+    {
+        return $this->hasMany(BuildingMedia::class);
+    }
 }

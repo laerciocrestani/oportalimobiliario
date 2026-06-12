@@ -1,5 +1,6 @@
 import { unitStatusLabels } from '@/apps/builder/lib/unit-status'
 import { BrokerReservationDialog } from '@/apps/broker/components/BrokerReservationDialog'
+import { ReservationMessagesDialog } from '@/apps/builder/components/ReservationMessagesDialog'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,11 +24,13 @@ function UnitRowActions({
   unit,
   onReserve,
   onCancelReservation,
+  onOpenMessages,
   cancelling,
 }: {
   unit: Unit
   onReserve: (unit: Unit) => void
   onCancelReservation: (unit: Unit) => void
+  onOpenMessages: (unit: Unit) => void
   cancelling: boolean
 }) {
   const clientName = unit.reservation?.client?.name
@@ -36,6 +39,9 @@ function UnitRowActions({
     return (
       <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
         <p className="text-sm text-muted-foreground">Reservado para {clientName}</p>
+        <Button size="sm" variant="secondary" onClick={() => onOpenMessages(unit)}>
+          Ver conversa
+        </Button>
         <Button
           size="sm"
           variant="outline"
@@ -67,12 +73,24 @@ export function BrokerUnitsDialog({
 }: BrokerUnitsDialogProps) {
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null)
   const [reservationOpen, setReservationOpen] = useState(false)
+  const [messagesReservationId, setMessagesReservationId] = useState<number | null>(null)
+  const [messagesOpen, setMessagesOpen] = useState(false)
   const [cancellingUnitId, setCancellingUnitId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   function handleReserveClick(unit: Unit) {
     setSelectedUnit(unit)
     setReservationOpen(true)
+  }
+
+  function handleOpenMessages(unit: Unit) {
+    const reservationId = unit.reservation?.id
+    if (!reservationId) {
+      return
+    }
+
+    setMessagesReservationId(reservationId)
+    setMessagesOpen(true)
   }
 
   async function handleCancelReservation(unit: Unit) {
@@ -130,6 +148,7 @@ export function BrokerUnitsDialog({
                   unit={unit}
                   onReserve={handleReserveClick}
                   onCancelReservation={(target) => void handleCancelReservation(target)}
+                  onOpenMessages={handleOpenMessages}
                   cancelling={cancellingUnitId === unit.id}
                 />
               </li>
@@ -152,6 +171,13 @@ export function BrokerUnitsDialog({
           onOpenChange(false)
           onReserved()
         }}
+      />
+
+      <ReservationMessagesDialog
+        profile="broker"
+        reservationId={messagesReservationId}
+        open={messagesOpen}
+        onOpenChange={setMessagesOpen}
       />
     </>
   )

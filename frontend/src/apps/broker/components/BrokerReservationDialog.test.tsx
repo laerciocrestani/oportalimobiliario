@@ -89,8 +89,48 @@ describe('BrokerReservationDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
 
     await waitFor(() => {
-      expect(brokerApi.createReservation).toHaveBeenCalledWith(10, 2)
+      expect(brokerApi.createReservation).toHaveBeenCalledWith(10, 2, undefined)
       expect(onReserved).toHaveBeenCalled()
+    })
+  })
+
+  it('sends observations when provided', async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(brokerApi.listClients).mockResolvedValue([
+      { id: 2, name: 'Ana', phone: '(11) 88888-8888', email: null },
+    ])
+    vi.mocked(brokerApi.createReservation).mockResolvedValue({
+      id: 99,
+      unit_id: 10,
+      client_id: 2,
+      broker_id: 1,
+      expires_at: '2026-06-14T12:00:00.000000Z',
+    })
+
+    render(
+      <BrokerReservationDialog
+        open
+        onOpenChange={() => {}}
+        unit={unit}
+        onReserved={() => {}}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByRole('option', { name: 'Ana · (11) 88888-8888' })).toBeInTheDocument()
+    })
+
+    await user.selectOptions(screen.getByLabelText('Cliente *'), '2')
+    await user.type(screen.getByLabelText('Observações'), 'Cliente prefere unidade de canto.')
+    await user.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
+
+    await waitFor(() => {
+      expect(brokerApi.createReservation).toHaveBeenCalledWith(
+        10,
+        2,
+        'Cliente prefere unidade de canto.',
+      )
     })
   })
 })

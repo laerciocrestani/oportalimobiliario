@@ -1,5 +1,6 @@
 import {
   Building2Icon,
+  CalendarClockIcon,
   HandshakeIcon,
   LayoutDashboardIcon,
   Settings2Icon,
@@ -14,6 +15,7 @@ export type DashboardNavItem = {
   title: string
   url: string
   icon: ReactNode
+  badge?: number
 }
 
 export type DashboardNavConfig = {
@@ -44,6 +46,11 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
         title: 'Empreendimentos',
         url: '/buildings',
         icon: <Building2Icon />,
+      },
+      {
+        title: 'Reservas',
+        url: '/reservations',
+        icon: <CalendarClockIcon />,
       },
       {
         title: 'Convites',
@@ -80,6 +87,11 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
         title: 'Empreendimentos',
         url: '/buildings',
         icon: <Building2Icon />,
+      },
+      {
+        title: 'Reservas',
+        url: '/reservations',
+        icon: <CalendarClockIcon />,
       },
       {
         title: 'Clientes',

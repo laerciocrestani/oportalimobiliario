@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { BuildingEditSheet } from '@/apps/builder/components/BuildingEditSheet'
 import { DigitalMirror } from '@/apps/builder/components/DigitalMirror'
 import { TowerEditSheet } from '@/apps/builder/components/TowerEditSheet'
 import { UnitDetailDrawer } from '@/apps/builder/components/UnitDetailDrawer'
@@ -18,7 +17,6 @@ export function BuildingDetailPage() {
   const [building, setBuilding] = useState<Building | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null)
-  const [buildingEditOpen, setBuildingEditOpen] = useState(false)
   const [towerEditOpen, setTowerEditOpen] = useState(false)
   const [editingTower, setEditingTower] = useState<Tower | null>(null)
 
@@ -57,20 +55,6 @@ export function BuildingDetailPage() {
       return { ...current, units, towers }
     })
     setSelectedUnit(updated)
-  }
-
-  function handleBuildingSaved(updated: Building) {
-    setBuilding((current) =>
-      current
-        ? {
-            ...current,
-            ...updated,
-            towers: current.towers,
-            units: current.units,
-            units_summary: current.units_summary,
-          }
-        : updated,
-    )
   }
 
   function handleTowerSaved(saved: Tower) {
@@ -127,13 +111,8 @@ export function BuildingDetailPage() {
                 </p>
               ) : null}
               {canManageBuildings ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setBuildingEditOpen(true)}
-                >
-                  Editar empreendimento
+                <Button type="button" variant="outline" size="sm" asChild>
+                  <Link to={`/buildings/${building.id}/edit`}>Editar empreendimento</Link>
                 </Button>
               ) : null}
             </div>
@@ -226,21 +205,13 @@ export function BuildingDetailPage() {
             />
 
             {canManageBuildings ? (
-              <>
-                <BuildingEditSheet
-                  building={building}
-                  open={buildingEditOpen}
-                  onOpenChange={setBuildingEditOpen}
-                  onSaved={handleBuildingSaved}
-                />
-                <TowerEditSheet
+              <TowerEditSheet
                   buildingId={building.id}
                   tower={editingTower}
                   open={towerEditOpen}
                   onOpenChange={setTowerEditOpen}
                   onSaved={handleTowerSaved}
-                />
-              </>
+              />
             ) : null}
           </>
         )}

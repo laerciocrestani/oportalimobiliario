@@ -2,6 +2,7 @@ import { useMemo, type ReactNode } from 'react'
 import { useBuilderPermissions } from '@/apps/builder/hooks/use-builder-permissions'
 import { DashboardShell } from '@/components/layout/DashboardShell'
 import { dashboardNav } from '@/config/dashboard-nav'
+import { useReservationNavBadge } from '@/hooks/use-reservation-nav-badge'
 
 type BuilderDashboardShellProps = {
   title: string
@@ -10,23 +11,35 @@ type BuilderDashboardShellProps = {
 
 export function BuilderDashboardShell({ title, children }: BuilderDashboardShellProps) {
   const { user, permissions } = useBuilderPermissions()
+  const canManageReservations = permissions.includes('reservations.cancel')
+  const { count: pendingRepliesCount } = useReservationNavBadge(
+    'builder',
+    canManageReservations,
+  )
 
   const navConfig = useMemo(() => {
     const base = dashboardNav.builder
 
-    const navMain = base.navMain.filter((item) => {
-      if (item.url === '/buildings') {
-        return permissions.includes('buildings.view')
-      }
-      if (item.url === '/team') {
-        return permissions.includes('team.manage')
-      }
-      if (item.url === '/invites') {
-        return permissions.includes('invites.send') || permissions.includes('access.manage')
-      }
+    const navMain = base.navMain
+      .filter((item) => {
+        if (item.url === '/buildings') {
+          return permissions.includes('buildings.view')
+        }
+        if (item.url === '/reservations') {
+          return canManageReservations
+        }
+        if (item.url === '/team') {
+          return permissions.includes('team.manage')
+        }
+        if (item.url === '/invites') {
+          return permissions.includes('invites.send') || permissions.includes('access.manage')
+        }
 
-      return true
-    })
+        return true
+      })
+      .map((item) =>
+        item.url === '/reservations' ? { ...item, badge: pendingRepliesCount } : item,
+      )
 
     return {
       ...base,
@@ -35,7 +48,7 @@ export function BuilderDashboardShell({ title, children }: BuilderDashboardShell
         : base.user,
       navMain,
     }
-  }, [permissions, user])
+  }, [canManageReservations, pendingRepliesCount, permissions, user])
 
   return (
     <DashboardShell role="builder" title={title} navConfig={navConfig}>

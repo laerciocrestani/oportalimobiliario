@@ -121,14 +121,62 @@ export type Reservation = {
   client_id: number
   broker_id: number
   expires_at: string
+  created_at?: string
   unit?: Unit
   client?: BrokerClient
+  broker?: Pick<LinkedBroker, 'id' | 'name'>
+  messages_count?: number
+}
+
+export type ReservationMessage = {
+  id: number
+  body: string
+  created_at: string
+  author: {
+    id: number
+    name: string
+    role: string
+  }
+}
+
+export type BuilderReservationListItem = {
+  id: number
+  created_at: string
+  expires_at: string
+  messages_count: number
+  needs_reply: boolean
+  client: Pick<BrokerClient, 'id' | 'name'> | null
+  broker: Pick<LinkedBroker, 'id' | 'name'> | null
+  unit: {
+    id: number
+    code: string
+    building: Pick<Building, 'id' | 'name'> | null
+  } | null
+}
+
+export type ReservationPendingRepliesCount = {
+  count: number
 }
 
 export type Paginated<T> = {
   data: T[]
   current_page: number
   last_page: number
+}
+
+export type BuildingMediaCategory = 'internal' | 'external' | 'floor_plan'
+
+export type BuildingMedia = {
+  id: number
+  building_id: number
+  category: BuildingMediaCategory
+  original_name: string
+  mime_type: string
+  size_bytes: number
+  published: boolean
+  sort_order: number
+  url: string
+  created_at?: string
 }
 
 export async function apiFetch<T>(
@@ -165,6 +213,45 @@ export async function apiFetch<T>(
   return response.json() as Promise<T>
 }
 
+async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+  }
+
+  const token = getToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${API_URL}${path}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  })
+
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`)
+  }
+
+  return response.json() as Promise<T>
+}
+
+export async function fetchAuthenticatedBlob(path: string): Promise<Blob> {
+  const headers: Record<string, string> = {}
+  const token = getToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(`${API_URL}${path}`, { headers })
+
+  if (!response.ok) {
+    throw new Error(`API error: ${response.status}`)
+  }
+
+  return response.blob()
+}
+
 export async function login(email: string, password: string): Promise<LoginResponse> {
   const response = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',
@@ -191,6 +278,14 @@ export function clearToken(): void {
   localStorage.removeItem('opim_token')
 }
 
+export async function logout(): Promise<void> {
+  try {
+    await apiFetch<{ message: string }>('/auth/logout', { method: 'POST' })
+  } finally {
+    clearToken()
+  }
+}
+
 export async function fetchMe(): Promise<AuthUser> {
   return apiFetch<AuthUser>('/auth/me')
 }
@@ -208,6 +303,40 @@ export const builderApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  listBuildingMedia: (buildingId: number, category?: BuildingMediaCategory) => {
+    const query = category ? `?category=${category}` : ''
+    return apiFetch<BuildingMedia[]>(`/builder/buildings/${buildingId}/media${query}`)
+  },
+  uploadBuildingMedia: (
+    buildingId: number,
+    file: File,
+    category: BuildingMediaCategory,
+    published = false,
+  ) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('category', category)
+    if (published) {
+      formData.append('published', '1')
+    }
+
+    return apiUpload<BuildingMedia>(`/builder/buildings/${buildingId}/media`, formData)
+  },
+  updateBuildingMedia: (
+    buildingId: number,
+    mediaId: number,
+    data: { published?: boolean; sort_order?: number },
+  ) =>
+    apiFetch<BuildingMedia>(`/builder/buildings/${buildingId}/media/${mediaId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteBuildingMedia: (buildingId: number, mediaId: number) =>
+    apiFetch<void>(`/builder/buildings/${buildingId}/media/${mediaId}`, {
+      method: 'DELETE',
+    }),
+  fetchBuildingMediaBlob: (buildingId: number, mediaId: number) =>
+    fetchAuthenticatedBlob(`/builder/buildings/${buildingId}/media/${mediaId}/file`),
   createTower: (buildingId: number, data: Partial<Tower>) =>
     apiFetch<Tower>(`/builder/buildings/${buildingId}/towers`, {
       method: 'POST',
@@ -273,23 +402,49 @@ export const builderApi = {
     }),
   deleteTeamMember: (id: number) =>
     apiFetch<void>(`/builder/team/${id}`, { method: 'DELETE' }),
+  listReservations: () => apiFetch<BuilderReservationListItem[]>('/builder/reservations'),
+  pendingRepliesCount: () =>
+    apiFetch<ReservationPendingRepliesCount>('/builder/reservations/pending-replies-count'),
+  cancelReservation: (reservationId: number) =>
+    apiFetch<void>(`/builder/reservations/${reservationId}`, { method: 'DELETE' }),
+  listReservationMessages: (reservationId: number) =>
+    apiFetch<ReservationMessage[]>(`/builder/reservations/${reservationId}/messages`),
+  replyReservation: (reservationId: number, body: string) =>
+    apiFetch<ReservationMessage>(`/builder/reservations/${reservationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    }),
 }
 
 export const brokerApi = {
   listUnits: () => apiFetch<Unit[]>('/broker/units'),
+  listReservations: () => apiFetch<BuilderReservationListItem[]>('/broker/reservations'),
+  pendingRepliesCount: () =>
+    apiFetch<ReservationPendingRepliesCount>('/broker/reservations/pending-replies-count'),
   listClients: () => apiFetch<BrokerClient[]>('/broker/clients'),
   createClient: (data: { name: string; phone: string; email?: string }) =>
     apiFetch<BrokerClient>('/broker/clients', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  createReservation: (unitId: number, clientId: number) =>
+  createReservation: (unitId: number, clientId: number, observations?: string) =>
     apiFetch<Reservation>('/broker/reservations', {
       method: 'POST',
-      body: JSON.stringify({ unit_id: unitId, client_id: clientId }),
+      body: JSON.stringify({
+        unit_id: unitId,
+        client_id: clientId,
+        observations: observations?.trim() || undefined,
+      }),
     }),
   cancelReservation: (reservationId: number) =>
     apiFetch<void>(`/broker/reservations/${reservationId}`, { method: 'DELETE' }),
+  listReservationMessages: (reservationId: number) =>
+    apiFetch<ReservationMessage[]>(`/broker/reservations/${reservationId}/messages`),
+  replyReservation: (reservationId: number, body: string) =>
+    apiFetch<ReservationMessage>(`/broker/reservations/${reservationId}/messages`, {
+      method: 'POST',
+      body: JSON.stringify({ body }),
+    }),
   previewInvite: (token: string) =>
     apiFetch<BrokerInvitePreview>(
       `/broker/invites/preview?token=${encodeURIComponent(token)}`,

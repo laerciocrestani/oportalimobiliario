@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             BuildingSeeder::class,
             TowerSeeder::class,
             UnitSeeder::class,
+            BuildingMediaSeeder::class,
             BrokerInviteSeeder::class,
             BrokerTenantSeeder::class,
             UnitAccessSeeder::class,

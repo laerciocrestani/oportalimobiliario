@@ -21,8 +21,8 @@ export function BuilderDashboardShell({ title, children }: BuilderDashboardShell
       if (item.url === '/team') {
         return permissions.includes('team.manage')
       }
-      if (item.url === '/#convites') {
-        return permissions.includes('invites.send')
+      if (item.url === '/invites') {
+        return permissions.includes('invites.send') || permissions.includes('access.manage')
       }
 
       return true

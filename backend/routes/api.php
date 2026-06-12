@@ -5,10 +5,11 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Broker\BrokerInviteController as BrokerBrokerInviteController;
 use App\Http\Controllers\Api\Broker\ReservationController;
 use App\Http\Controllers\Api\Broker\UnitController as BrokerUnitController;
+use App\Http\Controllers\Api\Builder\BrokerController as BuilderBrokerController;
 use App\Http\Controllers\Api\Builder\BrokerInviteController as BuilderBrokerInviteController;
+use App\Http\Controllers\Api\Builder\BuildingAccessController;
 use App\Http\Controllers\Api\Builder\BuildingController;
 use App\Http\Controllers\Api\Builder\TowerController;
-use App\Http\Controllers\Api\Builder\UnitAccessController;
 use App\Http\Controllers\Api\Builder\ReservationController as BuilderReservationController;
 use App\Http\Controllers\Api\Builder\TeamMemberController;
 use App\Http\Controllers\Api\Builder\UnitController;
@@ -36,6 +37,11 @@ Route::prefix('auth')->group(function () {
     });
 });
 
+Route::prefix('broker/invites')->group(function () {
+    Route::get('/preview', [BrokerBrokerInviteController::class, 'preview']);
+    Route::post('/accept', [BrokerBrokerInviteController::class, 'accept']);
+});
+
 Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permissions.team', 'builder'])->prefix('builder')->group(function () {
     Route::get('/notes', function () {
         return TenantNote::query()->orderBy('id')->get();
@@ -47,8 +53,13 @@ Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permiss
 
     Route::get('/invites', [BuilderBrokerInviteController::class, 'index']);
     Route::post('/invites', [BuilderBrokerInviteController::class, 'store']);
-    Route::post('/access', [UnitAccessController::class, 'store']);
-    Route::delete('/access/{access}', [UnitAccessController::class, 'destroy']);
+    Route::post('/invites/{invite}/resend', [BuilderBrokerInviteController::class, 'resend']);
+    Route::delete('/invites/{invite}', [BuilderBrokerInviteController::class, 'destroy']);
+
+    Route::get('/brokers', [BuilderBrokerController::class, 'index']);
+    Route::get('/brokers/{broker}/buildings', [BuilderBrokerController::class, 'buildings']);
+    Route::post('/brokers/{broker}/buildings', [BuildingAccessController::class, 'store']);
+    Route::delete('/brokers/{broker}/buildings/{building}', [BuildingAccessController::class, 'destroy']);
 
     Route::apiResource('team', TeamMemberController::class)
         ->parameters(['team' => 'teamMember'])
@@ -66,7 +77,6 @@ Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('bro
     });
 
     Route::get('/units', [BrokerUnitController::class, 'index']);
-    Route::post('/invites/accept', [BrokerBrokerInviteController::class, 'accept']);
     Route::post('/reservations', [ReservationController::class, 'store']);
     Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy']);
 });

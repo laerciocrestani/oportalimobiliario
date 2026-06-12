@@ -47,8 +47,8 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
       },
       {
         title: 'Convites',
-        url: '/#convites',
-        icon: <UsersIcon />,
+        url: '/invites',
+        icon: <HandshakeIcon />,
       },
       {
         title: 'Equipe',

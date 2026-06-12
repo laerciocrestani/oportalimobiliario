@@ -6,8 +6,10 @@ import { AdminHome } from '@/apps/admin/AdminHome'
 import { BuildingDetailPage } from '@/apps/builder/BuildingDetailPage'
 import { BuilderHome } from '@/apps/builder/BuilderHome'
 import { BuildingsPage } from '@/apps/builder/BuildingsPage'
+import { InvitesPage } from '@/apps/builder/InvitesPage'
 import { TeamPage } from '@/apps/builder/TeamPage'
 import { BrokerHome } from '@/apps/broker/BrokerHome'
+import { InviteAcceptPage } from '@/apps/broker/InviteAcceptPage'
 import { PublicHome } from '@/apps/public/PublicHome'
 import { ProfileGuard } from '@/components/auth/ProfileGuard'
 import { isAuthenticatedProfile, resolveProfile } from '@/lib/profile'
@@ -62,6 +64,26 @@ function AuthenticatedPortal() {
               element={
                 <ProfileGuard profile={profile}>
                   <TeamPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/invites"
+              element={
+                <ProfileGuard profile={profile}>
+                  <InvitesPage />
+                </ProfileGuard>
+              }
+            />
+          </>
+        ) : profile === 'broker' ? (
+          <>
+            <Route path="/invite/:token" element={<InviteAcceptPage />} />
+            <Route
+              path="/"
+              element={
+                <ProfileGuard profile={profile}>
+                  <BrokerHome />
                 </ProfileGuard>
               }
             />

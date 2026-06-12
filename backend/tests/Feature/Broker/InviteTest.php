@@ -151,7 +151,7 @@ it('cancels pending invite', function () {
 });
 
 it('lists units by building access for broker', function () {
-    $tenant = Tenant::factory()->create();
+    $tenant = Tenant::factory()->create(['name' => 'Construtora Alpha']);
     $broker = User::factory()->broker()->create();
     $building = Building::factory()->for($tenant)->create();
     $unit = Unit::factory()->for($tenant)->for($building)->create(['code' => '777']);
@@ -167,7 +167,8 @@ it('lists units by building access for broker', function () {
 
     $this->getJson('/api/broker/units')
         ->assertOk()
-        ->assertJsonCount(2);
+        ->assertJsonCount(2)
+        ->assertJsonPath('0.building.tenant.name', 'Construtora Alpha');
 });
 
 it('lists units by legacy unit access for broker', function () {

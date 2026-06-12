@@ -31,7 +31,11 @@ class UnitController extends Controller
 
         $units = Unit::query()
             ->withoutGlobalScope('tenant')
-            ->with('building')
+            ->with([
+                'building.tenant',
+                'reservation' => fn ($query) => $query->where('broker_id', $brokerId),
+                'reservation.client',
+            ])
             ->where(function ($query) use ($buildingIds, $legacyUnitIds): void {
                 if ($buildingIds->isNotEmpty()) {
                     $query->whereIn('building_id', $buildingIds);

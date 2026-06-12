@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\BrokerClient;
 use App\Models\Reservation;
 use App\Models\Tenant;
 use App\Models\Unit;
@@ -17,10 +18,13 @@ class ReservationFactory extends Factory
 
     public function definition(): array
     {
+        $broker = User::factory()->broker();
+
         return [
             'tenant_id' => Tenant::factory(),
             'unit_id' => Unit::factory()->reserved(),
-            'broker_id' => User::factory()->broker(),
+            'broker_id' => $broker,
+            'client_id' => BrokerClient::factory()->for($broker, 'broker'),
             'expires_at' => now()->addHours(48),
         ];
     }

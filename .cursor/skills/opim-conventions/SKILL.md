@@ -11,7 +11,8 @@ description: Convenções do monorepo Oportalimobiliário (Laravel API + React S
 - **Sempre** executar comandos via Docker:
   - Backend: `docker compose exec backend ...`
   - Frontend: `docker compose exec frontend ...`
-- Gate de testes backend: `docker compose exec backend php artisan test`
+- Gate de testes backend: `docker compose exec backend php artisan test` (SQLite em memória — não apaga Postgres de dev)
+- **Proibido** `migrate:fresh` / `db:wipe` sem pedido explícito do usuário
 
 ## Perfis e rotas API
 

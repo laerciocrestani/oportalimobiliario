@@ -45,10 +45,13 @@ docker compose exec frontend pnpm test
 ## Seeds
 
 ```bash
-docker compose exec backend php artisan migrate:fresh --seed
+docker compose exec backend php artisan migrate
+docker compose exec backend php artisan db:seed
 ```
 
-CI deve validar seeds após migrations.
+**Não usar** `migrate:fresh` no dia a dia — apaga todos os dados locais. Reservar apenas reset completo quando o usuário pedir explicitamente.
+
+Testes rodam em SQLite (`backend/.env.testing`), isolados do Postgres de desenvolvimento.
 
 ## Requisitos globais
 

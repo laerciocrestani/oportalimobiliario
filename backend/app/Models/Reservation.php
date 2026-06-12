@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'tenant_id',
     'unit_id',
     'broker_id',
+    'client_id',
     'expires_at',
 ])]
 class Reservation extends Model
@@ -40,6 +41,11 @@ class Reservation extends Model
     public function broker(): BelongsTo
     {
         return $this->belongsTo(User::class, 'broker_id');
+    }
+
+    public function client(): BelongsTo
+    {
+        return $this->belongsTo(BrokerClient::class, 'client_id');
     }
 
     public function isExpired(): bool

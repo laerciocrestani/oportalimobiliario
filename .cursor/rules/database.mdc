@@ -1,0 +1,13 @@
+# Database — regras obrigatórias
+
+## Desenvolvimento local
+
+- **Proibido** rodar `migrate:fresh`, `migrate:refresh` ou `db:wipe` sem pedido explícito do usuário.
+- Alterações de schema: `docker compose exec backend php artisan migrate` (apenas migrations pendentes).
+- Popular dados demo: `docker compose exec backend php artisan db:seed` (ou seeder específico).
+
+## Testes
+
+- Testes usam **SQLite em memória** via `backend/.env.testing` — nunca o Postgres de dev.
+- Gate: `docker compose exec backend php artisan test`
+- Não alterar `.env.testing` para apontar ao Postgres de desenvolvimento.

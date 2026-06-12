@@ -40,7 +40,8 @@ Acessar `http://localhost:5173` exibe orientação com links para cada portal.
 ```bash
 # Backend
 docker compose exec backend php artisan test
-docker compose exec backend php artisan migrate:fresh --seed
+docker compose exec backend php artisan migrate
+docker compose exec backend php artisan db:seed
 docker compose exec backend composer install
 
 # Frontend

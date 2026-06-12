@@ -53,6 +53,7 @@ export type Building = {
   units_summary?: UnitsSummary
   towers?: Tower[]
   units?: Unit[]
+  tenant?: { id: number; name: string }
 }
 
 export type Unit = {
@@ -65,6 +66,7 @@ export type Unit = {
   tower_id?: number
   tower?: Pick<Tower, 'id' | 'name'>
   building?: Building
+  reservation?: Reservation | null
 }
 
 export type Tenant = {
@@ -104,6 +106,23 @@ export type GrantedBuilding = {
   id: number
   name: string
   granted_at: string | null
+}
+
+export type BrokerClient = {
+  id: number
+  name: string
+  phone: string
+  email: string | null
+}
+
+export type Reservation = {
+  id: number
+  unit_id: number
+  client_id: number
+  broker_id: number
+  expires_at: string
+  unit?: Unit
+  client?: BrokerClient
 }
 
 export type Paginated<T> = {
@@ -258,11 +277,19 @@ export const builderApi = {
 
 export const brokerApi = {
   listUnits: () => apiFetch<Unit[]>('/broker/units'),
-  createReservation: (unitId: number) =>
-    apiFetch('/broker/reservations', {
+  listClients: () => apiFetch<BrokerClient[]>('/broker/clients'),
+  createClient: (data: { name: string; phone: string; email?: string }) =>
+    apiFetch<BrokerClient>('/broker/clients', {
       method: 'POST',
-      body: JSON.stringify({ unit_id: unitId }),
+      body: JSON.stringify(data),
     }),
+  createReservation: (unitId: number, clientId: number) =>
+    apiFetch<Reservation>('/broker/reservations', {
+      method: 'POST',
+      body: JSON.stringify({ unit_id: unitId, client_id: clientId }),
+    }),
+  cancelReservation: (reservationId: number) =>
+    apiFetch<void>(`/broker/reservations/${reservationId}`, { method: 'DELETE' }),
   previewInvite: (token: string) =>
     apiFetch<BrokerInvitePreview>(
       `/broker/invites/preview?token=${encodeURIComponent(token)}`,

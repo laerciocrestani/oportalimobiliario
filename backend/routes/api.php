@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\Admin\TenantController as AdminTenantController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Broker\BrokerInviteController as BrokerBrokerInviteController;
+use App\Http\Controllers\Api\Broker\ClientController as BrokerClientController;
 use App\Http\Controllers\Api\Broker\ReservationController;
 use App\Http\Controllers\Api\Broker\UnitController as BrokerUnitController;
 use App\Http\Controllers\Api\Builder\BrokerController as BuilderBrokerController;
@@ -76,6 +77,8 @@ Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('bro
         ]);
     });
 
+    Route::get('/clients', [BrokerClientController::class, 'index']);
+    Route::post('/clients', [BrokerClientController::class, 'store']);
     Route::get('/units', [BrokerUnitController::class, 'index']);
     Route::post('/reservations', [ReservationController::class, 'store']);
     Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy']);

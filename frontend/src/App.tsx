@@ -8,7 +8,9 @@ import { BuilderHome } from '@/apps/builder/BuilderHome'
 import { BuildingsPage } from '@/apps/builder/BuildingsPage'
 import { InvitesPage } from '@/apps/builder/InvitesPage'
 import { TeamPage } from '@/apps/builder/TeamPage'
-import { BrokerHome } from '@/apps/broker/BrokerHome'
+import { BrokerBuildingsPage } from '@/apps/broker/BrokerBuildingsPage'
+import { BrokerClientsPage } from '@/apps/broker/BrokerClientsPage'
+import { BrokerOverviewPage } from '@/apps/broker/BrokerOverviewPage'
 import { InviteAcceptPage } from '@/apps/broker/InviteAcceptPage'
 import { PublicHome } from '@/apps/public/PublicHome'
 import { ProfileGuard } from '@/components/auth/ProfileGuard'
@@ -18,7 +20,7 @@ const profile = resolveProfile(window.location.hostname)
 
 const authenticatedHomes = {
   builder: BuilderHome,
-  broker: BrokerHome,
+  broker: BrokerOverviewPage,
   admin: AdminHome,
 } as const
 
@@ -83,7 +85,23 @@ function AuthenticatedPortal() {
               path="/"
               element={
                 <ProfileGuard profile={profile}>
-                  <BrokerHome />
+                  <BrokerOverviewPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/buildings"
+              element={
+                <ProfileGuard profile={profile}>
+                  <BrokerBuildingsPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/clients"
+              element={
+                <ProfileGuard profile={profile}>
+                  <BrokerClientsPage />
                 </ProfileGuard>
               }
             />

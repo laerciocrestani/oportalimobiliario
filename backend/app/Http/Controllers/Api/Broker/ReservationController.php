@@ -4,9 +4,10 @@ namespace App\Http\Controllers\Api\Broker;
 
 use App\Enums\UnitStatus;
 use App\Http\Controllers\Controller;
+use App\Models\BrokerClient;
 use App\Models\Reservation;
 use App\Models\Unit;
-use App\Models\UnitAccess;
+use App\Services\BrokerUnitAccessService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,35 +17,45 @@ use Illuminate\Support\Facades\DB;
  */
 class ReservationController extends Controller
 {
+    public function __construct(
+        private readonly BrokerUnitAccessService $brokerUnitAccessService,
+    ) {}
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
+            'client_id' => ['required', 'integer', 'exists:broker_clients,id'],
         ]);
 
         $broker = $request->user();
 
-        $access = UnitAccess::query()
-            ->withoutGlobalScope('tenant')
+        $client = BrokerClient::query()
+            ->where('id', $data['client_id'])
             ->where('broker_id', $broker->id)
-            ->where('unit_id', $data['unit_id'])
             ->first();
 
-        if ($access === null) {
-            return response()->json(['message' => 'No access to this unit.'], 403);
+        if ($client === null) {
+            return response()->json(['message' => 'Client not found.'], 403);
         }
-
-        $ttlHours = (int) config('opim.reservation_ttl_hours', 48);
 
         $unit = Unit::query()
             ->withoutGlobalScope('tenant')
             ->findOrFail($data['unit_id']);
 
+        $access = $this->brokerUnitAccessService->resolveAccess($broker, $unit);
+
+        if ($access === null) {
+            return response()->json(['message' => 'No access to this unit.'], 403);
+        }
+
         if ($unit->status !== UnitStatus::Available) {
             return response()->json(['message' => 'Unit not available for reservation.'], 422);
         }
 
-        $reservation = DB::transaction(function () use ($data, $broker, $access, $ttlHours, $unit) {
+        $ttlHours = (int) config('opim.reservation_ttl_hours', 48);
+
+        $reservation = DB::transaction(function () use ($data, $broker, $access, $ttlHours, $unit, $client) {
             $locked = Unit::query()
                 ->withoutGlobalScope('tenant')
                 ->lockForUpdate()
@@ -57,14 +68,15 @@ class ReservationController extends Controller
             $locked->update(['status' => UnitStatus::Reserved]);
 
             return Reservation::query()->create([
-                'tenant_id' => $access->tenant_id,
+                'tenant_id' => $access['tenant_id'],
                 'unit_id' => $locked->id,
                 'broker_id' => $broker->id,
+                'client_id' => $client->id,
                 'expires_at' => now()->addHours($ttlHours),
             ]);
         });
 
-        return response()->json($reservation->load('unit'), 201);
+        return response()->json($reservation->load(['unit', 'client']), 201);
     }
 
     public function destroy(Request $request, Reservation $reservation): JsonResponse

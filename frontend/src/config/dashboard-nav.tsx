@@ -77,14 +77,14 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
         icon: <LayoutDashboardIcon />,
       },
       {
-        title: 'Minhas unidades',
-        url: '/',
+        title: 'Empreendimentos',
+        url: '/buildings',
         icon: <Building2Icon />,
       },
       {
-        title: 'Convites',
-        url: '/',
-        icon: <HandshakeIcon />,
+        title: 'Clientes',
+        url: '/clients',
+        icon: <UsersIcon />,
       },
     ],
     navSecondary: [

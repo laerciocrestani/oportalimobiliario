@@ -18,7 +18,7 @@
 | Seeds | Toda feature de API entrega Seeder correspondente |
 | Testes frontend | Vitest + React Testing Library |
 | Testes backend | Pest — Feature + Unit |
-| Popular banco local | `docker compose exec backend php artisan migrate:fresh --seed` |
+| Popular banco local | `docker compose exec backend php artisan migrate` + `db:seed` (nunca `migrate:fresh` sem pedido explícito) |
 | Execução de comandos | Sempre via `docker compose exec <serviço>` |
 | Multi-agents | 1 agent por frente/feature |
 | Design system | shadcn/ui preset `b3kI323Ky` + template Vite |
@@ -31,9 +31,9 @@
 
 ## Sessão atual
 
-- **Fase:** 6 concluída — `subdomain-portals`
-- **Última etapa concluída:** subdomínios dev, CORS, ProfileGuard, testes (39 BE + 15 FE)
-- **Próxima etapa:** smoke manual nos 5 hosts + deploy produção (REQ-SUB-012)
+- **Fase:** broker-dashboard concluída
+- **Última etapa concluída:** dashboard corretor (nav, clientes, empreendimentos, reserva com client_id) — 78 BE + 7 FE broker tests
+- **Próxima etapa:** smoke manual em `corretor.localhost` + integração charts com API real (futuro)
 
 ## Blockers
 

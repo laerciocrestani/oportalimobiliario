@@ -158,23 +158,103 @@ paths:
         '201':
           description: Created
   /api/builder/invites:
+    get:
+      summary: List broker invites
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Invites with status and invite_url
     post:
       summary: Create broker invite
       security:
         - bearerAuth: []
       responses:
         '201':
-          description: Created
-  /api/builder/access:
+          description: Created with invite_url; email sent
+  /api/builder/invites/{invite}/resend:
     post:
-      summary: Grant broker access to unit
+      summary: Resend broker invite
       security:
         - bearerAuth: []
+      parameters:
+        - name: invite
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Resent with new token
+  /api/builder/invites/{invite}:
+    delete:
+      summary: Cancel pending broker invite
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: invite
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+  /api/builder/brokers:
+    get:
+      summary: List linked brokers
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Brokers with accepted invites
+  /api/builder/brokers/{broker}/buildings:
+    get:
+      summary: List buildings granted to broker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: broker
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Granted buildings
+    post:
+      summary: Grant broker access to building (all units)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: broker
+          in: path
+          required: true
+          schema:
+            type: integer
       responses:
         '201':
           description: Created
         '403':
           description: Missing access.manage permission
+    delete:
+      summary: Revoke broker access to building
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: broker
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Revoked
   /api/builder/team:
     get:
       summary: List builder team members
@@ -263,14 +343,26 @@ paths:
       responses:
         '201':
           description: Created
-  /api/broker/invites/accept:
-    post:
-      summary: Accept broker invite
-      security:
-        - bearerAuth: []
+  /api/broker/invites/preview:
+    get:
+      summary: Preview broker invite (public)
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
       responses:
         '200':
-          description: Accepted
+          description: Invite preview
+        '422':
+          description: Invalid or expired
+  /api/broker/invites/accept:
+    post:
+      summary: Accept broker invite and create account (public)
+      responses:
+        '200':
+          description: Accepted with auth token
   /api/admin/tenants:
     get:
       summary: List tenants

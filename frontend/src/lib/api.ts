@@ -74,6 +74,38 @@ export type Tenant = {
   active: boolean
 }
 
+export type BrokerInvite = {
+  id: number
+  email: string
+  token: string
+  status: 'pending' | 'accepted' | 'expired'
+  broker_id: number | null
+  accepted_at: string | null
+  expires_at: string
+  created_at: string
+  invite_url: string
+}
+
+export type BrokerInvitePreview = {
+  email: string
+  tenant_name: string
+  status: string
+  expires_at: string
+}
+
+export type LinkedBroker = {
+  id: number
+  name: string
+  email: string
+  accepted_at: string
+}
+
+export type GrantedBuilding = {
+  id: number
+  name: string
+  granted_at: string | null
+}
+
 export type Paginated<T> = {
   data: T[]
   current_page: number
@@ -179,15 +211,27 @@ export const builderApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  listInvites: () => apiFetch<BrokerInvite[]>('/builder/invites'),
   createInvite: (email: string) =>
-    apiFetch<{ token: string; email: string }>('/builder/invites', {
+    apiFetch<BrokerInvite>('/builder/invites', {
       method: 'POST',
       body: JSON.stringify({ email }),
     }),
-  grantAccess: (brokerId: number, unitId: number) =>
-    apiFetch('/builder/access', {
+  resendInvite: (id: number) =>
+    apiFetch<BrokerInvite>(`/builder/invites/${id}/resend`, { method: 'POST' }),
+  cancelInvite: (id: number) =>
+    apiFetch<void>(`/builder/invites/${id}`, { method: 'DELETE' }),
+  listBrokers: () => apiFetch<LinkedBroker[]>('/builder/brokers'),
+  listBrokerBuildings: (brokerId: number) =>
+    apiFetch<GrantedBuilding[]>(`/builder/brokers/${brokerId}/buildings`),
+  grantBuildingAccess: (brokerId: number, buildingId: number) =>
+    apiFetch(`/builder/brokers/${brokerId}/buildings`, {
       method: 'POST',
-      body: JSON.stringify({ broker_id: brokerId, unit_id: unitId }),
+      body: JSON.stringify({ building_id: buildingId }),
+    }),
+  revokeBuildingAccess: (brokerId: number, buildingId: number) =>
+    apiFetch<void>(`/builder/brokers/${brokerId}/buildings/${buildingId}`, {
+      method: 'DELETE',
     }),
   listTeam: () => apiFetch<TeamMember[]>('/builder/team'),
   createTeamMember: (data: {
@@ -219,11 +263,17 @@ export const brokerApi = {
       method: 'POST',
       body: JSON.stringify({ unit_id: unitId }),
     }),
-  acceptInvite: (token: string) =>
-    apiFetch('/broker/invites/accept', {
+  previewInvite: (token: string) =>
+    apiFetch<BrokerInvitePreview>(
+      `/broker/invites/preview?token=${encodeURIComponent(token)}`,
+      {},
+      false,
+    ),
+  acceptInvite: (data: { token: string; name?: string; password?: string }) =>
+    apiFetch<LoginResponse>('/broker/invites/accept', {
       method: 'POST',
-      body: JSON.stringify({ token }),
-    }),
+      body: JSON.stringify(data),
+    }, false),
 }
 
 export const adminApi = {

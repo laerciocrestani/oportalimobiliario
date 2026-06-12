@@ -4,13 +4,16 @@ import { LegacyPathNotice } from '@/apps/auth/LegacyPathNotice'
 import { PortalGuidePage } from '@/apps/auth/PortalGuidePage'
 import { AdminHome } from '@/apps/admin/AdminHome'
 import { BuildingDetailPage } from '@/apps/builder/BuildingDetailPage'
+import { BuildingEditPage } from '@/apps/builder/BuildingEditPage'
 import { BuilderHome } from '@/apps/builder/BuilderHome'
 import { BuildingsPage } from '@/apps/builder/BuildingsPage'
 import { InvitesPage } from '@/apps/builder/InvitesPage'
+import { ReservationsPage } from '@/apps/builder/ReservationsPage'
 import { TeamPage } from '@/apps/builder/TeamPage'
 import { BrokerBuildingsPage } from '@/apps/broker/BrokerBuildingsPage'
 import { BrokerClientsPage } from '@/apps/broker/BrokerClientsPage'
 import { BrokerOverviewPage } from '@/apps/broker/BrokerOverviewPage'
+import { BrokerReservationsPage } from '@/apps/broker/BrokerReservationsPage'
 import { InviteAcceptPage } from '@/apps/broker/InviteAcceptPage'
 import { PublicHome } from '@/apps/public/PublicHome'
 import { ProfileGuard } from '@/components/auth/ProfileGuard'
@@ -54,6 +57,14 @@ function AuthenticatedPortal() {
               }
             />
             <Route
+              path="/buildings/:buildingId/edit"
+              element={
+                <ProfileGuard profile={profile}>
+                  <BuildingEditPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
               path="/buildings/:buildingId"
               element={
                 <ProfileGuard profile={profile}>
@@ -74,6 +85,14 @@ function AuthenticatedPortal() {
               element={
                 <ProfileGuard profile={profile}>
                   <InvitesPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/reservations"
+              element={
+                <ProfileGuard profile={profile}>
+                  <ReservationsPage />
                 </ProfileGuard>
               }
             />
@@ -102,6 +121,14 @@ function AuthenticatedPortal() {
               element={
                 <ProfileGuard profile={profile}>
                   <BrokerClientsPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/reservations"
+              element={
+                <ProfileGuard profile={profile}>
+                  <BrokerReservationsPage />
                 </ProfileGuard>
               }
             />

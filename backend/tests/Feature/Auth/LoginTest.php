@@ -46,3 +46,18 @@ it('returns authenticated user on me endpoint', function () {
 it('requires authentication for me endpoint', function () {
     $this->getJson('/api/auth/me')->assertUnauthorized();
 });
+
+it('logs out and revokes current token', function () {
+    $user = User::factory()->builder()->create();
+
+    $token = $user->createToken('api')->plainTextToken;
+
+    expect($user->tokens()->count())->toBe(1);
+
+    $this->withToken($token)
+        ->postJson('/api/auth/logout')
+        ->assertOk()
+        ->assertJsonPath('message', 'Logged out');
+
+    expect($user->fresh()->tokens()->count())->toBe(0);
+});

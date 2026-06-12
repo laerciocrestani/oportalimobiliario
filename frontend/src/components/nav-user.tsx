@@ -1,3 +1,5 @@
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Avatar,
   AvatarFallback,
@@ -19,6 +21,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { EllipsisVerticalIcon, CircleUserRoundIcon, CreditCardIcon, BellIcon, LogOutIcon } from "lucide-react"
+import { logout } from '@/lib/api'
 
 export function NavUser({
   user,
@@ -30,6 +33,23 @@ export function NavUser({
   }
 }) {
   const { isMobile } = useSidebar()
+  const navigate = useNavigate()
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  async function handleLogout(): Promise<void> {
+    if (loggingOut) {
+      return
+    }
+
+    setLoggingOut(true)
+
+    try {
+      await logout()
+    } finally {
+      navigate('/login', { replace: true })
+    }
+  }
+
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -92,10 +112,15 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={loggingOut}
+              onClick={() => {
+                void handleLogout()
+              }}
+            >
               <LogOutIcon
               />
-              Log out
+              {loggingOut ? 'Saindo...' : 'Sair'}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

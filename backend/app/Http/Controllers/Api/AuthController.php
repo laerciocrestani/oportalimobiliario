@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class AuthController extends Controller
 {
@@ -62,7 +63,13 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
-        $request->user()->currentAccessToken()?->delete();
+        $accessToken = $request->user()->currentAccessToken();
+
+        if ($accessToken !== null) {
+            $accessToken->delete();
+        } elseif ($bearerToken = $request->bearerToken()) {
+            PersonalAccessToken::findToken($bearerToken)?->delete();
+        }
 
         return response()->json(['message' => 'Logged out']);
     }

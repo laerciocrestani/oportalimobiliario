@@ -29,6 +29,39 @@ paths:
           description: Building detail
         '404':
           description: Not found
+  /api/public/buildings/{id}/media:
+    get:
+      summary: List published building media (internal/external only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Published media list
+        '404':
+          description: Building not found or not published
+  /api/public/buildings/{id}/media/{media}/file:
+    get:
+      summary: Stream published building media file
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: media
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Media file stream
+        '404':
+          description: Not found
   /api/auth/login:
     post:
       summary: Login
@@ -157,6 +190,114 @@ paths:
       responses:
         '201':
           description: Created
+  /api/builder/buildings/{building}/media:
+    get:
+      summary: List building media
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: category
+          in: query
+          schema:
+            type: string
+            enum: [internal, external, floor_plan]
+      responses:
+        '200':
+          description: Media list
+    post:
+      summary: Upload building media
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, category]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                category:
+                  type: string
+                  enum: [internal, external, floor_plan]
+                published:
+                  type: boolean
+      responses:
+        '201':
+          description: Created
+        '422':
+          description: Validation error
+  /api/builder/buildings/{building}/media/{media}:
+    patch:
+      summary: Update building media
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: media
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Updated
+        '422':
+          description: Validation error
+    delete:
+      summary: Delete building media
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: media
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+  /api/builder/buildings/{building}/media/{media}/file:
+    get:
+      summary: Stream building media file
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: media
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Media file stream
   /api/builder/invites:
     get:
       summary: List broker invites
@@ -311,6 +452,71 @@ paths:
           description: Forbidden
         '422':
           description: Cannot remove last team manager
+  /api/builder/reservations:
+    get:
+      summary: List reservations (builder)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Reservations list
+        '403':
+          description: Missing reservations.cancel permission
+  /api/builder/reservations/pending-replies-count:
+    get:
+      summary: Count reservations awaiting builder reply
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pending reply count
+        '403':
+          description: Missing reservations.cancel permission
+  /api/builder/reservations/{reservation}/messages:
+    get:
+      summary: List reservation messages (builder)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Messages thread
+        '403':
+          description: Forbidden
+    post:
+      summary: Reply on reservation thread (builder)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - body
+              properties:
+                body:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '201':
+          description: Message created
+        '403':
+          description: Forbidden
+        '422':
+          description: Validation error
   /api/builder/reservations/{reservation}:
     delete:
       summary: Cancel reservation (builder)
@@ -367,7 +573,49 @@ paths:
       responses:
         '200':
           description: Units list
+  /api/broker/buildings/{building}/media:
+    get:
+      summary: List building media for broker with access
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Media list including floor plans
+        '403':
+          description: Forbidden
+  /api/broker/buildings/{building}/media/{media}/file:
+    get:
+      summary: Stream building media file for broker
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: media
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Media file stream
   /api/broker/reservations:
+    get:
+      summary: List broker reservations
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Reservations list for authenticated broker
     post:
       summary: Create soft reservation
       security:
@@ -386,9 +634,66 @@ paths:
                   type: integer
                 client_id:
                   type: integer
+                observations:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
       responses:
         '201':
           description: Created
+  /api/broker/reservations/pending-replies-count:
+    get:
+      summary: Count reservations awaiting broker reply
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pending reply count
+  /api/broker/reservations/{reservation}/messages:
+    get:
+      summary: List reservation messages (broker)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Messages thread
+        '403':
+          description: Not the reservation owner
+    post:
+      summary: Reply on reservation thread (broker)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - body
+              properties:
+                body:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '201':
+          description: Message created
+        '403':
+          description: Not the reservation owner
+        '422':
+          description: Validation error
   /api/broker/reservations/{reservation}:
     delete:
       summary: Cancel reservation (broker)

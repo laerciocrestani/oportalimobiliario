@@ -10,6 +10,7 @@ use App\Models\BrokerClient;
 use App\Models\Building;
 use App\Models\BuildingAccess;
 use App\Models\Reservation;
+use App\Models\ReservationMessage;
 use App\Models\Tenant;
 use App\Models\Unit;
 use App\Models\UnitAccess;
@@ -209,4 +210,137 @@ it('lists unit reservation with client for broker', function () {
     $this->getJson('/api/broker/units')
         ->assertOk()
         ->assertJsonPath('0.reservation.client.name', 'Maria Souza');
+});
+
+it('creates initial message when broker sends observations', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $client = BrokerClient::factory()->for($broker, 'broker')->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Available]);
+
+    UnitAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'unit_id' => $unit->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+
+    $response = $this->postJson('/api/broker/reservations', [
+        'unit_id' => $unit->id,
+        'client_id' => $client->id,
+        'observations' => 'Cliente prefere unidade de canto.',
+    ])->assertCreated();
+
+    $reservationId = $response->json('id');
+
+    expect(ReservationMessage::query()->where('reservation_id', $reservationId)->count())->toBe(1);
+    expect(ReservationMessage::query()->first()?->body)->toBe('Cliente prefere unidade de canto.');
+});
+
+it('allows broker to read and reply reservation messages', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $builder = User::factory()->builder()->for($tenant)->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+    $reservation = Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    ReservationMessage::factory()->create([
+        'reservation_id' => $reservation->id,
+        'user_id' => $builder->id,
+        'body' => 'Podemos agendar visita.',
+    ]);
+
+    Sanctum::actingAs($broker);
+
+    $this->getJson("/api/broker/reservations/{$reservation->id}/messages")
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.body', 'Podemos agendar visita.');
+
+    $this->postJson("/api/broker/reservations/{$reservation->id}/messages", [
+        'body' => 'Perfeito, amanhã às 10h.',
+    ])
+        ->assertCreated()
+        ->assertJsonPath('author.role', 'broker');
+});
+
+it('rejects broker messages for reservation owned by another broker', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $otherBroker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+    $reservation = Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $otherBroker->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+
+    $this->getJson("/api/broker/reservations/{$reservation->id}/messages")->assertForbidden();
+    $this->postJson("/api/broker/reservations/{$reservation->id}/messages", [
+        'body' => 'Teste',
+    ])->assertForbidden();
+});
+
+it('lists reservations for owning broker only', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $otherBroker = User::factory()->broker()->create();
+    $client = BrokerClient::factory()->for($broker, 'broker')->create(['name' => 'Maria Souza']);
+    $building = Building::factory()->for($tenant)->create(['name' => 'Torre Central']);
+    $unit = Unit::factory()->for($tenant)->for($building)->create([
+        'code' => '801',
+        'status' => UnitStatus::Reserved,
+    ]);
+    $otherUnit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+
+    Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+        'client_id' => $client->id,
+    ]);
+
+    Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $otherUnit->id,
+        'broker_id' => $otherBroker->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+
+    $this->getJson('/api/broker/reservations')
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.client.name', 'Maria Souza')
+        ->assertJsonPath('0.unit.building.name', 'Torre Central');
+});
+
+it('returns pending replies count for broker', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $builder = User::factory()->builder()->for($tenant)->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+    $reservation = Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    ReservationMessage::factory()->create([
+        'reservation_id' => $reservation->id,
+        'user_id' => $builder->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+
+    $this->getJson('/api/broker/reservations/pending-replies-count')
+        ->assertOk()
+        ->assertJsonPath('count', 1);
 });

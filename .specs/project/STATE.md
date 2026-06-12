@@ -31,9 +31,9 @@
 
 ## Sessão atual
 
-- **Fase:** broker-dashboard concluída
-- **Última etapa concluída:** dashboard corretor (nav, clientes, empreendimentos, reserva com client_id) — 78 BE + 7 FE broker tests
-- **Próxima etapa:** smoke manual em `corretor.localhost` + integração charts com API real (futuro)
+- **Fase:** builder-reservations — listagem corretor + badge nav
+- **Última etapa concluída:** `BrokerReservationsPage`, badge pending-replies na nav (builder + broker)
+- **Próxima etapa:** smoke manual em `/reservations` nos dois portais
 
 ## Blockers
 

@@ -28,6 +28,7 @@ export function BrokerReservationDialog({
 }: BrokerReservationDialogProps) {
   const [clients, setClients] = useState<BrokerClient[]>([])
   const [selectedClientId, setSelectedClientId] = useState<string>('')
+  const [observations, setObservations] = useState('')
   const [newClientOpen, setNewClientOpen] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -45,6 +46,7 @@ export function BrokerReservationDialog({
 
   function resetState() {
     setSelectedClientId('')
+    setObservations('')
     setError(null)
     setNewClientOpen(false)
   }
@@ -58,7 +60,11 @@ export function BrokerReservationDialog({
     setError(null)
 
     try {
-      await brokerApi.createReservation(unit.id, Number(selectedClientId))
+      await brokerApi.createReservation(
+        unit.id,
+        Number(selectedClientId),
+        observations.trim() || undefined,
+      )
       resetState()
       onOpenChange(false)
       onReserved()
@@ -116,6 +122,17 @@ export function BrokerReservationDialog({
             <Button type="button" variant="outline" onClick={() => setNewClientOpen(true)}>
               Novo cliente
             </Button>
+
+            <div className="space-y-2">
+              <Label htmlFor="reservation-observations">Observações</Label>
+              <textarea
+                id="reservation-observations"
+                className="flex min-h-24 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                placeholder="Informações adicionais para a construtora (opcional)"
+              />
+            </div>
 
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
           </div>

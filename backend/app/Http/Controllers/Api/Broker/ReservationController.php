@@ -8,24 +8,51 @@ use App\Models\BrokerClient;
 use App\Models\Reservation;
 use App\Models\Unit;
 use App\Services\BrokerUnitAccessService;
+use App\Services\ReservationPendingReplyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
  * @see REQ-RES-001
+ * @see REQ-BLD-RES-006
  */
 class ReservationController extends Controller
 {
     public function __construct(
         private readonly BrokerUnitAccessService $brokerUnitAccessService,
+        private readonly ReservationPendingReplyService $reservationPendingReplyService,
     ) {}
+
+    public function index(Request $request): JsonResponse
+    {
+        $broker = $request->user();
+
+        $reservations = Reservation::query()
+            ->withoutGlobalScope('tenant')
+            ->where('broker_id', $broker->id)
+            ->with(['client', 'unit.building'])
+            ->withCount('messages')
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (Reservation $reservation) => $this->reservationPendingReplyService->formatListItem($reservation, $broker));
+
+        return response()->json($reservations);
+    }
+
+    public function pendingRepliesCount(Request $request): JsonResponse
+    {
+        return response()->json([
+            'count' => $this->reservationPendingReplyService->countForBroker($request->user()),
+        ]);
+    }
 
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
             'client_id' => ['required', 'integer', 'exists:broker_clients,id'],
+            'observations' => ['nullable', 'string', 'max:2000'],
         ]);
 
         $broker = $request->user();
@@ -67,13 +94,24 @@ class ReservationController extends Controller
 
             $locked->update(['status' => UnitStatus::Reserved]);
 
-            return Reservation::query()->create([
+            $reservation = Reservation::query()->create([
                 'tenant_id' => $access['tenant_id'],
                 'unit_id' => $locked->id,
                 'broker_id' => $broker->id,
                 'client_id' => $client->id,
                 'expires_at' => now()->addHours($ttlHours),
             ]);
+
+            $observations = trim((string) ($data['observations'] ?? ''));
+
+            if ($observations !== '') {
+                $reservation->messages()->create([
+                    'user_id' => $broker->id,
+                    'body' => $observations,
+                ]);
+            }
+
+            return $reservation;
         });
 
         return response()->json($reservation->load(['unit', 'client']), 201);

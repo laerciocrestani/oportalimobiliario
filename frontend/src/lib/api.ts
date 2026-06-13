@@ -458,6 +458,33 @@ export const brokerApi = {
     }, false),
 }
 
+export type PublicCheapestUnit = {
+  code: string
+  price: string
+  area_m2: string | null
+  floor: number | null
+}
+
+export type PublicCoverImage = {
+  id: number
+  url: string
+}
+
+export type PublicBuildingListItem = Pick<
+  Building,
+  'id' | 'name' | 'description' | 'city' | 'state' | 'seo_title' | 'seo_description' | 'units_count'
+> & {
+  cheapest_unit: PublicCheapestUnit | null
+  cover_image: PublicCoverImage | null
+}
+
+export function publicMediaUrl(relativeUrl: string): string {
+  const base = API_URL.replace(/\/$/, '')
+  const path = relativeUrl.startsWith('/') ? relativeUrl : `/${relativeUrl}`
+
+  return `${base}${path}`
+}
+
 export const adminApi = {
   listTenants: () => apiFetch<Paginated<Tenant>>('/admin/tenants'),
   createTenant: (data: Partial<Tenant>) =>
@@ -467,7 +494,7 @@ export const adminApi = {
 }
 
 export const publicApi = {
-  listBuildings: () => apiFetch<Building[]>('/public/buildings', {}, false),
+  listBuildings: () => apiFetch<PublicBuildingListItem[]>('/public/buildings', {}, false),
   getBuilding: (id: number) =>
     apiFetch<Building & { units?: Unit[] }>(`/public/buildings/${id}`, {}, false),
 }

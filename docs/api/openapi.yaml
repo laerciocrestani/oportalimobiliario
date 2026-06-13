@@ -14,7 +14,57 @@ paths:
       summary: List published buildings (no auth)
       responses:
         '200':
-          description: List of buildings
+          description: List of buildings with cheapest unit and cover image
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                    description:
+                      type: string
+                      nullable: true
+                    city:
+                      type: string
+                      nullable: true
+                    state:
+                      type: string
+                      nullable: true
+                    seo_title:
+                      type: string
+                      nullable: true
+                    seo_description:
+                      type: string
+                      nullable: true
+                    units_count:
+                      type: integer
+                    cheapest_unit:
+                      type: object
+                      nullable: true
+                      properties:
+                        code:
+                          type: string
+                        price:
+                          type: string
+                        area_m2:
+                          type: string
+                          nullable: true
+                        floor:
+                          type: integer
+                          nullable: true
+                    cover_image:
+                      type: object
+                      nullable: true
+                      properties:
+                        id:
+                          type: integer
+                        url:
+                          type: string
   /api/public/buildings/{id}:
     get:
       summary: Show published building

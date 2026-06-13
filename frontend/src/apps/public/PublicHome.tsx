@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
-import { publicApi, type Building } from '@/lib/api'
+import { ArrowLeftIcon } from 'lucide-react'
+import { BuildingCard } from '@/apps/public/components/BuildingCard'
+import { PublicHero } from '@/apps/public/components/PublicHero'
+import { PublicLayout } from '@/apps/public/components/PublicLayout'
+import { Button } from '@/components/ui/button'
+import { publicApi, type Building, type PublicBuildingListItem } from '@/lib/api'
 
 function applySeo(building: Building) {
   document.title = building.seo_title ?? `${building.name} | Dia de Imóveis`
@@ -14,11 +19,17 @@ function applySeo(building: Building) {
 }
 
 export function PublicHome() {
-  const [buildings, setBuildings] = useState<Building[]>([])
-  const [selected, setSelected] = useState<(Building & { units?: { code: string }[] }) | null>(null)
+  const [buildings, setBuildings] = useState<PublicBuildingListItem[]>([])
+  const [selected, setSelected] = useState<(Building & { units?: { code: string }[] }) | null>(
+    null,
+  )
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    void publicApi.listBuildings().then(setBuildings)
+    void publicApi
+      .listBuildings()
+      .then(setBuildings)
+      .finally(() => setLoading(false))
     document.title = 'Lançamentos | Dia de Imóveis'
   }, [])
 
@@ -26,37 +37,45 @@ export function PublicHome() {
     const detail = await publicApi.getBuilding(id)
     setSelected(detail)
     applySeo(detail)
+    document.documentElement.scrollTop = 0
+  }
+
+  function closeDetail() {
+    setSelected(null)
+    document.title = 'Lançamentos | Dia de Imóveis'
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-2xl font-semibold">Portal público</h2>
-        <p className="mt-2 text-muted-foreground">Lançamentos publicados — sem login.</p>
-      </div>
-
+    <PublicLayout hero={selected ? undefined : <PublicHero />}>
       {selected ? (
-        <article className="space-y-4 rounded-lg border p-6">
-          <button
-            type="button"
-            className="text-sm text-muted-foreground hover:underline"
-            onClick={() => setSelected(null)}
-          >
-            ← Voltar
-          </button>
-          <h3 className="text-xl font-semibold">{selected.name}</h3>
-          {selected.city && (
-            <p className="text-sm text-muted-foreground">
-              {selected.city}/{selected.state}
-            </p>
+        <article className="mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6 lg:px-8">
+          <Button variant="ghost" size="sm" onClick={closeDetail}>
+            <ArrowLeftIcon className="size-4" aria-hidden />
+            Voltar aos lançamentos
+          </Button>
+
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold tracking-tight">{selected.name}</h1>
+            {selected.city && (
+              <p className="text-muted-foreground">
+                {selected.city}/{selected.state}
+              </p>
+            )}
+          </div>
+
+          {selected.description && (
+            <p className="text-base leading-relaxed text-foreground/90">{selected.description}</p>
           )}
-          <p className="text-sm">{selected.description}</p>
+
           {selected.units && selected.units.length > 0 && (
-            <div>
-              <h4 className="mb-2 font-medium">Unidades disponíveis</h4>
+            <div className="rounded-xl border bg-card p-6">
+              <h2 className="mb-4 text-lg font-semibold">Unidades disponíveis</h2>
               <ul className="flex flex-wrap gap-2">
                 {selected.units.map((unit) => (
-                  <li key={unit.code} className="rounded-md bg-muted px-2 py-1 text-xs">
+                  <li
+                    key={unit.code}
+                    className="rounded-md bg-muted px-3 py-1.5 text-sm font-medium"
+                  >
                     {unit.code}
                   </li>
                 ))}
@@ -65,27 +84,39 @@ export function PublicHome() {
           )}
         </article>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2">
-          {buildings.map((building) => (
-            <li key={building.id}>
-              <button
-                type="button"
-                className="h-full w-full rounded-lg border p-4 text-left transition-colors hover:bg-muted/50"
-                onClick={() => void openDetail(building.id)}
-              >
-                <h3 className="font-semibold">{building.name}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {[building.city, building.state].filter(Boolean).join(' / ') || 'Localização sob consulta'}
-                </p>
-                <p className="mt-2 line-clamp-2 text-sm">{building.description}</p>
-              </button>
-            </li>
-          ))}
-          {buildings.length === 0 && (
-            <li className="text-sm text-muted-foreground">Nenhum lançamento publicado.</li>
+        <section id="lancamentos" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <div className="mb-8 max-w-2xl">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">Lançamentos</h2>
+            <p className="mt-2 text-muted-foreground">
+              Empreendimentos publicados com valores a partir da unidade mais acessível.
+            </p>
+          </div>
+
+          {loading ? (
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="aspect-[4/3] animate-pulse rounded-xl bg-muted"
+                  aria-hidden
+                />
+              ))}
+            </div>
+          ) : buildings.length > 0 ? (
+            <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {buildings.map((building) => (
+                <li key={building.id}>
+                  <BuildingCard building={building} onSelect={(id) => void openDetail(id)} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
+              Nenhum lançamento publicado no momento. Volte em breve.
+            </p>
           )}
-        </ul>
+        </section>
       )}
-    </div>
+    </PublicLayout>
   )
 }

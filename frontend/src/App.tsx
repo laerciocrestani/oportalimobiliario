@@ -1,8 +1,10 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { ImpersonatePage } from '@/apps/auth/ImpersonatePage'
 import { LoginPage } from '@/apps/auth/LoginPage'
 import { LegacyPathNotice } from '@/apps/auth/LegacyPathNotice'
 import { PortalGuidePage } from '@/apps/auth/PortalGuidePage'
 import { AdminHome } from '@/apps/admin/AdminHome'
+import { TenantEditPage } from '@/apps/admin/TenantEditPage'
 import { BuildingDetailPage } from '@/apps/builder/BuildingDetailPage'
 import { BuildingEditPage } from '@/apps/builder/BuildingEditPage'
 import { BuilderHome } from '@/apps/builder/BuilderHome'
@@ -40,6 +42,7 @@ function AuthenticatedPortal() {
         <Route path="/login" element={<LoginPage profile={profile} />} />
         {profile === 'builder' ? (
           <>
+            <Route path="/auth/impersonate" element={<ImpersonatePage />} />
             <Route
               path="/"
               element={
@@ -129,6 +132,25 @@ function AuthenticatedPortal() {
               element={
                 <ProfileGuard profile={profile}>
                   <BrokerReservationsPage />
+                </ProfileGuard>
+              }
+            />
+          </>
+        ) : profile === 'admin' ? (
+          <>
+            <Route
+              path="/"
+              element={
+                <ProfileGuard profile={profile}>
+                  <AdminHome />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/tenants/:tenantId/edit"
+              element={
+                <ProfileGuard profile={profile}>
+                  <TenantEditPage />
                 </ProfileGuard>
               }
             />

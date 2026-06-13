@@ -6,6 +6,7 @@
  */
 use App\Enums\UnitStatus;
 use App\Models\Building;
+use App\Models\BuildingMedia;
 use App\Models\Tenant;
 use App\Models\Tower;
 use App\Models\Unit;
@@ -49,6 +50,24 @@ it('includes units summary when listing buildings', function () {
         ->assertJsonPath('0.units_summary.sold', 1)
         ->assertJsonPath('0.units_summary.reserved', 0)
         ->assertJsonPath('0.units_summary.unavailable', 0);
+});
+
+it('includes cover image when listing buildings', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create(['name' => 'With Cover']);
+
+    $cover = BuildingMedia::factory()->for($building)->internal()->create([
+        'sort_order' => 0,
+        'mime_type' => 'image/jpeg',
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->getJson('/api/builder/buildings')
+        ->assertOk()
+        ->assertJsonPath('0.cover_image.id', $cover->id)
+        ->assertJsonPath('0.cover_image.url', "/builder/buildings/{$building->id}/media/{$cover->id}/file");
 });
 
 it('creates building for builder', function () {

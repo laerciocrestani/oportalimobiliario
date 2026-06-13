@@ -10,6 +10,8 @@ Gestão de construtoras (tenants) pelo admin SaaS.
 - `REQ-ADM-002`: Criar/editar/desativar tenant
 - `REQ-ADM-003`: Apenas role admin
 - `REQ-ADM-004`: Admin UI + Feature tests
+- `REQ-ADM-005`: Admin edita name/slug/active via UI
+- `REQ-ADM-006`: Admin impersonate builder escolhendo usuário da equipe
 
 ## Dependências
 
@@ -17,4 +19,4 @@ Gestão de construtoras (tenants) pelo admin SaaS.
 
 ## Status
 
-done — API admin + AdminHome frontend
+done — API admin + AdminHome + edição + impersonation

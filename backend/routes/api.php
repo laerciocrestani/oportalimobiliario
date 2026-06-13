@@ -39,6 +39,7 @@ Route::prefix('public')->group(function () {
 
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/impersonate/exchange', [AuthController::class, 'exchangeImpersonation']);
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
@@ -107,5 +108,7 @@ Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('bro
 });
 
 Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'admin'])->prefix('admin')->group(function () {
+    Route::get('tenants/{tenant}/users', [AdminTenantController::class, 'users']);
+    Route::post('tenants/{tenant}/impersonate', [AdminTenantController::class, 'impersonate']);
     Route::apiResource('tenants', AdminTenantController::class)->except(['destroy']);
 });

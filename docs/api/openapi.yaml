@@ -130,6 +130,26 @@ paths:
           description: User profile
         '401':
           description: Unauthenticated
+  /api/auth/impersonate/exchange:
+    post:
+      summary: Exchange one-time impersonation code for builder token (public)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Token issued for impersonated builder user
+        '422':
+          description: Invalid or expired code
   /api/builder/buildings:
     get:
       summary: List buildings (builder role)
@@ -795,6 +815,80 @@ paths:
       responses:
         '201':
           description: Created
+  /api/admin/tenants/{tenant}:
+    get:
+      summary: Show tenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tenant with users_count
+    put:
+      summary: Update tenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Updated tenant
+        '422':
+          description: Validation error
+  /api/admin/tenants/{tenant}/users:
+    get:
+      summary: List builder users for tenant
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Builder team members
+        '403':
+          description: Forbidden
+  /api/admin/tenants/{tenant}/impersonate:
+    post:
+      summary: Generate one-time impersonation redirect URL
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tenant
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - user_id
+              properties:
+                user_id:
+                  type: integer
+      responses:
+        '200':
+          description: Redirect URL with one-time code
+        '422':
+          description: Invalid user or inactive tenant
+        '403':
+          description: Forbidden
 components:
   securitySchemes:
     bearerAuth:

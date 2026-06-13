@@ -10,6 +10,7 @@ import {
   type BuildingWithUnits,
 } from '@/apps/broker/lib/group-units-by-building'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { BuildingCoverImage } from '@/components/buildings/BuildingCoverImage'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { brokerApi } from '@/lib/api'
@@ -31,7 +32,13 @@ function BuildingCard({
       className="block w-full text-left transition-opacity hover:opacity-90"
       onClick={() => onOpen(building)}
     >
-      <Card className="h-full">
+      <Card className="h-full overflow-hidden">
+        <BuildingCoverImage
+          buildingId={building.id}
+          coverImage={building.cover_image}
+          alt={building.name}
+          fetchBlob={brokerApi.fetchBuildingMediaBlob}
+        />
         <CardHeader>
           <CardTitle className="text-base">{building.name}</CardTitle>
           {location ? <CardDescription>{location}</CardDescription> : null}
@@ -60,7 +67,7 @@ function BuildingCard({
           ) : null}
         </CardContent>
         {builderName ? (
-          <CardFooter className="text-sm text-muted-foreground">{builderName}</CardFooter>
+          <CardFooter className="border-t text-sm text-muted-foreground">{builderName}</CardFooter>
         ) : null}
       </Card>
     </button>
@@ -150,7 +157,7 @@ export function BrokerBuildingsPage() {
           <p className="text-sm text-muted-foreground">Carregando...</p>
         ) : (
           <>
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {filteredBuildings.map((building) => (
                 <BuildingCard
                   key={building.id}

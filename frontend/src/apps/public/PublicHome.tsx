@@ -93,7 +93,7 @@ export function PublicHome() {
           </div>
 
           {loading ? (
-            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
               {Array.from({ length: 3 }).map((_, index) => (
                 <div
                   key={index}
@@ -103,7 +103,7 @@ export function PublicHome() {
               ))}
             </div>
           ) : buildings.length > 0 ? (
-            <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            <ul className="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
               {buildings.map((building) => (
                 <li key={building.id}>
                   <BuildingCard building={building} onSelect={(id) => void openDetail(id)} />

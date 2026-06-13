@@ -13,6 +13,7 @@ use App\Models\BrokerInvite;
 use App\Models\BrokerTenant;
 use App\Models\Building;
 use App\Models\BuildingAccess;
+use App\Models\BuildingMedia;
 use App\Models\Tenant;
 use App\Models\Unit;
 use App\Models\UnitAccess;
@@ -169,6 +170,31 @@ it('lists units by building access for broker', function () {
         ->assertOk()
         ->assertJsonCount(2)
         ->assertJsonPath('0.building.tenant.name', 'Construtora Alpha');
+});
+
+it('includes cover image on building when listing broker units', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $building = Building::factory()->for($tenant)->create();
+    Unit::factory()->for($tenant)->for($building)->create(['code' => '101']);
+
+    BuildingAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'building_id' => $building->id,
+    ]);
+
+    $cover = BuildingMedia::factory()->for($building)->internal()->published()->create([
+        'sort_order' => 0,
+        'mime_type' => 'image/jpeg',
+    ]);
+
+    Sanctum::actingAs($broker);
+
+    $this->getJson('/api/broker/units')
+        ->assertOk()
+        ->assertJsonPath('0.building.cover_image.id', $cover->id)
+        ->assertJsonPath('0.building.cover_image.url', "/broker/buildings/{$building->id}/media/{$cover->id}/file");
 });
 
 it('lists units by legacy unit access for broker', function () {

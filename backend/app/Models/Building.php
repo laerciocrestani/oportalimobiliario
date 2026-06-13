@@ -77,4 +77,12 @@ class Building extends Model
                 ->where('mime_type', 'like', 'image/%'),
         );
     }
+
+    public function coverMedia(): HasOne
+    {
+        return $this->hasOne(BuildingMedia::class)->ofMany(
+            ['sort_order' => 'min', 'id' => 'min'],
+            fn (Builder $query) => $query->where('mime_type', 'like', 'image/%'),
+        );
+    }
 }

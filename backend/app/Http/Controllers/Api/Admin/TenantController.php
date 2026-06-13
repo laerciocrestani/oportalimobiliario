@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Models\User;
+use App\Support\BuilderPermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -58,5 +61,62 @@ class TenantController extends Controller
         $tenant->update($data);
 
         return response()->json($tenant->fresh());
+    }
+
+    public function users(Tenant $tenant): JsonResponse
+    {
+        $members = User::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('role', 'builder')
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $member) => $this->formatBuilderMember($member));
+
+        return response()->json($members);
+    }
+
+    public function impersonate(Request $request, Tenant $tenant): JsonResponse
+    {
+        if (! $tenant->active) {
+            return response()->json(['message' => 'Tenant is inactive.'], 422);
+        }
+
+        $data = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $user = User::query()->findOrFail($data['user_id']);
+
+        if ($user->role !== 'builder' || $user->tenant_id !== $tenant->id) {
+            return response()->json(['message' => 'Invalid builder user for this tenant.'], 422);
+        }
+
+        $code = Str::uuid()->toString();
+
+        Cache::put("impersonate:{$code}", [
+            'user_id' => $user->id,
+            'admin_id' => $request->user()->id,
+            'tenant_id' => $tenant->id,
+        ], 60);
+
+        $builderUrl = rtrim((string) config('opim.frontend_urls.builder'), '/');
+
+        return response()->json([
+            'redirect_url' => "{$builderUrl}/auth/impersonate?code={$code}",
+            'expires_in' => 60,
+        ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formatBuilderMember(User $member): array
+    {
+        return [
+            'id' => $member->id,
+            'name' => $member->name,
+            'email' => $member->email,
+            'permissions' => BuilderPermissions::namesFor($member),
+        ];
     }
 }

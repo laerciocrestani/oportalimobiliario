@@ -40,6 +40,11 @@ export type Tower = {
   units?: Unit[]
 }
 
+export type CoverImage = {
+  id: number
+  url: string
+}
+
 export type Building = {
   id: number
   name: string
@@ -51,6 +56,7 @@ export type Building = {
   seo_description: string | null
   units_count?: number
   units_summary?: UnitsSummary
+  cover_image?: CoverImage | null
   towers?: Tower[]
   units?: Unit[]
   tenant?: { id: number; name: string }
@@ -74,6 +80,22 @@ export type Tenant = {
   name: string
   slug: string
   active: boolean
+}
+
+export type TenantDetail = Tenant & {
+  users_count?: number
+}
+
+export type TenantBuilderUser = {
+  id: number
+  name: string
+  email: string
+  permissions: string[]
+}
+
+export type ImpersonationResponse = {
+  redirect_url: string
+  expires_in: number
 }
 
 export type BrokerInvite = {
@@ -261,6 +283,20 @@ export async function login(email: string, password: string): Promise<LoginRespo
 
   if (!response.ok) {
     throw new Error('Credenciais inválidas')
+  }
+
+  return response.json() as Promise<LoginResponse>
+}
+
+export async function exchangeImpersonationCode(code: string): Promise<LoginResponse> {
+  const response = await fetch(`${API_URL}/auth/impersonate/exchange`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ code }),
+  })
+
+  if (!response.ok) {
+    throw new Error('Código inválido ou expirado')
   }
 
   return response.json() as Promise<LoginResponse>
@@ -456,6 +492,8 @@ export const brokerApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }, false),
+  fetchBuildingMediaBlob: (buildingId: number, mediaId: number) =>
+    fetchAuthenticatedBlob(`/broker/buildings/${buildingId}/media/${mediaId}/file`),
 }
 
 export type PublicCheapestUnit = {
@@ -465,10 +503,7 @@ export type PublicCheapestUnit = {
   floor: number | null
 }
 
-export type PublicCoverImage = {
-  id: number
-  url: string
-}
+export type PublicCoverImage = CoverImage
 
 export type PublicBuildingListItem = Pick<
   Building,
@@ -487,10 +522,18 @@ export function publicMediaUrl(relativeUrl: string): string {
 
 export const adminApi = {
   listTenants: () => apiFetch<Paginated<Tenant>>('/admin/tenants'),
+  getTenant: (id: number) => apiFetch<TenantDetail>(`/admin/tenants/${id}`),
   createTenant: (data: Partial<Tenant>) =>
     apiFetch<Tenant>('/admin/tenants', { method: 'POST', body: JSON.stringify(data) }),
   updateTenant: (id: number, data: Partial<Tenant>) =>
     apiFetch<Tenant>(`/admin/tenants/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  listTenantUsers: (tenantId: number) =>
+    apiFetch<TenantBuilderUser[]>(`/admin/tenants/${tenantId}/users`),
+  impersonateTenant: (tenantId: number, userId: number) =>
+    apiFetch<ImpersonationResponse>(`/admin/tenants/${tenantId}/impersonate`, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId }),
+    }),
 }
 
 export const publicApi = {

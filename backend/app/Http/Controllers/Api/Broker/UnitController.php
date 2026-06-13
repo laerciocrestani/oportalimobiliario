@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BuildingAccess;
 use App\Models\Unit;
 use App\Models\UnitAccess;
+use App\Support\BuildingCoverImage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -33,6 +34,7 @@ class UnitController extends Controller
             ->withoutGlobalScope('tenant')
             ->with([
                 'building.tenant',
+                'building.publicCoverMedia',
                 'reservation' => fn ($query) => $query->where('broker_id', $brokerId),
                 'reservation.client',
             ])
@@ -52,6 +54,26 @@ class UnitController extends Controller
             })
             ->orderBy('code')
             ->get();
+
+        $coverByBuilding = [];
+
+        $units->each(function (Unit $unit) use (&$coverByBuilding): void {
+            $building = $unit->building;
+
+            if ($building === null) {
+                return;
+            }
+
+            if (! array_key_exists($building->id, $coverByBuilding)) {
+                $coverByBuilding[$building->id] = BuildingCoverImage::serialize(
+                    $building->publicCoverMedia,
+                    $building->id,
+                    "/broker/buildings/{$building->id}/media",
+                );
+            }
+
+            $building->setAttribute('cover_image', $coverByBuilding[$building->id]);
+        });
 
         return response()->json($units);
     }

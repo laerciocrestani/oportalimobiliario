@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api\Public;
 
 use App\Http\Controllers\Controller;
 use App\Models\Building;
-use App\Models\BuildingMedia;
+use App\Support\BuildingCoverImage;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -64,20 +64,11 @@ class BuildingController extends Controller
                 'area_m2' => $cheapest->area_m2,
                 'floor' => $cheapest->floor,
             ] : null,
-            'cover_image' => $cover ? $this->coverImageArray($building, $cover) : null,
-        ];
-    }
-
-    /**
-     * @return array{id: int, url: string}
-     */
-    protected function coverImageArray(Building $building, BuildingMedia $media): array
-    {
-        $prefix = "/public/buildings/{$building->id}/media";
-
-        return [
-            'id' => $media->id,
-            'url' => "{$prefix}/{$media->id}/file",
+            'cover_image' => BuildingCoverImage::serialize(
+                $cover,
+                $building->id,
+                "/public/buildings/{$building->id}/media",
+            ),
         ];
     }
 }

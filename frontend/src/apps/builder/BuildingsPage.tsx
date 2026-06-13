@@ -4,6 +4,7 @@ import { unitStatusLegend } from '@/apps/builder/lib/unit-status'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { BuildingCoverImage } from '@/components/buildings/BuildingCoverImage'
 import { BuilderDashboardShell } from '@/apps/builder/components/BuilderDashboardShell'
 import { useBuilderPermissions } from '@/apps/builder/hooks/use-builder-permissions'
 import { builderApi, type Building } from '@/lib/api'
@@ -14,14 +15,23 @@ function BuildingCard({ building }: { building: Building }) {
 
   return (
     <Link to={`/buildings/${building.id}`} className="block transition-opacity hover:opacity-90">
-      <Card className="h-full">
+      <Card className="h-full overflow-hidden">
+        <div className="relative">
+          <BuildingCoverImage
+            buildingId={building.id}
+            coverImage={building.cover_image}
+            alt={building.name}
+            fetchBlob={builderApi.fetchBuildingMediaBlob}
+          />
+          <Badge
+            className="absolute right-3 top-3"
+            variant={building.published ? 'default' : 'secondary'}
+          >
+            {building.published ? 'Publicado' : 'Rascunho'}
+          </Badge>
+        </div>
         <CardHeader>
-          <div className="flex items-start justify-between gap-2">
-            <CardTitle className="text-base">{building.name}</CardTitle>
-            <Badge variant={building.published ? 'default' : 'secondary'}>
-              {building.published ? 'Publicado' : 'Rascunho'}
-            </Badge>
-          </div>
+          <CardTitle className="text-base">{building.name}</CardTitle>
           {location ? <CardDescription>{location}</CardDescription> : null}
         </CardHeader>
         <CardContent className="space-y-3">
@@ -110,7 +120,7 @@ export function BuildingsPage() {
         {loading ? (
           <p className="text-sm text-muted-foreground">Carregando...</p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {buildings.map((building) => (
               <BuildingCard key={building.id} building={building} />
             ))}

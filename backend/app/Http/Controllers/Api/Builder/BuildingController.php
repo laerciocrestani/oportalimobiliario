@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Models\Tower;
 use App\Models\Unit;
+use App\Support\BuildingCoverImage;
 use App\Support\UnitsSummary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -22,6 +23,7 @@ class BuildingController extends Controller
         $this->authorize('viewAny', Building::class);
 
         $buildings = Building::query()
+            ->with('coverMedia')
             ->orderBy('name')
             ->get();
 
@@ -30,6 +32,14 @@ class BuildingController extends Controller
         $buildings->each(function (Building $building) use ($summaries): void {
             $counts = $summaries->get($building->id, collect());
             $building->setAttribute('units_summary', UnitsSummary::fromCounts($counts));
+            $building->setAttribute(
+                'cover_image',
+                BuildingCoverImage::serialize(
+                    $building->coverMedia,
+                    $building->id,
+                    "/builder/buildings/{$building->id}/media",
+                ),
+            );
         });
 
         return response()->json($buildings);

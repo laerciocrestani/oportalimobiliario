@@ -10,6 +10,7 @@ import { BuildingEditPage } from '@/apps/builder/BuildingEditPage'
 import { BuilderHome } from '@/apps/builder/BuilderHome'
 import { BuildingsPage } from '@/apps/builder/BuildingsPage'
 import { InvitesPage } from '@/apps/builder/InvitesPage'
+import { BrokersPage } from '@/apps/builder/BrokersPage'
 import { ReservationsPage } from '@/apps/builder/ReservationsPage'
 import { TeamPage } from '@/apps/builder/TeamPage'
 import { BrokerBuildingsPage } from '@/apps/broker/BrokerBuildingsPage'
@@ -87,6 +88,14 @@ function AuthenticatedPortal() {
               element={
                 <ProfileGuard profile={profile}>
                   <InvitesPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/brokers"
+              element={
+                <ProfileGuard profile={profile}>
+                  <BrokersPage />
                 </ProfileGuard>
               }
             />

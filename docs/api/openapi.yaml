@@ -458,7 +458,7 @@ paths:
         - bearerAuth: []
       responses:
         '200':
-          description: Brokers with accepted invites
+          description: Brokers with buildings_count and buildings summary
   /api/builder/brokers/{broker}/buildings:
     get:
       summary: List buildings granted to broker

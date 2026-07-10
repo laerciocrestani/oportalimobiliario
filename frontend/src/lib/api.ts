@@ -136,6 +136,8 @@ export type LinkedBroker = {
   name: string
   email: string
   accepted_at: string
+  buildings_count: number
+  buildings: Array<{ id: number; name: string }>
 }
 
 export type GrantedBuilding = {

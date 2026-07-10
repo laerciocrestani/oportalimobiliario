@@ -355,5 +355,9 @@ it('lists linked brokers for builder', function () {
 
     $this->getJson('/api/builder/brokers')
         ->assertOk()
-        ->assertJsonFragment(['email' => $broker->email]);
+        ->assertJsonFragment([
+            'email' => $broker->email,
+            'buildings_count' => 0,
+            'buildings' => [],
+        ]);
 });

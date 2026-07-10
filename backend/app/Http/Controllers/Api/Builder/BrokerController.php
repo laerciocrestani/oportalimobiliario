@@ -8,6 +8,7 @@ use App\Models\BuildingAccess;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * @see REQ-CONV-007
@@ -20,17 +21,36 @@ class BrokerController extends Controller
 
         $tenantId = $request->user()->tenant_id;
 
+        /** @var Collection<int, Collection<int, BuildingAccess>> $accessByBroker */
+        $accessByBroker = BuildingAccess::query()
+            ->with('building')
+            ->where('tenant_id', $tenantId)
+            ->get()
+            ->groupBy('broker_id');
+
         $brokers = BrokerTenant::query()
             ->with('broker')
             ->where('tenant_id', $tenantId)
             ->orderBy('accepted_at', 'desc')
             ->get()
-            ->map(fn (BrokerTenant $link) => [
-                'id' => $link->broker->id,
-                'name' => $link->broker->name,
-                'email' => $link->broker->email,
-                'accepted_at' => $link->accepted_at->toIso8601String(),
-            ]);
+            ->map(function (BrokerTenant $link) use ($accessByBroker): array {
+                $accesses = $accessByBroker->get($link->broker_id, collect());
+
+                return [
+                    'id' => $link->broker->id,
+                    'name' => $link->broker->name,
+                    'email' => $link->broker->email,
+                    'accepted_at' => $link->accepted_at->toIso8601String(),
+                    'buildings_count' => $accesses->count(),
+                    'buildings' => $accesses
+                        ->map(fn (BuildingAccess $access) => [
+                            'id' => $access->building->id,
+                            'name' => $access->building->name,
+                        ])
+                        ->values()
+                        ->all(),
+                ];
+            });
 
         return response()->json($brokers);
     }

@@ -32,7 +32,10 @@ export function BuilderDashboardShell({ title, children }: BuilderDashboardShell
           return permissions.includes('team.manage')
         }
         if (item.url === '/invites') {
-          return permissions.includes('invites.send') || permissions.includes('access.manage')
+          return permissions.includes('invites.send')
+        }
+        if (item.url === '/brokers') {
+          return permissions.includes('access.manage')
         }
 
         return true

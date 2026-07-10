@@ -41,5 +41,11 @@ frontend/.env
 frontend/.env.local
 frontend/coverage/
 
+# Sites (Astro portal público)
+sites/node_modules/
+sites/.pnpm-store/
+sites/dist/
+sites/.astro/
+
 # Docker
 docker-data/

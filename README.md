@@ -5,7 +5,8 @@ SaaS B2B2C multi-tenant para o mercado imobiliário de lançamentos.
 ## Stack
 
 - **Backend:** Laravel API + PostgreSQL + Pest
-- **Frontend:** React + Vite + pnpm + shadcn/ui
+- **Frontend (painéis):** React + Vite + pnpm + shadcn/ui
+- **Portal público:** Astro SSR (`sites/`) + SEO server-rendered
 - **Infra:** Docker Compose
 
 ## Quick start
@@ -23,7 +24,7 @@ docker compose exec backend php artisan migrate
 | Construtora | http://construtora.localhost:5173 |
 | Corretor | http://corretor.localhost:5173 |
 | Admin SaaS | http://admin.localhost:5173 |
-| Público | http://www.localhost:5173 |
+| Público | http://www.localhost:4321 |
 | API | http://api.localhost:8000 |
 | API health | http://api.localhost:8000/api/health |
 
@@ -44,11 +45,16 @@ docker compose exec backend php artisan migrate
 docker compose exec backend php artisan db:seed
 docker compose exec backend composer install
 
-# Frontend
+# Frontend (painéis)
 docker compose exec frontend pnpm install
 docker compose exec frontend pnpm dev
 docker compose exec frontend pnpm test
 docker compose exec frontend pnpm build
+
+# Portal público (Astro)
+docker compose exec sites pnpm install
+docker compose exec sites pnpm dev
+docker compose exec sites pnpm build
 ```
 
 ## API (prefixos em inglês)

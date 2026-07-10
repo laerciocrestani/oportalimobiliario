@@ -1,4 +1,4 @@
-Olá,
+Olá, {{ $invite->name }},
 
 Você foi convidado(a) para atuar como corretor(a) na construtora {{ $invite->tenant->name }}.
 

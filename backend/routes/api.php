@@ -20,6 +20,8 @@ use App\Http\Controllers\Api\Builder\TeamMemberController;
 use App\Http\Controllers\Api\Builder\UnitController;
 use App\Http\Controllers\Api\Public\BuildingController as PublicBuildingController;
 use App\Http\Controllers\Api\Public\BuildingMediaController as PublicBuildingMediaController;
+use App\Http\Controllers\Api\Public\PublicSeoController;
+use App\Http\Controllers\Api\Public\WhatsAppWebhookController;
 use App\Models\TenantNote;
 use Illuminate\Support\Facades\Route;
 
@@ -32,9 +34,13 @@ Route::get('/health', function () {
 
 Route::prefix('public')->group(function () {
     Route::get('/buildings', [PublicBuildingController::class, 'index']);
-    Route::get('/buildings/{id}', [PublicBuildingController::class, 'show']);
-    Route::get('/buildings/{id}/media', [PublicBuildingMediaController::class, 'index']);
-    Route::get('/buildings/{id}/media/{media}/file', [PublicBuildingMediaController::class, 'file']);
+    Route::get('/buildings/{building:slug}', [PublicBuildingController::class, 'show']);
+    Route::get('/buildings/{building:slug}/media', [PublicBuildingMediaController::class, 'index']);
+    Route::get('/buildings/{building:slug}/media/{media}/file', [PublicBuildingMediaController::class, 'file']);
+    Route::get('/sitemap.xml', [PublicSeoController::class, 'sitemap']);
+    Route::get('/robots.txt', [PublicSeoController::class, 'robots']);
+    Route::get('/whatsapp/webhook', [WhatsAppWebhookController::class, 'verify']);
+    Route::post('/whatsapp/webhook', [WhatsAppWebhookController::class, 'handle']);
 });
 
 Route::prefix('auth')->group(function () {

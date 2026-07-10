@@ -7,10 +7,11 @@ description: Convenções do monorepo Oportalimobiliário (Laravel API + React S
 
 ## Stack e comandos
 
-- Monorepo: `backend/` (Laravel 13 API-only) + `frontend/` (React 19 + Vite + TypeScript + shadcn/ui)
+- Monorepo: `backend/` (Laravel 13 API-only) + `frontend/` (React 19 + Vite) + `sites/` (Astro SSR portal público)
 - **Sempre** executar comandos via Docker:
   - Backend: `docker compose exec backend ...`
   - Frontend: `docker compose exec frontend ...`
+  - Portal público: `docker compose exec sites ...`
 - Gate de testes backend: `docker compose exec backend php artisan test` (SQLite em memória — não apaga Postgres de dev)
 - **Proibido** `migrate:fresh` / `db:wipe` sem pedido explícito do usuário
 
@@ -54,7 +55,8 @@ Subdomínios de dev permanecem em PT (`construtora.localhost`, `corretor.localho
 
 ## Frontend
 
-- Apps por perfil em `frontend/src/apps/{builder,broker,admin,publico}/` (pastas FE podem manter nome PT legado; profile keys são EN)
+- Apps por perfil em `frontend/src/apps/{builder,broker,admin}/`
+- Portal público SEO em `sites/` (Astro SSR, `www.localhost:4321`)
 - Cliente HTTP centralizado em `frontend/src/lib/api.ts` — tipos e funções por perfil (`builderApi`, `brokerApi`, `adminApi`, `publicApi`)
 - Auth via Sanctum: token em `localStorage` (`opim_token`), header `Authorization: Bearer`
 - `VITE_API_URL` aponta para `http://api.localhost:8000/api`

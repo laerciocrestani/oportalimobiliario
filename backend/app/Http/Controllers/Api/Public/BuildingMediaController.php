@@ -13,13 +13,13 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BuildingMediaController extends Controller
 {
-    public function index(int $id): JsonResponse
+    public function index(Building $building): JsonResponse
     {
-        $building = Building::query()
-            ->where('published', true)
-            ->findOrFail($id);
+        if (! $building->published) {
+            abort(404);
+        }
 
-        $prefix = "/public/buildings/{$building->id}/media";
+        $prefix = "/public/buildings/{$building->slug}/media";
 
         $media = $building->media()
             ->whereIn('category', BuildingMediaCategory::publicCategories())
@@ -32,11 +32,11 @@ class BuildingMediaController extends Controller
         return response()->json($media);
     }
 
-    public function file(int $id, BuildingMedia $media): StreamedResponse
+    public function file(Building $building, BuildingMedia $media): StreamedResponse
     {
-        $building = Building::query()
-            ->where('published', true)
-            ->findOrFail($id);
+        if (! $building->published) {
+            abort(404);
+        }
 
         if ((int) $media->building_id !== (int) $building->id) {
             abort(404);

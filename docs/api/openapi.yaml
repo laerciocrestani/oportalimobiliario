@@ -24,6 +24,8 @@ paths:
                   properties:
                     id:
                       type: integer
+                    slug:
+                      type: string
                     name:
                       type: string
                     description:
@@ -65,43 +67,43 @@ paths:
                           type: integer
                         url:
                           type: string
-  /api/public/buildings/{id}:
+  /api/public/buildings/{slug}:
     get:
-      summary: Show published building
+      summary: Show published building by slug
       parameters:
-        - name: id
+        - name: slug
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         '200':
           description: Building detail
         '404':
           description: Not found
-  /api/public/buildings/{id}/media:
+  /api/public/buildings/{slug}/media:
     get:
       summary: List published building media (internal/external only)
       parameters:
-        - name: id
+        - name: slug
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         '200':
           description: Published media list
         '404':
           description: Building not found or not published
-  /api/public/buildings/{id}/media/{media}/file:
+  /api/public/buildings/{slug}/media/{media}/file:
     get:
       summary: Stream published building media file
       parameters:
-        - name: id
+        - name: slug
           in: path
           required: true
           schema:
-            type: integer
+            type: string
         - name: media
           in: path
           required: true
@@ -112,6 +114,26 @@ paths:
           description: Media file stream
         '404':
           description: Not found
+  /api/public/sitemap.xml:
+    get:
+      summary: Public sitemap XML
+      responses:
+        '200':
+          description: Sitemap XML
+          content:
+            application/xml:
+              schema:
+                type: string
+  /api/public/robots.txt:
+    get:
+      summary: Public robots.txt
+      responses:
+        '200':
+          description: Robots rules
+          content:
+            text/plain:
+              schema:
+                type: string
   /api/auth/login:
     post:
       summary: Login
@@ -380,9 +402,27 @@ paths:
       summary: Create broker invite
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, channel]
+              properties:
+                name:
+                  type: string
+                channel:
+                  type: string
+                  enum: [email, whatsapp, link]
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
       responses:
         '201':
-          description: Created with invite_url; email sent
+          description: Created with invite_url; dispatched via selected channel
   /api/builder/invites/{invite}/resend:
     post:
       summary: Resend broker invite
@@ -797,9 +837,36 @@ paths:
   /api/broker/invites/accept:
     post:
       summary: Accept broker invite and create account (public)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
       responses:
         '200':
           description: Accepted with auth token
+  /api/public/whatsapp/webhook:
+    get:
+      summary: Meta WhatsApp webhook verification
+      responses:
+        '200':
+          description: Challenge echoed
+    post:
+      summary: Meta WhatsApp webhook events
+      responses:
+        '200':
+          description: Event received
   /api/admin/tenants:
     get:
       summary: List tenants

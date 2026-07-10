@@ -62,7 +62,7 @@ it('uploads external image and publishes on update', function () {
         ->assertOk()
         ->assertJsonPath('published', true);
 
-    $this->getJson("/api/public/buildings/{$building->id}/media")
+    $this->getJson("/api/public/buildings/{$building->slug}/media")
         ->assertOk()
         ->assertJsonCount(1)
         ->assertJsonPath('0.category', 'external');
@@ -121,7 +121,7 @@ it('does not expose floor plans on public endpoint', function () {
     Storage::disk('local')->put('buildings/1/1/public.jpg', 'public');
     Storage::disk('local')->put('buildings/1/1/planta.pdf', 'pdf');
 
-    $this->getJson("/api/public/buildings/{$building->id}/media")
+    $this->getJson("/api/public/buildings/{$building->slug}/media")
         ->assertOk()
         ->assertJsonCount(1)
         ->assertJsonPath('0.category', 'internal');
@@ -138,7 +138,7 @@ it('does not expose unpublished images on public endpoint', function () {
 
     Storage::disk('local')->put('buildings/1/1/private.jpg', 'private');
 
-    $this->getJson("/api/public/buildings/{$building->id}/media")
+    $this->getJson("/api/public/buildings/{$building->slug}/media")
         ->assertOk()
         ->assertJsonCount(0);
 });

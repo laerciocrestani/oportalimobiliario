@@ -1,0 +1,63 @@
+---
+import PublicFooter from '@/components/PublicFooter.astro'
+import PublicHeader from '@/components/PublicHeader.astro'
+import PublicLayout from '@/layouts/PublicLayout.astro'
+import { PublicApiError, getBuildingBySlug } from '@/lib/api'
+import { formatLocation } from '@/lib/format'
+import { buildBuildingSeo, siteBaseUrl } from '@/lib/seo'
+
+const { slug } = Astro.params
+
+if (!slug) {
+  return Astro.redirect('/')
+}
+
+let building
+let seo
+
+try {
+  building = await getBuildingBySlug(slug)
+  seo = buildBuildingSeo(building, siteBaseUrl(Astro.url))
+} catch (error) {
+  if (error instanceof PublicApiError && error.status === 404) {
+    return new Response(null, { status: 404, statusText: 'Not Found' })
+  }
+  throw error
+}
+---
+
+<PublicLayout seo={seo}>
+  <PublicHeader slot="header" />
+  <article class="building-detail">
+    <a href="/#lancamentos" class="building-detail__back">← Voltar aos lançamentos</a>
+
+    <header class="building-detail__header">
+      <h1>{building.name}</h1>
+      {
+        building.city && (
+          <p class="building-detail__location">{formatLocation(building.city, building.state)}</p>
+        )
+      }
+    </header>
+
+    {
+      building.description && (
+        <p class="building-detail__description">{building.description}</p>
+      )
+    }
+
+    {
+      building.units && building.units.length > 0 && (
+        <section class="building-detail__units">
+          <h2>Unidades disponíveis</h2>
+          <ul class="building-detail__unit-list">
+            {building.units.map((unit) => (
+              <li>{unit.code}</li>
+            ))}
+          </ul>
+        </section>
+      )
+    }
+  </article>
+  <PublicFooter slot="footer" />
+</PublicLayout>

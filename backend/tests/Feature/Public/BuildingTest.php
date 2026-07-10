@@ -5,6 +5,7 @@
  * @see REQ-PUB-002
  * @see REQ-PUB-006
  * @see REQ-PUB-007
+ * @see REQ-PUB-009
  */
 use App\Enums\UnitStatus;
 use App\Models\Building;
@@ -20,7 +21,8 @@ it('lists only published buildings without auth', function () {
     $this->getJson('/api/public/buildings')
         ->assertOk()
         ->assertJsonCount(1)
-        ->assertJsonPath('0.name', 'Published');
+        ->assertJsonPath('0.name', 'Published')
+        ->assertJsonPath('0.slug', fn ($slug) => is_string($slug) && $slug !== '');
 });
 
 it('returns cheapest available unit on public building list', function () {
@@ -96,7 +98,7 @@ it('returns first published public image as cover ordered by sort_order', functi
 
     expect($cover)->toMatchArray([
         'id' => $internal->id,
-        'url' => "/public/buildings/{$building->id}/media/{$internal->id}/file",
+        'url' => "/public/buildings/{$building->slug}/media/{$internal->id}/file",
     ]);
 });
 
@@ -146,19 +148,25 @@ it('ignores unpublished and floor plan media for cover', function () {
     expect($cover['id'])->toBe($internal->id);
 });
 
-it('shows published building detail', function () {
+it('shows published building detail by slug', function () {
     $tenant = Tenant::factory()->create();
     $building = Building::factory()->for($tenant)->published()->create();
 
-    $this->getJson("/api/public/buildings/{$building->id}")
+    $this->getJson("/api/public/buildings/{$building->slug}")
         ->assertOk()
-        ->assertJsonPath('id', $building->id);
+        ->assertJsonPath('id', $building->id)
+        ->assertJsonPath('slug', $building->slug);
 });
 
-it('returns 404 for unpublished building', function () {
+it('returns 404 for unpublished building by slug', function () {
     $tenant = Tenant::factory()->create();
     $building = Building::factory()->for($tenant)->create(['published' => false]);
 
-    $this->getJson("/api/public/buildings/{$building->id}")
+    $this->getJson("/api/public/buildings/{$building->slug}")
+        ->assertNotFound();
+});
+
+it('returns 404 for unknown building slug', function () {
+    $this->getJson('/api/public/buildings/inexistente')
         ->assertNotFound();
 });

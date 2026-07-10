@@ -20,6 +20,19 @@ const statusLabels: Record<BrokerInvite['status'], string> = {
   expired: 'Expirado',
 }
 
+const channelLabels: Record<BrokerInvite['channel'], string> = {
+  email: 'E-mail',
+  whatsapp: 'WhatsApp',
+  link: 'Link',
+}
+
+const deliveryStatusLabels: Record<NonNullable<BrokerInvite['delivery_status']>, string> = {
+  pending: 'Enviando',
+  sent: 'Enviado',
+  delivered: 'Entregue',
+  failed: 'Falhou',
+}
+
 function InviteStatusBadge({ status }: { status: BrokerInvite['status'] }) {
   const variant =
     status === 'accepted' ? 'default' : status === 'expired' ? 'secondary' : 'outline'
@@ -33,7 +46,10 @@ export function InvitesPage() {
   const [brokers, setBrokers] = useState<LinkedBroker[]>([])
   const [buildings, setBuildings] = useState<Building[]>([])
   const [grantedByBroker, setGrantedByBroker] = useState<Record<number, GrantedBuilding[]>>({})
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [channel, setChannel] = useState<BrokerInvite['channel']>('email')
   const [selectedBrokerId, setSelectedBrokerId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
@@ -115,9 +131,20 @@ export function InvitesPage() {
     setMessage(null)
 
     try {
-      const invite = await builderApi.createInvite(email)
+      const invite = await builderApi.createInvite({
+        name,
+        channel,
+        email: channel === 'email' ? email : undefined,
+        phone: channel === 'whatsapp' ? phone : undefined,
+      })
+      setName('')
       setEmail('')
-      setMessage(`Convite enviado para ${invite.email}.`)
+      setPhone('')
+      setMessage(
+        channel === 'link'
+          ? `Convite criado para ${invite.name}. Copie o link para enviar manualmente.`
+          : `Convite enviado para ${invite.name}.`,
+      )
       await loadInvites()
     } catch {
       setError('Não foi possível enviar o convite.')
@@ -195,20 +222,75 @@ export function InvitesPage() {
             <CardHeader>
               <CardTitle>Convidar corretor</CardTitle>
               <CardDescription>
-                Envie um convite por e-mail. O corretor poderá criar a conta e acessar o painel.
+                Informe os dados do corretor e escolha como enviar o convite.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <form onSubmit={handleCreateInvite} className="flex flex-col gap-2 sm:flex-row">
-                <input
-                  type="email"
-                  className="flex-1 rounded-md border border-input px-3 py-2 text-sm"
-                  placeholder="E-mail do corretor"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-                <Button type="submit">Enviar convite</Button>
+              <form onSubmit={handleCreateInvite} className="space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="invite-name">Nome</Label>
+                    <input
+                      id="invite-name"
+                      className="w-full rounded-md border border-input px-3 py-2 text-sm"
+                      placeholder="Nome do corretor"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label>Canal de envio</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(['email', 'whatsapp', 'link'] as const).map((option) => (
+                        <Button
+                          key={option}
+                          type="button"
+                          size="sm"
+                          variant={channel === option ? 'default' : 'outline'}
+                          onClick={() => setChannel(option)}
+                        >
+                          {channelLabels[option]}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {channel === 'email' ? (
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="invite-email">E-mail</Label>
+                      <input
+                        id="invite-email"
+                        type="email"
+                        className="w-full rounded-md border border-input px-3 py-2 text-sm"
+                        placeholder="E-mail do corretor"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                  ) : null}
+
+                  {channel === 'whatsapp' ? (
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="invite-phone">Telefone (WhatsApp)</Label>
+                      <input
+                        id="invite-phone"
+                        type="tel"
+                        className="w-full rounded-md border border-input px-3 py-2 text-sm"
+                        placeholder="(11) 99999-9999"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        required
+                      />
+                    </div>
+                  ) : null}
+                </div>
+
+                <Button type="submit">
+                  {channel === 'link' ? 'Criar convite' : 'Enviar convite'}
+                </Button>
               </form>
 
               {loading ? (
@@ -221,9 +303,22 @@ export function InvitesPage() {
                       className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="space-y-1">
-                        <p className="font-medium">{invite.email}</p>
-                        <div className="flex items-center gap-2">
+                        <p className="font-medium">{invite.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {invite.email ?? invite.phone ?? 'Sem contato'}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
                           <InviteStatusBadge status={invite.status} />
+                          <Badge variant="outline">{channelLabels[invite.channel]}</Badge>
+                          {invite.delivery_status ? (
+                            <Badge
+                              variant={
+                                invite.delivery_status === 'failed' ? 'destructive' : 'secondary'
+                              }
+                            >
+                              {deliveryStatusLabels[invite.delivery_status]}
+                            </Badge>
+                          ) : null}
                           <span className="text-xs text-muted-foreground">
                             Expira em {new Date(invite.expires_at).toLocaleDateString('pt-BR')}
                           </span>
@@ -275,16 +370,15 @@ export function InvitesPage() {
         {can('access.manage') ? (
           <Card>
             <CardHeader>
-              <CardTitle>Acesso por empreendimento</CardTitle>
+              <CardTitle>Acesso a empreendimentos</CardTitle>
               <CardDescription>
-                Libere empreendimentos para corretores que já aceitaram o convite. Todas as unidades
-                do empreendimento ficam disponíveis.
+                Libere empreendimentos para corretores que já aceitaram o convite.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {brokers.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  Nenhum corretor vinculado ainda. Envie e aguarde a aceitação do convite.
+                  Nenhum corretor vinculado ainda. Envie convites para começar.
                 </p>
               ) : (
                 <>
@@ -308,14 +402,17 @@ export function InvitesPage() {
                   </div>
 
                   {selectedBroker ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium">
+                        Empreendimentos para {selectedBroker.name}
+                      </p>
                       {buildings.map((building) => {
                         const granted = grantedBuildingIds.has(building.id)
 
                         return (
                           <label
                             key={building.id}
-                            className="flex items-start gap-2 rounded-md border p-3 text-sm"
+                            className="flex items-center gap-3 rounded-md border px-3 py-2"
                           >
                             <Checkbox
                               checked={granted}
@@ -323,15 +420,7 @@ export function InvitesPage() {
                                 void toggleBuildingAccess(selectedBroker.id, building.id, granted)
                               }
                             />
-                            <span>
-                              <span className="font-medium">{building.name}</span>
-                              {building.city ? (
-                                <span className="block text-xs text-muted-foreground">
-                                  {building.city}
-                                  {building.state ? `, ${building.state}` : ''}
-                                </span>
-                              ) : null}
-                            </span>
+                            <span className="text-sm">{building.name}</span>
                           </label>
                         )
                       })}

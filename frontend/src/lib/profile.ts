@@ -6,14 +6,13 @@ const HOST_PROFILE: Record<string, PortalProfile> = {
   'construtora.localhost': 'builder',
   'corretor.localhost': 'broker',
   'admin.localhost': 'admin',
-  'www.localhost': 'public',
 }
 
 export const PORTAL_URLS: Record<PortalProfile, string> = {
   builder: 'http://construtora.localhost:5173',
   broker: 'http://corretor.localhost:5173',
   admin: 'http://admin.localhost:5173',
-  public: 'http://www.localhost:5173',
+  public: 'http://www.localhost:4321',
 }
 
 export const PORTAL_LABELS: Record<PortalProfile, string> = {

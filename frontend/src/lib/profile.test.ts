@@ -10,7 +10,7 @@ describe('resolveProfile', () => {
     expect(resolveProfile('construtora.localhost')).toBe('builder')
     expect(resolveProfile('corretor.localhost')).toBe('broker')
     expect(resolveProfile('admin.localhost')).toBe('admin')
-    expect(resolveProfile('www.localhost')).toBe('public')
+    expect(resolveProfile('www.localhost')).toBeNull()
   })
 
   it('returns null for unknown hostnames', () => {
@@ -39,6 +39,6 @@ describe('isRoleAllowedOnProfile', () => {
 describe('PORTAL_URLS', () => {
   it('defines dev URLs for every portal', () => {
     expect(PORTAL_URLS.builder).toContain('construtora.localhost')
-    expect(PORTAL_URLS.public).toContain('www.localhost')
+    expect(PORTAL_URLS.public).toContain('www.localhost:4321')
   })
 })

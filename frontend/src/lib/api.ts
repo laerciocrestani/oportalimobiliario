@@ -47,6 +47,7 @@ export type CoverImage = {
 
 export type Building = {
   id: number
+  slug: string
   name: string
   description: string | null
   city: string | null
@@ -100,9 +101,13 @@ export type ImpersonationResponse = {
 
 export type BrokerInvite = {
   id: number
-  email: string
+  name: string
+  email: string | null
+  phone: string | null
+  channel: 'email' | 'whatsapp' | 'link'
   token: string
   status: 'pending' | 'accepted' | 'expired'
+  delivery_status: 'pending' | 'sent' | 'delivered' | 'failed' | null
   broker_id: number | null
   accepted_at: string | null
   expires_at: string
@@ -111,10 +116,19 @@ export type BrokerInvite = {
 }
 
 export type BrokerInvitePreview = {
-  email: string
+  name: string
+  email: string | null
+  requires_email: boolean
   tenant_name: string
   status: string
   expires_at: string
+}
+
+export type CreateBrokerInviteInput = {
+  name: string
+  channel: BrokerInvite['channel']
+  email?: string
+  phone?: string
 }
 
 export type LinkedBroker = {
@@ -396,10 +410,10 @@ export const builderApi = {
       body: JSON.stringify(data),
     }),
   listInvites: () => apiFetch<BrokerInvite[]>('/builder/invites'),
-  createInvite: (email: string) =>
+  createInvite: (data: CreateBrokerInviteInput) =>
     apiFetch<BrokerInvite>('/builder/invites', {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(data),
     }),
   resendInvite: (id: number) =>
     apiFetch<BrokerInvite>(`/builder/invites/${id}/resend`, { method: 'POST' }),
@@ -487,7 +501,7 @@ export const brokerApi = {
       {},
       false,
     ),
-  acceptInvite: (data: { token: string; name?: string; password?: string }) =>
+  acceptInvite: (data: { token: string; name?: string; email?: string; password?: string }) =>
     apiFetch<LoginResponse>('/broker/invites/accept', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -507,7 +521,7 @@ export type PublicCoverImage = CoverImage
 
 export type PublicBuildingListItem = Pick<
   Building,
-  'id' | 'name' | 'description' | 'city' | 'state' | 'seo_title' | 'seo_description' | 'units_count'
+  'id' | 'slug' | 'name' | 'description' | 'city' | 'state' | 'seo_title' | 'seo_description' | 'units_count'
 > & {
   cheapest_unit: PublicCheapestUnit | null
   cover_image: PublicCoverImage | null
@@ -538,6 +552,6 @@ export const adminApi = {
 
 export const publicApi = {
   listBuildings: () => apiFetch<PublicBuildingListItem[]>('/public/buildings', {}, false),
-  getBuilding: (id: number) =>
-    apiFetch<Building & { units?: Unit[] }>(`/public/buildings/${id}`, {}, false),
+  getBuilding: (slug: string) =>
+    apiFetch<Building & { units?: Unit[] }>(`/public/buildings/${slug}`, {}, false),
 }

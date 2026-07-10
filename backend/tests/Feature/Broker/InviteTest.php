@@ -18,6 +18,7 @@ use App\Models\Tenant;
 use App\Models\Unit;
 use App\Models\UnitAccess;
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
 
@@ -29,13 +30,73 @@ it('creates invite as builder and sends email', function () {
 
     Sanctum::actingAs($user);
 
-    $this->postJson('/api/builder/invites', ['email' => 'novo@broker.com'])
+    $this->postJson('/api/builder/invites', [
+        'name' => 'Novo Corretor',
+        'channel' => 'email',
+        'email' => 'novo@broker.com',
+    ])
         ->assertCreated()
+        ->assertJsonPath('name', 'Novo Corretor')
         ->assertJsonPath('email', 'novo@broker.com')
+        ->assertJsonPath('channel', 'email')
         ->assertJsonPath('status', 'pending')
         ->assertJsonStructure(['invite_url']);
 
     Mail::assertSent(BrokerInviteMail::class);
+});
+
+it('creates invite and sends whatsapp template', function () {
+    Mail::fake();
+    Http::fake([
+        'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.test123']]], 200),
+    ]);
+
+    config([
+        'services.whatsapp.access_token' => 'test-token',
+        'services.whatsapp.phone_number_id' => '123456789',
+    ]);
+
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/builder/invites', [
+        'name' => 'Corretor WhatsApp',
+        'channel' => 'whatsapp',
+        'phone' => '(11) 99999-9999',
+    ])
+        ->assertCreated()
+        ->assertJsonPath('name', 'Corretor WhatsApp')
+        ->assertJsonPath('phone', '+5511999999999')
+        ->assertJsonPath('channel', 'whatsapp')
+        ->assertJsonPath('delivery_status', 'sent');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'graph.facebook.com')
+        && $request['type'] === 'template');
+
+    Mail::assertNothingSent();
+});
+
+it('creates link-only invite without dispatching notifications', function () {
+    Mail::fake();
+    Http::fake();
+
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/builder/invites', [
+        'name' => 'Corretor Link',
+        'channel' => 'link',
+    ])
+        ->assertCreated()
+        ->assertJsonPath('channel', 'link')
+        ->assertJsonPath('delivery_status', null);
+
+    Mail::assertNothingSent();
+    Http::assertNothingSent();
 });
 
 it('lists invites with status', function () {
@@ -67,9 +128,55 @@ it('previews invite without authentication', function () {
 
     $this->getJson('/api/broker/invites/preview?token='.$invite->token)
         ->assertOk()
+        ->assertJsonPath('name', $invite->name)
         ->assertJsonPath('email', 'preview@demo.com')
+        ->assertJsonPath('requires_email', false)
         ->assertJsonPath('tenant_name', 'Alpha Corp')
         ->assertJsonPath('status', 'pending');
+});
+
+it('previews whatsapp invite requiring email on accept', function () {
+    $tenant = Tenant::factory()->create(['name' => 'Alpha Corp']);
+    $builder = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+
+    $invite = BrokerInvite::factory()->whatsapp()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $builder->id,
+        'name' => 'Corretor WA',
+    ]);
+
+    $this->getJson('/api/broker/invites/preview?token='.$invite->token)
+        ->assertOk()
+        ->assertJsonPath('name', 'Corretor WA')
+        ->assertJsonPath('email', null)
+        ->assertJsonPath('requires_email', true);
+});
+
+it('accepts whatsapp invite with email provided at accept', function () {
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+
+    $invite = BrokerInvite::factory()->whatsapp()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $builder->id,
+        'name' => 'Corretor WhatsApp',
+    ]);
+
+    $this->postJson('/api/broker/invites/accept', [
+        'token' => $invite->token,
+        'email' => 'whatsapp.corretor@demo.com',
+        'password' => 'password123',
+    ])
+        ->assertOk()
+        ->assertJsonStructure(['token', 'user']);
+
+    $broker = User::query()->where('email', 'whatsapp.corretor@demo.com')->first();
+
+    expect($broker)->not->toBeNull()
+        ->and($broker->name)->toBe('Corretor WhatsApp')
+        ->and($broker->role)->toBe('broker');
+
+    expect($invite->fresh()->email)->toBe('whatsapp.corretor@demo.com');
 });
 
 it('accepts invite and creates broker account', function () {

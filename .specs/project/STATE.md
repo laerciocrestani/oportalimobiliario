@@ -11,8 +11,8 @@
 | Corretor | 1 conta, N tenants via `unit_access` (role `broker`) |
 | Auth | E-mail + senha, Laravel Sanctum |
 | Reservas | Soft/temporárias com TTL configurável (default 48h); command `opim:expire-reservations` |
-| Estrutura repo | `frontend/` + `backend/` + `docker-compose.yml` na raiz |
-| Portal público | Módulo dentro de `frontend/`, não pasta separada |
+| Estrutura repo | `frontend/` + `sites/` + `backend/` + `docker-compose.yml` na raiz |
+| Portal público | Pacote `sites/` (Astro SSR :4321), Laravel apenas API |
 | Permissões | spatie/laravel-permission com teams (`tenant_id`) |
 | Qualidade API | 100% endpoints com Pest + OpenAPI atualizado |
 | Seeds | Toda feature de API entrega Seeder correspondente |
@@ -26,7 +26,7 @@
 | Git branch | `main` |
 | Git workflow | Commit atômico por feature/etapa + push após cada etapa |
 | Route binding tenancy | `SetTenantFromUser` priorizado antes de `SubstituteBindings` |
-| Portais por subdomínio | `construtora` / `corretor` / `admin` / `www` + API em `api.localhost` |
+| Portais por subdomínio | `construtora` / `corretor` / `admin` + `www` (:4321 Astro) + API em `api.localhost` |
 | Sessão multi-portal | Bearer + `localStorage` isolado por subdomínio (sem cookie compartilhado) |
 
 ## Sessão atual

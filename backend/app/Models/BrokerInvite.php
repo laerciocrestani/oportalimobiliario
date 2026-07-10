@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\BrokerInviteChannel;
+use App\Enums\BrokerInviteDeliveryStatus;
 use App\Tenancy\Concerns\BelongsToTenant;
 use Database\Factories\BrokerInviteFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -12,11 +14,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable([
     'tenant_id',
     'created_by',
+    'name',
     'email',
+    'phone',
+    'channel',
     'token',
     'broker_id',
     'accepted_at',
     'expires_at',
+    'whatsapp_message_id',
+    'delivery_status',
+    'delivery_error',
 ])]
 class BrokerInvite extends Model
 {
@@ -28,6 +36,8 @@ class BrokerInvite extends Model
     protected function casts(): array
     {
         return [
+            'channel' => BrokerInviteChannel::class,
+            'delivery_status' => BrokerInviteDeliveryStatus::class,
             'accepted_at' => 'datetime',
             'expires_at' => 'datetime',
         ];

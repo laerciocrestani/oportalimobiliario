@@ -12,6 +12,7 @@ export function InviteAcceptPage() {
   const [tenantName, setTenantName] = useState<string | null>(null)
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
+  const [requiresEmail, setRequiresEmail] = useState(false)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [status, setStatus] = useState<string | null>(null)
@@ -24,7 +25,9 @@ export function InviteAcceptPage() {
       try {
         const preview = await brokerApi.previewInvite(token)
         setTenantName(preview.tenant_name)
-        setEmail(preview.email)
+        setName(preview.name)
+        setEmail(preview.email ?? '')
+        setRequiresEmail(preview.requires_email)
         setStatus(preview.status)
 
         if (preview.status === 'accepted') {
@@ -46,6 +49,11 @@ export function InviteAcceptPage() {
     e.preventDefault()
     setError(null)
 
+    if (requiresEmail && email.trim() === '') {
+      setError('Informe seu e-mail para concluir o cadastro.')
+      return
+    }
+
     if (password !== confirmPassword) {
       setError('As senhas não coincidem.')
       return
@@ -59,7 +67,12 @@ export function InviteAcceptPage() {
     setLoading(true)
 
     try {
-      const result = await brokerApi.acceptInvite({ token, name, password })
+      const result = await brokerApi.acceptInvite({
+        token,
+        name,
+        email: requiresEmail ? email : undefined,
+        password,
+      })
       saveToken(result.token)
       navigate('/')
     } catch {
@@ -99,22 +112,24 @@ export function InviteAcceptPage() {
           ) : previewLoading ? null : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <input
-                  id="email"
-                  type="email"
-                  className="w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
-                  value={email}
-                  readOnly
-                />
-              </div>
-              <div className="space-y-2">
                 <Label htmlFor="name">Nome completo</Label>
                 <input
                   id="name"
                   className="w-full rounded-md border border-input px-3 py-2 text-sm"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <input
+                  id="email"
+                  type="email"
+                  className={`w-full rounded-md border border-input px-3 py-2 text-sm ${requiresEmail ? '' : 'bg-muted'}`}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  readOnly={!requiresEmail}
                   required
                 />
               </div>

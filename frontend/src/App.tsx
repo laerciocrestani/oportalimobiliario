@@ -17,7 +17,6 @@ import { BrokerClientsPage } from '@/apps/broker/BrokerClientsPage'
 import { BrokerOverviewPage } from '@/apps/broker/BrokerOverviewPage'
 import { BrokerReservationsPage } from '@/apps/broker/BrokerReservationsPage'
 import { InviteAcceptPage } from '@/apps/broker/InviteAcceptPage'
-import { PublicHome } from '@/apps/public/PublicHome'
 import { ProfileGuard } from '@/components/auth/ProfileGuard'
 import { isAuthenticatedProfile, resolveProfile } from '@/lib/profile'
 
@@ -170,16 +169,6 @@ function AuthenticatedPortal() {
   )
 }
 
-function PublicPortal() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<PublicHome />} />
-      </Routes>
-    </BrowserRouter>
-  )
-}
-
 function UnknownHostPortal() {
   return (
     <BrowserRouter>
@@ -195,10 +184,6 @@ function UnknownHostPortal() {
 }
 
 function App() {
-  if (profile === 'public') {
-    return <PublicPortal />
-  }
-
   if (profile !== null && isAuthenticatedProfile(profile)) {
     return <AuthenticatedPortal />
   }

@@ -1,0 +1,47 @@
+---
+import BuildingCard from '@/components/BuildingCard.astro'
+import PublicFooter from '@/components/PublicFooter.astro'
+import PublicHeader from '@/components/PublicHeader.astro'
+import PublicHero from '@/components/PublicHero.astro'
+import PublicLayout from '@/layouts/PublicLayout.astro'
+import { PublicApiError, listBuildings } from '@/lib/api'
+import { buildHomeSeo, siteBaseUrl } from '@/lib/seo'
+
+let buildings = []
+let seo = buildHomeSeo(siteBaseUrl(Astro.url))
+
+try {
+  buildings = await listBuildings()
+} catch (error) {
+  if (error instanceof PublicApiError) {
+    throw error
+  }
+  throw error
+}
+---
+
+<PublicLayout seo={seo} showHero>
+  <PublicHeader slot="header" />
+  <PublicHero />
+  <section id="lancamentos" class="listings">
+    <div class="listings__intro">
+      <h2>Lançamentos</h2>
+      <p>Empreendimentos publicados com valores a partir da unidade mais acessível.</p>
+    </div>
+
+    {
+      buildings.length > 0 ? (
+        <ul class="listings__grid">
+          {buildings.map((building) => (
+            <li>
+              <BuildingCard building={building} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p class="listings__empty">Nenhum lançamento publicado no momento. Volte em breve.</p>
+      )
+    }
+  </section>
+  <PublicFooter slot="footer" />
+</PublicLayout>

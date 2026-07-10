@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'tenant_id',
     'name',
+    'slug',
     'description',
     'city',
     'state',

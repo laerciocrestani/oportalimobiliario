@@ -24,6 +24,8 @@ paths:
                   properties:
                     id:
                       type: integer
+                    slug:
+                      type: string
                     name:
                       type: string
                     description:
@@ -65,43 +67,43 @@ paths:
                           type: integer
                         url:
                           type: string
-  /api/public/buildings/{id}:
+  /api/public/buildings/{slug}:
     get:
-      summary: Show published building
+      summary: Show published building by slug
       parameters:
-        - name: id
+        - name: slug
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         '200':
           description: Building detail
         '404':
           description: Not found
-  /api/public/buildings/{id}/media:
+  /api/public/buildings/{slug}/media:
     get:
       summary: List published building media (internal/external only)
       parameters:
-        - name: id
+        - name: slug
           in: path
           required: true
           schema:
-            type: integer
+            type: string
       responses:
         '200':
           description: Published media list
         '404':
           description: Building not found or not published
-  /api/public/buildings/{id}/media/{media}/file:
+  /api/public/buildings/{slug}/media/{media}/file:
     get:
       summary: Stream published building media file
       parameters:
-        - name: id
+        - name: slug
           in: path
           required: true
           schema:
-            type: integer
+            type: string
         - name: media
           in: path
           required: true
@@ -112,6 +114,26 @@ paths:
           description: Media file stream
         '404':
           description: Not found
+  /api/public/sitemap.xml:
+    get:
+      summary: Public sitemap XML
+      responses:
+        '200':
+          description: Sitemap XML
+          content:
+            application/xml:
+              schema:
+                type: string
+  /api/public/robots.txt:
+    get:
+      summary: Public robots.txt
+      responses:
+        '200':
+          description: Robots rules
+          content:
+            text/plain:
+              schema:
+                type: string
   /api/auth/login:
     post:
       summary: Login
@@ -380,9 +402,27 @@ paths:
       summary: Create broker invite
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, channel]
+              properties:
+                name:
+                  type: string
+                channel:
+                  type: string
+                  enum: [email, whatsapp]
+                email:
+                  type: string
+                  format: email
+                phone:
+                  type: string
       responses:
         '201':
-          description: Created with invite_url; email sent
+          description: Created with invite_url; dispatched via selected channel
   /api/builder/invites/{invite}/resend:
     post:
       summary: Resend broker invite
@@ -396,7 +436,7 @@ paths:
             type: integer
       responses:
         '200':
-          description: Resent with new token
+          description: Resent with new token and updated last_sent_at
   /api/builder/invites/{invite}:
     delete:
       summary: Cancel pending broker invite
@@ -411,6 +451,58 @@ paths:
       responses:
         '204':
           description: Deleted
+  /api/builder/invite-link:
+    get:
+      summary: Get or create tenant shareable invite link
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Invite link with invite_url
+  /api/builder/invite-link/regenerate:
+    post:
+      summary: Regenerate tenant shareable invite link token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: New invite link
+  /api/builder/pending-brokers:
+    get:
+      summary: List brokers pending approval from open invite link
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pending broker requests
+  /api/builder/pending-brokers/{brokerTenant}/approve:
+    post:
+      summary: Approve pending broker from open invite link
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: brokerTenant
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Broker approved
+  /api/builder/pending-brokers/{brokerTenant}/reject:
+    post:
+      summary: Reject pending broker from open invite link
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: brokerTenant
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Request rejected
   /api/builder/brokers:
     get:
       summary: List linked brokers
@@ -418,7 +510,7 @@ paths:
         - bearerAuth: []
       responses:
         '200':
-          description: Brokers with accepted invites
+          description: Brokers with buildings_count and buildings summary
   /api/builder/brokers/{broker}/buildings:
     get:
       summary: List buildings granted to broker
@@ -797,9 +889,74 @@ paths:
   /api/broker/invites/accept:
     post:
       summary: Accept broker invite and create account (public)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token]
+              properties:
+                token:
+                  type: string
+                name:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
       responses:
         '200':
           description: Accepted with auth token
+  /api/broker/join/preview:
+    get:
+      summary: Preview open invite link (public)
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Open link preview
+        '422':
+          description: Invalid link
+  /api/broker/join/register:
+    post:
+      summary: Register broker via open invite link (public)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, name, phone, password]
+              properties:
+                token:
+                  type: string
+                name:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '201':
+          description: Registered with auth token; pending builder approval
+  /api/public/whatsapp/webhook:
+    get:
+      summary: Meta WhatsApp webhook verification
+      responses:
+        '200':
+          description: Challenge echoed
+    post:
+      summary: Meta WhatsApp webhook events
+      responses:
+        '200':
+          description: Event received
   /api/admin/tenants:
     get:
       summary: List tenants

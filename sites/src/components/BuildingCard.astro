@@ -1,0 +1,60 @@
+---
+import type { PublicBuildingListItem } from '@/lib/api'
+import { publicMediaUrl } from '@/lib/api'
+import { formatLocation, formatPrice } from '@/lib/format'
+
+interface Props {
+  building: PublicBuildingListItem
+}
+
+const { building } = Astro.props
+const coverUrl = building.cover_image ? publicMediaUrl(building.cover_image.url) : null
+const cheapest = building.cheapest_unit
+---
+
+<article class="building-card">
+  <a href={`/empreendimentos/${building.slug}`} class="building-card__link">
+    <div class="building-card__media">
+      {
+        coverUrl ? (
+          <img src={coverUrl} alt={building.name} loading="lazy" class="building-card__image" />
+        ) : (
+          <div class="building-card__placeholder">Sem imagem</div>
+        )
+      }
+      {
+        building.units_count > 0 && (
+          <span class="building-card__badge">{building.units_count} unidades</span>
+        )
+      }
+    </div>
+
+    <div class="building-card__body">
+      <h2 class="building-card__title">{building.name}</h2>
+      <p class="building-card__location">{formatLocation(building.city, building.state)}</p>
+      {
+        building.description && (
+          <p class="building-card__description">{building.description}</p>
+        )
+      }
+    </div>
+
+    <div class="building-card__footer">
+      {
+        cheapest ? (
+          <>
+            <p class="building-card__from">A partir de</p>
+            <p class="building-card__price">{formatPrice(cheapest.price)}</p>
+            <p class="building-card__unit-meta">
+              Unidade {cheapest.code}
+              {cheapest.area_m2 ? ` · ${cheapest.area_m2} m²` : ''}
+              {cheapest.floor != null ? ` · ${cheapest.floor}º andar` : ''}
+            </p>
+          </>
+        ) : (
+          <p class="building-card__unit-meta">Consulte disponibilidade e valores</p>
+        )
+      }
+    </div>
+  </a>
+</article>

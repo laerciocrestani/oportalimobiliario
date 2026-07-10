@@ -8,9 +8,11 @@ use App\Models\Building;
 use App\Models\Tower;
 use App\Models\Unit;
 use App\Support\BuildingCoverImage;
+use App\Support\BuildingSlug;
 use App\Support\UnitsSummary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * @see REQ-EMP-001
@@ -51,6 +53,7 @@ class BuildingController extends Controller
 
         $data = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'unique:buildings,slug'],
             'description' => ['nullable', 'string'],
             'city' => ['nullable', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'size:2'],
@@ -58,6 +61,8 @@ class BuildingController extends Controller
             'seo_title' => ['nullable', 'string', 'max:255'],
             'seo_description' => ['nullable', 'string', 'max:500'],
         ]);
+
+        $data['slug'] = $data['slug'] ?? BuildingSlug::generateUnique($data['name']);
 
         $building = Building::query()->create($data);
         $building->setAttribute('units_summary', UnitsSummary::empty());
@@ -91,6 +96,13 @@ class BuildingController extends Controller
 
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
+            'slug' => [
+                'nullable',
+                'string',
+                'max:255',
+                'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+                Rule::unique('buildings', 'slug')->ignore($building->id),
+            ],
             'description' => ['nullable', 'string'],
             'city' => ['nullable', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'size:2'],

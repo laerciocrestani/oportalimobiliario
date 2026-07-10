@@ -10,6 +10,7 @@ import { BuildingEditPage } from '@/apps/builder/BuildingEditPage'
 import { BuilderHome } from '@/apps/builder/BuilderHome'
 import { BuildingsPage } from '@/apps/builder/BuildingsPage'
 import { InvitesPage } from '@/apps/builder/InvitesPage'
+import { BrokersPage } from '@/apps/builder/BrokersPage'
 import { ReservationsPage } from '@/apps/builder/ReservationsPage'
 import { TeamPage } from '@/apps/builder/TeamPage'
 import { BrokerBuildingsPage } from '@/apps/broker/BrokerBuildingsPage'
@@ -17,7 +18,10 @@ import { BrokerClientsPage } from '@/apps/broker/BrokerClientsPage'
 import { BrokerOverviewPage } from '@/apps/broker/BrokerOverviewPage'
 import { BrokerReservationsPage } from '@/apps/broker/BrokerReservationsPage'
 import { InviteAcceptPage } from '@/apps/broker/InviteAcceptPage'
-import { PublicHome } from '@/apps/public/PublicHome'
+import { JoinAcceptPage } from '@/apps/broker/JoinAcceptPage'
+import { PendingApprovalPage } from '@/apps/broker/PendingApprovalPage'
+import { RestrictedAccessPage } from '@/apps/broker/RestrictedAccessPage'
+import { BrokerAccessGuard } from '@/apps/broker/components/BrokerAccessGuard'
 import { ProfileGuard } from '@/components/auth/ProfileGuard'
 import { isAuthenticatedProfile, resolveProfile } from '@/lib/profile'
 
@@ -92,6 +96,14 @@ function AuthenticatedPortal() {
               }
             />
             <Route
+              path="/brokers"
+              element={
+                <ProfileGuard profile={profile}>
+                  <BrokersPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
               path="/reservations"
               element={
                 <ProfileGuard profile={profile}>
@@ -103,11 +115,30 @@ function AuthenticatedPortal() {
         ) : profile === 'broker' ? (
           <>
             <Route path="/invite/:token" element={<InviteAcceptPage />} />
+            <Route path="/join/:token" element={<JoinAcceptPage />} />
+            <Route
+              path="/pending-approval"
+              element={
+                <ProfileGuard profile={profile}>
+                  <PendingApprovalPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/account-restricted"
+              element={
+                <ProfileGuard profile={profile}>
+                  <RestrictedAccessPage />
+                </ProfileGuard>
+              }
+            />
             <Route
               path="/"
               element={
                 <ProfileGuard profile={profile}>
-                  <BrokerOverviewPage />
+                  <BrokerAccessGuard>
+                    <BrokerOverviewPage />
+                  </BrokerAccessGuard>
                 </ProfileGuard>
               }
             />
@@ -115,7 +146,9 @@ function AuthenticatedPortal() {
               path="/buildings"
               element={
                 <ProfileGuard profile={profile}>
-                  <BrokerBuildingsPage />
+                  <BrokerAccessGuard>
+                    <BrokerBuildingsPage />
+                  </BrokerAccessGuard>
                 </ProfileGuard>
               }
             />
@@ -123,7 +156,9 @@ function AuthenticatedPortal() {
               path="/clients"
               element={
                 <ProfileGuard profile={profile}>
-                  <BrokerClientsPage />
+                  <BrokerAccessGuard>
+                    <BrokerClientsPage />
+                  </BrokerAccessGuard>
                 </ProfileGuard>
               }
             />
@@ -131,7 +166,9 @@ function AuthenticatedPortal() {
               path="/reservations"
               element={
                 <ProfileGuard profile={profile}>
-                  <BrokerReservationsPage />
+                  <BrokerAccessGuard>
+                    <BrokerReservationsPage />
+                  </BrokerAccessGuard>
                 </ProfileGuard>
               }
             />
@@ -170,16 +207,6 @@ function AuthenticatedPortal() {
   )
 }
 
-function PublicPortal() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<PublicHome />} />
-      </Routes>
-    </BrowserRouter>
-  )
-}
-
 function UnknownHostPortal() {
   return (
     <BrowserRouter>
@@ -195,10 +222,6 @@ function UnknownHostPortal() {
 }
 
 function App() {
-  if (profile === 'public') {
-    return <PublicPortal />
-  }
-
   if (profile !== null && isAuthenticatedProfile(profile)) {
     return <AuthenticatedPortal />
   }

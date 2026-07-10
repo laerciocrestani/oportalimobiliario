@@ -24,7 +24,7 @@ export function BuilderHome() {
           </Card>
         ) : null}
 
-        {can('invites.send') ? (
+        {can('invites.send') || can('access.manage') ? (
           <Card>
             <CardHeader>
               <CardTitle>Corretores</CardTitle>
@@ -32,8 +32,15 @@ export function BuilderHome() {
                 Convide corretores e gerencie o acesso aos empreendimentos.
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <Button render={<Link to="/invites" />}>Gerenciar convites</Button>
+            <CardContent className="flex flex-wrap gap-2">
+              {can('invites.send') ? (
+                <Button render={<Link to="/invites" />}>Ver convites</Button>
+              ) : null}
+              {can('access.manage') ? (
+                <Button variant="outline" render={<Link to="/brokers" />}>
+                  Ver corretores
+                </Button>
+              ) : null}
             </CardContent>
           </Card>
         ) : null}

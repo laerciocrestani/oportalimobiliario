@@ -11,7 +11,7 @@ const navItems: NavItem[] = [
   { label: 'Construtora', href: 'http://construtora.localhost:5173', external: true },
   { label: 'Corretor', href: 'http://corretor.localhost:5173', external: true },
   { label: 'Admin', href: 'http://admin.localhost:5173', external: true },
-  { label: 'Público', href: 'http://www.localhost:5173', external: true },
+  { label: 'Público', href: 'http://www.localhost:4321', external: true },
 ]
 
 export function AppShell() {

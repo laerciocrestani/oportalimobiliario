@@ -27,17 +27,27 @@ class BrokerInvitePolicy
         return $user->can(BuilderPermissions::SEND_INVITES);
     }
 
-    public function delete(User $user, BrokerInvite $brokerInvite): bool
+    public function revoke(User $user, BrokerInvite $brokerInvite): bool
     {
         return $user->can(BuilderPermissions::SEND_INVITES)
             && $this->sameTenant($user, $brokerInvite)
-            && $brokerInvite->accepted_at === null;
+            && $brokerInvite->accepted_at === null
+            && $brokerInvite->revoked_at === null;
+    }
+
+    public function reactivate(User $user, BrokerInvite $brokerInvite): bool
+    {
+        return $user->can(BuilderPermissions::SEND_INVITES)
+            && $this->sameTenant($user, $brokerInvite)
+            && $brokerInvite->accepted_at === null
+            && $brokerInvite->revoked_at !== null;
     }
 
     public function resend(User $user, BrokerInvite $brokerInvite): bool
     {
         return $user->can(BuilderPermissions::SEND_INVITES)
             && $this->sameTenant($user, $brokerInvite)
-            && $brokerInvite->accepted_at === null;
+            && $brokerInvite->accepted_at === null
+            && $brokerInvite->revoked_at === null;
     }
 }

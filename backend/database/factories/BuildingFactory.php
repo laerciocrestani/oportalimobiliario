@@ -4,6 +4,7 @@ namespace Database\Factories;
 
 use App\Models\Building;
 use App\Models\Tenant;
+use App\Support\BuildingSlug;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -15,9 +16,12 @@ class BuildingFactory extends Factory
 
     public function definition(): array
     {
+        $name = fake()->words(3, true);
+
         return [
             'tenant_id' => Tenant::factory(),
-            'name' => fake()->words(3, true),
+            'name' => $name,
+            'slug' => BuildingSlug::generateUnique($name),
             'description' => fake()->paragraph(),
             'city' => fake()->city(),
             'state' => fake()->stateAbbr(),

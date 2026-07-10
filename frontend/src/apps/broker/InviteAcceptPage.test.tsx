@@ -7,7 +7,9 @@ import { InviteAcceptPage } from '@/apps/broker/InviteAcceptPage'
 vi.mock('@/lib/api', () => ({
   brokerApi: {
     previewInvite: vi.fn().mockResolvedValue({
+      name: 'Corretor Demo',
       email: 'corretor@demo.com',
+      requires_email: false,
       tenant_name: 'Alpha Corp',
       status: 'pending',
       expires_at: '2026-12-31T00:00:00Z',

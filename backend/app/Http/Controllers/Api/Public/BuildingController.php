@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
  * @see REQ-PUB-002
  * @see REQ-PUB-006
  * @see REQ-PUB-007
+ * @see REQ-PUB-009
  */
 class BuildingController extends Controller
 {
@@ -25,18 +26,19 @@ class BuildingController extends Controller
                 'publicCoverMedia',
             ])
             ->orderBy('name')
-            ->get(['id', 'name', 'description', 'city', 'state', 'seo_title', 'seo_description'])
+            ->get(['id', 'slug', 'name', 'description', 'city', 'state', 'seo_title', 'seo_description'])
             ->map(fn (Building $building) => $this->toListArray($building));
 
         return response()->json($buildings);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(Building $building): JsonResponse
     {
-        $building = Building::query()
-            ->where('published', true)
-            ->with(['units' => fn ($q) => $q->where('status', 'available')])
-            ->findOrFail($id);
+        if (! $building->published) {
+            abort(404);
+        }
+
+        $building->load(['units' => fn ($q) => $q->where('status', 'available')]);
 
         return response()->json($building);
     }
@@ -48,9 +50,11 @@ class BuildingController extends Controller
     {
         $cheapest = $building->cheapestAvailableUnit;
         $cover = $building->publicCoverMedia;
+        $mediaPrefix = "/public/buildings/{$building->slug}/media";
 
         return [
             'id' => $building->id,
+            'slug' => $building->slug,
             'name' => $building->name,
             'description' => $building->description,
             'city' => $building->city,
@@ -67,7 +71,7 @@ class BuildingController extends Controller
             'cover_image' => BuildingCoverImage::serialize(
                 $cover,
                 $building->id,
-                "/public/buildings/{$building->id}/media",
+                $mediaPrefix,
             ),
         ];
     }

@@ -5,6 +5,7 @@ import {
   LayoutDashboardIcon,
   Settings2Icon,
   ShieldIcon,
+  UserRoundCheckIcon,
   UsersIcon,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
@@ -56,6 +57,11 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
         title: 'Convites',
         url: '/invites',
         icon: <HandshakeIcon />,
+      },
+      {
+        title: 'Corretores',
+        url: '/brokers',
+        icon: <UserRoundCheckIcon />,
       },
       {
         title: 'Equipe',

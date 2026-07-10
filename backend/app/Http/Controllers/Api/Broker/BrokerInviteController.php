@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 /**
  * @see REQ-CONV-002
  * @see REQ-CONV-008
+ * @see REQ-WA-005
  */
 class BrokerInviteController extends Controller
 {
@@ -29,6 +30,7 @@ class BrokerInviteController extends Controller
         $data = $request->validate([
             'token' => ['required', 'string'],
             'name' => ['nullable', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
             'password' => ['nullable', 'string', 'min:8'],
         ]);
 
@@ -41,6 +43,7 @@ class BrokerInviteController extends Controller
             $data['token'],
             $data['name'] ?? null,
             $data['password'] ?? null,
+            $data['email'] ?? null,
             $authenticatedBroker,
         );
 

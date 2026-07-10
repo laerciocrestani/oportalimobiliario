@@ -12,6 +12,7 @@ type BuildingEditFormProps = {
 
 type FormState = {
   name: string
+  slug: string
   description: string
   city: string
   state: string
@@ -23,6 +24,7 @@ type FormState = {
 function toFormState(building: Building): FormState {
   return {
     name: building.name,
+    slug: building.slug ?? '',
     description: building.description ?? '',
     city: building.city ?? '',
     state: building.state ?? '',
@@ -47,6 +49,7 @@ export function BuildingEditForm({ building, onSaved }: BuildingEditFormProps) {
     try {
       const updated = await builderApi.updateBuilding(building.id, {
         name: form.name,
+        slug: form.slug || null,
         description: form.description || null,
         city: form.city || null,
         state: form.state || null,
@@ -112,6 +115,20 @@ export function BuildingEditForm({ building, onSaved }: BuildingEditFormProps) {
             placeholder="SP"
           />
         </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="building-slug">Slug (URL pública)</Label>
+        <Input
+          id="building-slug"
+          value={form.slug}
+          onChange={(e) => setForm({ ...form, slug: e.target.value })}
+          placeholder="residencial-aurora"
+          pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
+        />
+        <p className="text-xs text-muted-foreground">
+          Usado em /empreendimentos/{form.slug || 'seu-slug'} no portal público.
+        </p>
       </div>
 
       <label className="flex items-center gap-2 text-sm">

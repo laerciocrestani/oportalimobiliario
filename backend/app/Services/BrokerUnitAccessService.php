@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BuildingAccess;
+use App\Models\BrokerTenant;
 use App\Models\Unit;
 use App\Models\UnitAccess;
 use App\Models\User;
@@ -12,15 +13,20 @@ use App\Models\User;
  */
 class BrokerUnitAccessService
 {
+    public function __construct(private BrokerAccessService $brokerAccessService) {}
+
     /**
      * @return array{tenant_id: int}|null
      */
     public function resolveAccess(User $broker, Unit $unit): ?array
     {
+        $activeTenantIds = $this->brokerAccessService->activeTenantIdsForBroker($broker->id);
+
         $unitAccess = UnitAccess::query()
             ->withoutGlobalScope('tenant')
             ->where('broker_id', $broker->id)
             ->where('unit_id', $unit->id)
+            ->whereIn('tenant_id', $activeTenantIds)
             ->first();
 
         if ($unitAccess !== null) {
@@ -31,6 +37,7 @@ class BrokerUnitAccessService
             ->withoutGlobalScope('tenant')
             ->where('broker_id', $broker->id)
             ->where('building_id', $unit->building_id)
+            ->whereIn('tenant_id', $activeTenantIds)
             ->first();
 
         if ($buildingAccess !== null) {

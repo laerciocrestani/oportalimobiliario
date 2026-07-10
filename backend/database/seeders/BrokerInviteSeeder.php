@@ -26,6 +26,8 @@ class BrokerInviteSeeder extends Seeder
             ['tenant_id' => $alpha->id, 'email' => $broker->email],
             [
                 'created_by' => $alphaBuilder->id,
+                'name' => $broker->name,
+                'channel' => 'email',
                 'token' => 'demo-invite-accepted-'.Str::lower(Str::random(8)),
                 'broker_id' => $broker->id,
                 'accepted_at' => now(),
@@ -37,6 +39,8 @@ class BrokerInviteSeeder extends Seeder
             ['tenant_id' => $alpha->id, 'email' => 'novo.corretor@demo.com'],
             [
                 'created_by' => $alphaBuilder->id,
+                'name' => 'Novo Corretor',
+                'channel' => 'email',
                 'token' => 'demo-invite-pending-'.Str::lower(Str::random(8)),
                 'broker_id' => null,
                 'accepted_at' => null,
@@ -49,6 +53,8 @@ class BrokerInviteSeeder extends Seeder
                 ['tenant_id' => $beta->id, 'email' => $broker->email],
                 [
                     'created_by' => $betaBuilder->id,
+                    'name' => $broker->name,
+                    'channel' => 'email',
                     'token' => 'demo-invite-beta-'.Str::lower(Str::random(8)),
                     'broker_id' => $broker->id,
                     'accepted_at' => now(),

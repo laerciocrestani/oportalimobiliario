@@ -1,0 +1,44 @@
+---
+import type { SeoMeta } from '@/lib/seo'
+
+interface Props {
+  seo: SeoMeta
+  showHero?: boolean
+}
+
+const { seo, showHero = false } = Astro.props
+const jsonLd = seo.jsonLd ? (Array.isArray(seo.jsonLd) ? seo.jsonLd : [seo.jsonLd]) : []
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{seo.title}</title>
+    <meta name="description" content={seo.description} />
+    <meta name="robots" content="index,follow" />
+    <link rel="canonical" href={seo.canonical} />
+
+    <meta property="og:type" content={seo.ogType} />
+    <meta property="og:title" content={seo.title} />
+    <meta property="og:description" content={seo.description} />
+    <meta property="og:url" content={seo.canonical} />
+    {seo.ogImage && <meta property="og:image" content={seo.ogImage} />}
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={seo.title} />
+    <meta name="twitter:description" content={seo.description} />
+    {seo.ogImage && <meta name="twitter:image" content={seo.ogImage} />}
+
+    <link rel="stylesheet" href="/css/site.css" />
+    {jsonLd.map((entry) => <script type="application/ld+json" set:html={JSON.stringify(entry)} />)}
+  </head>
+  <body class:list={[{ 'has-hero': showHero }]}>
+    <slot name="header" />
+    <main class="site-main">
+      <slot />
+    </main>
+    <slot name="footer" />
+  </body>
+</html>

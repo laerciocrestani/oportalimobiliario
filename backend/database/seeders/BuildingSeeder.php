@@ -9,13 +9,14 @@ use Illuminate\Database\Seeder;
 class BuildingSeeder extends Seeder
 {
     /**
-     * @return array<int, array{tenant_slug: string, name: string, description: string, city: string, state: string, published: bool, seo_title?: string, seo_description?: string}>
+     * @return array<int, array{tenant_slug: string, slug: string, name: string, description: string, city: string, state: string, published: bool, seo_title?: string, seo_description?: string}>
      */
     public static function definitions(): array
     {
         return [
             [
                 'tenant_slug' => 'construtora-alpha',
+                'slug' => 'residencial-aurora',
                 'name' => 'Residencial Aurora',
                 'description' => 'Lançamento de alto padrão com lazer completo e unidades de 2 e 3 dormitórios.',
                 'city' => 'São Paulo',
@@ -26,6 +27,7 @@ class BuildingSeeder extends Seeder
             ],
             [
                 'tenant_slug' => 'construtora-alpha',
+                'slug' => 'edificio-horizonte',
                 'name' => 'Edifício Horizonte',
                 'description' => 'Empreendimento em fase de aprovação comercial, ainda não publicado.',
                 'city' => 'Campinas',
@@ -34,6 +36,7 @@ class BuildingSeeder extends Seeder
             ],
             [
                 'tenant_slug' => 'construtora-alpha',
+                'slug' => 'residencial-parque-das-flores',
                 'name' => 'Residencial Parque das Flores',
                 'description' => 'Condomínio fechado com área verde e unidades garden.',
                 'city' => 'Curitiba',
@@ -44,6 +47,7 @@ class BuildingSeeder extends Seeder
             ],
             [
                 'tenant_slug' => 'construtora-alpha',
+                'slug' => 'torre-vista-mar',
                 'name' => 'Torre Vista Mar',
                 'description' => 'Torre frente mar com plantas amplas e vista permanente.',
                 'city' => 'Santos',
@@ -54,6 +58,7 @@ class BuildingSeeder extends Seeder
             ],
             [
                 'tenant_slug' => 'construtora-alpha',
+                'slug' => 'condominio-jardim-europa',
                 'name' => 'Condomínio Jardim Europa',
                 'description' => 'Projeto compacto no coração da Zona Sul carioca.',
                 'city' => 'Rio de Janeiro',
@@ -64,6 +69,7 @@ class BuildingSeeder extends Seeder
             ],
             [
                 'tenant_slug' => 'construtora-alpha',
+                'slug' => 'residencial-central-park',
                 'name' => 'Residencial Central Park',
                 'description' => 'Empreendimento vertical com coworking e rooftop.',
                 'city' => 'Belo Horizonte',
@@ -74,6 +80,7 @@ class BuildingSeeder extends Seeder
             ],
             [
                 'tenant_slug' => 'construtora-alpha',
+                'slug' => 'edificio-montanha-verde',
                 'name' => 'Edifício Montanha Verde',
                 'description' => 'Rascunho interno para validação de plantas e precificação.',
                 'city' => 'Florianópolis',
@@ -82,6 +89,7 @@ class BuildingSeeder extends Seeder
             ],
             [
                 'tenant_slug' => 'construtora-alpha',
+                'slug' => 'residencial-bela-vista',
                 'name' => 'Residencial Bela Vista',
                 'description' => 'Mix de unidades compactas e familiares em região em expansão.',
                 'city' => 'Porto Alegre',
@@ -92,6 +100,7 @@ class BuildingSeeder extends Seeder
             ],
             [
                 'tenant_slug' => 'construtora-beta',
+                'slug' => 'residencial-beta-norte',
                 'name' => 'Residencial Beta Norte',
                 'description' => 'Primeiro lançamento da Construtora Beta no mercado local.',
                 'city' => 'Goiânia',
@@ -102,6 +111,7 @@ class BuildingSeeder extends Seeder
             ],
             [
                 'tenant_slug' => 'construtora-beta',
+                'slug' => 'residencial-beta-sul',
                 'name' => 'Residencial Beta Sul',
                 'description' => 'Segundo empreendimento Beta ainda em preparação comercial.',
                 'city' => 'Brasília',
@@ -121,8 +131,9 @@ class BuildingSeeder extends Seeder
             }
 
             Building::query()->firstOrCreate(
-                ['tenant_id' => $tenant->id, 'name' => $definition['name']],
+                ['tenant_id' => $tenant->id, 'slug' => $definition['slug']],
                 [
+                    'name' => $definition['name'],
                     'description' => $definition['description'],
                     'city' => $definition['city'],
                     'state' => $definition['state'],

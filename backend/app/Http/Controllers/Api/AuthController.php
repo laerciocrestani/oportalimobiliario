@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\BuilderPermissions;
+use App\Support\PhoneNumberNormalizer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -18,11 +19,11 @@ class AuthController extends Controller
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([
-            'email' => ['required', 'email'],
+            'email' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
-        $user = User::query()->where('email', $credentials['email'])->first();
+        $user = $this->findUserByLogin($credentials['email']);
 
         if ($user === null || ! Hash::check($credentials['password'], $user->password)) {
             throw ValidationException::withMessages([
@@ -37,11 +38,26 @@ class AuthController extends Controller
             'user' => [
                 'id' => $user->id,
                 'name' => $user->name,
-                'email' => $user->email,
+                'email' => $user->usesSyntheticEmail() ? null : $user->email,
                 'role' => $user->role,
                 'tenant_id' => $user->tenant_id,
             ],
         ]);
+    }
+
+    private function findUserByLogin(string $login): ?User
+    {
+        if (filter_var($login, FILTER_VALIDATE_EMAIL)) {
+            return User::query()->where('email', $login)->first();
+        }
+
+        $normalizedPhone = app(PhoneNumberNormalizer::class)->toE164($login);
+
+        if ($normalizedPhone !== null) {
+            return User::query()->where('phone', $normalizedPhone)->first();
+        }
+
+        return User::query()->where('email', $login)->first();
     }
 
     public function me(Request $request): JsonResponse

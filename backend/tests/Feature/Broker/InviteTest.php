@@ -18,6 +18,7 @@ use App\Models\Tenant;
 use App\Models\Unit;
 use App\Models\UnitAccess;
 use App\Models\User;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
 
@@ -29,13 +30,157 @@ it('creates invite as builder and sends email', function () {
 
     Sanctum::actingAs($user);
 
-    $this->postJson('/api/builder/invites', ['email' => 'novo@broker.com'])
+    $this->postJson('/api/builder/invites', [
+        'name' => 'Novo Corretor',
+        'channel' => 'email',
+        'email' => 'novo@broker.com',
+    ])
         ->assertCreated()
+        ->assertJsonPath('name', 'Novo Corretor')
         ->assertJsonPath('email', 'novo@broker.com')
+        ->assertJsonPath('channel', 'email')
         ->assertJsonPath('status', 'pending')
-        ->assertJsonStructure(['invite_url']);
+        ->assertJsonStructure(['invite_url', 'last_sent_at']);
 
     Mail::assertSent(BrokerInviteMail::class);
+});
+
+it('rejects duplicate email invite while one is open', function () {
+    Mail::fake();
+
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+
+    BrokerInvite::factory()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'email' => 'duplicado@broker.com',
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/builder/invites', [
+        'name' => 'Outro Nome',
+        'channel' => 'email',
+        'email' => 'duplicado@broker.com',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['email']);
+
+    Mail::assertNothingSent();
+});
+
+it('rejects duplicate whatsapp invite while one is open', function () {
+    Mail::fake();
+
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+
+    BrokerInvite::factory()->whatsapp()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'phone' => '+5511988776655',
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/builder/invites', [
+        'name' => 'Outro Corretor',
+        'channel' => 'whatsapp',
+        'phone' => '(11) 98877-6655',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['phone']);
+
+    Mail::assertNothingSent();
+});
+
+it('allows new invite after previous one was revoked', function () {
+    Mail::fake();
+
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+
+    BrokerInvite::factory()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $user->id,
+        'email' => 'revogado@broker.com',
+        'revoked_at' => now(),
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/builder/invites', [
+        'name' => 'Novo Corretor',
+        'channel' => 'email',
+        'email' => 'revogado@broker.com',
+    ])
+        ->assertCreated()
+        ->assertJsonPath('email', 'revogado@broker.com');
+
+    Mail::assertSent(BrokerInviteMail::class);
+});
+
+it('rejects invite when broker is already linked to tenant', function () {
+    Mail::fake();
+
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $broker = User::factory()->broker()->create(['email' => 'vinculado@broker.com']);
+
+    BrokerTenant::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/builder/invites', [
+        'name' => 'Corretor Vinculado',
+        'channel' => 'email',
+        'email' => 'vinculado@broker.com',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['email']);
+
+    Mail::assertNothingSent();
+});
+
+it('creates invite and sends whatsapp template', function () {
+    Mail::fake();
+    Http::fake([
+        'graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.test123']]], 200),
+    ]);
+
+    config([
+        'services.whatsapp.access_token' => 'test-token',
+        'services.whatsapp.phone_number_id' => '123456789',
+    ]);
+
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/builder/invites', [
+        'name' => 'Corretor WhatsApp',
+        'channel' => 'whatsapp',
+        'phone' => '(11) 99999-9999',
+    ])
+        ->assertCreated()
+        ->assertJsonPath('name', 'Corretor WhatsApp')
+        ->assertJsonPath('phone', '+5511999999999')
+        ->assertJsonPath('channel', 'whatsapp')
+        ->assertJsonPath('delivery_status', 'sent');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'graph.facebook.com')
+        && $request['type'] === 'template'
+        && collect($request['template']['components'] ?? [])->contains(
+            fn (array $component): bool => ($component['type'] ?? null) === 'button'
+                && ($component['sub_type'] ?? null) === 'url',
+        ));
+
+    Mail::assertNothingSent();
 });
 
 it('lists invites with status', function () {
@@ -67,9 +212,55 @@ it('previews invite without authentication', function () {
 
     $this->getJson('/api/broker/invites/preview?token='.$invite->token)
         ->assertOk()
+        ->assertJsonPath('name', $invite->name)
         ->assertJsonPath('email', 'preview@demo.com')
+        ->assertJsonPath('requires_email', false)
         ->assertJsonPath('tenant_name', 'Alpha Corp')
         ->assertJsonPath('status', 'pending');
+});
+
+it('previews whatsapp invite requiring email on accept', function () {
+    $tenant = Tenant::factory()->create(['name' => 'Alpha Corp']);
+    $builder = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+
+    $invite = BrokerInvite::factory()->whatsapp()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $builder->id,
+        'name' => 'Corretor WA',
+    ]);
+
+    $this->getJson('/api/broker/invites/preview?token='.$invite->token)
+        ->assertOk()
+        ->assertJsonPath('name', 'Corretor WA')
+        ->assertJsonPath('email', null)
+        ->assertJsonPath('requires_email', true);
+});
+
+it('accepts whatsapp invite with email provided at accept', function () {
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+
+    $invite = BrokerInvite::factory()->whatsapp()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $builder->id,
+        'name' => 'Corretor WhatsApp',
+    ]);
+
+    $this->postJson('/api/broker/invites/accept', [
+        'token' => $invite->token,
+        'email' => 'whatsapp.corretor@demo.com',
+        'password' => 'password123',
+    ])
+        ->assertOk()
+        ->assertJsonStructure(['token', 'user']);
+
+    $broker = User::query()->where('email', 'whatsapp.corretor@demo.com')->first();
+
+    expect($broker)->not->toBeNull()
+        ->and($broker->name)->toBe('Corretor WhatsApp')
+        ->and($broker->role)->toBe('broker');
+
+    expect($invite->fresh()->email)->toBe('whatsapp.corretor@demo.com');
 });
 
 it('accepts invite and creates broker account', function () {
@@ -98,6 +289,34 @@ it('accepts invite and creates broker account', function () {
     expect(BrokerTenant::query()->where('tenant_id', $tenant->id)->where('broker_id', $broker->id)->exists())->toBeTrue();
 });
 
+it('accepting individual invite approves pending open link registration', function () {
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $broker = User::factory()->broker()->create(['email' => 'novo.corretor@demo.com']);
+
+    $invite = BrokerInvite::factory()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $builder->id,
+        'email' => 'novo.corretor@demo.com',
+    ]);
+
+    $tenantLink = BrokerTenant::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'approved_at' => null,
+    ]);
+
+    $this->postJson('/api/broker/invites/accept', [
+        'token' => $invite->token,
+    ])
+        ->assertOk()
+        ->assertJsonPath('user.id', $broker->id);
+
+    expect($tenantLink->fresh()->approved_at)->not->toBeNull()
+        ->and($tenantLink->fresh()->broker_invite_id)->toBe($invite->id)
+        ->and($invite->fresh()->accepted_at)->not->toBeNull();
+});
+
 it('accepts invite for existing broker', function () {
     $tenant = Tenant::factory()->create();
     $builder = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
@@ -122,8 +341,10 @@ it('resends pending invite', function () {
     $invite = BrokerInvite::factory()->create([
         'tenant_id' => $tenant->id,
         'created_by' => $user->id,
+        'last_sent_at' => now()->subDays(3),
     ]);
     $oldToken = $invite->token;
+    $oldLastSentAt = $invite->last_sent_at;
 
     Sanctum::actingAs($user);
 
@@ -131,11 +352,14 @@ it('resends pending invite', function () {
         ->assertOk()
         ->assertJsonPath('status', 'pending');
 
-    expect($invite->fresh()->token)->not->toBe($oldToken);
+    $fresh = $invite->fresh();
+
+    expect($fresh->token)->not->toBe($oldToken)
+        ->and($fresh->last_sent_at->greaterThan($oldLastSentAt))->toBeTrue();
     Mail::assertSent(BrokerInviteMail::class);
 });
 
-it('cancels pending invite', function () {
+it('revokes pending invite via delete endpoint', function () {
     $tenant = Tenant::factory()->create();
     $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
     $invite = BrokerInvite::factory()->create([
@@ -146,9 +370,11 @@ it('cancels pending invite', function () {
     Sanctum::actingAs($user);
 
     $this->deleteJson("/api/builder/invites/{$invite->id}")
-        ->assertNoContent();
+        ->assertOk()
+        ->assertJsonPath('status', 'revoked');
 
-    expect(BrokerInvite::query()->find($invite->id))->toBeNull();
+    expect(BrokerInvite::query()->find($invite->id))->not->toBeNull()
+        ->and($invite->fresh()->revoked_at)->not->toBeNull();
 });
 
 it('lists units by building access for broker', function () {
@@ -162,6 +388,11 @@ it('lists units by building access for broker', function () {
         'tenant_id' => $tenant->id,
         'broker_id' => $broker->id,
         'building_id' => $building->id,
+    ]);
+
+    BrokerTenant::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
     ]);
 
     Sanctum::actingAs($broker);
@@ -182,6 +413,11 @@ it('includes cover image on building when listing broker units', function () {
         'tenant_id' => $tenant->id,
         'broker_id' => $broker->id,
         'building_id' => $building->id,
+    ]);
+
+    BrokerTenant::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
     ]);
 
     $cover = BuildingMedia::factory()->for($building)->internal()->published()->create([
@@ -206,6 +442,11 @@ it('lists units by legacy unit access for broker', function () {
         'tenant_id' => $tenant->id,
         'broker_id' => $broker->id,
         'unit_id' => $unit->id,
+    ]);
+
+    BrokerTenant::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
     ]);
 
     Sanctum::actingAs($broker);
@@ -248,5 +489,9 @@ it('lists linked brokers for builder', function () {
 
     $this->getJson('/api/builder/brokers')
         ->assertOk()
-        ->assertJsonFragment(['email' => $broker->email]);
+        ->assertJsonFragment([
+            'email' => $broker->email,
+            'buildings_count' => 0,
+            'buildings' => [],
+        ]);
 });

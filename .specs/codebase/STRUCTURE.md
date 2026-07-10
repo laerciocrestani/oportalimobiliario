@@ -39,4 +39,14 @@ frontend/
 ├── project/
 ├── features/
 └── codebase/
+    ├── AI_CONTEXT.md     # índice de documentação para IA
+    ├── ARCHITECTURE.md
+    ├── TRACEABILITY.md   # REQ → arquivos
+    ├── SEEDS.md          # usuários demo
+    ├── FLOWS.md          # fluxos end-to-end
+    ├── FRONTEND.md       # rotas e portais
+    ├── PERMISSIONS.md    # matriz de autorização
+    └── ANTI-PATTERNS.md  # erros comuns para IA
 ```
+
+Raiz: [`AGENTS.md`](../../AGENTS.md) · Checklist: [`docs/DEV_ACCESS.md`](../../docs/DEV_ACCESS.md)

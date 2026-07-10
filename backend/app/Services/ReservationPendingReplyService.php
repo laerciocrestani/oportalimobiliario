@@ -27,7 +27,7 @@ class ReservationPendingReplyService
     public function countForBuilder(): int
     {
         return $this->countWhereLatestMessageFromRole(
-            Reservation::query(),
+            Reservation::query()->confirmed(),
             'broker',
         );
     }
@@ -37,6 +37,7 @@ class ReservationPendingReplyService
         return $this->countWhereLatestMessageFromRole(
             Reservation::query()
                 ->withoutGlobalScope('tenant')
+                ->confirmed()
                 ->where('broker_id', $broker->id),
             'builder',
         );

@@ -7,6 +7,7 @@ use App\Models\BuildingAccess;
 use App\Models\Unit;
 use App\Models\UnitAccess;
 use App\Services\BrokerAccessService;
+use App\Support\BrokerUnitSerializer;
 use App\Support\BuildingCoverImage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,7 +42,6 @@ class UnitController extends Controller
             ->with([
                 'building.tenant',
                 'building.publicCoverMedia',
-                'reservation' => fn ($query) => $query->where('broker_id', $brokerId),
                 'reservation.client',
             ])
             ->where(function ($query) use ($buildingIds, $legacyUnitIds): void {
@@ -81,6 +81,8 @@ class UnitController extends Controller
             $building->setAttribute('cover_image', $coverByBuilding[$building->id]);
         });
 
-        return response()->json($units);
+        return response()->json(
+            $units->map(fn (Unit $unit) => BrokerUnitSerializer::serialize($unit, $brokerId))->values(),
+        );
     }
 }

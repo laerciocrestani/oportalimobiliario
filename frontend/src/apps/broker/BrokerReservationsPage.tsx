@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrokerDashboardShell } from '@/apps/broker/components/BrokerDashboardShell'
 import { ReservationMessagesDialog } from '@/apps/builder/components/ReservationMessagesDialog'
+import { ReservationTimelineSheet } from '@/components/reservations/ReservationTimelineSheet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { brokerApi, type BuilderReservationListItem } from '@/lib/api'
@@ -20,6 +21,8 @@ export function BrokerReservationsPage() {
   const [cancellingId, setCancellingId] = useState<number | null>(null)
   const [messagesReservationId, setMessagesReservationId] = useState<number | null>(null)
   const [messagesOpen, setMessagesOpen] = useState(false)
+  const [timelineReservationId, setTimelineReservationId] = useState<number | null>(null)
+  const [timelineOpen, setTimelineOpen] = useState(false)
 
   async function load() {
     try {
@@ -52,6 +55,11 @@ export function BrokerReservationsPage() {
     } finally {
       setCancellingId(null)
     }
+  }
+
+  function handleOpenTimeline(reservationId: number) {
+    setTimelineReservationId(reservationId)
+    setTimelineOpen(true)
   }
 
   function handleOpenMessages(reservationId: number) {
@@ -105,6 +113,14 @@ export function BrokerReservationsPage() {
                             <Button
                               type="button"
                               size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenTimeline(reservation.id)}
+                            >
+                              Andamento
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
                               variant={reservation.needs_reply ? 'default' : 'outline'}
                               onClick={() => handleOpenMessages(reservation.id)}
                             >
@@ -131,6 +147,14 @@ export function BrokerReservationsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ReservationTimelineSheet
+        profile="broker"
+        reservationId={timelineReservationId}
+        open={timelineOpen}
+        onOpenChange={setTimelineOpen}
+        onTimelineRefresh={() => void load()}
+      />
 
       <ReservationMessagesDialog
         profile="broker"

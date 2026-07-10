@@ -30,6 +30,8 @@ it('creates reservation for accessible unit with client', function () {
         'unit_id' => $unit->id,
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->postJson('/api/broker/reservations', [
@@ -56,6 +58,8 @@ it('creates reservation with building access only', function () {
         'building_id' => $building->id,
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->postJson('/api/broker/reservations', [
@@ -77,6 +81,8 @@ it('rejects reservation without client_id', function () {
         'unit_id' => $unit->id,
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->postJson('/api/broker/reservations', ['unit_id' => $unit->id])
@@ -96,6 +102,8 @@ it('rejects reservation with client from another broker', function () {
         'unit_id' => $unit->id,
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->postJson('/api/broker/reservations', [
@@ -105,9 +113,12 @@ it('rejects reservation with client from another broker', function () {
 });
 
 it('rejects reservation without access', function () {
-    $unit = Unit::factory()->create(['status' => UnitStatus::Available]);
+    $tenant = Tenant::factory()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Available]);
     $broker = User::factory()->broker()->create();
     $client = BrokerClient::factory()->for($broker, 'broker')->create();
+
+    linkBrokerToTenant($broker, $tenant);
 
     Sanctum::actingAs($broker);
 
@@ -156,6 +167,8 @@ it('cancels reservation for owning broker and frees unit', function () {
         'client_id' => $client->id,
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->deleteJson("/api/broker/reservations/{$reservation->id}")
@@ -176,6 +189,8 @@ it('rejects cancel reservation from another broker', function () {
         'unit_id' => $unit->id,
         'broker_id' => $otherBroker->id,
     ]);
+
+    linkBrokerToTenant($broker, $tenant);
 
     Sanctum::actingAs($broker);
 
@@ -205,6 +220,8 @@ it('lists unit reservation with client for broker', function () {
         'client_id' => $client->id,
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->getJson('/api/broker/units')
@@ -223,6 +240,8 @@ it('creates initial message when broker sends observations', function () {
         'broker_id' => $broker->id,
         'unit_id' => $unit->id,
     ]);
+
+    linkBrokerToTenant($broker, $tenant);
 
     Sanctum::actingAs($broker);
 
@@ -255,6 +274,8 @@ it('allows broker to read and reply reservation messages', function () {
         'body' => 'Podemos agendar visita.',
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->getJson("/api/broker/reservations/{$reservation->id}/messages")
@@ -279,6 +300,8 @@ it('rejects broker messages for reservation owned by another broker', function (
         'unit_id' => $unit->id,
         'broker_id' => $otherBroker->id,
     ]);
+
+    linkBrokerToTenant($broker, $tenant);
 
     Sanctum::actingAs($broker);
 
@@ -313,6 +336,8 @@ it('lists reservations for owning broker only', function () {
         'broker_id' => $otherBroker->id,
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->getJson('/api/broker/reservations')
@@ -337,6 +362,8 @@ it('returns pending replies count for broker', function () {
         'reservation_id' => $reservation->id,
         'user_id' => $builder->id,
     ]);
+
+    linkBrokerToTenant($broker, $tenant);
 
     Sanctum::actingAs($broker);
 

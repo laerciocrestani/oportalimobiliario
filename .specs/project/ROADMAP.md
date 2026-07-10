@@ -10,6 +10,7 @@
 | 1 | `auth` | Large | Sanctum + login frontend/backend |
 | 2 | `buildings` | Large | CRUD buildings + units |
 | 2 | `reservations` | Medium | Reservation soft com expiração |
+| 2 | `reservation-timeline` | Complex | Timeline pré-reserva → proposta → sinal → contrato → venda |
 | 3 | `broker-invites` | Large/Complex | Convites + unit_access cross-tenant |
 | 4 | `admin-tenants` | Medium | Gestão de construtoras |
 | 5 | `public-portal` | Large | Listagem read-only + SEO |
@@ -20,7 +21,7 @@
 1. `infra-docker` → bootstrap
 2. `tenancy` + `frontend-shell` (paralelo após infra)
 3. `auth` (após tenancy)
-4. `buildings` → `reservations`
+4. `buildings` → `reservations` → `reservation-timeline`
 5. `broker-invites` (após buildings + auth)
 6. `admin-tenants` (após tenancy)
 7. `public-portal` (após buildings publicados)
@@ -36,6 +37,7 @@
 | auth | done | done | done | done |
 | buildings | done | inline | inline | done |
 | reservations | done | inline | inline | done |
+| reservation-timeline | done | done | — | in_progress (Fase A done) |
 | broker-invites | done | inline | inline | done |
 | admin-tenants | done | inline | inline | done |
 | public-portal | done | inline | inline | done |
@@ -43,6 +45,9 @@
 
 ## Próximos passos (pós-MVP v1)
 
+- **`reservation-timeline` Fase A:** migrations + GET timeline + componente UI (mapeia pre_hold/mensagens)
+- **`reservation-timeline` Fase B:** proposta (form corretor + decisão gestor); realinhar `PATCH confirm`
+- **`reservation-timeline` Fases C–D:** sinal, contrato, venda
 - Executar `subdomain-portals` (subdomínios dev + CORS + guards FE)
 - Deploy domínio `diadimoveis.com.br` (REQ-SUB-012)
 - ~~Policies Spatie granulares por permission~~ → feature `builder-team` (em andamento)

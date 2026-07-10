@@ -78,6 +78,24 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 | REQ-RES-002 | Expiração automática | `Services/ReservationExpirationService.php`, `Console/Commands/ExpireReservations.php` | — | `ReservationTest.php` |
 | REQ-RES-003 | TTL em config | `config/opim.php` | — | `ReservationTest.php` |
 | REQ-RES-004 | ReservationSeeder | `database/seeders/ReservationSeeder.php` | — | `ReservationTest.php` |
+| REQ-RES-005 | Pré-reserva (pre-hold) | `PreReservationService.php`, `Broker/ReservationController.php` | `BrokerUnitsDialog.tsx` | `PreReservationTest.php` |
+| REQ-RES-006 | Confirmar pre-hold | `PreReservationService.php`, `Broker/ReservationController.php` | `BrokerReservationDialog.tsx` | `PreReservationTest.php` |
+| REQ-RES-007 | Liberar pre-hold | `PreReservationService.php`, `Broker/ReservationController.php` | `BrokerReservationDialog.tsx` | `PreReservationTest.php` |
+| REQ-RES-008 | Expirar pre-holds | `ExpirePreReservations.php`, `routes/console.php` | — | `PreReservationTest.php` |
+| REQ-RES-009 | Polling + toast FE | — | `lib/reservation-polling.ts`, `BrokerUnitsDialog.tsx` | `reservation-polling.test.ts` |
+
+---
+
+## reservation-timeline
+
+> Spec: `.specs/features/reservation-timeline/spec.md` · Design: `design.md` · Status: **specified** (não implementado)
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-RTL-001..004 | Pré-reserva + diálogo no timeline | `ReservationTimelineService.php`, controllers timeline | `ReservationTimeline.tsx`, `ReservationTimelineSheet.tsx` | `ReservationTimelineTest.php`, `ReservationTimeline.test.tsx` |
+| REQ-RTL-024..028 | GET timeline API + UI | `Broker/ReservationTimelineController.php`, `Builder/ReservationTimelineController.php` | `BrokerReservationsPage.tsx`, `ReservationsPage.tsx` | `ReservationTimelineTest.php` |
+| REQ-RTL-029 | Eventos append-only | `ReservationTimelineEvent.php`, hooks em `PreReservationService` + messages | — | `ReservationTimelineTest.php` |
+| REQ-RTL-005..023 | Proposta + sinal + contrato | — (Fase B–D) | — | — |
 
 ---
 
@@ -124,6 +142,7 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 | REQ-BRK-CLI-002 | Cliente inline na reserva | — | `BrokerReservationDialog.tsx` | `BrokerNewClientDialog.test.tsx` |
 | REQ-BRK-RES-001 | Reserva com client_id | `Broker/ReservationController.php` | `BrokerReservationDialog.tsx` | `ReservationTest.php` |
 | REQ-BRK-RES-002 | Acesso via BuildingAccess ou UnitAccess | `BrokerUnitAccessService.php` | — | `BuildingAccessTest.php` |
+| REQ-BRK-RES-003 | Cancelamento pelo corretor | `Broker/ReservationController.php` | `BrokerUnitsDialog.tsx`, `BrokerReservationsPage.tsx` | `ReservationTest.php` |
 
 ---
 

@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Broker\BrokerProfileController;
 use App\Http\Controllers\Api\Broker\ClientController as BrokerClientController;
 use App\Http\Controllers\Api\Broker\ReservationController;
 use App\Http\Controllers\Api\Broker\ReservationMessageController as BrokerReservationMessageController;
+use App\Http\Controllers\Api\Broker\ReservationTimelineController as BrokerReservationTimelineController;
 use App\Http\Controllers\Api\Broker\UnitController as BrokerUnitController;
 use App\Http\Controllers\Api\Broker\BuildingMediaController as BrokerBuildingMediaController;
 use App\Http\Controllers\Api\Builder\BrokerController as BuilderBrokerController;
@@ -19,6 +20,7 @@ use App\Http\Controllers\Api\Builder\BuildingMediaController as BuilderBuildingM
 use App\Http\Controllers\Api\Builder\TowerController;
 use App\Http\Controllers\Api\Builder\ReservationController as BuilderReservationController;
 use App\Http\Controllers\Api\Builder\ReservationMessageController as BuilderReservationMessageController;
+use App\Http\Controllers\Api\Builder\ReservationTimelineController as BuilderReservationTimelineController;
 use App\Http\Controllers\Api\Builder\TeamMemberController;
 use App\Http\Controllers\Api\Builder\UnitController;
 use App\Http\Controllers\Api\Public\BuildingController as PublicBuildingController;
@@ -108,6 +110,7 @@ Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permiss
     Route::get('/reservations', [BuilderReservationController::class, 'index']);
     Route::get('/reservations/pending-replies-count', [BuilderReservationController::class, 'pendingRepliesCount']);
     Route::delete('/reservations/{reservation}', [BuilderReservationController::class, 'destroy']);
+    Route::get('/reservations/{reservation}/timeline', [BuilderReservationTimelineController::class, 'show']);
     Route::get('/reservations/{reservation}/messages', [BuilderReservationMessageController::class, 'index']);
     Route::post('/reservations/{reservation}/messages', [BuilderReservationMessageController::class, 'store']);
 });
@@ -123,8 +126,12 @@ Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('bro
         Route::get('/buildings/{building}/media/{media}/file', [BrokerBuildingMediaController::class, 'file']);
         Route::get('/reservations', [ReservationController::class, 'index']);
         Route::get('/reservations/pending-replies-count', [ReservationController::class, 'pendingRepliesCount']);
+        Route::post('/reservations/pre-hold', [ReservationController::class, 'preHold']);
         Route::post('/reservations', [ReservationController::class, 'store']);
+        Route::patch('/reservations/{reservation}/confirm', [ReservationController::class, 'confirm']);
+        Route::delete('/reservations/{reservation}/pre-hold', [ReservationController::class, 'releasePreHold']);
         Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy']);
+        Route::get('/reservations/{reservation}/timeline', [BrokerReservationTimelineController::class, 'show']);
         Route::get('/reservations/{reservation}/messages', [BrokerReservationMessageController::class, 'index']);
         Route::post('/reservations/{reservation}/messages', [BrokerReservationMessageController::class, 'store']);
     });

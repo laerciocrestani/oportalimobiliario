@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BuilderDashboardShell } from '@/apps/builder/components/BuilderDashboardShell'
 import { ReservationMessagesDialog } from '@/apps/builder/components/ReservationMessagesDialog'
+import { ReservationTimelineSheet } from '@/components/reservations/ReservationTimelineSheet'
 import { useBuilderPermissions } from '@/apps/builder/hooks/use-builder-permissions'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -22,6 +23,8 @@ export function ReservationsPage() {
   const [cancellingId, setCancellingId] = useState<number | null>(null)
   const [messagesReservationId, setMessagesReservationId] = useState<number | null>(null)
   const [messagesOpen, setMessagesOpen] = useState(false)
+  const [timelineReservationId, setTimelineReservationId] = useState<number | null>(null)
+  const [timelineOpen, setTimelineOpen] = useState(false)
 
   const canManage = permissions.includes('reservations.cancel')
 
@@ -61,6 +64,11 @@ export function ReservationsPage() {
     } finally {
       setCancellingId(null)
     }
+  }
+
+  function handleOpenTimeline(reservationId: number) {
+    setTimelineReservationId(reservationId)
+    setTimelineOpen(true)
   }
 
   function handleOpenMessages(reservationId: number) {
@@ -126,6 +134,14 @@ export function ReservationsPage() {
                             <Button
                               type="button"
                               size="sm"
+                              variant="outline"
+                              onClick={() => handleOpenTimeline(reservation.id)}
+                            >
+                              Andamento
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
                               variant={reservation.needs_reply ? 'default' : 'outline'}
                               onClick={() => handleOpenMessages(reservation.id)}
                             >
@@ -152,6 +168,14 @@ export function ReservationsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ReservationTimelineSheet
+        profile="builder"
+        reservationId={timelineReservationId}
+        open={timelineOpen}
+        onOpenChange={setTimelineOpen}
+        onTimelineRefresh={() => void load()}
+      />
 
       <ReservationMessagesDialog
         profile="builder"

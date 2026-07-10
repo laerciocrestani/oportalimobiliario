@@ -9,6 +9,14 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | empreendimento | `building` |
 | unidade | `unit` |
 | reserva | `reservation` |
+| pré-reserva | `pre_hold` / `pre_reservation` |
+| proposta | `proposal` |
+| sinal | `deposit` |
+| comprovante | `deposit_proof` |
+| condições de pagamento | `payment_terms` |
+| valor do terreno | `land_value` |
+| emissão de contrato | `contract_issue` |
+| contrato assinado | `contract_signed` |
 | convite corretor | `broker_invite` |
 | acesso unidade | `unit_access` |
 | role construtora | `builder` |
@@ -37,8 +45,17 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | PT | EN |
 |----|-----|
 | disponivel | `available` |
+| pre_reservada | `pre_reserved` |
 | reservada | `reserved` |
 | vendida | `sold` |
+| pre_hold | `pre_hold` |
+| proposta_pendente | `proposal_pending` |
+| proposta_devolvida | `proposal_returned` |
+| aguardando_sinal | `deposit_pending` |
+| comprovante_pendente | `deposit_proof_pending` |
+| aguardando_dados_contrato | `contract_data_pending` |
+| contrato_emitido | `contract_issued` |
+| contrato_enviado | `contract_uploaded` |
 
 ## Dev hostnames (unchanged — PT)
 

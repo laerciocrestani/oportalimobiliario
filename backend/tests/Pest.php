@@ -20,6 +20,9 @@ $_SERVER['DB_URL'] = '';
 $_ENV['DB_URL'] = '';
 putenv('DB_URL');
 
+use App\Models\BrokerTenant;
+use App\Models\Tenant;
+use App\Models\User;
 use App\Support\BuilderPermissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -31,3 +34,11 @@ uses(RefreshDatabase::class)->in('Feature', 'Unit');
 beforeEach(function () {
     BuilderPermissions::seed();
 })->in('Feature');
+
+function linkBrokerToTenant(User $broker, Tenant $tenant): void
+{
+    BrokerTenant::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+    ]);
+}

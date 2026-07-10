@@ -63,6 +63,12 @@ export type Building = {
   tenant?: { id: number; name: string }
 }
 
+export type UnitPreHold = {
+  reservation_id: number
+  expires_at: string
+  held_by_me: boolean
+}
+
 export type Unit = {
   id: number
   code: string
@@ -74,6 +80,7 @@ export type Unit = {
   tower?: Pick<Tower, 'id' | 'name'>
   building?: Building
   reservation?: Reservation | null
+  pre_hold?: UnitPreHold | null
 }
 
 export type Tenant = {
@@ -199,8 +206,9 @@ export type BrokerClient = {
 export type Reservation = {
   id: number
   unit_id: number
-  client_id: number
+  client_id: number | null
   broker_id: number
+  status?: string
   expires_at: string
   created_at?: string
   unit?: Unit
@@ -237,6 +245,35 @@ export type BuilderReservationListItem = {
 
 export type ReservationPendingRepliesCount = {
   count: number
+}
+
+export type ReservationTimelineStepStatus =
+  | 'completed'
+  | 'current'
+  | 'upcoming'
+  | 'skipped'
+  | 'failed'
+
+export type ReservationTimelineStep = {
+  key: string
+  label: string
+  status: ReservationTimelineStepStatus
+  occurred_at: string | null
+  due_at: string | null
+  actor: { id: number; name: string; role: string } | null
+  actions: string[]
+}
+
+export type ReservationTimeline = {
+  reservation_id: number
+  current_stage: string
+  expires_at: string | null
+  unit: {
+    id: number
+    code: string
+    status: string
+  }
+  steps: ReservationTimelineStep[]
 }
 
 export type Paginated<T> = {
@@ -556,6 +593,8 @@ export const builderApi = {
       method: 'POST',
       body: JSON.stringify({ body }),
     }),
+  getReservationTimeline: (reservationId: number) =>
+    apiFetch<ReservationTimeline>(`/builder/reservations/${reservationId}/timeline`),
 }
 
 export const brokerApi = {
@@ -579,6 +618,21 @@ export const brokerApi = {
         observations: observations?.trim() || undefined,
       }),
     }),
+  createPreHold: (unitId: number) =>
+    apiFetch<Reservation>('/broker/reservations/pre-hold', {
+      method: 'POST',
+      body: JSON.stringify({ unit_id: unitId }),
+    }),
+  confirmReservation: (reservationId: number, clientId: number, observations?: string) =>
+    apiFetch<Reservation>(`/broker/reservations/${reservationId}/confirm`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        client_id: clientId,
+        observations: observations?.trim() || undefined,
+      }),
+    }),
+  releasePreHold: (reservationId: number) =>
+    apiFetch<void>(`/broker/reservations/${reservationId}/pre-hold`, { method: 'DELETE' }),
   cancelReservation: (reservationId: number) =>
     apiFetch<void>(`/broker/reservations/${reservationId}`, { method: 'DELETE' }),
   listReservationMessages: (reservationId: number) =>
@@ -588,6 +642,8 @@ export const brokerApi = {
       method: 'POST',
       body: JSON.stringify({ body }),
     }),
+  getReservationTimeline: (reservationId: number) =>
+    apiFetch<ReservationTimeline>(`/broker/reservations/${reservationId}/timeline`),
   previewInvite: (token: string) =>
     apiFetch<BrokerInvitePreview>(
       `/broker/invites/preview?token=${encodeURIComponent(token)}`,

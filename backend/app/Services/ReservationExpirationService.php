@@ -16,6 +16,7 @@ class ReservationExpirationService
     {
         $expired = Reservation::query()
             ->withoutGlobalScope('tenant')
+            ->confirmed()
             ->where('expires_at', '<=', now())
             ->get();
 

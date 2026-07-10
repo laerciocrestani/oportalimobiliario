@@ -10,8 +10,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import type { BuildingWithUnits } from '@/apps/broker/lib/group-units-by-building'
-import { brokerApi, type Unit } from '@/lib/api'
-import { useState } from 'react'
+import { brokerApi, ApiRequestError, type Unit } from '@/lib/api'
+import {
+  buildStatusSnapshot,
+  detectPreHoldTransitionToast,
+  PRE_RESERVE_POLL_MS,
+} from '@/lib/reservation-polling'
+import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 
 type BrokerUnitsDialogProps = {
   open: boolean
@@ -22,13 +28,17 @@ type BrokerUnitsDialogProps = {
 
 function UnitRowActions({
   unit,
-  onReserve,
+  holdingUnitId,
+  onPreReserve,
+  onContinueReservation,
   onCancelReservation,
   onOpenMessages,
   cancelling,
 }: {
   unit: Unit
-  onReserve: (unit: Unit) => void
+  holdingUnitId: number | null
+  onPreReserve: (unit: Unit) => void
+  onContinueReservation: (unit: Unit) => void
   onCancelReservation: (unit: Unit) => void
   onOpenMessages: (unit: Unit) => void
   cancelling: boolean
@@ -54,10 +64,30 @@ function UnitRowActions({
     )
   }
 
+  if (unit.status === 'pre_reserved') {
+    if (unit.pre_hold?.held_by_me || unit.reservation) {
+      return (
+        <Button
+          size="sm"
+          disabled={holdingUnitId === unit.id}
+          onClick={() => onContinueReservation(unit)}
+        >
+          {holdingUnitId === unit.id ? 'Pré-reservando...' : 'Continuar reserva'}
+        </Button>
+      )
+    }
+
+    return <p className="text-sm text-muted-foreground">Pré-reservada</p>
+  }
+
   if (unit.status === 'available') {
     return (
-      <Button size="sm" onClick={() => onReserve(unit)}>
-        Reservar
+      <Button
+        size="sm"
+        disabled={holdingUnitId === unit.id}
+        onClick={() => onPreReserve(unit)}
+      >
+        {holdingUnitId === unit.id ? 'Pré-reservando...' : 'Pré-reservar'}
       </Button>
     )
   }
@@ -71,16 +101,112 @@ export function BrokerUnitsDialog({
   building,
   onReserved,
 }: BrokerUnitsDialogProps) {
+  const [units, setUnits] = useState<Unit[]>(building?.units ?? [])
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null)
+  const [preHoldReservationId, setPreHoldReservationId] = useState<number | null>(null)
+  const [preHoldExpiresAt, setPreHoldExpiresAt] = useState<string | null>(null)
   const [reservationOpen, setReservationOpen] = useState(false)
   const [messagesReservationId, setMessagesReservationId] = useState<number | null>(null)
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [cancellingUnitId, setCancellingUnitId] = useState<number | null>(null)
+  const [holdingUnitId, setHoldingUnitId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  function handleReserveClick(unit: Unit) {
+  const previousStatusRef = useRef(buildStatusSnapshot(building?.units ?? []))
+  const toastShownForRef = useRef(new Set<number>())
+  const pollingPausedRef = useRef(false)
+
+  useEffect(() => {
+    if (!open || !building) {
+      return
+    }
+
+    setUnits(building.units)
+    previousStatusRef.current = buildStatusSnapshot(building.units)
+    toastShownForRef.current.clear()
+  }, [building, open])
+
+  useEffect(() => {
+    if (!open || !building || reservationOpen) {
+      return
+    }
+
+    let cancelled = false
+
+    async function pollUnits() {
+      if (pollingPausedRef.current || cancelled) {
+        return
+      }
+
+      try {
+        const allUnits = await brokerApi.listUnits()
+        const nextUnits = allUnits.filter((unit) => unit.building?.id === building.id)
+
+        const toastTarget = detectPreHoldTransitionToast(
+          previousStatusRef.current,
+          nextUnits,
+          toastShownForRef.current,
+        )
+
+        if (toastTarget) {
+          toastShownForRef.current.add(toastTarget.unitId)
+          toast.message(
+            `Unidade ${toastTarget.unitCode} acaba de ser pré-reservada por outro corretor.`,
+          )
+        }
+
+        previousStatusRef.current = buildStatusSnapshot(nextUnits)
+        setUnits(nextUnits)
+      } catch {
+        // Polling silencioso — não interrompe o fluxo do corretor.
+      }
+    }
+
+    void pollUnits()
+    const intervalId = window.setInterval(() => void pollUnits(), PRE_RESERVE_POLL_MS)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [building, open, reservationOpen])
+
+  function openReservationDialog(unit: Unit, reservationId: number, expiresAt: string) {
     setSelectedUnit(unit)
+    setPreHoldReservationId(reservationId)
+    setPreHoldExpiresAt(expiresAt)
     setReservationOpen(true)
+  }
+
+  async function handlePreReserveClick(unit: Unit) {
+    setError(null)
+    setHoldingUnitId(unit.id)
+
+    try {
+      const reservation = await brokerApi.createPreHold(unit.id)
+      openReservationDialog(unit, reservation.id, reservation.expires_at)
+    } catch (err) {
+      const message =
+        err instanceof ApiRequestError && err.status === 422
+          ? err.message
+          : 'Não foi possível pré-reservar a unidade.'
+
+      toast.error(message)
+      setError(message)
+    } finally {
+      setHoldingUnitId(null)
+    }
+  }
+
+  function handleContinueReservation(unit: Unit) {
+    const reservationId = unit.reservation?.id ?? unit.pre_hold?.reservation_id
+    const expiresAt = unit.reservation?.expires_at ?? unit.pre_hold?.expires_at
+
+    if (!reservationId || !expiresAt) {
+      return
+    }
+
+    openReservationDialog(unit, reservationId, expiresAt)
   }
 
   function handleOpenMessages(unit: Unit) {
@@ -118,6 +244,8 @@ export function BrokerUnitsDialog({
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
             setSelectedUnit(null)
+            setPreHoldReservationId(null)
+            setPreHoldExpiresAt(null)
             setReservationOpen(false)
             setError(null)
           }
@@ -128,14 +256,14 @@ export function BrokerUnitsDialog({
           <DialogHeader>
             <DialogTitle>{building?.name ?? 'Unidades'}</DialogTitle>
             <DialogDescription>
-              Selecione uma unidade disponível para reservar.
+              Selecione uma unidade disponível para iniciar a pré-reserva.
             </DialogDescription>
           </DialogHeader>
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
           <ul className="divide-y rounded-lg border">
-            {building?.units.map((unit) => (
+            {units.map((unit) => (
               <li key={unit.id} className="flex items-center justify-between gap-4 px-4 py-3">
                 <div>
                   <p className="font-medium">{unit.code}</p>
@@ -146,14 +274,16 @@ export function BrokerUnitsDialog({
                 </div>
                 <UnitRowActions
                   unit={unit}
-                  onReserve={handleReserveClick}
+                  holdingUnitId={holdingUnitId}
+                  onPreReserve={(target) => void handlePreReserveClick(target)}
+                  onContinueReservation={handleContinueReservation}
                   onCancelReservation={(target) => void handleCancelReservation(target)}
                   onOpenMessages={handleOpenMessages}
                   cancelling={cancellingUnitId === unit.id}
                 />
               </li>
             ))}
-            {building && building.units.length === 0 ? (
+            {units.length === 0 ? (
               <li className="px-4 py-6 text-center text-sm text-muted-foreground">
                 Nenhuma unidade liberada neste empreendimento.
               </li>
@@ -164,8 +294,17 @@ export function BrokerUnitsDialog({
 
       <BrokerReservationDialog
         open={reservationOpen}
-        onOpenChange={setReservationOpen}
+        onOpenChange={(nextOpen) => {
+          pollingPausedRef.current = nextOpen
+          setReservationOpen(nextOpen)
+          if (!nextOpen) {
+            setPreHoldReservationId(null)
+            setPreHoldExpiresAt(null)
+          }
+        }}
         unit={selectedUnit}
+        reservationId={preHoldReservationId}
+        expiresAt={preHoldExpiresAt}
         onReserved={() => {
           setReservationOpen(false)
           onOpenChange(false)

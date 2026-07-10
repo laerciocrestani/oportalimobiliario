@@ -2,26 +2,32 @@
 
 namespace App\Http\Controllers\Api\Broker;
 
+use App\Enums\ReservationStatus;
 use App\Enums\UnitStatus;
 use App\Http\Controllers\Controller;
 use App\Models\BrokerClient;
 use App\Models\Reservation;
 use App\Models\Unit;
 use App\Services\BrokerUnitAccessService;
+use App\Services\PreReservationService;
 use App\Services\ReservationPendingReplyService;
+use App\Services\ReservationTimelineService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 /**
  * @see REQ-RES-001
+ * @see REQ-RES-005
  * @see REQ-BLD-RES-006
  */
 class ReservationController extends Controller
 {
     public function __construct(
         private readonly BrokerUnitAccessService $brokerUnitAccessService,
+        private readonly PreReservationService $preReservationService,
         private readonly ReservationPendingReplyService $reservationPendingReplyService,
+        private readonly ReservationTimelineService $timelineService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -30,6 +36,7 @@ class ReservationController extends Controller
 
         $reservations = Reservation::query()
             ->withoutGlobalScope('tenant')
+            ->confirmed()
             ->where('broker_id', $broker->id)
             ->with(['client', 'unit.building'])
             ->withCount('messages')
@@ -45,6 +52,69 @@ class ReservationController extends Controller
         return response()->json([
             'count' => $this->reservationPendingReplyService->countForBroker($request->user()),
         ]);
+    }
+
+    public function preHold(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'unit_id' => ['required', 'integer', 'exists:units,id'],
+        ]);
+
+        $broker = $request->user();
+        $unit = Unit::query()
+            ->withoutGlobalScope('tenant')
+            ->findOrFail($data['unit_id']);
+
+        $access = $this->brokerUnitAccessService->resolveAccess($broker, $unit);
+
+        if ($access === null) {
+            return response()->json(['message' => 'No access to this unit.'], 403);
+        }
+
+        if ($unit->status !== UnitStatus::Available) {
+            return response()->json([
+                'message' => 'Esta unidade acaba de ser pré-reservada por outro corretor.',
+            ], 422);
+        }
+
+        $reservation = $this->preReservationService->createPreHold($broker, $unit, $access);
+
+        return response()->json($reservation->load('unit'), 201);
+    }
+
+    public function confirm(Request $request, Reservation $reservation): JsonResponse
+    {
+        $data = $request->validate([
+            'client_id' => ['required', 'integer', 'exists:broker_clients,id'],
+            'observations' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $broker = $request->user();
+
+        $client = BrokerClient::query()
+            ->where('id', $data['client_id'])
+            ->where('broker_id', $broker->id)
+            ->first();
+
+        if ($client === null) {
+            return response()->json(['message' => 'Client not found.'], 403);
+        }
+
+        $confirmed = $this->preReservationService->confirmPreHold(
+            $broker,
+            $reservation,
+            $client,
+            $data['observations'] ?? null,
+        );
+
+        return response()->json($confirmed);
+    }
+
+    public function releasePreHold(Request $request, Reservation $reservation): JsonResponse
+    {
+        $this->preReservationService->releasePreHold($request->user(), $reservation);
+
+        return response()->json(null, 204);
     }
 
     public function store(Request $request): JsonResponse
@@ -99,6 +169,7 @@ class ReservationController extends Controller
                 'unit_id' => $locked->id,
                 'broker_id' => $broker->id,
                 'client_id' => $client->id,
+                'status' => ReservationStatus::Confirmed,
                 'expires_at' => now()->addHours($ttlHours),
             ]);
 
@@ -114,6 +185,14 @@ class ReservationController extends Controller
             return $reservation;
         });
 
+        $this->timelineService->recordDepositWindowOpened($reservation);
+
+        $observations = trim((string) ($data['observations'] ?? ''));
+
+        if ($observations !== '') {
+            $this->timelineService->recordDialogue($reservation, $broker);
+        }
+
         return response()->json($reservation->load(['unit', 'client']), 201);
     }
 
@@ -121,6 +200,12 @@ class ReservationController extends Controller
     {
         if ($reservation->broker_id !== $request->user()->id) {
             return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        if ($reservation->isPreHold()) {
+            $this->preReservationService->releasePreHold($request->user(), $reservation);
+
+            return response()->json(null, 204);
         }
 
         DB::transaction(function () use ($reservation) {

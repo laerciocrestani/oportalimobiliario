@@ -27,6 +27,7 @@ class ReservationController extends Controller
         $user = request()->user();
 
         $reservations = Reservation::query()
+            ->confirmed()
             ->with(['client', 'broker', 'unit.building'])
             ->withCount('messages')
             ->orderByDesc('created_at')

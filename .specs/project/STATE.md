@@ -31,9 +31,9 @@
 
 ## Sessão atual
 
-- **Fase:** builder-reservations — listagem corretor + badge nav
-- **Última etapa concluída:** `BrokerReservationsPage`, badge pending-replies na nav (builder + broker)
-- **Próxima etapa:** smoke manual em `/reservations` nos dois portais
+- **Fase:** reservation-pre-hold — concluída
+- **Última etapa concluída:** smoke test reservas (API, 14/14 pass) — pre-hold → confirm → thread → cancel
+- **Próxima etapa:** backlog pós-MVP (expires_at na UI, notificações, aprovação formal)
 
 ## Blockers
 

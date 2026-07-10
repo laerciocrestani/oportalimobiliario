@@ -695,6 +695,129 @@ paths:
           description: Cancelled
         '403':
           description: Missing reservations.cancel permission
+  /api/builder/reservations/{reservation}/timeline:
+    get:
+      summary: Get reservation timeline (builder)
+      description: |
+        Returns current stage, steps, and available actions for the manager.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Timeline with steps
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationTimeline'
+        '403':
+          description: Missing reservations.cancel permission
+  /api/builder/reservations/{reservation}/proposal/decision:
+    patch:
+      summary: Decide on reservation proposal (builder)
+      description: Planned — accept, reject, or return proposal to broker.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - decision
+              properties:
+                decision:
+                  type: string
+                  enum: [accepted, rejected, returned]
+                decision_note:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
+      responses:
+        '200':
+          description: Decision recorded
+        '403':
+          description: Forbidden
+        '422':
+          description: Invalid stage or validation error
+  /api/builder/reservations/{reservation}/deposit-proof/approve:
+    patch:
+      summary: Approve deposit proof (builder)
+      description: Planned — validates payment proof and releases contract data collection.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Deposit proof approved
+        '403':
+          description: Forbidden
+        '422':
+          description: Invalid stage
+  /api/builder/reservations/{reservation}/contract/issue:
+    post:
+      summary: Issue contract PDF (builder)
+      description: Planned — emits contract PDF after document review.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Contract issued
+        '403':
+          description: Forbidden
+        '422':
+          description: Invalid stage
+  /api/builder/reservations/{reservation}/contract/validate:
+    patch:
+      summary: Validate signed contract and mark unit sold (builder)
+      description: Planned — final validation, builder GOV signature (manual v1), unit sold.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Contract validated, unit sold
+        '403':
+          description: Forbidden
+        '422':
+          description: Invalid stage
   /api/broker/clients:
     get:
       summary: List broker clients
@@ -770,6 +893,75 @@ paths:
       responses:
         '200':
           description: Media file stream
+  /api/broker/reservations/pre-hold:
+    post:
+      summary: Create pre-hold reservation (10 min TTL)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - unit_id
+              properties:
+                unit_id:
+                  type: integer
+      responses:
+        '201':
+          description: Pre-hold created
+        '422':
+          description: Unit not available
+  /api/broker/reservations/{reservation}/confirm:
+    patch:
+      summary: Confirm pre-hold with client
+      description: |
+        Current v2 behavior — confirms reservation directly.
+        Planned deprecation: will be replaced by POST /proposal (reservation-timeline Fase B).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - client_id
+              properties:
+                client_id:
+                  type: integer
+                observations:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
+      responses:
+        '200':
+          description: Reservation confirmed
+        '422':
+          description: Pre-hold expired or unit unavailable
+  /api/broker/reservations/{reservation}/pre-hold:
+    delete:
+      summary: Release pre-hold without confirming
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Pre-hold released
   /api/broker/reservations:
     get:
       summary: List broker reservations
@@ -872,6 +1064,147 @@ paths:
           description: Reservation cancelled
         '403':
           description: Not the reservation owner
+  /api/broker/reservations/{reservation}/timeline:
+    get:
+      summary: Get reservation timeline (broker)
+      description: |
+        Returns current stage, steps, and available actions for the broker.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Timeline with steps
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationTimeline'
+        '403':
+          description: Not the reservation owner
+  /api/broker/reservations/{reservation}/proposal:
+    post:
+      summary: Submit reservation proposal (broker)
+      description: |
+        Planned — replaces conceptual meaning of PATCH confirm.
+        Sends client data snapshot and payment terms to manager for approval.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationProposalInput'
+      responses:
+        '201':
+          description: Proposal submitted
+        '403':
+          description: Not the reservation owner
+        '422':
+          description: Invalid stage or validation error
+  /api/broker/reservations/{reservation}/deposit-proof:
+    post:
+      summary: Upload deposit proof (broker)
+      description: Planned — attach payment proof after proposal accepted.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Deposit proof uploaded
+        '403':
+          description: Not the reservation owner
+        '422':
+          description: Invalid stage
+  /api/broker/reservations/{reservation}/contract-data:
+    post:
+      summary: Submit contract data and documentation (broker)
+      description: Planned — client data and ID document photos for contract drafting.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '201':
+          description: Contract data submitted
+        '403':
+          description: Not the reservation owner
+        '422':
+          description: Invalid stage
+  /api/broker/reservations/{reservation}/contract/signed:
+    post:
+      summary: Upload GOV-signed contract (broker)
+      description: Planned — broker uploads contract signed via gov.br.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Signed contract uploaded
+        '403':
+          description: Not the reservation owner
+        '422':
+          description: Invalid stage
   /api/broker/invites/preview:
     get:
       summary: Preview broker invite (public)
@@ -1051,3 +1384,105 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+  schemas:
+    ReservationTimelineStep:
+      type: object
+      properties:
+        key:
+          type: string
+          example: deposit_window
+        label:
+          type: string
+          example: Aguardando sinal (48h)
+        status:
+          type: string
+          enum: [completed, current, upcoming, skipped, failed]
+        occurred_at:
+          type: string
+          format: date-time
+          nullable: true
+        due_at:
+          type: string
+          format: date-time
+          nullable: true
+        actor:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            role:
+              type: string
+        actions:
+          type: array
+          items:
+            type: string
+    ReservationTimeline:
+      type: object
+      properties:
+        reservation_id:
+          type: integer
+        current_stage:
+          type: string
+          example: deposit_pending
+        expires_at:
+          type: string
+          format: date-time
+          nullable: true
+        unit:
+          type: object
+          properties:
+            id:
+              type: integer
+            code:
+              type: string
+            status:
+              type: string
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReservationTimelineStep'
+    ReservationProposalInput:
+      type: object
+      required:
+        - client_name
+        - client_email
+        - client_phone
+        - client_cpf
+        - address
+        - city
+        - state
+        - zip
+        - marital_status
+        - nationality
+        - land_value
+        - payment_terms
+      properties:
+        client_name:
+          type: string
+        client_email:
+          type: string
+        client_phone:
+          type: string
+        client_cpf:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        zip:
+          type: string
+        marital_status:
+          type: string
+        nationality:
+          type: string
+        land_value:
+          type: number
+          format: double
+        payment_terms:
+          type: string
+          maxLength: 2000

@@ -42,4 +42,9 @@ class ReservationPolicy
     {
         return $this->viewMessages($user, $reservation);
     }
+
+    public function viewTimeline(User $user, Reservation $reservation): bool
+    {
+        return $this->viewMessages($user, $reservation);
+    }
 }

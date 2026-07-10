@@ -1,3 +1,9 @@
+---
+branch: main
+status: done
+depends_on: tenancy, auth
+---
+
 # Feature: buildings
 
 ## Objetivo

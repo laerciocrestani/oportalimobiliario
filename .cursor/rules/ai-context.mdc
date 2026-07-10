@@ -1,0 +1,14 @@
+---
+description: Contexto para agentes de IA — leia AGENTS.md primeiro
+alwaysApply: true
+---
+
+# AI Context
+
+Antes de implementar, leia [`AGENTS.md`](../../AGENTS.md) e [`.specs/codebase/AI_CONTEXT.md`](../../.specs/codebase/AI_CONTEXT.md).
+
+Índices em `.specs/codebase/`: TRACEABILITY, SEEDS, FLOWS, FRONTEND, PERMISSIONS, ANTI-PATTERNS.
+
+Checklist dev: [`docs/DEV_ACCESS.md`](../../docs/DEV_ACCESS.md).
+
+Documentação válida **somente neste repositório**.

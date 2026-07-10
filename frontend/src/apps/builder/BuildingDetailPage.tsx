@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { DigitalMirror } from '@/apps/builder/components/DigitalMirror'
 import { TowerEditSheet } from '@/apps/builder/components/TowerEditSheet'
+import { UnitCreateDialog } from '@/apps/builder/components/UnitCreateDialog'
 import { UnitDetailDrawer } from '@/apps/builder/components/UnitDetailDrawer'
 import { UnitsTable } from '@/apps/builder/components/UnitsTable'
 import { BuilderDashboardShell } from '@/apps/builder/components/BuilderDashboardShell'
@@ -19,6 +20,7 @@ export function BuildingDetailPage() {
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null)
   const [towerEditOpen, setTowerEditOpen] = useState(false)
   const [editingTower, setEditingTower] = useState<Tower | null>(null)
+  const [unitCreateOpen, setUnitCreateOpen] = useState(false)
 
   const loadBuilding = useCallback(async () => {
     if (!buildingId) {
@@ -124,7 +126,15 @@ export function BuildingDetailPage() {
                 {canManageBuildings ? <TabsTrigger value="towers">Torres</TabsTrigger> : null}
               </TabsList>
 
-              <TabsContent value="units" className="mt-4">
+              <TabsContent value="units" className="mt-4 space-y-4">
+                {canManageUnits ? (
+                  <div className="flex justify-end">
+                    <Button type="button" size="sm" onClick={() => setUnitCreateOpen(true)}>
+                      Nova unidade
+                    </Button>
+                  </div>
+                ) : null}
+
                 <UnitsTable
                   units={building.units ?? []}
                   towers={building.towers}
@@ -203,6 +213,19 @@ export function BuildingDetailPage() {
               canUpdateStatus={canUpdateStatus}
               onSaved={handleUnitSaved}
             />
+
+            {canManageUnits ? (
+              <UnitCreateDialog
+                buildingId={building.id}
+                towers={building.towers ?? []}
+                open={unitCreateOpen}
+                onOpenChange={setUnitCreateOpen}
+                canManageBuildings={canManageBuildings}
+                onCreated={() => {
+                  void loadBuilding()
+                }}
+              />
+            ) : null}
 
             {canManageBuildings ? (
               <TowerEditSheet

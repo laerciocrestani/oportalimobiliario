@@ -64,6 +64,8 @@ Rotas e identificadores de código usam vocabulário EN; labels de UI e subdomí
 
 Contrato completo: [`docs/api/openapi.yaml`](docs/api/openapi.yaml). Mapeamento PT↔EN: [`.specs/codebase/GLOSSARY.md`](.specs/codebase/GLOSSARY.md).
 
-## Governança
+## Governança (IA)
 
-Especificações em [`.specs/`](.specs/). Decisões em [`.specs/project/STATE.md`](.specs/project/STATE.md).
+- [`AGENTS.md`](AGENTS.md) · [`.specs/codebase/AI_CONTEXT.md`](.specs/codebase/AI_CONTEXT.md)
+- Checklist: [`docs/DEV_ACCESS.md`](docs/DEV_ACCESS.md)
+- Índices: [`.specs/codebase/`](.specs/codebase/)

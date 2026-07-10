@@ -70,8 +70,12 @@ Subdomínios de dev permanecem em PT (`construtora.localhost`, `corretor.localho
 
 ## Specs e governança
 
-- Specs em `.specs/`; estado do projeto em `.specs/project/STATE.md`
-- Multi-agent: 1 agent = 1 feature = 1 frente (BE ou FE); backend antes de frontend que consome API
+- Entry point IA: `AGENTS.md` + `.specs/codebase/AI_CONTEXT.md`
+- Specs em `.specs/`; estado em `.specs/project/STATE.md`
+- Índices: `TRACEABILITY`, `SEEDS`, `FLOWS`, `FRONTEND`, `PERMISSIONS`, `ANTI-PATTERNS`
+- Checklist dev: `docs/DEV_ACCESS.md`
+- Specs com frontmatter YAML (`branch`, `status`, `depends_on`) — ver `AI_CONTEXT.md`
+- Multi-agent: 1 agent = 1 feature; backend antes do frontend
 
 ## Skills relacionadas
 

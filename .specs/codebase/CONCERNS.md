@@ -13,4 +13,4 @@
 ## Débito técnico
 
 - Example tests do Laravel scaffold (remover quando suite crescer)
-- OpenAPI ainda não gerado
+- Manter `docs/api/openapi.yaml` sincronizado com rotas (gate manual; sem geração automática ainda)

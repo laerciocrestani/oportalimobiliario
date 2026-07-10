@@ -27,6 +27,7 @@ class BrokerInviteFactory extends Factory
             'channel' => BrokerInviteChannel::Email,
             'token' => Str::random(48),
             'expires_at' => now()->addDays(7),
+            'last_sent_at' => now(),
         ];
     }
 
@@ -45,6 +46,13 @@ class BrokerInviteFactory extends Factory
             'channel' => BrokerInviteChannel::Link,
             'email' => null,
             'phone' => null,
+        ]);
+    }
+
+    public function declined(): static
+    {
+        return $this->state(fn () => [
+            'declined_at' => now(),
         ]);
     }
 

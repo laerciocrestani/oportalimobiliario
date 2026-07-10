@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.ensure' => \App\Tenancy\Middleware\EnsureTenantContext::class,
             'tenant.ensure.none' => \App\Tenancy\Middleware\EnsureNoTenantContext::class,
             'broker' => \App\Tenancy\Middleware\EnsureBroker::class,
+            'broker.active' => \App\Tenancy\Middleware\EnsureBrokerHasActiveAccess::class,
             'builder' => \App\Tenancy\Middleware\EnsureBuilder::class,
             'admin' => \App\Tenancy\Middleware\EnsureAdmin::class,
         ]);

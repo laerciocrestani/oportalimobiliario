@@ -1,0 +1,32 @@
+O corretor sempre deve prereservar.
+Corretor troca informações com a contrutora, intermediando as duas partes.
+Depois sera feito a proposta(formulario) para fazer a reserva, é necessário fazer um sinal, um pix,ex (pix de 10 mil mais o terreno e o restante em 24x de 5 mil)
+A proposta vai ser enviada ao gestor, esse formulario será enviado ao gestor para aprovação, quando o gestor validar e vai ter campos (aceita, recusado, devolvido, essa devoluão devolve ao corretor, pois há divergencias no que foi acordado)
+Se aceito a proposta é feito a reserva com base na proposta.
+
+Fazer o formulario de proposta para fazer a reserva, com os campos:
+- Nome do cliente
+- Email do cliente
+- Telefone do cliente
+- CPF do cliente
+- Endereço do cliente
+- Cidade do cliente
+- Estado do cliente
+- CEP do cliente
+estado civil,
+nacionalidade,
+- Valor do terreno
+
+
+após, o corretor entrará em contato com o cliente informando que a proposta foi aceita e vai esperar o sinal da parte do cliente.
+O cliente terá uma janela de 48 horas para enviar o sinal, se não enviar até o horario limite, o sistema avisará o corretor pra entrar em contato com o cliente para ver oq houve. e o gestor receberá o alerta tb.
+
+Quando o cliente enviar o sinal e infomar o comprovante, o corretor anexa ao sistema e avisa o gestor. O gestor vai validar o comprovante e vai liberar para a emissão do contrato.
+Quando aprovado o comprovante de pagamento, o gestor vai liberar para a emissão do contrato.
+Até aqui está sempre reservado, 
+O corretor não tem acesso ao contrato como um todo, mas vai inserir no cliente dele os dados para a confecão do contrato, o corretor enviará dados, foto da documentação.
+Depois que o corretor informar os dados do cleinte e o anexo da documentação, o contrutora vai fazer a confecão do contrato, o contrato será automatico com um botão de emitir/aprovar, com base na conferencia dos documentos.
+
+o contrato sera em PDF enviado ao corretor, o corretor vai assinar juntamente com o cliente. Assinado pelo gov
+apos isso o corretor irá enviar via sistema o contrato assinado no GOV para o gestor da contrutora.
+Apos isso, o gestor vai validar o contrato novamente, a contrutora assina GOV e seta a unidade como vendida.

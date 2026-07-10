@@ -45,6 +45,7 @@ return [
         'templates' => [
             'broker_invite' => env('WHATSAPP_TEMPLATE_BROKER_INVITE', 'broker_invite'),
         ],
+        'decline_button_text' => env('WHATSAPP_DECLINE_BUTTON_TEXT', '❌ Recusar'),
     ],
 
 ];

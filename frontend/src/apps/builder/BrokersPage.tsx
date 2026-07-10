@@ -1,10 +1,25 @@
 import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import {
+  EllipsisVerticalIcon,
+  RotateCcwIcon,
+  ShieldOffIcon,
+  Trash2Icon,
+} from 'lucide-react'
 import { BuilderDashboardShell } from '@/apps/builder/components/BuilderDashboardShell'
 import { BrokerAccessDialog } from '@/apps/builder/components/BrokerAccessDialog'
+import { RemoveBrokerDialog } from '@/apps/builder/components/RemoveBrokerDialog'
 import { useBuilderPermissions } from '@/apps/builder/hooks/use-builder-permissions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Table,
   TableBody,
@@ -26,6 +41,8 @@ export function BrokersPage() {
   const [loading, setLoading] = useState(true)
   const [selectedBroker, setSelectedBroker] = useState<LinkedBroker | null>(null)
   const [accessDialogOpen, setAccessDialogOpen] = useState(false)
+  const [removeDialogOpen, setRemoveDialogOpen] = useState(false)
+  const [removing, setRemoving] = useState(false)
 
   async function loadBrokers() {
     setBrokers(await builderApi.listBrokers())
@@ -62,8 +79,53 @@ export function BrokersPage() {
     setAccessDialogOpen(true)
   }
 
+  function handleOpenRemove(broker: LinkedBroker) {
+    setSelectedBroker(broker)
+    setRemoveDialogOpen(true)
+  }
+
   async function handleAccessUpdated() {
     await loadBrokers()
+  }
+
+  async function handleDeactivate(broker: LinkedBroker) {
+    try {
+      await builderApi.deactivateBroker(broker.id)
+      toast.success(`${broker.name} inativado.`)
+      await loadBrokers()
+    } catch {
+      toast.error('Não foi possível inativar o corretor.')
+    }
+  }
+
+  async function handleReactivate(broker: LinkedBroker) {
+    try {
+      await builderApi.reactivateBroker(broker.id)
+      toast.success(`${broker.name} reativado.`)
+      await loadBrokers()
+    } catch {
+      toast.error('Não foi possível reativar o corretor.')
+    }
+  }
+
+  async function handleRemoveConfirm() {
+    if (selectedBroker === null) {
+      return
+    }
+
+    setRemoving(true)
+
+    try {
+      await builderApi.removeBroker(selectedBroker.id)
+      toast.success('Vínculo removido.')
+      setRemoveDialogOpen(false)
+      setSelectedBroker(null)
+      await loadBrokers()
+    } catch {
+      toast.error('Não foi possível remover o corretor.')
+    } finally {
+      setRemoving(false)
+    }
   }
 
   if (!can('access.manage')) {
@@ -76,7 +138,8 @@ export function BrokersPage() {
     )
   }
 
-  const totalBuildings = brokers.reduce((sum, broker) => sum + broker.buildings_count, 0)
+  const activeBrokers = brokers.filter((broker) => broker.status === 'active')
+  const totalBuildings = activeBrokers.reduce((sum, broker) => sum + broker.buildings_count, 0)
 
   return (
     <BuilderDashboardShell title="Corretores">
@@ -92,16 +155,14 @@ export function BrokersPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Acessos concedidos</CardDescription>
-              <CardTitle className="text-3xl">{totalBuildings}</CardTitle>
+              <CardDescription>Ativos</CardDescription>
+              <CardTitle className="text-3xl">{activeBrokers.length}</CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Média por corretor</CardDescription>
-              <CardTitle className="text-3xl">
-                {brokers.length > 0 ? (totalBuildings / brokers.length).toFixed(1) : '0'}
-              </CardTitle>
+              <CardDescription>Acessos concedidos (ativos)</CardDescription>
+              <CardTitle className="text-3xl">{totalBuildings}</CardTitle>
             </CardHeader>
           </Card>
         </div>
@@ -110,7 +171,8 @@ export function BrokersPage() {
           <CardHeader>
             <CardTitle>Corretores</CardTitle>
             <CardDescription>
-              Corretores que aceitaram convite e os empreendimentos liberados para cada um.
+              Corretores vinculados à construtora. Inativos permanecem na lista, mas perdem acesso
+              ao portal.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -125,7 +187,8 @@ export function BrokersPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
-                    <TableHead>E-mail</TableHead>
+                    <TableHead>Contato</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Empreendimentos</TableHead>
                     <TableHead>Vinculado em</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -135,7 +198,12 @@ export function BrokersPage() {
                   {brokers.map((broker) => (
                     <TableRow key={broker.id}>
                       <TableCell className="font-medium">{broker.name}</TableCell>
-                      <TableCell>{broker.email}</TableCell>
+                      <TableCell>{broker.email ?? broker.phone ?? '—'}</TableCell>
+                      <TableCell>
+                        <Badge variant={broker.status === 'active' ? 'default' : 'secondary'}>
+                          {broker.status === 'active' ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </TableCell>
                       <TableCell>
                         <div className="space-y-1">
                           <p className="text-sm font-medium">
@@ -157,14 +225,46 @@ export function BrokersPage() {
                       </TableCell>
                       <TableCell>{formatDate(broker.accepted_at)}</TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleOpenAccess(broker)}
-                        >
-                          Gerenciar acesso
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            render={
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                className="text-muted-foreground"
+                                aria-label={`Ações — ${broker.name}`}
+                              />
+                            }
+                          >
+                            <EllipsisVerticalIcon />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44">
+                            {broker.status === 'active' ? (
+                              <>
+                                <DropdownMenuItem onClick={() => handleOpenAccess(broker)}>
+                                  Gerenciar acesso
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => void handleDeactivate(broker)}>
+                                  <ShieldOffIcon />
+                                  Inativar
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
+                              <DropdownMenuItem onClick={() => void handleReactivate(broker)}>
+                                <RotateCcwIcon />
+                                Reativar
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => handleOpenRemove(broker)}
+                            >
+                              <Trash2Icon />
+                              Remover vínculo
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -180,6 +280,14 @@ export function BrokersPage() {
         open={accessDialogOpen}
         onOpenChange={setAccessDialogOpen}
         onUpdated={handleAccessUpdated}
+      />
+
+      <RemoveBrokerDialog
+        broker={selectedBroker}
+        open={removeDialogOpen}
+        onOpenChange={setRemoveDialogOpen}
+        onConfirm={() => void handleRemoveConfirm()}
+        submitting={removing}
       />
     </BuilderDashboardShell>
   )

@@ -9,9 +9,10 @@ type DashboardShellProps = {
   title: string
   children: ReactNode
   navConfig?: DashboardNavConfig
+  actions?: ReactNode
 }
 
-export function DashboardShell({ role, title, children, navConfig }: DashboardShellProps) {
+export function DashboardShell({ role, title, children, navConfig, actions }: DashboardShellProps) {
   const config = navConfig ?? dashboardNav[role]
 
   return (
@@ -25,7 +26,7 @@ export function DashboardShell({ role, title, children, navConfig }: DashboardSh
     >
       <AppSidebar variant="inset" config={config} />
       <SidebarInset>
-        <SiteHeader title={title} />
+        <SiteHeader title={title} actions={actions} />
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 px-4 py-4 md:gap-6 md:px-6 md:py-6">{children}</div>

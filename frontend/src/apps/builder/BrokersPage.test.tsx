@@ -9,6 +9,7 @@ const { listBrokers } = vi.hoisted(() => ({
       name: 'Corretor Demo',
       email: 'corretor@demo.com',
       accepted_at: '2026-06-01T00:00:00Z',
+      status: 'active',
       buildings_count: 2,
       buildings: [
         { id: 1, name: 'Residencial Aurora' },

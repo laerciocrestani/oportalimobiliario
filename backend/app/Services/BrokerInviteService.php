@@ -17,6 +17,8 @@ use Illuminate\Validation\ValidationException;
 
 class BrokerInviteService
 {
+    public const INDIVIDUAL_INVITE_EXISTS_MESSAGE = 'Você já recebeu um convite individual. Acesse o link enviado por e-mail ou WhatsApp.';
+
     public function __construct(private PhoneNumberNormalizer $phoneNumberNormalizer) {}
 
     public function inviteUrl(BrokerInvite $invite): string
@@ -30,6 +32,14 @@ class BrokerInviteService
     {
         if ($invite->accepted_at !== null) {
             return 'accepted';
+        }
+
+        if ($invite->revoked_at !== null) {
+            return 'revoked';
+        }
+
+        if ($invite->declined_at !== null) {
+            return 'declined';
         }
 
         if ($invite->expires_at->isPast()) {
@@ -86,6 +96,7 @@ class BrokerInviteService
             ->with('tenant')
             ->where('token', $token)
             ->whereNull('accepted_at')
+            ->whereNull('revoked_at')
             ->where('expires_at', '>', now())
             ->first();
 
@@ -114,16 +125,17 @@ class BrokerInviteService
             'name' => $resolvedName,
         ]);
 
-        BrokerTenant::query()->firstOrCreate(
-            [
-                'tenant_id' => $invite->tenant_id,
-                'broker_id' => $broker->id,
-            ],
-            [
-                'broker_invite_id' => $invite->id,
-                'accepted_at' => now(),
-            ],
-        );
+        $brokerTenant = BrokerTenant::query()->firstOrNew([
+            'tenant_id' => $invite->tenant_id,
+            'broker_id' => $broker->id,
+        ]);
+
+        $brokerTenant->fill([
+            'broker_invite_id' => $invite->id,
+            'accepted_at' => $brokerTenant->accepted_at ?? now(),
+            'approved_at' => now(),
+        ]);
+        $brokerTenant->save();
 
         $apiToken = $broker->createToken('api')->plainTextToken;
 
@@ -177,6 +189,15 @@ class BrokerInviteService
         SendBrokerInviteWhatsAppJob::dispatch($invite->id);
     }
 
+    public function declineFromWhatsApp(BrokerInvite $invite): void
+    {
+        if ($invite->accepted_at !== null || $invite->declined_at !== null) {
+            return;
+        }
+
+        $invite->update(['declined_at' => now()]);
+    }
+
     public function resend(BrokerInvite $invite): BrokerInvite
     {
         if ($invite->accepted_at !== null) {
@@ -185,15 +206,72 @@ class BrokerInviteService
             ]);
         }
 
+        if ($invite->declined_at !== null) {
+            throw ValidationException::withMessages([
+                'invite' => ['Convite foi recusado.'],
+            ]);
+        }
+
+        if ($invite->revoked_at !== null) {
+            throw ValidationException::withMessages([
+                'invite' => ['Convite foi revogado. Reative antes de reenviar.'],
+            ]);
+        }
+
         $invite->update([
             'token' => Str::random(48),
             'expires_at' => now()->addDays(7),
+            'last_sent_at' => now(),
+            'declined_at' => null,
+            'revoked_at' => null,
             'whatsapp_message_id' => null,
             'delivery_status' => null,
             'delivery_error' => null,
         ]);
 
         $this->dispatch($invite->fresh());
+
+        return $invite->fresh();
+    }
+
+    public function revoke(BrokerInvite $invite): BrokerInvite
+    {
+        if ($invite->accepted_at !== null) {
+            throw ValidationException::withMessages([
+                'invite' => ['Convite já foi aceito. Inative o corretor em Corretores.'],
+            ]);
+        }
+
+        if ($invite->revoked_at !== null) {
+            throw ValidationException::withMessages([
+                'invite' => ['Convite já foi revogado.'],
+            ]);
+        }
+
+        $invite->update(['revoked_at' => now()]);
+
+        return $invite->fresh();
+    }
+
+    public function reactivate(BrokerInvite $invite): BrokerInvite
+    {
+        if ($invite->accepted_at !== null) {
+            throw ValidationException::withMessages([
+                'invite' => ['Convite já foi aceito.'],
+            ]);
+        }
+
+        if ($invite->revoked_at === null) {
+            throw ValidationException::withMessages([
+                'invite' => ['Convite não está revogado.'],
+            ]);
+        }
+
+        $invite->update([
+            'revoked_at' => null,
+            'expires_at' => now()->addDays(7),
+            'declined_at' => null,
+        ]);
 
         return $invite->fresh();
     }
@@ -207,6 +285,191 @@ class BrokerInviteService
         return $this->phoneNumberNormalizer->toE164($phone);
     }
 
+    public function assertCanCreateInvite(
+        int $tenantId,
+        BrokerInviteChannel $channel,
+        ?string $email,
+        ?string $phone,
+    ): void {
+        if ($channel === BrokerInviteChannel::Email) {
+            $this->assertNoDuplicateEmailInvite($tenantId, $email);
+            $this->assertBrokerNotLinkedByEmail($tenantId, $email);
+
+            return;
+        }
+
+        if ($channel === BrokerInviteChannel::WhatsApp) {
+            $this->assertNoDuplicatePhoneInvite($tenantId, $phone);
+            $this->assertBrokerNotLinkedByPhone($tenantId, $phone);
+        }
+    }
+
+    public function assertNoOpenIndividualInviteForJoin(int $tenantId, string $email, ?string $phone): void
+    {
+        $invite = $this->findOpenInviteForContact($tenantId, $email, $phone);
+
+        if ($invite === null) {
+            return;
+        }
+
+        $normalizedEmail = strtolower(trim($email));
+        $matchedByEmail = $invite->email !== null
+            && strtolower(trim($invite->email)) === $normalizedEmail;
+
+        throw ValidationException::withMessages([
+            $matchedByEmail ? 'email' : 'phone' => [
+                self::INDIVIDUAL_INVITE_EXISTS_MESSAGE,
+            ],
+            'invite_resend' => ['1'],
+        ]);
+    }
+
+    public function reconcileOpenInviteOnApproval(BrokerTenant $link): void
+    {
+        $link->loadMissing('broker');
+
+        $invite = $this->findOpenInviteForContact(
+            $link->tenant_id,
+            $link->broker->usesSyntheticEmail() ? null : $link->broker->email,
+            $link->broker->phone,
+        );
+
+        if ($invite === null) {
+            return;
+        }
+
+        $invite->update([
+            'broker_id' => $link->broker_id,
+            'accepted_at' => now(),
+            'name' => $link->broker->name,
+            ...(! $link->broker->usesSyntheticEmail() ? ['email' => $link->broker->email] : []),
+        ]);
+
+        $link->update(['broker_invite_id' => $invite->id]);
+    }
+
+    public function findOpenInviteForContact(int $tenantId, ?string $email, ?string $phone): ?BrokerInvite
+    {
+        $normalizedEmail = $email !== null ? strtolower(trim($email)) : null;
+        $normalizedPhone = $phone !== null && $phone !== '' ? $phone : null;
+
+        if (($normalizedEmail === null || $normalizedEmail === '') && $normalizedPhone === null) {
+            return null;
+        }
+
+        return BrokerInvite::query()
+            ->where('tenant_id', $tenantId)
+            ->open()
+            ->where(function ($query) use ($normalizedEmail, $normalizedPhone): void {
+                if ($normalizedEmail !== null && $normalizedEmail !== '') {
+                    $query->where(function ($contact) use ($normalizedEmail, $normalizedPhone): void {
+                        $contact->whereRaw('LOWER(email) = ?', [$normalizedEmail]);
+
+                        if ($normalizedPhone !== null) {
+                            $contact->orWhere('phone', $normalizedPhone);
+                        }
+                    });
+                } elseif ($normalizedPhone !== null) {
+                    $query->where('phone', $normalizedPhone);
+                }
+            })
+            ->first();
+    }
+
+    private function assertNoDuplicateEmailInvite(int $tenantId, ?string $email): void
+    {
+        if ($email === null || trim($email) === '') {
+            return;
+        }
+
+        $exists = BrokerInvite::query()
+            ->where('tenant_id', $tenantId)
+            ->open()
+            ->whereRaw('LOWER(email) = ?', [strtolower(trim($email))])
+            ->exists();
+
+        if ($exists) {
+            throw ValidationException::withMessages([
+                'email' => ['Já existe um convite em aberto para este e-mail. Reenvie ou revogue o convite existente.'],
+            ]);
+        }
+    }
+
+    private function assertNoDuplicatePhoneInvite(int $tenantId, ?string $phone): void
+    {
+        if ($phone === null || $phone === '') {
+            return;
+        }
+
+        $exists = BrokerInvite::query()
+            ->where('tenant_id', $tenantId)
+            ->open()
+            ->where('phone', $phone)
+            ->exists();
+
+        if ($exists) {
+            throw ValidationException::withMessages([
+                'phone' => ['Já existe um convite em aberto para este telefone. Reenvie ou revogue o convite existente.'],
+            ]);
+        }
+    }
+
+    private function assertBrokerNotLinkedByEmail(int $tenantId, ?string $email): void
+    {
+        if ($email === null || trim($email) === '') {
+            return;
+        }
+
+        $broker = User::query()
+            ->whereRaw('LOWER(email) = ?', [strtolower(trim($email))])
+            ->first();
+
+        if ($broker === null) {
+            return;
+        }
+
+        $this->assertBrokerTenantLink($tenantId, $broker->id, 'email');
+    }
+
+    private function assertBrokerNotLinkedByPhone(int $tenantId, ?string $phone): void
+    {
+        if ($phone === null || $phone === '') {
+            return;
+        }
+
+        $broker = User::query()->where('phone', $phone)->first();
+
+        if ($broker === null) {
+            return;
+        }
+
+        $this->assertBrokerTenantLink($tenantId, $broker->id, 'phone');
+    }
+
+    private function assertBrokerTenantLink(int $tenantId, int $brokerId, string $field): void
+    {
+        $link = BrokerTenant::query()
+            ->where('tenant_id', $tenantId)
+            ->where('broker_id', $brokerId)
+            ->first();
+
+        if ($link === null) {
+            return;
+        }
+
+        if ($link->isPendingApproval()) {
+            throw ValidationException::withMessages([
+                $field => ['Já existe uma solicitação pendente para este contato.'],
+            ]);
+        }
+
+        if ($link->isActive()) {
+            throw ValidationException::withMessages([
+                $field => ['Este corretor já está vinculado a esta construtora.'],
+            ]);
+        }
+    }
+
     private function findPendingOrAcceptedInvite(string $token): ?BrokerInvite
     {
         return BrokerInvite::query()
@@ -215,6 +478,8 @@ class BrokerInviteService
             ->where(function ($query): void {
                 $query->where(function ($pending): void {
                     $pending->whereNull('accepted_at')
+                        ->whereNull('declined_at')
+                        ->whereNull('revoked_at')
                         ->where('expires_at', '>', now());
                 })->orWhereNotNull('accepted_at');
             })

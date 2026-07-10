@@ -49,3 +49,55 @@ it('updates invite delivery status from whatsapp webhook', function () {
 
     expect($invite->fresh()->delivery_status)->toBe(BrokerInviteDeliveryStatus::Delivered);
 });
+
+it('declines invite when whatsapp decline button is tapped', function () {
+    config(['services.whatsapp.decline_button_text' => '❌ Recusar']);
+
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->for($tenant)->create();
+
+    $invite = BrokerInvite::factory()->whatsapp()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $builder->id,
+        'whatsapp_message_id' => 'wamid.abc123',
+        'delivery_status' => BrokerInviteDeliveryStatus::Sent,
+    ]);
+
+    $this->postJson('/api/public/whatsapp/webhook', [
+        'entry' => [[
+            'changes' => [[
+                'value' => [
+                    'messages' => [[
+                        'type' => 'button',
+                        'button' => [
+                            'text' => '❌ Recusar',
+                            'payload' => '❌ Recusar',
+                        ],
+                        'context' => [
+                            'id' => 'wamid.abc123',
+                        ],
+                    ]],
+                ],
+            ]],
+        ]],
+    ])->assertOk();
+
+    $invite->refresh();
+
+    expect($invite->declined_at)->not->toBeNull();
+});
+
+it('rejects preview for declined invite', function () {
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->for($tenant)->create();
+
+    $invite = BrokerInvite::factory()->create([
+        'tenant_id' => $tenant->id,
+        'created_by' => $builder->id,
+        'declined_at' => now(),
+    ]);
+
+    $this->getJson('/api/broker/invites/preview?token='.$invite->token)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['token']);
+});

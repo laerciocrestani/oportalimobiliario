@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BuildingAccess;
 use App\Models\Unit;
 use App\Models\UnitAccess;
+use App\Services\BrokerAccessService;
 use App\Support\BuildingCoverImage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,18 +17,23 @@ use Illuminate\Http\Request;
  */
 class UnitController extends Controller
 {
+    public function __construct(private BrokerAccessService $brokerAccessService) {}
+
     public function index(Request $request): JsonResponse
     {
         $brokerId = $request->user()->id;
+        $activeTenantIds = $this->brokerAccessService->activeTenantIdsForBroker($brokerId);
 
         $buildingIds = BuildingAccess::query()
             ->withoutGlobalScope('tenant')
             ->where('broker_id', $brokerId)
+            ->whereIn('tenant_id', $activeTenantIds)
             ->pluck('building_id');
 
         $legacyUnitIds = UnitAccess::query()
             ->withoutGlobalScope('tenant')
             ->where('broker_id', $brokerId)
+            ->whereIn('tenant_id', $activeTenantIds)
             ->pluck('unit_id');
 
         $units = Unit::query()

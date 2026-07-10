@@ -21,6 +21,7 @@ class BrokerTenantFactory extends Factory
             'broker_id' => User::factory()->broker(),
             'broker_invite_id' => null,
             'accepted_at' => now(),
+            'approved_at' => now(),
         ];
     }
 }

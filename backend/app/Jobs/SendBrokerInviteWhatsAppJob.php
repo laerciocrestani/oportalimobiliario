@@ -4,7 +4,6 @@ namespace App\Jobs;
 
 use App\Enums\BrokerInviteDeliveryStatus;
 use App\Models\BrokerInvite;
-use App\Services\BrokerInviteService;
 use App\Services\WhatsAppCloudApiService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -16,7 +15,7 @@ class SendBrokerInviteWhatsAppJob implements ShouldQueue
 
     public function __construct(public int $inviteId) {}
 
-    public function handle(WhatsAppCloudApiService $whatsapp, BrokerInviteService $brokerInviteService): void
+    public function handle(WhatsAppCloudApiService $whatsapp): void
     {
         $invite = BrokerInvite::query()
             ->withoutGlobalScope('tenant')
@@ -27,7 +26,7 @@ class SendBrokerInviteWhatsAppJob implements ShouldQueue
         }
 
         try {
-            $messageId = $whatsapp->sendBrokerInvite($invite, $brokerInviteService->inviteUrl($invite));
+            $messageId = $whatsapp->sendBrokerInvite($invite);
 
             $invite->update([
                 'whatsapp_message_id' => $messageId,

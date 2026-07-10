@@ -106,11 +106,13 @@ export type BrokerInvite = {
   phone: string | null
   channel: 'email' | 'whatsapp' | 'link'
   token: string
-  status: 'pending' | 'accepted' | 'expired'
+  status: 'pending' | 'accepted' | 'declined' | 'expired' | 'revoked'
   delivery_status: 'pending' | 'sent' | 'delivered' | 'failed' | null
   broker_id: number | null
   accepted_at: string | null
+  declined_at: string | null
   expires_at: string
+  last_sent_at: string
   created_at: string
   invite_url: string
 }
@@ -126,16 +128,57 @@ export type BrokerInvitePreview = {
 
 export type CreateBrokerInviteInput = {
   name: string
-  channel: BrokerInvite['channel']
+  channel: 'email' | 'whatsapp'
   email?: string
   phone?: string
+}
+
+export type TenantInviteLink = {
+  token: string
+  invite_url: string
+  regenerated_at: string | null
+  created_at: string
+}
+
+export type PendingBroker = {
+  id: number
+  broker_id: number
+  name: string
+  email: string | null
+  phone: string | null
+  requested_at: string
+}
+
+export type BrokerJoinPreview = {
+  tenant_name: string
+  type: 'open'
+}
+
+export type BrokerProfile = {
+  role: 'broker'
+  tenant_context: boolean
+  access_status: 'active' | 'pending_only' | 'restricted'
+  pending_approvals: Array<{
+    tenant_id: number
+    tenant_name: string
+    requested_at: string
+  }>
+  inactive_tenants: Array<{
+    tenant_id: number
+    tenant_name: string
+    revoked_at: string | null
+  }>
+  has_approved_access: boolean
 }
 
 export type LinkedBroker = {
   id: number
   name: string
-  email: string
+  email: string | null
+  phone: string | null
+  status: 'active' | 'inactive'
   accepted_at: string
+  revoked_at: string | null
   buildings_count: number
   buildings: Array<{ id: number; name: string }>
 }
@@ -217,6 +260,19 @@ export type BuildingMedia = {
   created_at?: string
 }
 
+export class ApiRequestError extends Error {
+  status: number
+
+  errors?: Record<string, string[]>
+
+  constructor(message: string, status: number, errors?: Record<string, string[]>) {
+    super(message)
+    this.name = 'ApiRequestError'
+    this.status = status
+    this.errors = errors
+  }
+}
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -241,7 +297,15 @@ export async function apiFetch<T>(
   const response = await fetch(`${API_URL}${path}`, { ...options, headers })
 
   if (!response.ok) {
-    throw new Error(`API error: ${response.status}`)
+    const body = (await response.json().catch(() => null)) as
+      | { message?: string; errors?: Record<string, string[]> }
+      | null
+
+    throw new ApiRequestError(
+      body?.message ?? `API error: ${response.status}`,
+      response.status,
+      body?.errors,
+    )
   }
 
   if (response.status === 204) {
@@ -419,9 +483,35 @@ export const builderApi = {
     }),
   resendInvite: (id: number) =>
     apiFetch<BrokerInvite>(`/builder/invites/${id}/resend`, { method: 'POST' }),
+  revokeInvite: (id: number) =>
+    apiFetch<BrokerInvite>(`/builder/invites/${id}/revoke`, { method: 'POST' }),
+  reactivateInvite: (id: number) =>
+    apiFetch<BrokerInvite>(`/builder/invites/${id}/reactivate`, { method: 'POST' }),
   cancelInvite: (id: number) =>
-    apiFetch<void>(`/builder/invites/${id}`, { method: 'DELETE' }),
+    apiFetch<BrokerInvite>(`/builder/invites/${id}`, { method: 'DELETE' }),
+  getInviteLink: () => apiFetch<TenantInviteLink>('/builder/invite-link'),
+  regenerateInviteLink: () =>
+    apiFetch<TenantInviteLink>('/builder/invite-link/regenerate', { method: 'POST' }),
+  listPendingBrokers: () => apiFetch<PendingBroker[]>('/builder/pending-brokers'),
+  approvePendingBroker: (id: number) =>
+    apiFetch<{ id: number; approved_at: string }>(`/builder/pending-brokers/${id}/approve`, {
+      method: 'POST',
+    }),
+  rejectPendingBroker: (id: number) =>
+    apiFetch<void>(`/builder/pending-brokers/${id}/reject`, { method: 'POST' }),
   listBrokers: () => apiFetch<LinkedBroker[]>('/builder/brokers'),
+  deactivateBroker: (id: number) =>
+    apiFetch<{ id: number; status: 'inactive'; revoked_at: string }>(
+      `/builder/brokers/${id}/deactivate`,
+      { method: 'POST' },
+    ),
+  reactivateBroker: (id: number) =>
+    apiFetch<{ id: number; status: 'active'; revoked_at: null }>(
+      `/builder/brokers/${id}/reactivate`,
+      { method: 'POST' },
+    ),
+  removeBroker: (id: number) =>
+    apiFetch<void>(`/builder/brokers/${id}`, { method: 'DELETE' }),
   listBrokerBuildings: (brokerId: number) =>
     apiFetch<GrantedBuilding[]>(`/builder/brokers/${brokerId}/buildings`),
   grantBuildingAccess: (brokerId: number, buildingId: number) =>
@@ -469,6 +559,7 @@ export const builderApi = {
 }
 
 export const brokerApi = {
+  getProfile: () => apiFetch<BrokerProfile>('/broker/profile'),
   listUnits: () => apiFetch<Unit[]>('/broker/units'),
   listReservations: () => apiFetch<BuilderReservationListItem[]>('/broker/reservations'),
   pendingRepliesCount: () =>
@@ -505,6 +596,32 @@ export const brokerApi = {
     ),
   acceptInvite: (data: { token: string; name?: string; email?: string; password?: string }) =>
     apiFetch<LoginResponse>('/broker/invites/accept', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }, false),
+  previewJoinLink: (token: string) =>
+    apiFetch<BrokerJoinPreview>(
+      `/broker/join/preview?token=${encodeURIComponent(token)}`,
+      {},
+      false,
+    ),
+  registerViaJoinLink: (data: {
+    token: string
+    name: string
+    phone: string
+    email: string
+    password: string
+  }) =>
+    apiFetch<LoginResponse & { pending_approval: boolean }>('/broker/join/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }, false),
+  resendIndividualInviteFromJoin: (data: {
+    token: string
+    email: string
+    phone: string
+  }) =>
+    apiFetch<{ channel: string; message: string }>('/broker/join/resend-individual-invite', {
       method: 'POST',
       body: JSON.stringify(data),
     }, false),

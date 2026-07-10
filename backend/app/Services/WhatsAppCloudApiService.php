@@ -10,15 +10,32 @@ class WhatsAppCloudApiService
 {
     /**
      * @param  list<string>  $bodyParameters
+     * @param  list<array<string, mixed>>  $extraComponents
      */
-    public function sendTemplateMessage(string $to, string $templateName, string $languageCode, array $bodyParameters): string
-    {
+    public function sendTemplateMessage(
+        string $to,
+        string $templateName,
+        string $languageCode,
+        array $bodyParameters,
+        array $extraComponents = [],
+    ): string {
         $accessToken = (string) config('services.whatsapp.access_token');
         $phoneNumberId = (string) config('services.whatsapp.phone_number_id');
 
         if ($accessToken === '' || $phoneNumberId === '') {
             throw new WhatsAppApiException('WhatsApp API não configurada.');
         }
+
+        $components = [
+            [
+                'type' => 'body',
+                'parameters' => array_map(
+                    fn (string $text): array => ['type' => 'text', 'text' => $text],
+                    $bodyParameters,
+                ),
+            ],
+            ...$extraComponents,
+        ];
 
         $response = Http::withToken($accessToken)
             ->acceptJson()
@@ -29,15 +46,7 @@ class WhatsAppCloudApiService
                 'template' => [
                     'name' => $templateName,
                     'language' => ['code' => $languageCode],
-                    'components' => [
-                        [
-                            'type' => 'body',
-                            'parameters' => array_map(
-                                fn (string $text): array => ['type' => 'text', 'text' => $text],
-                                $bodyParameters,
-                            ),
-                        ],
-                    ],
+                    'components' => $components,
                 ],
             ]);
 
@@ -56,7 +65,7 @@ class WhatsAppCloudApiService
         return $messageId;
     }
 
-    public function sendBrokerInvite(BrokerInvite $invite, string $inviteUrl): string
+    public function sendBrokerInvite(BrokerInvite $invite): string
     {
         $invite->loadMissing('tenant');
 
@@ -67,6 +76,10 @@ class WhatsAppCloudApiService
             throw new WhatsAppApiException('Telefone do convite não informado.');
         }
 
+        if ($invite->token === '') {
+            throw new WhatsAppApiException('Token do convite não informado.');
+        }
+
         return $this->sendTemplateMessage(
             $invite->phone,
             $templateName,
@@ -74,7 +87,16 @@ class WhatsAppCloudApiService
             [
                 $invite->name,
                 $invite->tenant->name,
-                $inviteUrl,
+            ],
+            [
+                [
+                    'type' => 'button',
+                    'sub_type' => 'url',
+                    'index' => '0',
+                    'parameters' => [
+                        ['type' => 'text', 'text' => $invite->token],
+                    ],
+                ],
             ],
         );
     }

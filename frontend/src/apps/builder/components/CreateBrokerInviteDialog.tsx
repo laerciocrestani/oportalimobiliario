@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import {
   HandshakeIcon,
-  Link2Icon,
   MailIcon,
   MessageCircleIcon,
   SendIcon,
@@ -17,31 +16,28 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { builderApi, type BrokerInvite, type CreateBrokerInviteInput } from '@/lib/api'
+import { builderApi, ApiRequestError, type CreateBrokerInviteInput } from '@/lib/api'
 import {
   formatBrazilianMobilePhone,
   isBrazilianMobilePhoneValid,
   isValidEmail,
 } from '@/lib/format-phone'
 
-const channelOptions = ['whatsapp', 'link', 'email'] as const satisfies readonly BrokerInvite['channel'][]
+const channelOptions = ['whatsapp', 'email'] as const satisfies readonly CreateBrokerInviteInput['channel'][]
 
-const channelLabels: Record<BrokerInvite['channel'], string> = {
+const channelLabels: Record<CreateBrokerInviteInput['channel'], string> = {
   whatsapp: 'WhatsApp',
-  link: 'Link',
   email: 'E-mail',
 }
 
 const channelIcons = {
   whatsapp: MessageCircleIcon,
-  link: Link2Icon,
   email: MailIcon,
 } as const
 
-const channelHelpers: Record<BrokerInvite['channel'], string> = {
+const channelHelpers: Record<CreateBrokerInviteInput['channel'], string> = {
   whatsapp:
     'O convite será enviado automaticamente por WhatsApp para o número informado. O corretor receberá uma mensagem com o link para aceitar o convite e criar a conta. Se ainda não tiver e-mail cadastrado, ele informará no momento do aceite.',
-  link: 'Nenhuma mensagem é enviada automaticamente. Ao criar o convite, você receberá um link exclusivo para copiar e compartilhar manualmente com o corretor — por WhatsApp, e-mail ou outro canal de sua preferência.',
   email:
     'O convite será enviado automaticamente para o e-mail informado, com um link para o corretor aceitar o convite, definir a senha e acessar o painel de corretor.',
 }
@@ -49,7 +45,7 @@ const channelHelpers: Record<BrokerInvite['channel'], string> = {
 type CreateBrokerInviteDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCreated: (invite: BrokerInvite) => void
+  onCreated: () => void
 }
 
 export function CreateBrokerInviteDialog({
@@ -60,7 +56,7 @@ export function CreateBrokerInviteDialog({
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [channel, setChannel] = useState<BrokerInvite['channel']>('whatsapp')
+  const [channel, setChannel] = useState<CreateBrokerInviteInput['channel']>('whatsapp')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [phoneError, setPhoneError] = useState<string | null>(null)
@@ -84,7 +80,7 @@ export function CreateBrokerInviteDialog({
     onOpenChange(nextOpen)
   }
 
-  function handleChannelChange(nextChannel: BrokerInvite['channel']) {
+  function handleChannelChange(nextChannel: CreateBrokerInviteInput['channel']) {
     setChannel(nextChannel)
     setError(null)
     setPhoneError(null)
@@ -126,17 +122,32 @@ export function CreateBrokerInviteDialog({
     }
 
     try {
-      const invite = await builderApi.createInvite(payload)
-      onCreated(invite)
+      await builderApi.createInvite(payload)
+      onCreated()
       handleOpenChange(false)
-    } catch {
-      setError('Não foi possível enviar o convite.')
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.errors) {
+        const emailMessage = err.errors.email?.[0]
+        const phoneMessage = err.errors.phone?.[0]
+
+        if (emailMessage) {
+          setEmailError(emailMessage)
+        }
+
+        if (phoneMessage) {
+          setPhoneError(phoneMessage)
+        }
+
+        if (!emailMessage && !phoneMessage) {
+          setError('Não foi possível enviar o convite.')
+        }
+      } else {
+        setError('Não foi possível enviar o convite.')
+      }
     } finally {
       setSubmitting(false)
     }
   }
-
-  const SubmitIcon = channel === 'link' ? Link2Icon : SendIcon
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -235,12 +246,8 @@ export function CreateBrokerInviteDialog({
               Cancelar
             </Button>
             <Button type="submit" disabled={submitting}>
-              <SubmitIcon />
-              {submitting
-                ? 'Enviando...'
-                : channel === 'link'
-                  ? 'Criar convite'
-                  : 'Enviar convite'}
+              <SendIcon />
+              {submitting ? 'Enviando...' : 'Enviar convite'}
             </Button>
           </DialogFooter>
         </form>

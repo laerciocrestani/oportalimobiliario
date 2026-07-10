@@ -18,6 +18,10 @@ import { BrokerClientsPage } from '@/apps/broker/BrokerClientsPage'
 import { BrokerOverviewPage } from '@/apps/broker/BrokerOverviewPage'
 import { BrokerReservationsPage } from '@/apps/broker/BrokerReservationsPage'
 import { InviteAcceptPage } from '@/apps/broker/InviteAcceptPage'
+import { JoinAcceptPage } from '@/apps/broker/JoinAcceptPage'
+import { PendingApprovalPage } from '@/apps/broker/PendingApprovalPage'
+import { RestrictedAccessPage } from '@/apps/broker/RestrictedAccessPage'
+import { BrokerAccessGuard } from '@/apps/broker/components/BrokerAccessGuard'
 import { ProfileGuard } from '@/components/auth/ProfileGuard'
 import { isAuthenticatedProfile, resolveProfile } from '@/lib/profile'
 
@@ -111,11 +115,30 @@ function AuthenticatedPortal() {
         ) : profile === 'broker' ? (
           <>
             <Route path="/invite/:token" element={<InviteAcceptPage />} />
+            <Route path="/join/:token" element={<JoinAcceptPage />} />
+            <Route
+              path="/pending-approval"
+              element={
+                <ProfileGuard profile={profile}>
+                  <PendingApprovalPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/account-restricted"
+              element={
+                <ProfileGuard profile={profile}>
+                  <RestrictedAccessPage />
+                </ProfileGuard>
+              }
+            />
             <Route
               path="/"
               element={
                 <ProfileGuard profile={profile}>
-                  <BrokerOverviewPage />
+                  <BrokerAccessGuard>
+                    <BrokerOverviewPage />
+                  </BrokerAccessGuard>
                 </ProfileGuard>
               }
             />
@@ -123,7 +146,9 @@ function AuthenticatedPortal() {
               path="/buildings"
               element={
                 <ProfileGuard profile={profile}>
-                  <BrokerBuildingsPage />
+                  <BrokerAccessGuard>
+                    <BrokerBuildingsPage />
+                  </BrokerAccessGuard>
                 </ProfileGuard>
               }
             />
@@ -131,7 +156,9 @@ function AuthenticatedPortal() {
               path="/clients"
               element={
                 <ProfileGuard profile={profile}>
-                  <BrokerClientsPage />
+                  <BrokerAccessGuard>
+                    <BrokerClientsPage />
+                  </BrokerAccessGuard>
                 </ProfileGuard>
               }
             />
@@ -139,7 +166,9 @@ function AuthenticatedPortal() {
               path="/reservations"
               element={
                 <ProfileGuard profile={profile}>
-                  <BrokerReservationsPage />
+                  <BrokerAccessGuard>
+                    <BrokerReservationsPage />
+                  </BrokerAccessGuard>
                 </ProfileGuard>
               }
             />

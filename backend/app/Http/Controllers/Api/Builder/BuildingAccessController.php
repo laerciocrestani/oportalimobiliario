@@ -70,6 +70,7 @@ class BuildingAccessController extends Controller
         return BrokerTenant::query()
             ->where('tenant_id', $tenantId)
             ->where('broker_id', $brokerId)
+            ->active()
             ->exists();
     }
 }

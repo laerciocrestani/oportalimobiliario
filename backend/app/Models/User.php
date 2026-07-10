@@ -13,7 +13,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'tenant_id', 'role'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'tenant_id', 'role'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -36,5 +36,10 @@ class User extends Authenticatable
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function usesSyntheticEmail(): bool
+    {
+        return str_ends_with($this->email, '@internal.oportalimobiliario.local');
     }
 }

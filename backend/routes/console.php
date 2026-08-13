@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('opim:expire-reservations')->hourly();
 Schedule::command('opim:expire-pre-reservations')->everyMinute();
+Schedule::command('opim:check-deposit-windows')->hourly();

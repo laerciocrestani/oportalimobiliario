@@ -54,64 +54,6 @@ class PreReservationService
         return $reservation;
     }
 
-    public function confirmPreHold(
-        User $broker,
-        Reservation $reservation,
-        BrokerClient $client,
-        ?string $observations = null,
-    ): Reservation {
-        if ($reservation->broker_id !== $broker->id) {
-            abort(403, 'Forbidden.');
-        }
-
-        if ($reservation->status !== ReservationStatus::PreHold) {
-            abort(422, 'Reservation is not a pre-hold.');
-        }
-
-        if ($reservation->isExpired()) {
-            abort(422, 'Sua pré-reserva expirou. A unidade está disponível novamente.');
-        }
-
-        $ttlHours = (int) config('opim.reservation_ttl_hours', 48);
-        $observationsText = trim((string) $observations);
-
-        $reservation = DB::transaction(function () use ($reservation, $client, $observationsText, $ttlHours) {
-            $locked = Unit::query()
-                ->withoutGlobalScope('tenant')
-                ->lockForUpdate()
-                ->findOrFail($reservation->unit_id);
-
-            if ($locked->status !== UnitStatus::PreReserved) {
-                abort(422, 'Unidade não está mais disponível.');
-            }
-
-            $locked->update(['status' => UnitStatus::Reserved]);
-
-            $reservation->update([
-                'client_id' => $client->id,
-                'status' => ReservationStatus::Confirmed,
-                'expires_at' => now()->addHours($ttlHours),
-            ]);
-
-            if ($observationsText !== '') {
-                $reservation->messages()->create([
-                    'user_id' => $reservation->broker_id,
-                    'body' => $observationsText,
-                ]);
-            }
-
-            return $reservation->fresh(['unit', 'client']);
-        });
-
-        $this->timelineService->recordDepositWindowOpened($reservation);
-
-        if ($observationsText !== '') {
-            $this->timelineService->recordDialogue($reservation, $broker);
-        }
-
-        return $reservation;
-    }
-
     public function releasePreHold(User $broker, Reservation $reservation): void
     {
         if ($reservation->broker_id !== $broker->id) {

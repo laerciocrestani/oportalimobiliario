@@ -47,4 +47,14 @@ class ReservationPolicy
     {
         return $this->viewMessages($user, $reservation);
     }
+
+    public function decideProposal(User $user, Reservation $reservation): bool
+    {
+        return $this->view($user, $reservation);
+    }
+
+    public function approveDepositProof(User $user, Reservation $reservation): bool
+    {
+        return $this->view($user, $reservation);
+    }
 }

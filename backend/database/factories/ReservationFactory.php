@@ -25,7 +25,7 @@ class ReservationFactory extends Factory
             'unit_id' => Unit::factory()->reserved(),
             'broker_id' => $broker,
             'client_id' => BrokerClient::factory()->for($broker, 'broker'),
-            'status' => \App\Enums\ReservationStatus::Confirmed,
+            'status' => \App\Enums\ReservationStatus::DepositPending,
             'expires_at' => now()->addHours(48),
         ];
     }
@@ -41,6 +41,31 @@ class ReservationFactory extends Factory
             'client_id' => null,
             'status' => \App\Enums\ReservationStatus::PreHold,
             'expires_at' => now()->addMinutes(10),
+        ]);
+    }
+
+    public function proposalPending(): static
+    {
+        return $this->state(fn () => [
+            'client_id' => null,
+            'status' => \App\Enums\ReservationStatus::ProposalPending,
+            'expires_at' => now()->addMinutes(10),
+        ]);
+    }
+
+    public function depositProofPending(): static
+    {
+        return $this->state(fn () => [
+            'status' => \App\Enums\ReservationStatus::DepositProofPending,
+            'expires_at' => now()->addHours(48),
+        ]);
+    }
+
+    public function contractDataPending(): static
+    {
+        return $this->state(fn () => [
+            'status' => \App\Enums\ReservationStatus::ContractDataPending,
+            'expires_at' => null,
         ]);
     }
 }

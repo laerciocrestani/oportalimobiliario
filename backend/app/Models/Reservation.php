@@ -39,14 +39,70 @@ class Reservation extends Model
         return $query->where('status', ReservationStatus::Confirmed);
     }
 
+    /** @param Builder<Reservation> $query */
+    public function scopeListed(Builder $query): Builder
+    {
+        return $query->whereIn('status', [
+            ReservationStatus::ProposalPending,
+            ReservationStatus::ProposalReturned,
+            ReservationStatus::Confirmed,
+            ReservationStatus::DepositPending,
+            ReservationStatus::DepositProofPending,
+            ReservationStatus::ContractDataPending,
+        ]);
+    }
+
     public function isPreHold(): bool
     {
         return $this->status === ReservationStatus::PreHold;
     }
 
+    public function isProposalPending(): bool
+    {
+        return $this->status === ReservationStatus::ProposalPending;
+    }
+
+    public function isProposalReturned(): bool
+    {
+        return $this->status === ReservationStatus::ProposalReturned;
+    }
+
+    public function canSubmitProposal(): bool
+    {
+        return $this->isPreHold() || $this->isProposalReturned();
+    }
+
+    public function isDepositPending(): bool
+    {
+        return in_array($this->status, [
+            ReservationStatus::Confirmed,
+            ReservationStatus::DepositPending,
+        ], true);
+    }
+
+    public function isDepositProofPending(): bool
+    {
+        return $this->status === ReservationStatus::DepositProofPending;
+    }
+
+    public function isContractDataPending(): bool
+    {
+        return $this->status === ReservationStatus::ContractDataPending;
+    }
+
     public function isConfirmed(): bool
     {
-        return $this->status === ReservationStatus::Confirmed;
+        return in_array($this->status, [
+            ReservationStatus::Confirmed,
+            ReservationStatus::DepositPending,
+            ReservationStatus::DepositProofPending,
+            ReservationStatus::ContractDataPending,
+        ], true);
+    }
+
+    public function canSubmitDepositProof(): bool
+    {
+        return $this->isDepositPending();
     }
 
     public function tenant(): BelongsTo
@@ -79,6 +135,18 @@ class Reservation extends Model
     public function timelineEvents(): HasMany
     {
         return $this->hasMany(ReservationTimelineEvent::class);
+    }
+
+    /** @return HasMany<ReservationProposal, $this> */
+    public function proposals(): HasMany
+    {
+        return $this->hasMany(ReservationProposal::class);
+    }
+
+    /** @return HasMany<ReservationAttachment, $this> */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(ReservationAttachment::class);
     }
 
     public function isExpired(): bool

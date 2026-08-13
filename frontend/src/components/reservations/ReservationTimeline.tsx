@@ -68,6 +68,11 @@ export function ReservationTimeline({ timeline, onAction }: ReservationTimelineP
             Prazo: {formatDateTime(timeline.expires_at)}
           </p>
         ) : null}
+        {timeline.deposit_overdue ? (
+          <p className="mt-1 text-sm text-destructive">
+            Prazo de sinal vencido — envie o comprovante o quanto antes.
+          </p>
+        ) : null}
       </div>
 
       <ol className="space-y-0">

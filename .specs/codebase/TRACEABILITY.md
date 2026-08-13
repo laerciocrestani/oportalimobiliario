@@ -88,14 +88,16 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 
 ## reservation-timeline
 
-> Spec: `.specs/features/reservation-timeline/spec.md` · Design: `design.md` · Status: **specified** (não implementado)
+> Spec: `.specs/features/reservation-timeline/spec.md` · Design: `design.md` · Status: **Fase A+B+C implementadas** (contrato/venda = Fase D)
 
 | REQ | Descrição | BE | FE | Testes |
 |-----|-----------|----|----|--------|
 | REQ-RTL-001..004 | Pré-reserva + diálogo no timeline | `ReservationTimelineService.php`, controllers timeline | `ReservationTimeline.tsx`, `ReservationTimelineSheet.tsx` | `ReservationTimelineTest.php`, `ReservationTimeline.test.tsx` |
 | REQ-RTL-024..028 | GET timeline API + UI | `Broker/ReservationTimelineController.php`, `Builder/ReservationTimelineController.php` | `BrokerReservationsPage.tsx`, `ReservationsPage.tsx` | `ReservationTimelineTest.php` |
-| REQ-RTL-029 | Eventos append-only | `ReservationTimelineEvent.php`, hooks em `PreReservationService` + messages | — | `ReservationTimelineTest.php` |
-| REQ-RTL-005..023 | Proposta + sinal + contrato | — (Fase B–D) | — | — |
+| REQ-RTL-029 | Eventos append-only | `ReservationTimelineEvent.php`, hooks em services | — | `ReservationTimelineTest.php` |
+| REQ-RTL-005..012 | Proposta + decisão gestor | `ReservationProposalService.php`, controllers proposal | `BrokerReservationDialog.tsx`, `BuilderProposalDecisionPanel.tsx` | `ReservationProposalTest.php` |
+| REQ-RTL-013..017 | Sinal + comprovante + alerta 48h | `ReservationDepositService.php`, `ReservationAttachment.php`, `CheckDepositWindows.php`, controllers deposit | `BrokerDepositProofDialog.tsx`, `BuilderDepositProofApprovalPanel.tsx`, `ReservationAttachmentField.tsx` | `ReservationDepositTest.php` |
+| REQ-RTL-018..023 | Contrato + venda | — (Fase D) | — | — |
 
 ---
 

@@ -11,7 +11,9 @@ use App\Models\Unit;
 use App\Services\BrokerUnitAccessService;
 use App\Services\PreReservationService;
 use App\Services\ReservationPendingReplyService;
+use App\Services\ReservationProposalService;
 use App\Services\ReservationTimelineService;
+use App\Support\ReservationProposalRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -27,6 +29,7 @@ class ReservationController extends Controller
         private readonly BrokerUnitAccessService $brokerUnitAccessService,
         private readonly PreReservationService $preReservationService,
         private readonly ReservationPendingReplyService $reservationPendingReplyService,
+        private readonly ReservationProposalService $proposalService,
         private readonly ReservationTimelineService $timelineService,
     ) {}
 
@@ -36,7 +39,7 @@ class ReservationController extends Controller
 
         $reservations = Reservation::query()
             ->withoutGlobalScope('tenant')
-            ->confirmed()
+            ->listed()
             ->where('broker_id', $broker->id)
             ->with(['client', 'unit.building'])
             ->withCount('messages')
@@ -84,30 +87,15 @@ class ReservationController extends Controller
 
     public function confirm(Request $request, Reservation $reservation): JsonResponse
     {
-        $data = $request->validate([
-            'client_id' => ['required', 'integer', 'exists:broker_clients,id'],
-            'observations' => ['nullable', 'string', 'max:2000'],
-        ]);
-
-        $broker = $request->user();
-
-        $client = BrokerClient::query()
-            ->where('id', $data['client_id'])
-            ->where('broker_id', $broker->id)
-            ->first();
-
-        if ($client === null) {
-            return response()->json(['message' => 'Client not found.'], 403);
+        if ($reservation->broker_id !== $request->user()->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
         }
 
-        $confirmed = $this->preReservationService->confirmPreHold(
-            $broker,
-            $reservation,
-            $client,
-            $data['observations'] ?? null,
-        );
+        $data = $request->validate(ReservationProposalRules::submit());
 
-        return response()->json($confirmed);
+        $updated = $this->proposalService->submit($request->user(), $reservation, $data);
+
+        return response()->json($updated->load(['unit', 'proposals']));
     }
 
     public function releasePreHold(Request $request, Reservation $reservation): JsonResponse
@@ -169,7 +157,7 @@ class ReservationController extends Controller
                 'unit_id' => $locked->id,
                 'broker_id' => $broker->id,
                 'client_id' => $client->id,
-                'status' => ReservationStatus::Confirmed,
+                'status' => ReservationStatus::DepositPending,
                 'expires_at' => now()->addHours($ttlHours),
             ]);
 
@@ -204,6 +192,23 @@ class ReservationController extends Controller
 
         if ($reservation->isPreHold()) {
             $this->preReservationService->releasePreHold($request->user(), $reservation);
+
+            return response()->json(null, 204);
+        }
+
+        if ($reservation->isProposalPending() || $reservation->isProposalReturned()) {
+            DB::transaction(function () use ($reservation) {
+                $unit = Unit::query()
+                    ->withoutGlobalScope('tenant')
+                    ->lockForUpdate()
+                    ->find($reservation->unit_id);
+
+                if ($unit !== null && $unit->status === UnitStatus::PreReserved) {
+                    $unit->update(['status' => UnitStatus::Available]);
+                }
+
+                $reservation->delete();
+            });
 
             return response()->json(null, 204);
         }

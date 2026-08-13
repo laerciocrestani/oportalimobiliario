@@ -27,7 +27,7 @@ class ReservationPendingReplyService
     public function countForBuilder(): int
     {
         return $this->countWhereLatestMessageFromRole(
-            Reservation::query()->confirmed(),
+            Reservation::query()->listed(),
             'broker',
         );
     }
@@ -37,7 +37,7 @@ class ReservationPendingReplyService
         return $this->countWhereLatestMessageFromRole(
             Reservation::query()
                 ->withoutGlobalScope('tenant')
-                ->confirmed()
+                ->listed()
                 ->where('broker_id', $broker->id),
             'builder',
         );
@@ -50,10 +50,16 @@ class ReservationPendingReplyService
     {
         return [
             'id' => $reservation->id,
+            'status' => $reservation->status->value,
             'created_at' => $reservation->created_at,
             'expires_at' => $reservation->expires_at,
             'messages_count' => $reservation->messages_count ?? $reservation->messages()->count(),
             'needs_reply' => $this->needsReplyFromUser($reservation, $viewer),
+            'needs_proposal_decision' => $reservation->isProposalPending(),
+            'needs_deposit_proof_approval' => $reservation->isDepositProofPending(),
+            'deposit_overdue' => $reservation->timelineEvents()
+                ->where('type', \App\Enums\ReservationTimelineEventType::DepositOverdue)
+                ->exists(),
             'client' => $reservation->client ? [
                 'id' => $reservation->client->id,
                 'name' => $reservation->client->name,

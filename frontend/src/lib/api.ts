@@ -230,10 +230,14 @@ export type ReservationMessage = {
 
 export type BuilderReservationListItem = {
   id: number
+  status: string
   created_at: string
   expires_at: string
   messages_count: number
   needs_reply: boolean
+  needs_proposal_decision: boolean
+  needs_deposit_proof_approval: boolean
+  deposit_overdue: boolean
   client: Pick<BrokerClient, 'id' | 'name'> | null
   broker: Pick<LinkedBroker, 'id' | 'name'> | null
   unit: {
@@ -264,17 +268,59 @@ export type ReservationTimelineStep = {
   actions: string[]
 }
 
+export type ReservationAttachment = {
+  id: number
+  kind: string
+  original_name: string
+  mime_type: string
+  size_bytes: number
+  uploaded_by: number
+  created_at: string | null
+  file_url: string
+}
+
 export type ReservationTimeline = {
   reservation_id: number
   current_stage: string
   expires_at: string | null
+  deposit_overdue: boolean
   unit: {
     id: number
     code: string
     status: string
   }
+  current_proposal: ReservationProposal | null
+  current_deposit_proof: ReservationAttachment | null
   steps: ReservationTimelineStep[]
 }
+
+export type ReservationProposalInput = {
+  client_name: string
+  client_email: string
+  client_phone: string
+  client_cpf: string
+  address: string
+  city: string
+  state: string
+  zip: string
+  marital_status: string
+  nationality: string
+  land_value: number
+  payment_terms: string
+}
+
+export type ReservationProposal = ReservationProposalInput & {
+  id: number
+  version: number
+  decision: 'accepted' | 'rejected' | 'returned' | null
+  decision_note: string | null
+  submitted_by: number
+  decided_by: number | null
+  decided_at: string | null
+  created_at: string | null
+}
+
+export type ProposalDecision = 'accepted' | 'rejected' | 'returned'
 
 export type Paginated<T> = {
   data: T[]
@@ -595,6 +641,26 @@ export const builderApi = {
     }),
   getReservationTimeline: (reservationId: number) =>
     apiFetch<ReservationTimeline>(`/builder/reservations/${reservationId}/timeline`),
+  decideReservationProposal: (
+    reservationId: number,
+    decision: ProposalDecision,
+    decisionNote?: string,
+  ) =>
+    apiFetch<{ status: string; proposal: ReservationProposal }>(
+      `/builder/reservations/${reservationId}/proposal/decision`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          decision,
+          decision_note: decisionNote?.trim() || undefined,
+        }),
+      },
+    ),
+  approveDepositProof: (reservationId: number) =>
+    apiFetch<{ status: string }>(
+      `/builder/reservations/${reservationId}/deposit-proof/approve`,
+      { method: 'PATCH' },
+    ),
 }
 
 export const brokerApi = {
@@ -623,14 +689,28 @@ export const brokerApi = {
       method: 'POST',
       body: JSON.stringify({ unit_id: unitId }),
     }),
-  confirmReservation: (reservationId: number, clientId: number, observations?: string) =>
+  confirmReservation: (reservationId: number, data: ReservationProposalInput) =>
     apiFetch<Reservation>(`/broker/reservations/${reservationId}/confirm`, {
       method: 'PATCH',
-      body: JSON.stringify({
-        client_id: clientId,
-        observations: observations?.trim() || undefined,
-      }),
+      body: JSON.stringify(data),
     }),
+  submitReservationProposal: (reservationId: number, data: ReservationProposalInput) =>
+    apiFetch<Reservation & { proposal?: ReservationProposal }>(
+      `/broker/reservations/${reservationId}/proposal`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
+    ),
+  uploadDepositProof: (reservationId: number, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    return apiUpload<{ status: string; attachment: ReservationAttachment }>(
+      `/broker/reservations/${reservationId}/deposit-proof`,
+      formData,
+    )
+  },
   releasePreHold: (reservationId: number) =>
     apiFetch<void>(`/broker/reservations/${reservationId}/pre-hold`, { method: 'DELETE' }),
   cancelReservation: (reservationId: number) =>

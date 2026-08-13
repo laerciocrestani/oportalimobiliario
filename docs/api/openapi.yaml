@@ -720,7 +720,7 @@ paths:
   /api/builder/reservations/{reservation}/proposal/decision:
     patch:
       summary: Decide on reservation proposal (builder)
-      description: Planned — accept, reject, or return proposal to broker.
+      description: Accept, reject, or return the pending proposal to the broker.
       security:
         - bearerAuth: []
       parameters:
@@ -755,7 +755,7 @@ paths:
   /api/builder/reservations/{reservation}/deposit-proof/approve:
     patch:
       summary: Approve deposit proof (builder)
-      description: Planned — validates payment proof and releases contract data collection.
+      description: Validates payment proof and advances reservation to contract data collection.
       security:
         - bearerAuth: []
       parameters:
@@ -1090,8 +1090,8 @@ paths:
     post:
       summary: Submit reservation proposal (broker)
       description: |
-        Planned — replaces conceptual meaning of PATCH confirm.
-        Sends client data snapshot and payment terms to manager for approval.
+        Sends client data snapshot and payment terms to the manager for approval.
+        Replaces the legacy meaning of PATCH confirm (Fase B).
       security:
         - bearerAuth: []
       parameters:
@@ -1116,7 +1116,7 @@ paths:
   /api/broker/reservations/{reservation}/deposit-proof:
     post:
       summary: Upload deposit proof (broker)
-      description: Planned — attach payment proof after proposal accepted.
+      description: Attach payment proof after proposal accepted. Moves reservation to deposit_proof_pending.
       security:
         - bearerAuth: []
       parameters:
@@ -1431,6 +1431,8 @@ components:
           type: string
           format: date-time
           nullable: true
+        deposit_overdue:
+          type: boolean
         unit:
           type: object
           properties:
@@ -1440,6 +1442,10 @@ components:
               type: string
             status:
               type: string
+        current_proposal:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/ReservationProposal'
         steps:
           type: array
           items:
@@ -1486,3 +1492,32 @@ components:
         payment_terms:
           type: string
           maxLength: 2000
+    ReservationProposal:
+      allOf:
+        - $ref: '#/components/schemas/ReservationProposalInput'
+        - type: object
+          properties:
+            id:
+              type: integer
+            version:
+              type: integer
+            decision:
+              type: string
+              nullable: true
+              enum: [accepted, rejected, returned]
+            decision_note:
+              type: string
+              nullable: true
+            submitted_by:
+              type: integer
+            decided_by:
+              type: integer
+              nullable: true
+            decided_at:
+              type: string
+              format: date-time
+              nullable: true
+            created_at:
+              type: string
+              format: date-time
+              nullable: true

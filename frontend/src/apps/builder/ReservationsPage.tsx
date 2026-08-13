@@ -122,7 +122,26 @@ export function ReservationsPage() {
                   <tbody>
                     {reservations.map((reservation) => (
                       <tr key={reservation.id} className="border-b last:border-b-0">
-                        <td className="px-4 py-3">{reservation.client?.name ?? '—'}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span>{reservation.client?.name ?? '—'}</span>
+                            {reservation.needs_proposal_decision ? (
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+                                Proposta pendente
+                              </span>
+                            ) : null}
+                            {reservation.needs_deposit_proof_approval ? (
+                              <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-900">
+                                Comprovante pendente
+                              </span>
+                            ) : null}
+                            {reservation.deposit_overdue ? (
+                              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-900">
+                                Sinal vencido
+                              </span>
+                            ) : null}
+                          </div>
+                        </td>
                         <td className="px-4 py-3">
                           {reservation.unit?.building?.name ?? '—'}
                           {reservation.unit?.code ? ` · ${reservation.unit.code}` : ''}
@@ -134,10 +153,17 @@ export function ReservationsPage() {
                             <Button
                               type="button"
                               size="sm"
-                              variant="outline"
+                              variant={
+                                reservation.needs_proposal_decision ||
+                                reservation.needs_deposit_proof_approval
+                                  ? 'default'
+                                  : 'outline'
+                              }
                               onClick={() => handleOpenTimeline(reservation.id)}
                             >
                               Andamento
+                              {reservation.needs_proposal_decision ? ' · decisão' : ''}
+                              {reservation.needs_deposit_proof_approval ? ' · comprovante' : ''}
                             </Button>
                             <Button
                               type="button"

@@ -42,3 +42,25 @@ function linkBrokerToTenant(User $broker, Tenant $tenant): void
         'broker_id' => $broker->id,
     ]);
 }
+
+/**
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function validProposalPayload(array $overrides = []): array
+{
+    return array_merge([
+        'client_name' => 'Maria Silva',
+        'client_email' => 'maria@example.com',
+        'client_phone' => '11999999999',
+        'client_cpf' => '12345678901',
+        'address' => 'Rua A, 100',
+        'city' => 'São Paulo',
+        'state' => 'SP',
+        'zip' => '01000-000',
+        'marital_status' => 'solteira',
+        'nationality' => 'brasileira',
+        'land_value' => 150000,
+        'payment_terms' => 'Pix R$ 10.000 + 24x R$ 5.000',
+    ], $overrides);
+}

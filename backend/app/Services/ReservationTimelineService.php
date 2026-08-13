@@ -91,7 +91,7 @@ class ReservationTimelineService
      */
     public function build(Reservation $reservation, User $viewer): array
     {
-        $reservation->loadMissing(['unit', 'broker', 'timelineEvents.actor']);
+        $reservation->loadMissing(['unit', 'broker', 'timelineEvents.actor', 'proposals', 'attachments']);
 
         $events = $reservation->timelineEvents->sortBy('created_at');
         $messagesCount = $reservation->messages()->count();
@@ -100,16 +100,32 @@ class ReservationTimelineService
         $currentStage = $this->resolveCurrentStage($reservation, $currentStepKey);
 
         $steps = $this->buildSteps($reservation, $events, $messagesCount, $currentStepKey, $viewer);
+        $currentProposal = $reservation->proposals()->latest('version')->first();
+        $currentDepositProof = $reservation->attachments()
+            ->where('kind', \App\Enums\ReservationAttachmentKind::DepositProof)
+            ->latest('id')
+            ->first();
+
+        $attachmentPrefix = $viewer->role === 'broker'
+            ? "/broker/reservations/{$reservation->id}/attachments"
+            : "/builder/reservations/{$reservation->id}/attachments";
+
+        $depositOverdue = $events->contains(
+            fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::DepositOverdue,
+        );
 
         return [
             'reservation_id' => $reservation->id,
             'current_stage' => $currentStage,
             'expires_at' => $reservation->expires_at?->toIso8601String(),
+            'deposit_overdue' => $depositOverdue,
             'unit' => [
                 'id' => $reservation->unit->id,
                 'code' => $reservation->unit->code,
                 'status' => $reservation->unit->status->value,
             ],
+            'current_proposal' => $currentProposal?->toApiArray(),
+            'current_deposit_proof' => $currentDepositProof?->toApiArray($attachmentPrefix),
             'steps' => $steps,
         ];
     }
@@ -120,6 +136,11 @@ class ReservationTimelineService
             ->where('reservation_id', $reservation->id)
             ->where('type', $type)
             ->exists();
+    }
+
+    public function hasEventType(Reservation $reservation, ReservationTimelineEventType $type): bool
+    {
+        return $this->hasEvent($reservation, $type);
     }
 
     /**
@@ -138,6 +159,14 @@ class ReservationTimelineService
             return 'proposal_decision';
         }
 
+        if ($reservation->isProposalPending()) {
+            return 'proposal_decision';
+        }
+
+        if ($reservation->isProposalReturned()) {
+            return 'proposal_submitted';
+        }
+
         if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractUploaded)) {
             return 'contract_validate';
         }
@@ -150,6 +179,14 @@ class ReservationTimelineService
             return 'contract_issue';
         }
 
+        if ($reservation->isContractDataPending()) {
+            return 'contract_data';
+        }
+
+        if ($reservation->isDepositProofPending()) {
+            return 'deposit_proof';
+        }
+
         if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::DepositProofApproved)) {
             return 'contract_data';
         }
@@ -158,7 +195,7 @@ class ReservationTimelineService
             return 'deposit_proof';
         }
 
-        if ($reservation->isConfirmed()) {
+        if ($reservation->isDepositPending()) {
             return 'deposit_window';
         }
 
@@ -175,15 +212,28 @@ class ReservationTimelineService
             return 'sold';
         }
 
-        if ($reservation->isConfirmed()) {
+        if ($reservation->isProposalPending()) {
+            return 'proposal_pending';
+        }
+
+        if ($reservation->isProposalReturned()) {
+            return 'proposal_returned';
+        }
+
+        if ($reservation->isContractDataPending()) {
+            return 'contract_data_pending';
+        }
+
+        if ($reservation->isDepositProofPending()) {
+            return 'deposit_proof_pending';
+        }
+
+        if ($reservation->isDepositPending()) {
             return 'deposit_pending';
         }
 
         if ($reservation->isPreHold()) {
-            return match ($currentStepKey) {
-                'proposal_submitted' => 'pre_hold',
-                default => 'pre_hold',
-            };
+            return 'pre_hold';
         }
 
         return 'pre_hold';
@@ -201,7 +251,7 @@ class ReservationTimelineService
         User $viewer,
     ): array {
         $currentIndex = $this->stepIndex($currentStepKey);
-        $isLegacyConfirmed = $reservation->isConfirmed()
+        $isLegacyConfirmed = $reservation->isDepositPending()
             && ! $events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ProposalSubmitted);
 
         $steps = [];
@@ -291,7 +341,7 @@ class ReservationTimelineService
             return 'current';
         }
 
-        if ($stepEvents->isEmpty() && $reservation->isConfirmed() && $stepKey === 'deposit_window') {
+        if ($stepEvents->isEmpty() && $reservation->isDepositPending() && $stepKey === 'deposit_window') {
             return $index === $currentIndex ? 'current' : 'upcoming';
         }
 
@@ -318,7 +368,7 @@ class ReservationTimelineService
             return $firstMessage?->created_at?->toIso8601String();
         }
 
-        if ($stepKey === 'deposit_window' && $reservation->isConfirmed()) {
+        if ($stepKey === 'deposit_window' && $reservation->isDepositPending()) {
             return $reservation->updated_at?->toIso8601String();
         }
 
@@ -364,6 +414,7 @@ class ReservationTimelineService
         return match ($stepKey) {
             'dialogue' => ['open_dialogue'],
             'proposal_submitted' => $isBroker ? ['submit_proposal', 'open_dialogue'] : ['open_dialogue'],
+            'proposal_decision' => $isBroker ? ['open_dialogue'] : ['decide_proposal', 'open_dialogue'],
             'deposit_window' => $isBroker ? ['submit_deposit_proof'] : [],
             'deposit_proof' => $isBroker ? [] : ['approve_deposit_proof'],
             'contract_data' => $isBroker ? ['submit_contract_data'] : [],

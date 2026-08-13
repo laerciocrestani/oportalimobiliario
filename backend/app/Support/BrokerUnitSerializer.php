@@ -22,14 +22,21 @@ class BrokerUnitSerializer
             return $payload;
         }
 
-        if ($reservation->status === ReservationStatus::PreHold) {
+        $isOwner = (int) $reservation->broker_id === $brokerId;
+        $isPreReservedFlow = in_array($reservation->status, [
+            ReservationStatus::PreHold,
+            ReservationStatus::ProposalPending,
+            ReservationStatus::ProposalReturned,
+        ], true);
+
+        if ($isPreReservedFlow) {
             $payload['pre_hold'] = [
                 'reservation_id' => $reservation->id,
                 'expires_at' => $reservation->expires_at?->toIso8601String(),
-                'held_by_me' => (int) $reservation->broker_id === $brokerId,
+                'held_by_me' => $isOwner,
             ];
 
-            if ((int) $reservation->broker_id === $brokerId) {
+            if ($isOwner) {
                 $payload['reservation'] = [
                     'id' => $reservation->id,
                     'unit_id' => $reservation->unit_id,
@@ -42,8 +49,7 @@ class BrokerUnitSerializer
             return $payload;
         }
 
-        if ($reservation->status === ReservationStatus::Confirmed
-            && (int) $reservation->broker_id === $brokerId) {
+        if ($reservation->isDepositPending() && $isOwner) {
             $payload['reservation'] = $reservation->toArray();
         }
 

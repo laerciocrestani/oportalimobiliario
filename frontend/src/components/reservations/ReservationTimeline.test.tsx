@@ -8,6 +8,9 @@ const sampleTimeline: ReservationTimelineData = {
   current_stage: 'pre_hold',
   expires_at: '2026-07-10T20:00:00+00:00',
   unit: { id: 10, code: '101', status: 'pre_reserved' },
+  deposit_overdue: false,
+  current_proposal: null,
+  current_deposit_proof: null,
   steps: [
     {
       key: 'pre_hold_created',

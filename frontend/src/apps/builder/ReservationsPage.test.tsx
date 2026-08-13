@@ -40,10 +40,14 @@ describe('ReservationsPage', () => {
     listReservations.mockResolvedValue([
       {
         id: 1,
+        status: 'proposal_pending',
         created_at: '2026-06-12T10:00:00.000000Z',
         expires_at: '2026-06-14T10:00:00.000000Z',
         messages_count: 2,
         needs_reply: true,
+        needs_proposal_decision: true,
+        needs_deposit_proof_approval: false,
+        deposit_overdue: false,
         client: { id: 1, name: 'João Silva' },
         broker: { id: 2, name: 'Corretor Alpha' },
         unit: {
@@ -63,6 +67,8 @@ describe('ReservationsPage', () => {
       expect(screen.getByText('João Silva')).toBeInTheDocument()
       expect(screen.getByText(/Residencial Aurora · 1201/)).toBeInTheDocument()
       expect(screen.getByText('Corretor Alpha')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Andamento · decisão' })).toBeInTheDocument()
+      expect(screen.getByText('Proposta pendente')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Responder · nova' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Cancelar' })).toBeInTheDocument()
     })

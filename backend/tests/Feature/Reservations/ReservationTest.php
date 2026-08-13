@@ -5,6 +5,7 @@
  * @see REQ-RES-002
  * @see REQ-RES-004
  */
+use App\Enums\ReservationStatus;
 use App\Enums\UnitStatus;
 use App\Models\BrokerClient;
 use App\Models\Building;
@@ -134,6 +135,7 @@ it('expires reservations and frees unit', function () {
     Reservation::factory()->create([
         'tenant_id' => $tenant->id,
         'unit_id' => $unit->id,
+        'status' => ReservationStatus::Confirmed,
         'expires_at' => now()->subMinute(),
     ]);
 

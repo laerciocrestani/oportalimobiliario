@@ -72,10 +72,9 @@ it('rejects pre-hold when unit is already held', function () {
         ->assertJsonPath('message', 'Esta unidade acaba de ser pré-reservada por outro corretor.');
 });
 
-it('confirms pre-hold with client and observations', function () {
+it('submits proposal from pre-hold via legacy confirm endpoint', function () {
     $tenant = Tenant::factory()->create();
     $broker = User::factory()->broker()->create();
-    $client = BrokerClient::factory()->for($broker, 'broker')->create();
     $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
 
     UnitAccess::factory()->create([
@@ -94,23 +93,18 @@ it('confirms pre-hold with client and observations', function () {
 
     Sanctum::actingAs($broker);
 
-    $this->patchJson("/api/broker/reservations/{$reservation->id}/confirm", [
-        'client_id' => $client->id,
-        'observations' => 'Cliente prefere vista.',
-    ])
+    $this->patchJson("/api/broker/reservations/{$reservation->id}/confirm", validProposalPayload())
         ->assertOk()
-        ->assertJsonPath('status', ReservationStatus::Confirmed->value)
-        ->assertJsonPath('client_id', $client->id);
+        ->assertJsonPath('status', ReservationStatus::ProposalPending->value);
 
-    expect($unit->fresh()->status)->toBe(UnitStatus::Reserved);
-    expect($reservation->fresh()->messages()->count())->toBe(1);
+    expect($unit->fresh()->status)->toBe(UnitStatus::PreReserved);
+    expect($reservation->fresh()->messages()->count())->toBe(0);
 });
 
 it('rejects confirm from another broker', function () {
     $tenant = Tenant::factory()->create();
     $brokerA = User::factory()->broker()->create();
     $brokerB = User::factory()->broker()->create();
-    $client = BrokerClient::factory()->for($brokerB, 'broker')->create();
     $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
 
     $reservation = Reservation::factory()->preHold()->create([
@@ -123,9 +117,8 @@ it('rejects confirm from another broker', function () {
 
     linkBrokerToTenant($brokerB, $tenant);
 
-    $this->patchJson("/api/broker/reservations/{$reservation->id}/confirm", [
-        'client_id' => $client->id,
-    ])->assertForbidden();
+    $this->patchJson("/api/broker/reservations/{$reservation->id}/confirm", validProposalPayload())
+        ->assertForbidden();
 });
 
 it('rejects confirm when pre-hold expired', function () {
@@ -144,9 +137,7 @@ it('rejects confirm when pre-hold expired', function () {
 
     Sanctum::actingAs($broker);
 
-    $this->patchJson("/api/broker/reservations/{$reservation->id}/confirm", [
-        'client_id' => $client->id,
-    ])
+    $this->patchJson("/api/broker/reservations/{$reservation->id}/confirm", validProposalPayload())
         ->assertUnprocessable()
         ->assertJsonPath('message', 'Sua pré-reserva expirou. A unidade está disponível novamente.');
 });

@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react'
 import { BuilderDashboardShell } from '@/apps/builder/components/BuilderDashboardShell'
 import { ReservationMessagesDialog } from '@/apps/builder/components/ReservationMessagesDialog'
-import { ReservationTimelineSheet } from '@/components/reservations/ReservationTimelineSheet'
 import { useBuilderPermissions } from '@/apps/builder/hooks/use-builder-permissions'
-import { Button } from '@/components/ui/button'
+import { ReservationChatButton } from '@/components/reservations/ReservationChatButton'
+import { ReservationActionsMenu } from '@/components/reservations/ReservationActionsMenu'
+import { ReservationCancelDialog } from '@/components/reservations/ReservationCancelDialog'
+import { ReservationWaitingStatus } from '@/components/reservations/ReservationWaitingStatus'
+import { ReservationSituation } from '@/components/reservations/ReservationSituation'
+import { ReservationTimelineSheet } from '@/components/reservations/ReservationTimelineSheet'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { builderApi, type BuilderReservationListItem } from '@/lib/api'
 import { notifyReservationBadgeRefresh } from '@/lib/reservation-badge-events'
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(new Date(value))
-}
 
 export function ReservationsPage() {
   const { permissions } = useBuilderPermissions()
@@ -21,6 +18,7 @@ export function ReservationsPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [cancellingId, setCancellingId] = useState<number | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<BuilderReservationListItem | null>(null)
   const [messagesReservationId, setMessagesReservationId] = useState<number | null>(null)
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [timelineReservationId, setTimelineReservationId] = useState<number | null>(null)
@@ -48,19 +46,20 @@ export function ReservationsPage() {
     void load()
   }, [canManage])
 
-  async function handleCancel(reservationId: number) {
-    if (!window.confirm('Deseja cancelar esta reserva? A unidade voltará a ficar disponível.')) {
+  async function handleCancel(reason: string) {
+    const reservation = cancelTarget
+    if (reservation === null) {
       return
     }
 
     try {
       setError(null)
-      setCancellingId(reservationId)
-      await builderApi.cancelReservation(reservationId)
-      setReservations((current) => current.filter((item) => item.id !== reservationId))
+      setCancellingId(reservation.id)
+      await builderApi.cancelReservation(reservation.id, reason)
+      setReservations((current) => current.filter((item) => item.id !== reservation.id))
       notifyReservationBadgeRefresh()
     } catch {
-      setError('Não foi possível cancelar a reserva.')
+      throw new Error('cancel_failed')
     } finally {
       setCancellingId(null)
     }
@@ -114,8 +113,9 @@ export function ReservationsPage() {
                     <tr>
                       <th className="px-4 py-3 font-medium">Cliente</th>
                       <th className="px-4 py-3 font-medium">Empreendimento</th>
+                      <th className="px-4 py-3 font-medium">Situação</th>
+                      <th className="px-4 py-3 font-medium">Status</th>
                       <th className="px-4 py-3 font-medium">Corretor</th>
-                      <th className="px-4 py-3 font-medium">Data</th>
                       <th className="px-4 py-3 font-medium">Ações</th>
                     </tr>
                   </thead>
@@ -146,44 +146,36 @@ export function ReservationsPage() {
                           {reservation.unit?.building?.name ?? '—'}
                           {reservation.unit?.code ? ` · ${reservation.unit.code}` : ''}
                         </td>
-                        <td className="px-4 py-3">{reservation.broker?.name ?? '—'}</td>
-                        <td className="px-4 py-3">{formatDate(reservation.created_at)}</td>
+                        <td className="px-2 py-2">
+                          <ReservationSituation
+                            situation={reservation.situation}
+                            onOpenTimeline={() => handleOpenTimeline(reservation.id)}
+                          />
+                        </td>
                         <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={
-                                reservation.needs_proposal_decision ||
-                                reservation.needs_deposit_proof_approval
-                                  ? 'default'
-                                  : 'outline'
-                              }
-                              onClick={() => handleOpenTimeline(reservation.id)}
-                            >
-                              Andamento
-                              {reservation.needs_proposal_decision ? ' · decisão' : ''}
-                              {reservation.needs_deposit_proof_approval ? ' · comprovante' : ''}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={reservation.needs_reply ? 'default' : 'outline'}
+                          <ReservationWaitingStatus
+                            profile="builder"
+                            waitingOn={reservation.situation.current.waiting_on}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <span className="min-w-0 truncate">{reservation.broker?.name ?? '—'}</span>
+                            <ReservationChatButton
+                              label={reservation.broker?.name ?? reservation.client?.name ?? `reserva ${reservation.id}`}
+                              needsReply={reservation.needs_reply}
                               onClick={() => handleOpenMessages(reservation.id)}
-                            >
-                              Responder
-                              {reservation.needs_reply ? ' · nova' : ''}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              disabled={cancellingId === reservation.id}
-                              onClick={() => void handleCancel(reservation.id)}
-                            >
-                              {cancellingId === reservation.id ? 'Cancelando...' : 'Cancelar'}
-                            </Button>
+                            />
                           </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <ReservationActionsMenu
+                            reservation={reservation}
+                            cancelling={cancellingId === reservation.id}
+                            onTimeline={() => handleOpenTimeline(reservation.id)}
+                            onMessages={() => handleOpenMessages(reservation.id)}
+                            onCancel={() => setCancelTarget(reservation)}
+                          />
                         </td>
                       </tr>
                     ))}
@@ -194,6 +186,17 @@ export function ReservationsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ReservationCancelDialog
+        open={cancelTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelTarget(null)
+          }
+        }}
+        clientName={cancelTarget?.client?.name}
+        onConfirm={handleCancel}
+      />
 
       <ReservationTimelineSheet
         profile="builder"

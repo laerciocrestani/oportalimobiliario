@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\Broker\BrokerProfileController;
 use App\Http\Controllers\Api\Broker\ClientController as BrokerClientController;
 use App\Http\Controllers\Api\Broker\ReservationAttachmentController as BrokerReservationAttachmentController;
 use App\Http\Controllers\Api\Broker\ReservationController;
+use App\Http\Controllers\Api\Broker\ReservationContractDataController as BrokerReservationContractDataController;
 use App\Http\Controllers\Api\Broker\ReservationDepositController as BrokerReservationDepositController;
 use App\Http\Controllers\Api\Broker\ReservationMessageController as BrokerReservationMessageController;
 use App\Http\Controllers\Api\Broker\ReservationProposalController as BrokerReservationProposalController;
@@ -140,6 +141,7 @@ Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('bro
         Route::patch('/reservations/{reservation}/confirm', [ReservationController::class, 'confirm']);
         Route::post('/reservations/{reservation}/proposal', [BrokerReservationProposalController::class, 'store']);
         Route::post('/reservations/{reservation}/deposit-proof', [BrokerReservationDepositController::class, 'store']);
+        Route::post('/reservations/{reservation}/contract-data', [BrokerReservationContractDataController::class, 'store']);
         Route::get('/reservations/{reservation}/attachments/{attachment}/file', [BrokerReservationAttachmentController::class, 'file']);
         Route::delete('/reservations/{reservation}/pre-hold', [ReservationController::class, 'releasePreHold']);
         Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy']);

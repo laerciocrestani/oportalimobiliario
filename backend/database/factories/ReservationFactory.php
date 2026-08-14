@@ -65,7 +65,7 @@ class ReservationFactory extends Factory
     {
         return $this->state(fn () => [
             'status' => \App\Enums\ReservationStatus::ContractDataPending,
-            'expires_at' => null,
+            'expires_at' => now()->addHours(48),
         ]);
     }
 }

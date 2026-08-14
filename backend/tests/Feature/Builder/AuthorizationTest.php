@@ -3,6 +3,8 @@
 /**
  * @see REQ-TEAM-005
  */
+use App\Enums\ReservationStatus;
+use App\Enums\ReservationTimelineEventType;
 use App\Enums\UnitStatus;
 use App\Models\Building;
 use App\Models\Reservation;
@@ -95,10 +97,15 @@ it('allows builder to cancel reservation with reservations.cancel', function () 
 
     Sanctum::actingAs($user);
 
-    $this->deleteJson("/api/builder/reservations/{$reservation->id}")
-        ->assertNoContent();
+    $this->deleteJson("/api/builder/reservations/{$reservation->id}", [
+        'reason' => 'Unidade será relançada.',
+    ])->assertNoContent();
 
+    expect($reservation->fresh()->status)->toBe(ReservationStatus::Cancelled);
     expect($unit->fresh()->status)->toBe(UnitStatus::Available);
+    expect($reservation->timelineEvents()->where('type', ReservationTimelineEventType::Cancelled)->first())
+        ->not->toBeNull()
+        ->payload->toMatchArray(['reason' => 'Unidade será relançada.']);
 });
 
 it('returns permissions on me endpoint for builder', function () {

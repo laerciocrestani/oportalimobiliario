@@ -174,8 +174,13 @@ describe('BrokerUnitsDialog', () => {
 
     await user.click(screen.getByRole('button', { name: 'Remover reserva' }))
 
+    expect(brokerApi.cancelReservation).not.toHaveBeenCalled()
+
+    await user.type(screen.getByLabelText('Motivo *'), 'Cliente desistiu')
+    await user.click(screen.getByRole('button', { name: 'Cancelar reserva' }))
+
     await waitFor(() => {
-      expect(brokerApi.cancelReservation).toHaveBeenCalledWith(99)
+      expect(brokerApi.cancelReservation).toHaveBeenCalledWith(99, 'Cliente desistiu')
       expect(onReserved).toHaveBeenCalled()
     })
   })

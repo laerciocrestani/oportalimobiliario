@@ -9,8 +9,10 @@ const sampleTimeline: ReservationTimelineData = {
   expires_at: '2026-07-10T20:00:00+00:00',
   unit: { id: 10, code: '101', status: 'pre_reserved' },
   deposit_overdue: false,
+  client: null,
   current_proposal: null,
   current_deposit_proof: null,
+  attachments: [],
   steps: [
     {
       key: 'pre_hold_created',
@@ -40,8 +42,102 @@ describe('ReservationTimeline', () => {
     render(<ReservationTimeline timeline={sampleTimeline} onAction={onAction} />)
 
     expect(screen.getByText('Pré-reserva')).toBeInTheDocument()
+    expect(screen.getByText(/ · João/)).toBeInTheDocument()
     expect(screen.getByText('Diálogo com construtora')).toBeInTheDocument()
-    expect(screen.getByText('Em andamento')).toBeInTheDocument()
+    expect(screen.queryByText('Em andamento')).not.toBeInTheDocument()
+    expect(screen.queryByText('Concluído')).not.toBeInTheDocument()
+    expect(screen.queryByText('Pendente')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Abrir diálogo' })).toBeInTheDocument()
+    expect(document.querySelector('ol span[aria-hidden]')).toHaveClass('bg-emerald-50')
+    expect(document.querySelector('.animate-ping')).toBeInTheDocument()
+    expect(screen.getByText('Diálogo com construtora').closest('li')).toHaveAttribute(
+      'aria-current',
+      'step',
+    )
+  })
+
+  it('lists historic attachments after the process moves forward', () => {
+    render(
+      <ReservationTimeline
+        timeline={{
+          ...sampleTimeline,
+          current_stage: 'contract_data_pending',
+          attachments: [
+            {
+              id: 9,
+              kind: 'deposit_proof',
+              original_name: 'pix.pdf',
+              mime_type: 'application/pdf',
+              size_bytes: 2048,
+              uploaded_by: 2,
+              created_at: '2026-07-10T19:30:00+00:00',
+              file_url: '/builder/reservations/1/attachments/9/file',
+            },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Anexos da reserva')).toBeInTheDocument()
+    expect(screen.getByText('Comprovante de pagamento')).toBeInTheDocument()
+    expect(screen.getByText('pix.pdf')).toBeInTheDocument()
+  })
+
+  it('renders contract data action for the current step', () => {
+    const onAction = vi.fn()
+
+    render(
+      <ReservationTimeline
+        timeline={{
+          ...sampleTimeline,
+          current_stage: 'contract_data_pending',
+          client: { id: 2, name: 'Ana Silva', phone: '11999999999', email: null },
+          steps: [
+            {
+              key: 'contract_data',
+              label: 'Dados para contrato',
+              status: 'current',
+              occurred_at: null,
+              due_at: null,
+              actor: null,
+              actions: ['submit_contract_data'],
+            },
+          ],
+        }}
+        onAction={onAction}
+      />,
+    )
+
+    expect(screen.getByText('Dados para contrato')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Enviar dados do contrato' })).toBeInTheDocument()
+  })
+
+  it('renders upcoming steps with a disabled gray tone', () => {
+    render(
+      <ReservationTimeline
+        timeline={{
+          ...sampleTimeline,
+          steps: [
+            ...sampleTimeline.steps,
+            {
+              key: 'proposal_submitted',
+              label: 'Proposta enviada',
+              status: 'upcoming',
+              occurred_at: null,
+              due_at: null,
+              actor: null,
+              actions: [],
+            },
+          ],
+        }}
+      />,
+    )
+
+    const label = screen.getByText('Proposta enviada')
+    expect(label).toHaveClass('text-muted-foreground')
+    expect(label.closest('li')?.querySelector('.rounded-full')).toHaveClass(
+      'bg-muted',
+      'text-muted-foreground',
+    )
   })
 })

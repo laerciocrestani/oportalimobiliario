@@ -1,9 +1,11 @@
 import { unitStatusLabels } from '@/apps/builder/lib/unit-status'
 import { BrokerReservationDialog } from '@/apps/broker/components/BrokerReservationDialog'
 import { ReservationMessagesDialog } from '@/apps/builder/components/ReservationMessagesDialog'
+import { ReservationCancelDialog } from '@/components/reservations/ReservationCancelDialog'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -109,6 +111,7 @@ export function BrokerUnitsDialog({
   const [messagesReservationId, setMessagesReservationId] = useState<number | null>(null)
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [cancellingUnitId, setCancellingUnitId] = useState<number | null>(null)
+  const [cancelUnit, setCancelUnit] = useState<Unit | null>(null)
   const [holdingUnitId, setHoldingUnitId] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -127,7 +130,7 @@ export function BrokerUnitsDialog({
   }, [building, open])
 
   useEffect(() => {
-    if (!open || !building || reservationOpen) {
+    if (!open || !building || reservationOpen || cancelUnit !== null) {
       return
     }
 
@@ -169,7 +172,7 @@ export function BrokerUnitsDialog({
       cancelled = true
       window.clearInterval(intervalId)
     }
-  }, [building, open, reservationOpen])
+  }, [building, open, reservationOpen, cancelUnit])
 
   function openReservationDialog(unit: Unit, reservationId: number, expiresAt: string) {
     setSelectedUnit(unit)
@@ -219,19 +222,20 @@ export function BrokerUnitsDialog({
     setMessagesOpen(true)
   }
 
-  async function handleCancelReservation(unit: Unit) {
-    const reservationId = unit.reservation?.id
-    if (!reservationId) {
+  async function handleConfirmCancel(reason: string) {
+    const unit = cancelUnit
+    const reservationId = unit?.reservation?.id
+    if (!unit || !reservationId) {
       return
     }
 
     try {
       setError(null)
       setCancellingUnitId(unit.id)
-      await brokerApi.cancelReservation(reservationId)
+      await brokerApi.cancelReservation(reservationId, reason)
       onReserved()
     } catch {
-      setError('Não foi possível remover a reserva.')
+      throw new Error('cancel_failed')
     } finally {
       setCancellingUnitId(null)
     }
@@ -247,12 +251,13 @@ export function BrokerUnitsDialog({
             setPreHoldReservationId(null)
             setPreHoldExpiresAt(null)
             setReservationOpen(false)
+            setCancelUnit(null)
             setError(null)
           }
           onOpenChange(nextOpen)
         }}
       >
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>{building?.name ?? 'Unidades'}</DialogTitle>
             <DialogDescription>
@@ -260,6 +265,7 @@ export function BrokerUnitsDialog({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogBody>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
           <ul className="divide-y rounded-lg border">
@@ -277,7 +283,7 @@ export function BrokerUnitsDialog({
                   holdingUnitId={holdingUnitId}
                   onPreReserve={(target) => void handlePreReserveClick(target)}
                   onContinueReservation={handleContinueReservation}
-                  onCancelReservation={(target) => void handleCancelReservation(target)}
+                  onCancelReservation={setCancelUnit}
                   onOpenMessages={handleOpenMessages}
                   cancelling={cancellingUnitId === unit.id}
                 />
@@ -289,6 +295,7 @@ export function BrokerUnitsDialog({
               </li>
             ) : null}
           </ul>
+          </DialogBody>
         </DialogContent>
       </Dialog>
 
@@ -310,6 +317,17 @@ export function BrokerUnitsDialog({
           onOpenChange(false)
           onReserved()
         }}
+      />
+
+      <ReservationCancelDialog
+        open={cancelUnit !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setCancelUnit(null)
+          }
+        }}
+        clientName={cancelUnit?.reservation?.client?.name}
+        onConfirm={handleConfirmCancel}
       />
 
       <ReservationMessagesDialog

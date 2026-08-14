@@ -10,9 +10,11 @@ use App\Models\Reservation;
 use App\Models\Unit;
 use App\Services\BrokerUnitAccessService;
 use App\Services\PreReservationService;
+use App\Services\ReservationCancellationService;
 use App\Services\ReservationPendingReplyService;
 use App\Services\ReservationProposalService;
 use App\Services\ReservationTimelineService;
+use App\Support\ReservationCancelRules;
 use App\Support\ReservationProposalRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -28,6 +30,7 @@ class ReservationController extends Controller
     public function __construct(
         private readonly BrokerUnitAccessService $brokerUnitAccessService,
         private readonly PreReservationService $preReservationService,
+        private readonly ReservationCancellationService $cancellationService,
         private readonly ReservationPendingReplyService $reservationPendingReplyService,
         private readonly ReservationProposalService $proposalService,
         private readonly ReservationTimelineService $timelineService,
@@ -41,7 +44,7 @@ class ReservationController extends Controller
             ->withoutGlobalScope('tenant')
             ->listed()
             ->where('broker_id', $broker->id)
-            ->with(['client', 'unit.building'])
+            ->with(['client', 'unit.building', 'timelineEvents', 'messages', 'proposals'])
             ->withCount('messages')
             ->orderByDesc('created_at')
             ->get()
@@ -196,32 +199,9 @@ class ReservationController extends Controller
             return response()->json(null, 204);
         }
 
-        if ($reservation->isProposalPending() || $reservation->isProposalReturned()) {
-            DB::transaction(function () use ($reservation) {
-                $unit = Unit::query()
-                    ->withoutGlobalScope('tenant')
-                    ->lockForUpdate()
-                    ->find($reservation->unit_id);
+        $data = $request->validate(ReservationCancelRules::payload());
 
-                if ($unit !== null && $unit->status === UnitStatus::PreReserved) {
-                    $unit->update(['status' => UnitStatus::Available]);
-                }
-
-                $reservation->delete();
-            });
-
-            return response()->json(null, 204);
-        }
-
-        DB::transaction(function () use ($reservation) {
-            $unit = Unit::query()
-                ->withoutGlobalScope('tenant')
-                ->lockForUpdate()
-                ->findOrFail($reservation->unit_id);
-
-            $unit->update(['status' => UnitStatus::Available]);
-            $reservation->delete();
-        });
+        $this->cancellationService->cancel($request->user(), $reservation, $data['reason']);
 
         return response()->json(null, 204);
     }

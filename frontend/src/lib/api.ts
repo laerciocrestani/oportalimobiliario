@@ -228,6 +228,23 @@ export type ReservationMessage = {
   }
 }
 
+export type ReservationSituationStep = {
+  key: string
+  label: string
+  occurred_at: string | null
+}
+
+export type ReservationWaitingOn = 'broker' | 'builder'
+
+export type ReservationSituation = {
+  previous: ReservationSituationStep | null
+  current: ReservationSituationStep & {
+    status: 'current' | 'failed' | 'completed'
+    waiting_on: ReservationWaitingOn | null
+  }
+  next: ReservationSituationStep | null
+}
+
 export type BuilderReservationListItem = {
   id: number
   status: string
@@ -238,6 +255,7 @@ export type BuilderReservationListItem = {
   needs_proposal_decision: boolean
   needs_deposit_proof_approval: boolean
   deposit_overdue: boolean
+  situation: ReservationSituation
   client: Pick<BrokerClient, 'id' | 'name'> | null
   broker: Pick<LinkedBroker, 'id' | 'name'> | null
   unit: {
@@ -279,6 +297,13 @@ export type ReservationAttachment = {
   file_url: string
 }
 
+export type ReservationTimelineClient = {
+  id: number
+  name: string
+  phone: string
+  email: string | null
+}
+
 export type ReservationTimeline = {
   reservation_id: number
   current_stage: string
@@ -289,9 +314,31 @@ export type ReservationTimeline = {
     code: string
     status: string
   }
+  client: ReservationTimelineClient | null
   current_proposal: ReservationProposal | null
   current_deposit_proof: ReservationAttachment | null
+  attachments: ReservationAttachment[]
   steps: ReservationTimelineStep[]
+}
+
+export type ReservationContractDataInput = {
+  client_name: string
+  client_phone: string
+  client_email: string
+  client_cpf: string
+  client_rg: string
+  address: string
+  city: string
+  state: string
+  zip: string
+  marital_status: string
+  nationality: string
+  spouse_name: string
+  spouse_phone: string
+  spouse_email: string
+  spouse_cpf: string
+  spouse_rg: string
+  spouse_nationality: string
 }
 
 export type ReservationProposalInput = {
@@ -318,6 +365,13 @@ export type ReservationProposal = ReservationProposalInput & {
   decided_by: number | null
   decided_at: string | null
   created_at: string | null
+  client_rg?: string | null
+  spouse_name?: string | null
+  spouse_phone?: string | null
+  spouse_email?: string | null
+  spouse_cpf?: string | null
+  spouse_rg?: string | null
+  spouse_nationality?: string | null
 }
 
 export type ProposalDecision = 'accepted' | 'rejected' | 'returned'
@@ -630,8 +684,11 @@ export const builderApi = {
   listReservations: () => apiFetch<BuilderReservationListItem[]>('/builder/reservations'),
   pendingRepliesCount: () =>
     apiFetch<ReservationPendingRepliesCount>('/builder/reservations/pending-replies-count'),
-  cancelReservation: (reservationId: number) =>
-    apiFetch<void>(`/builder/reservations/${reservationId}`, { method: 'DELETE' }),
+  cancelReservation: (reservationId: number, reason: string) =>
+    apiFetch<void>(`/builder/reservations/${reservationId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ reason: reason.trim() }),
+    }),
   listReservationMessages: (reservationId: number) =>
     apiFetch<ReservationMessage[]>(`/builder/reservations/${reservationId}/messages`),
   replyReservation: (reservationId: number, body: string) =>
@@ -711,10 +768,33 @@ export const brokerApi = {
       formData,
     )
   },
+  submitContractData: (
+    reservationId: number,
+    data: ReservationContractDataInput,
+    files: File[],
+  ) => {
+    const formData = new FormData()
+
+    for (const [key, value] of Object.entries(data)) {
+      formData.append(key, value)
+    }
+
+    for (const file of files) {
+      formData.append('files[]', file)
+    }
+
+    return apiUpload<{ status: string; attachments: ReservationAttachment[] }>(
+      `/broker/reservations/${reservationId}/contract-data`,
+      formData,
+    )
+  },
   releasePreHold: (reservationId: number) =>
     apiFetch<void>(`/broker/reservations/${reservationId}/pre-hold`, { method: 'DELETE' }),
-  cancelReservation: (reservationId: number) =>
-    apiFetch<void>(`/broker/reservations/${reservationId}`, { method: 'DELETE' }),
+  cancelReservation: (reservationId: number, reason: string) =>
+    apiFetch<void>(`/broker/reservations/${reservationId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ reason: reason.trim() }),
+    }),
   listReservationMessages: (reservationId: number) =>
     apiFetch<ReservationMessage[]>(`/broker/reservations/${reservationId}/messages`),
   replyReservation: (reservationId: number, body: string) =>

@@ -2,6 +2,7 @@ import { Funnel } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -75,6 +76,7 @@ export function InviteFiltersDialog({
           </DialogDescription>
         </DialogHeader>
 
+        <DialogBody>
         <div className="grid gap-4">
           <div className="flex flex-col gap-2">
             <Label htmlFor="invite-status-filter">Status</Label>
@@ -140,6 +142,7 @@ export function InviteFiltersDialog({
             </Select>
           </div>
         </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button

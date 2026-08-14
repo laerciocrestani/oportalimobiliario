@@ -6,6 +6,7 @@
  * @see REQ-RES-004
  */
 use App\Enums\ReservationStatus;
+use App\Enums\ReservationTimelineEventType;
 use App\Enums\UnitStatus;
 use App\Models\BrokerClient;
 use App\Models\Building;
@@ -173,11 +174,46 @@ it('cancels reservation for owning broker and frees unit', function () {
 
     Sanctum::actingAs($broker);
 
-    $this->deleteJson("/api/broker/reservations/{$reservation->id}")
-        ->assertNoContent();
+    $this->deleteJson("/api/broker/reservations/{$reservation->id}", [
+        'reason' => 'Cliente desistiu da compra.',
+    ])->assertNoContent();
 
-    expect(Reservation::query()->find($reservation->id))->toBeNull();
+    expect($reservation->fresh()->status)->toBe(ReservationStatus::Cancelled);
     expect($unit->fresh()->status)->toBe(UnitStatus::Available);
+    expect($reservation->timelineEvents()->where('type', ReservationTimelineEventType::Cancelled)->first())
+        ->not->toBeNull()
+        ->payload->toMatchArray(['reason' => 'Cliente desistiu da compra.']);
+});
+
+it('requires a reason to cancel a reservation', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $client = BrokerClient::factory()->for($broker, 'broker')->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+
+    UnitAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'unit_id' => $unit->id,
+    ]);
+
+    $reservation = Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+        'client_id' => $client->id,
+    ]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    Sanctum::actingAs($broker);
+
+    $this->deleteJson("/api/broker/reservations/{$reservation->id}")
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['reason']);
+
+    expect($reservation->fresh()->status)->toBe(ReservationStatus::DepositPending);
+    expect($unit->fresh()->status)->toBe(UnitStatus::Reserved);
 });
 
 it('rejects cancel reservation from another broker', function () {
@@ -346,7 +382,10 @@ it('lists reservations for owning broker only', function () {
         ->assertOk()
         ->assertJsonCount(1)
         ->assertJsonPath('0.client.name', 'Maria Souza')
-        ->assertJsonPath('0.unit.building.name', 'Torre Central');
+        ->assertJsonPath('0.unit.building.name', 'Torre Central')
+        ->assertJsonPath('0.situation.current.key', 'deposit_window')
+        ->assertJsonPath('0.situation.previous.label', 'Decisão do gestor')
+        ->assertJsonPath('0.situation.next.label', 'Comprovante de pagamento');
 });
 
 it('returns pending replies count for broker', function () {

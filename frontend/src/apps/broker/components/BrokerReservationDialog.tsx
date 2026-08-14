@@ -3,6 +3,7 @@ import { BrokerNewClientDialog } from '@/apps/broker/components/BrokerNewClientD
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -204,7 +205,7 @@ export function BrokerReservationDialog({
           onOpenChange(nextOpen)
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Enviar proposta</DialogTitle>
             <DialogDescription>
@@ -214,6 +215,7 @@ export function BrokerReservationDialog({
             </DialogDescription>
           </DialogHeader>
 
+          <DialogBody>
           {remainingTime ? (
             <p className="text-sm text-muted-foreground">
               Tempo restante da pré-reserva: {remainingTime}
@@ -373,19 +375,17 @@ export function BrokerReservationDialog({
 
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
           </div>
+          </DialogBody>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => void handleClose()}>
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              disabled={!canSubmit || submitting || expired}
-              onClick={() => void handleSubmit()}
-            >
-              {submitting ? 'Enviando...' : 'Enviar proposta'}
-            </Button>
-          </DialogFooter>
+        <DialogFooter>
+          <Button
+            type="button"
+            disabled={!canSubmit || submitting || expired}
+            onClick={() => void handleSubmit()}
+          >
+            {submitting ? 'Enviando...' : 'Enviar proposta'}
+          </Button>
+        </DialogFooter>
         </DialogContent>
       </Dialog>
 

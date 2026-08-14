@@ -32,4 +32,29 @@ class ReservationAttachmentFactory extends Factory
     {
         return $this->state(fn () => ['kind' => ReservationAttachmentKind::DepositProof]);
     }
+
+    public function contractDocumentation(): static
+    {
+        return $this->state(fn () => [
+            'kind' => ReservationAttachmentKind::ContractDocumentation,
+            'original_name' => 'rg.jpg',
+            'mime_type' => 'image/jpeg',
+        ]);
+    }
+
+    public function contractPdf(): static
+    {
+        return $this->state(fn () => [
+            'kind' => ReservationAttachmentKind::ContractPdf,
+            'original_name' => 'contrato.pdf',
+        ]);
+    }
+
+    public function contractSigned(): static
+    {
+        return $this->state(fn () => [
+            'kind' => ReservationAttachmentKind::ContractSigned,
+            'original_name' => 'contrato-assinado.pdf',
+        ]);
+    }
 }

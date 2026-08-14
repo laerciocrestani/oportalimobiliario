@@ -1,24 +1,22 @@
 import { useEffect, useState } from 'react'
 import { BrokerDashboardShell } from '@/apps/broker/components/BrokerDashboardShell'
 import { ReservationMessagesDialog } from '@/apps/builder/components/ReservationMessagesDialog'
+import { ReservationChatButton } from '@/components/reservations/ReservationChatButton'
+import { ReservationActionsMenu } from '@/components/reservations/ReservationActionsMenu'
+import { ReservationCancelDialog } from '@/components/reservations/ReservationCancelDialog'
+import { ReservationWaitingStatus } from '@/components/reservations/ReservationWaitingStatus'
+import { ReservationSituation } from '@/components/reservations/ReservationSituation'
 import { ReservationTimelineSheet } from '@/components/reservations/ReservationTimelineSheet'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { brokerApi, type BuilderReservationListItem } from '@/lib/api'
 import { notifyReservationBadgeRefresh } from '@/lib/reservation-badge-events'
-
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(new Date(value))
-}
 
 export function BrokerReservationsPage() {
   const [reservations, setReservations] = useState<BuilderReservationListItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [cancellingId, setCancellingId] = useState<number | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<BuilderReservationListItem | null>(null)
   const [messagesReservationId, setMessagesReservationId] = useState<number | null>(null)
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [timelineReservationId, setTimelineReservationId] = useState<number | null>(null)
@@ -39,19 +37,20 @@ export function BrokerReservationsPage() {
     void load()
   }, [])
 
-  async function handleCancel(reservationId: number) {
-    if (!window.confirm('Deseja cancelar esta reserva? A unidade voltará a ficar disponível.')) {
+  async function handleCancel(reason: string) {
+    const reservation = cancelTarget
+    if (reservation === null) {
       return
     }
 
     try {
       setError(null)
-      setCancellingId(reservationId)
-      await brokerApi.cancelReservation(reservationId)
-      setReservations((current) => current.filter((item) => item.id !== reservationId))
+      setCancellingId(reservation.id)
+      await brokerApi.cancelReservation(reservation.id, reason)
+      setReservations((current) => current.filter((item) => item.id !== reservation.id))
       notifyReservationBadgeRefresh()
     } catch {
-      setError('Não foi possível cancelar a reserva.')
+      throw new Error('cancel_failed')
     } finally {
       setCancellingId(null)
     }
@@ -95,48 +94,48 @@ export function BrokerReservationsPage() {
                     <tr>
                       <th className="px-4 py-3 font-medium">Cliente</th>
                       <th className="px-4 py-3 font-medium">Empreendimento</th>
-                      <th className="px-4 py-3 font-medium">Data</th>
+                      <th className="px-4 py-3 font-medium">Situação</th>
+                      <th className="px-4 py-3 font-medium">Status</th>
                       <th className="px-4 py-3 font-medium">Ações</th>
                     </tr>
                   </thead>
                   <tbody>
                     {reservations.map((reservation) => (
                       <tr key={reservation.id} className="border-b last:border-b-0">
-                        <td className="px-4 py-3">{reservation.client?.name ?? '—'}</td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-1">
+                            <span className="min-w-0 truncate">{reservation.client?.name ?? '—'}</span>
+                            <ReservationChatButton
+                              label={reservation.client?.name ?? `reserva ${reservation.id}`}
+                              needsReply={reservation.needs_reply}
+                              onClick={() => handleOpenMessages(reservation.id)}
+                            />
+                          </div>
+                        </td>
                         <td className="px-4 py-3">
                           {reservation.unit?.building?.name ?? '—'}
                           {reservation.unit?.code ? ` · ${reservation.unit.code}` : ''}
                         </td>
-                        <td className="px-4 py-3">{formatDate(reservation.created_at)}</td>
+                        <td className="px-2 py-2">
+                          <ReservationSituation
+                            situation={reservation.situation}
+                            onOpenTimeline={() => handleOpenTimeline(reservation.id)}
+                          />
+                        </td>
                         <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleOpenTimeline(reservation.id)}
-                            >
-                              Andamento
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant={reservation.needs_reply ? 'default' : 'outline'}
-                              onClick={() => handleOpenMessages(reservation.id)}
-                            >
-                              Responder
-                              {reservation.needs_reply ? ' · nova' : ''}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="destructive"
-                              disabled={cancellingId === reservation.id}
-                              onClick={() => void handleCancel(reservation.id)}
-                            >
-                              {cancellingId === reservation.id ? 'Cancelando...' : 'Cancelar'}
-                            </Button>
-                          </div>
+                          <ReservationWaitingStatus
+                            profile="broker"
+                            waitingOn={reservation.situation.current.waiting_on}
+                          />
+                        </td>
+                        <td className="px-4 py-3">
+                          <ReservationActionsMenu
+                            reservation={reservation}
+                            cancelling={cancellingId === reservation.id}
+                            onTimeline={() => handleOpenTimeline(reservation.id)}
+                            onMessages={() => handleOpenMessages(reservation.id)}
+                            onCancel={() => setCancelTarget(reservation)}
+                          />
                         </td>
                       </tr>
                     ))}
@@ -147,6 +146,17 @@ export function BrokerReservationsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ReservationCancelDialog
+        open={cancelTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelTarget(null)
+          }
+        }}
+        clientName={cancelTarget?.client?.name}
+        onConfirm={handleCancel}
+      />
 
       <ReservationTimelineSheet
         profile="broker"

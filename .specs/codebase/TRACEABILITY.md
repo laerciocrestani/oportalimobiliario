@@ -93,11 +93,11 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 | REQ | Descrição | BE | FE | Testes |
 |-----|-----------|----|----|--------|
 | REQ-RTL-001..004 | Pré-reserva + diálogo no timeline | `ReservationTimelineService.php`, controllers timeline | `ReservationTimeline.tsx`, `ReservationTimelineSheet.tsx` | `ReservationTimelineTest.php`, `ReservationTimeline.test.tsx` |
-| REQ-RTL-024..028 | GET timeline API + UI | `Broker/ReservationTimelineController.php`, `Builder/ReservationTimelineController.php` | `BrokerReservationsPage.tsx`, `ReservationsPage.tsx` | `ReservationTimelineTest.php` |
+| REQ-RTL-024..028 | GET timeline API + UI | `Broker/ReservationTimelineController.php`, `Builder/ReservationTimelineController.php` | `BrokerReservationsPage.tsx`, `ReservationsPage.tsx`, `ReservationSituation.tsx`, `ReservationWaitingStatus.tsx`, `reservation-step-greens.ts` | `ReservationTimelineTest.php`, `ReservationSituation.test.tsx`, `ReservationWaitingStatus.test.tsx` |
 | REQ-RTL-029 | Eventos append-only | `ReservationTimelineEvent.php`, hooks em services | — | `ReservationTimelineTest.php` |
 | REQ-RTL-005..012 | Proposta + decisão gestor | `ReservationProposalService.php`, controllers proposal | `BrokerReservationDialog.tsx`, `BuilderProposalDecisionPanel.tsx` | `ReservationProposalTest.php` |
 | REQ-RTL-013..017 | Sinal + comprovante + alerta 48h | `ReservationDepositService.php`, `ReservationAttachment.php`, `CheckDepositWindows.php`, controllers deposit | `BrokerDepositProofDialog.tsx`, `BuilderDepositProofApprovalPanel.tsx`, `ReservationAttachmentField.tsx` | `ReservationDepositTest.php` |
-| REQ-RTL-018..023 | Contrato + venda | — (Fase D) | — | — |
+| REQ-RTL-018..023 | Contrato + venda + anexos no andamento | `ReservationContractDataService.php`, `Broker/ReservationContractDataController.php`, `Support/Cpf.php`, `ReservationTimelineService.php` | `BrokerContractDataDialog.tsx`, `lib/br-docs.ts`, `ReservationTimeline.tsx`, `ReservationAttachmentPreview.tsx` | `ReservationContractDataTest.php`, `Support/CpfTest.php`, `ReservationTimelineTest.php`, `BrokerContractDataDialog.test.tsx`, `br-docs.test.ts`, `ReservationTimeline.test.tsx` |
 
 ---
 
@@ -107,7 +107,7 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 |-----|-----------|----|----|--------|
 | REQ-BLD-RES-001 | Nav Reservas builder | — | `config/dashboard-nav.tsx`, `BuilderDashboardShell.tsx` | `ReservationsPage.test.tsx` |
 | REQ-BLD-RES-002 | Listagem builder | `Builder/ReservationController.php` | `apps/builder/ReservationsPage.tsx` | `tests/Feature/Builder/ReservationTest.php` |
-| REQ-BLD-RES-003 | Cancelar + mensagens | `Builder/ReservationMessageController.php` | `ReservationMessagesDialog.tsx` | `Builder/ReservationTest.php` |
+| REQ-BLD-RES-003 | Cancelar + mensagens | `Builder/ReservationController.php`, `ReservationCancellationService.php`, `Builder/ReservationMessageController.php` | `ReservationCancelDialog.tsx`, `ReservationMessagesDialog.tsx`, `ReservationChatButton.tsx` | `Builder/ReservationTest.php`, `AuthorizationTest.php`, `ReservationCancelDialog.test.tsx`, `ReservationMessagesDialog.test.tsx`, `ReservationChatButton.test.tsx` |
 | REQ-BLD-RES-004 | observations na criação | `Broker/ReservationController.php` | `BrokerReservationDialog.tsx` | `ReservationTest.php` |
 | REQ-BLD-RES-005 | Thread broker | `Broker/ReservationMessageController.php` | `BrokerReservationsPage.tsx` | `Builder/ReservationTest.php` |
 | REQ-BLD-RES-006 | Listagem broker | `Broker/ReservationController.php` | `BrokerReservationsPage.tsx` | `ReservationTest.php` |
@@ -144,7 +144,7 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 | REQ-BRK-CLI-002 | Cliente inline na reserva | — | `BrokerReservationDialog.tsx` | `BrokerNewClientDialog.test.tsx` |
 | REQ-BRK-RES-001 | Reserva com client_id | `Broker/ReservationController.php` | `BrokerReservationDialog.tsx` | `ReservationTest.php` |
 | REQ-BRK-RES-002 | Acesso via BuildingAccess ou UnitAccess | `BrokerUnitAccessService.php` | — | `BuildingAccessTest.php` |
-| REQ-BRK-RES-003 | Cancelamento pelo corretor | `Broker/ReservationController.php` | `BrokerUnitsDialog.tsx`, `BrokerReservationsPage.tsx` | `ReservationTest.php` |
+| REQ-BRK-RES-003 | Cancelamento pelo corretor | `Broker/ReservationController.php`, `ReservationCancellationService.php` | `ReservationCancelDialog.tsx`, `BrokerUnitsDialog.tsx`, `BrokerReservationsPage.tsx` | `ReservationTest.php`, `ReservationCancelDialog.test.tsx`, `BrokerUnitsDialog.test.tsx` |
 
 ---
 

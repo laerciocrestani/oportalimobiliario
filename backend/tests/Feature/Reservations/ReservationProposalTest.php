@@ -84,6 +84,7 @@ it('accepts proposal and opens deposit window', function () {
     expect($unit->fresh()->status)->toBe(UnitStatus::Reserved);
     expect($reservation->fresh()->client_id)->not->toBeNull();
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::DepositWindowOpened)->exists())->toBeTrue();
+    expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::ProposalAccepted)->exists())->toBeTrue();
 });
 
 it('rejects proposal and frees unit', function () {

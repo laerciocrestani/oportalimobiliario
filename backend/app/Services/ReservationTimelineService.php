@@ -2,9 +2,11 @@
 
 namespace App\Services;
 
-use App\Enums\ReservationStatus;
+use App\Enums\ReservationAttachmentKind;
 use App\Enums\ReservationTimelineEventType;
 use App\Models\Reservation;
+use App\Models\ReservationAttachment;
+use App\Models\ReservationProposal;
 use App\Models\ReservationTimelineEvent;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -91,7 +93,7 @@ class ReservationTimelineService
      */
     public function build(Reservation $reservation, User $viewer): array
     {
-        $reservation->loadMissing(['unit', 'broker', 'timelineEvents.actor', 'proposals', 'attachments']);
+        $reservation->loadMissing(['unit', 'broker', 'client', 'timelineEvents.actor', 'proposals', 'attachments']);
 
         $events = $reservation->timelineEvents->sortBy('created_at');
         $messagesCount = $reservation->messages()->count();
@@ -101,14 +103,14 @@ class ReservationTimelineService
 
         $steps = $this->buildSteps($reservation, $events, $messagesCount, $currentStepKey, $viewer);
         $currentProposal = $reservation->proposals()->latest('version')->first();
-        $currentDepositProof = $reservation->attachments()
-            ->where('kind', \App\Enums\ReservationAttachmentKind::DepositProof)
-            ->latest('id')
-            ->first();
-
         $attachmentPrefix = $viewer->role === 'broker'
             ? "/broker/reservations/{$reservation->id}/attachments"
             : "/builder/reservations/{$reservation->id}/attachments";
+        $visibleAttachments = $this->visibleAttachments($reservation, $viewer, $attachmentPrefix);
+        $currentDepositProof = $reservation->attachments
+            ->where('kind', ReservationAttachmentKind::DepositProof)
+            ->sortByDesc('id')
+            ->first();
 
         $depositOverdue = $events->contains(
             fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::DepositOverdue,
@@ -124,9 +126,84 @@ class ReservationTimelineService
                 'code' => $reservation->unit->code,
                 'status' => $reservation->unit->status->value,
             ],
+            'client' => $reservation->client === null ? null : [
+                'id' => $reservation->client->id,
+                'name' => $reservation->client->name,
+                'phone' => $reservation->client->phone,
+                'email' => $reservation->client->email,
+            ],
             'current_proposal' => $currentProposal?->toApiArray(),
             'current_deposit_proof' => $currentDepositProof?->toApiArray($attachmentPrefix),
+            'attachments' => $visibleAttachments,
             'steps' => $steps,
+        ];
+    }
+
+    /**
+     * Historic files stay available after the process moves on.
+     *
+     * Brokers do not receive the issued contract PDF (REQ-RTL-018).
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function visibleAttachments(Reservation $reservation, User $viewer, string $attachmentPrefix): array
+    {
+        $attachments = $reservation->attachments
+            ->sortBy('id')
+            ->values();
+
+        if ($viewer->role === 'broker') {
+            $attachments = $attachments->reject(
+                fn (ReservationAttachment $attachment) => $attachment->kind === ReservationAttachmentKind::ContractPdf,
+            );
+        }
+
+        return $attachments
+            ->map(fn (ReservationAttachment $attachment) => $attachment->toApiArray($attachmentPrefix))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Compact previous/current/next snapshot for reservation lists.
+     *
+     * @see REQ-RTL-027
+     *
+     * @return array{
+     *     previous: array{key: string, label: string, occurred_at: string|null}|null,
+     *     current: array{key: string, label: string, occurred_at: string|null, status: string, waiting_on: string|null},
+     *     next: array{key: string, label: string, occurred_at: string|null}|null
+     * }
+     */
+    public function situation(Reservation $reservation): array
+    {
+        $reservation->loadMissing(['timelineEvents', 'proposals', 'messages', 'attachments']);
+
+        $events = $reservation->timelineEvents->sortBy('created_at');
+        $messagesCount = $reservation->messages_count ?? $reservation->messages->count();
+        $currentKey = $this->resolveCurrentStepKey($reservation, $messagesCount, $events);
+        $currentIndex = $this->stepIndex($currentKey);
+
+        $currentStatus = $this->resolveSituationStatus($currentKey, $events);
+        $current = $this->situationStep(
+            $currentIndex,
+            $reservation,
+            $events,
+            $messagesCount,
+            $currentIndex,
+            $currentStatus,
+        ) ?? [
+            'key' => $currentKey,
+            'label' => $currentKey,
+            'occurred_at' => $reservation->created_at?->toIso8601String(),
+            'status' => $currentStatus,
+        ];
+        $current['waiting_on'] = $this->resolveWaitingOn($currentKey, $currentStatus);
+
+        return [
+            'previous' => $this->situationStep($currentIndex - 1, $reservation, $events, $messagesCount, $currentIndex),
+            'current' => $current,
+            'next' => $this->situationStep($currentIndex + 1, $reservation, $events, $messagesCount, $currentIndex),
         ];
     }
 
@@ -282,6 +359,7 @@ class ReservationTimelineService
                     $latestEvent,
                     $reservation,
                     $messagesCount,
+                    $status,
                 ),
                 'due_at' => $this->resolveDueAt($definition['key'], $status, $reservation),
                 'actor' => $this->formatActor($latestEvent),
@@ -353,26 +431,86 @@ class ReservationTimelineService
         ?ReservationTimelineEvent $latestEvent,
         Reservation $reservation,
         int $messagesCount,
+        string $status,
     ): ?string {
         if ($latestEvent !== null) {
             return $latestEvent->created_at?->toIso8601String();
         }
 
-        if ($stepKey === 'pre_hold_created') {
+        $fallback = match ($stepKey) {
+            'pre_hold_created' => $reservation->created_at?->toIso8601String(),
+            'dialogue' => $this->firstMessageOccurredAt($reservation, $messagesCount),
+            'proposal_submitted' => $this->latestProposal($reservation)?->created_at?->toIso8601String(),
+            'proposal_decision' => $this->latestDecidedProposal($reservation)?->decided_at?->toIso8601String(),
+            'deposit_window' => $this->depositWindowOccurredAt($reservation),
+            'deposit_proof' => $this->latestAttachmentOccurredAt($reservation, ReservationAttachmentKind::DepositProof),
+            default => null,
+        };
+
+        if ($fallback !== null) {
+            return $fallback;
+        }
+
+        if (in_array($status, ['completed', 'failed'], true)) {
             return $reservation->created_at?->toIso8601String();
         }
 
-        if ($stepKey === 'dialogue' && $messagesCount > 0) {
-            $firstMessage = $reservation->messages()->oldest()->first();
-
-            return $firstMessage?->created_at?->toIso8601String();
-        }
-
-        if ($stepKey === 'deposit_window' && $reservation->isDepositPending()) {
-            return $reservation->updated_at?->toIso8601String();
-        }
-
         return null;
+    }
+
+    private function firstMessageOccurredAt(Reservation $reservation, int $messagesCount): ?string
+    {
+        if ($messagesCount < 1) {
+            return null;
+        }
+
+        $firstMessage = $reservation->relationLoaded('messages')
+            ? $reservation->messages->sortBy('id')->first()
+            : $reservation->messages()->oldest()->first();
+
+        return $firstMessage?->created_at?->toIso8601String();
+    }
+
+    private function latestProposal(Reservation $reservation): ?ReservationProposal
+    {
+        $reservation->loadMissing('proposals');
+
+        return $reservation->proposals->sortByDesc('version')->first();
+    }
+
+    private function latestDecidedProposal(Reservation $reservation): ?ReservationProposal
+    {
+        $reservation->loadMissing('proposals');
+
+        return $reservation->proposals
+            ->filter(fn (ReservationProposal $proposal) => $proposal->decided_at !== null)
+            ->sortByDesc('decided_at')
+            ->first();
+    }
+
+    private function depositWindowOccurredAt(Reservation $reservation): ?string
+    {
+        if (! $reservation->isConfirmed() || $reservation->expires_at === null) {
+            return null;
+        }
+
+        $hours = (int) config('opim.deposit_window_hours', 48);
+
+        return $reservation->expires_at->copy()->subHours($hours)->toIso8601String();
+    }
+
+    private function latestAttachmentOccurredAt(Reservation $reservation, ReservationAttachmentKind $kind): ?string
+    {
+        $reservation->loadMissing('attachments');
+
+        $attachment = $reservation->attachments
+            ->where('kind', $kind)
+            ->sortByDesc('id')
+            ->first();
+
+        return $attachment instanceof ReservationAttachment
+            ? $attachment->created_at?->toIso8601String()
+            : null;
     }
 
     private function resolveDueAt(string $stepKey, string $status, Reservation $reservation): ?string
@@ -434,5 +572,118 @@ class ReservationTimelineService
         }
 
         return 0;
+    }
+
+    /**
+     * @return array{key: string, label: string}|null
+     */
+    private function stepRef(int $index): ?array
+    {
+        $step = self::STEPS[$index] ?? null;
+
+        if ($step === null) {
+            return null;
+        }
+
+        return [
+            'key' => $step['key'],
+            'label' => $step['label'],
+        ];
+    }
+
+    /**
+     * @param  Collection<int, ReservationTimelineEvent>  $events
+     * @return array{key: string, label: string, occurred_at: string|null, status?: string}|null
+     */
+    private function situationStep(
+        int $index,
+        Reservation $reservation,
+        Collection $events,
+        int $messagesCount,
+        int $currentIndex,
+        ?string $status = null,
+    ): ?array {
+        $ref = $this->stepRef($index);
+
+        if ($ref === null) {
+            return null;
+        }
+
+        $definition = self::STEPS[$index];
+        $stepEvents = $events->filter(
+            fn (ReservationTimelineEvent $event) => in_array($event->type, $definition['event_types'], true),
+        );
+        $latestEvent = $stepEvents->sortByDesc('created_at')->first();
+        $progress = $index < $currentIndex
+            ? 'completed'
+            : ($index === $currentIndex ? ($status ?? 'current') : 'upcoming');
+
+        $step = [
+            ...$ref,
+            'occurred_at' => $this->resolveOccurredAt(
+                $definition['key'],
+                $latestEvent,
+                $reservation,
+                $messagesCount,
+                $progress,
+            ),
+        ];
+
+        if ($status !== null) {
+            $step['status'] = $status;
+        }
+
+        return $step;
+    }
+
+    /**
+     * @param  Collection<int, ReservationTimelineEvent>  $events
+     */
+    private function resolveSituationStatus(string $currentKey, Collection $events): string
+    {
+        if ($currentKey === 'sold') {
+            return 'completed';
+        }
+
+        $isFailed = match ($currentKey) {
+            'proposal_decision' => $events->contains(
+                fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ProposalRejected,
+            ),
+            'deposit_window' => $events->contains(
+                fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::DepositOverdue,
+            ),
+            default => false,
+        };
+
+        return $isFailed ? 'failed' : 'current';
+    }
+
+    /**
+     * @return 'broker'|'builder'|null
+     */
+    private function resolveWaitingOn(string $currentKey, string $currentStatus): ?string
+    {
+        if ($currentStatus === 'completed') {
+            return null;
+        }
+
+        if ($currentKey === 'proposal_decision' && $currentStatus === 'failed') {
+            return null;
+        }
+
+        return match ($currentKey) {
+            'pre_hold_created',
+            'dialogue',
+            'proposal_submitted',
+            'deposit_window',
+            'contract_data',
+            'contract_sign_gov',
+            'contract_upload' => 'broker',
+            'proposal_decision',
+            'deposit_proof',
+            'contract_issue',
+            'contract_validate' => 'builder',
+            default => null,
+        };
     }
 }

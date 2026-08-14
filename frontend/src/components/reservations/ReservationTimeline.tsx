@@ -1,16 +1,16 @@
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import type { ReservationTimeline, ReservationTimelineStepStatus } from '@/lib/api'
+import { ReservationAttachmentPreview } from '@/components/reservations/ReservationAttachmentPreview'
+import {
+  reservationStepGreenBgClass,
+  reservationStepGreenClass,
+} from '@/components/reservations/reservation-step-greens'
+import { reservationStepIcon } from '@/components/reservations/reservation-step-icons'
+import type {
+  ReservationAttachment,
+  ReservationTimeline,
+  ReservationTimelineStepStatus,
+} from '@/lib/api'
 import { cn } from '@/lib/utils'
-import { CheckIcon, CircleIcon, ClockIcon, XIcon } from 'lucide-react'
-
-const STATUS_LABELS: Record<ReservationTimelineStepStatus, string> = {
-  completed: 'Concluído',
-  current: 'Em andamento',
-  upcoming: 'Pendente',
-  skipped: 'Ignorado',
-  failed: 'Falhou',
-}
 
 const ACTION_LABELS: Record<string, string> = {
   open_dialogue: 'Abrir diálogo',
@@ -23,6 +23,20 @@ const ACTION_LABELS: Record<string, string> = {
   validate_contract: 'Validar e concluir venda',
 }
 
+const ATTACHMENT_KIND_LABELS: Record<string, string> = {
+  deposit_proof: 'Comprovante de pagamento',
+  contract_documentation: 'Documentação do cliente',
+  contract_pdf: 'Contrato',
+  contract_signed: 'Contrato assinado',
+}
+
+const ATTACHMENT_KIND_ORDER = [
+  'deposit_proof',
+  'contract_documentation',
+  'contract_pdf',
+  'contract_signed',
+] as const
+
 function formatDateTime(value: string | null): string | null {
   if (!value) {
     return null
@@ -34,20 +48,95 @@ function formatDateTime(value: string | null): string | null {
   }).format(new Date(value))
 }
 
-function StepIcon({ status }: { status: ReservationTimelineStepStatus }) {
-  if (status === 'completed') {
-    return <CheckIcon className="size-4 text-primary" />
+function groupedAttachments(attachments: ReservationAttachment[]): Array<{
+  kind: string
+  label: string
+  items: ReservationAttachment[]
+}> {
+  const byKind = new Map<string, ReservationAttachment[]>()
+
+  for (const attachment of attachments) {
+    const items = byKind.get(attachment.kind) ?? []
+    items.push(attachment)
+    byKind.set(attachment.kind, items)
   }
 
-  if (status === 'current') {
-    return <ClockIcon className="size-4 text-primary" />
-  }
+  const orderedKinds = [
+    ...ATTACHMENT_KIND_ORDER.filter((kind) => byKind.has(kind)),
+    ...[...byKind.keys()].filter((kind) => !ATTACHMENT_KIND_ORDER.includes(kind as (typeof ATTACHMENT_KIND_ORDER)[number])),
+  ]
 
+  return orderedKinds.map((kind) => ({
+    kind,
+    label: ATTACHMENT_KIND_LABELS[kind] ?? kind,
+    items: byKind.get(kind) ?? [],
+  }))
+}
+
+function StepIcon({ stepKey }: { stepKey: string }) {
+  const Icon = reservationStepIcon(stepKey)
+
+  return <Icon aria-hidden className="size-4" />
+}
+
+function StepMarker({
+  stepKey,
+  status,
+}: {
+  stepKey: string
+  status: ReservationTimelineStepStatus
+}) {
+  const isCurrent = status === 'current'
+
+  return (
+    <div className="relative z-10 mt-0.5 flex size-7 shrink-0 items-center justify-center">
+      {isCurrent ? (
+        <span
+          aria-hidden
+          className={cn(
+            'absolute size-7 animate-ping rounded-full opacity-75',
+            stepLineClass(stepKey, status),
+          )}
+        />
+      ) : null}
+      <div
+        className={cn(
+          'relative flex size-7 items-center justify-center rounded-full',
+          stepToneClass(stepKey, status),
+        )}
+      >
+        <StepIcon stepKey={stepKey} />
+      </div>
+    </div>
+  )
+}
+
+function isPendingStep(status: ReservationTimelineStepStatus): boolean {
+  return status === 'upcoming' || status === 'skipped'
+}
+
+function stepToneClass(stepKey: string, status: ReservationTimelineStepStatus): string {
   if (status === 'failed') {
-    return <XIcon className="size-4 text-destructive" />
+    return 'bg-destructive text-primary-foreground'
   }
 
-  return <CircleIcon className="size-4 text-muted-foreground" />
+  if (isPendingStep(status)) {
+    return 'bg-muted text-muted-foreground'
+  }
+
+  return reservationStepGreenClass(stepKey)
+}
+
+function stepLineClass(stepKey: string, status: ReservationTimelineStepStatus): string {
+  if (status === 'failed') {
+    return 'bg-destructive'
+  }
+
+  if (isPendingStep(status)) {
+    return 'bg-muted'
+  }
+
+  return reservationStepGreenBgClass(stepKey)
 }
 
 type ReservationTimelineProps = {
@@ -75,33 +164,51 @@ export function ReservationTimeline({ timeline, onAction }: ReservationTimelineP
         ) : null}
       </div>
 
-      <ol className="space-y-0">
+      {timeline.attachments.length > 0 ? (
+        <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3">
+          <div>
+            <p className="font-medium">Anexos da reserva</p>
+            <p className="text-xs text-muted-foreground">
+              Comprovantes, documentos e contratos enviados nesta reserva.
+            </p>
+          </div>
+          {groupedAttachments(timeline.attachments).map((group) => (
+            <div key={group.kind} className="flex flex-col gap-2">
+              <p className="text-xs font-medium text-muted-foreground">{group.label}</p>
+              {group.items.map((attachment) => (
+                <ReservationAttachmentPreview key={attachment.id} attachment={attachment} />
+              ))}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <ol className="flex flex-col">
         {timeline.steps.map((step, index) => {
           const isLast = index === timeline.steps.length - 1
 
           return (
-            <li key={step.key} className="relative flex gap-3 pb-6 last:pb-0">
+            <li
+              key={step.key}
+              className="relative flex gap-3 pb-6 last:pb-0"
+              aria-current={step.status === 'current' ? 'step' : undefined}
+            >
               {!isLast ? (
                 <span
                   aria-hidden
                   className={cn(
-                    'absolute top-6 left-[11px] h-[calc(100%-12px)] w-px',
-                    step.status === 'completed' ? 'bg-primary/40' : 'bg-border',
+                    'absolute top-7 left-[13px] h-[calc(100%-14px)] w-0.5',
+                    stepLineClass(step.key, step.status),
                   )}
                 />
               ) : null}
 
-              <div className="relative z-10 mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border bg-background">
-                <StepIcon status={step.status} />
-              </div>
+              <StepMarker stepKey={step.key} status={step.status} />
 
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium">{step.label}</p>
-                  <Badge variant={step.status === 'current' ? 'default' : 'secondary'}>
-                    {STATUS_LABELS[step.status]}
-                  </Badge>
-                </div>
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <p className={cn('font-medium', isPendingStep(step.status) ? 'text-muted-foreground' : null)}>
+                  {step.label}
+                </p>
 
                 {step.occurred_at ? (
                   <p className="text-xs text-muted-foreground">

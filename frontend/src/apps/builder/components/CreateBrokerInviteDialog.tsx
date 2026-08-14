@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -162,7 +163,8 @@ export function CreateBrokerInviteDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
+          <DialogBody>
           <div className="space-y-2">
             <Label htmlFor="invite-name">Nome</Label>
             <Input
@@ -240,11 +242,9 @@ export function CreateBrokerInviteDialog({
           ) : null}
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          </DialogBody>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-              Cancelar
-            </Button>
             <Button type="submit" disabled={submitting}>
               <SendIcon />
               {submitting ? 'Enviando...' : 'Enviar convite'}

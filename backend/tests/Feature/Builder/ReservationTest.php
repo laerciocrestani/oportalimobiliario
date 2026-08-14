@@ -50,14 +50,23 @@ it('lists reservations for builder tenant', function () {
 
     Sanctum::actingAs($builder);
 
-    $this->getJson('/api/builder/reservations')
+    $response = $this->getJson('/api/builder/reservations')
         ->assertOk()
         ->assertJsonCount(1)
         ->assertJsonPath('0.client.name', 'João Silva')
         ->assertJsonPath('0.broker.name', 'Corretor Alpha')
         ->assertJsonPath('0.unit.building.name', 'Residencial Aurora')
         ->assertJsonPath('0.messages_count', 1)
-        ->assertJsonPath('0.needs_reply', true);
+        ->assertJsonPath('0.needs_reply', true)
+        ->assertJsonPath('0.situation.previous.label', 'Decisão do gestor')
+        ->assertJsonPath('0.situation.current.key', 'deposit_window')
+        ->assertJsonPath('0.situation.current.label', 'Aguardando sinal (48h)')
+        ->assertJsonPath('0.situation.current.status', 'current')
+        ->assertJsonPath('0.situation.current.waiting_on', 'broker')
+        ->assertJsonPath('0.situation.next.label', 'Comprovante de pagamento');
+
+    expect($response->json('0.situation.current.occurred_at'))->toBeString()->not->toBeEmpty();
+    expect($response->json('0.situation.previous.occurred_at'))->toBeString()->not->toBeEmpty();
 });
 
 it('returns pending replies count for builder', function () {
@@ -142,4 +151,22 @@ it('rejects builder messages for another tenant reservation', function () {
     $this->postJson("/api/builder/reservations/{$reservation->id}/messages", [
         'body' => 'Teste',
     ])->assertNotFound();
+});
+
+it('requires a reason when builder cancels a reservation', function () {
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+    $reservation = Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+    ]);
+
+    Sanctum::actingAs($builder);
+
+    $this->deleteJson("/api/builder/reservations/{$reservation->id}")
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['reason']);
 });

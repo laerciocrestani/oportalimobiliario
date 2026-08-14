@@ -2,14 +2,20 @@
 
 namespace App\Services;
 
+use App\Enums\ReservationTimelineEventType;
 use App\Models\Reservation;
 use App\Models\ReservationMessage;
+use App\Models\ReservationTimelineEvent;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class ReservationPendingReplyService
 {
+    public function __construct(
+        private readonly ReservationTimelineService $timelineService,
+    ) {}
+
     public function needsReplyFromUser(Reservation $reservation, User $user): bool
     {
         $latestMessage = $reservation->messages()
@@ -57,9 +63,8 @@ class ReservationPendingReplyService
             'needs_reply' => $this->needsReplyFromUser($reservation, $viewer),
             'needs_proposal_decision' => $reservation->isProposalPending(),
             'needs_deposit_proof_approval' => $reservation->isDepositProofPending(),
-            'deposit_overdue' => $reservation->timelineEvents()
-                ->where('type', \App\Enums\ReservationTimelineEventType::DepositOverdue)
-                ->exists(),
+            'deposit_overdue' => $this->isDepositOverdue($reservation),
+            'situation' => $this->timelineService->situation($reservation),
             'client' => $reservation->client ? [
                 'id' => $reservation->client->id,
                 'name' => $reservation->client->name,
@@ -77,6 +82,15 @@ class ReservationPendingReplyService
                 ] : null,
             ] : null,
         ];
+    }
+
+    private function isDepositOverdue(Reservation $reservation): bool
+    {
+        $reservation->loadMissing('timelineEvents');
+
+        return $reservation->timelineEvents->contains(
+            fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::DepositOverdue,
+        );
     }
 
     private function countWhereLatestMessageFromRole(Builder $reservationsQuery, string $latestAuthorRole): int

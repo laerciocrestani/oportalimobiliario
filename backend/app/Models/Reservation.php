@@ -90,6 +90,11 @@ class Reservation extends Model
         return $this->status === ReservationStatus::ContractDataPending;
     }
 
+    public function isCancelled(): bool
+    {
+        return $this->status === ReservationStatus::Cancelled;
+    }
+
     public function isConfirmed(): bool
     {
         return in_array($this->status, [
@@ -103,6 +108,11 @@ class Reservation extends Model
     public function canSubmitDepositProof(): bool
     {
         return $this->isDepositPending();
+    }
+
+    public function canSubmitContractData(): bool
+    {
+        return $this->isContractDataPending();
     }
 
     public function tenant(): BelongsTo

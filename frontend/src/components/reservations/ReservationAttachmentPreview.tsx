@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -61,7 +62,9 @@ export function ReservationAttachmentPreview({
           <DialogTitle>{attachment.original_name}</DialogTitle>
           <DialogDescription>Visualização do anexo enviado na reserva.</DialogDescription>
         </DialogHeader>
-        <AttachmentPreviewBody attachment={attachment} />
+        <DialogBody>
+          <AttachmentPreviewBody attachment={attachment} />
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

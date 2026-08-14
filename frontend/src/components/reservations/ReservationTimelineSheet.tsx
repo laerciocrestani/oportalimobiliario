@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BrokerReservationDialog } from '@/apps/broker/components/BrokerReservationDialog'
+import { BrokerContractDataDialog } from '@/components/reservations/BrokerContractDataDialog'
 import { BrokerDepositProofDialog } from '@/components/reservations/BrokerDepositProofDialog'
 import { BuilderDepositProofApprovalPanel } from '@/components/reservations/BuilderDepositProofApprovalPanel'
 import { BuilderProposalDecisionPanel } from '@/components/reservations/BuilderProposalDecisionPanel'
@@ -35,6 +36,7 @@ export function ReservationTimelineSheet({
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
   const [depositProofOpen, setDepositProofOpen] = useState(false)
+  const [contractDataOpen, setContractDataOpen] = useState(false)
 
   async function loadTimeline() {
     if (reservationId === null) {
@@ -90,6 +92,11 @@ export function ReservationTimelineSheet({
 
     if (action === 'submit_deposit_proof') {
       setDepositProofOpen(true)
+      return
+    }
+
+    if (action === 'submit_contract_data') {
+      setContractDataOpen(true)
     }
   }
 
@@ -182,6 +189,14 @@ export function ReservationTimelineSheet({
             open={depositProofOpen}
             onOpenChange={setDepositProofOpen}
             reservationId={reservationId}
+            onSubmitted={() => void handleRefresh()}
+          />
+          <BrokerContractDataDialog
+            open={contractDataOpen}
+            onOpenChange={setContractDataOpen}
+            reservationId={reservationId}
+            client={timeline?.client ?? null}
+            proposal={timeline?.current_proposal ?? null}
             onSubmitted={() => void handleRefresh()}
           />
         </>

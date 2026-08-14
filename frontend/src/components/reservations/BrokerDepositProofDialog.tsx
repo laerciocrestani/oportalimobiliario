@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -81,6 +82,7 @@ export function BrokerDepositProofDialog({
           </DialogDescription>
         </DialogHeader>
 
+        <DialogBody>
         <ReservationAttachmentField
           files={files}
           onFilesChange={setFiles}
@@ -89,11 +91,9 @@ export function BrokerDepositProofDialog({
         />
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        </DialogBody>
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => handleClose(false)}>
-            Cancelar
-          </Button>
           <Button
             type="button"
             disabled={files.length === 0 || submitting}

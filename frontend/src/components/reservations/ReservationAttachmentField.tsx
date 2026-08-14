@@ -93,17 +93,13 @@ export function ReservationAttachmentField({
         }}
       />
 
-      {files.length === 0 ? (
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          onClick={() => inputRef.current?.click()}
+      {files.length > 0 ? (
+        <AttachmentGroup
+          className={cn(
+            'w-full',
+            multiple && 'flex-col overflow-x-visible snap-none overscroll-auto',
+          )}
         >
-          {emptyLabel}
-        </Button>
-      ) : (
-        <AttachmentGroup className="w-full">
           {files.map((item) => (
             <Attachment key={item.id} state={item.state} className="w-full">
               <AttachmentMedia variant={item.previewUrl ? 'image' : 'icon'}>
@@ -139,17 +135,16 @@ export function ReservationAttachmentField({
             </Attachment>
           ))}
         </AttachmentGroup>
-      )}
+      ) : null}
 
-      {files.length > 0 && multiple ? (
+      {files.length === 0 || multiple ? (
         <Button
           type="button"
           variant="outline"
-          size="sm"
           disabled={disabled}
           onClick={() => inputRef.current?.click()}
         >
-          Adicionar outro arquivo
+          {files.length === 0 ? emptyLabel : 'Adicionar outro arquivo'}
         </Button>
       ) : null}
     </div>

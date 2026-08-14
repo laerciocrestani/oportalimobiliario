@@ -2,6 +2,7 @@ import { CopyIcon, Link2Icon, RefreshCwIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogHeader,
@@ -47,7 +48,8 @@ export function InviteLinkDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <DialogBody>
+        <div className="flex flex-col gap-3">
           {loading ? (
             <p className="text-sm text-muted-foreground">Carregando link...</p>
           ) : inviteLink ? (
@@ -83,6 +85,7 @@ export function InviteLinkDialog({
             </div>
           ) : null}
         </div>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -89,6 +90,7 @@ export function TenantImpersonateDialog({ tenant, open, onOpenChange }: TenantIm
           </DialogDescription>
         </DialogHeader>
 
+        <DialogBody>
         {loadingUsers ? <p className="text-sm text-muted-foreground">Carregando equipe...</p> : null}
 
         {!loadingUsers && users.length === 0 ? (
@@ -117,11 +119,9 @@ export function TenantImpersonateDialog({ tenant, open, onOpenChange }: TenantIm
         ) : null}
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        </DialogBody>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
-          </Button>
           <Button
             onClick={() => void handleConfirm()}
             disabled={submitting || !selectedUserId || users.length === 0}

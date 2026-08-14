@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
@@ -84,7 +83,7 @@ export function BrokerAccessDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Gerenciar acesso</DialogTitle>
           <DialogDescription>
@@ -94,6 +93,7 @@ export function BrokerAccessDialog({
           </DialogDescription>
         </DialogHeader>
 
+        <DialogBody>
         {loading ? <p className="text-sm text-muted-foreground">Carregando...</p> : null}
 
         {!loading && buildings.length === 0 ? (
@@ -124,12 +124,7 @@ export function BrokerAccessDialog({
         ) : null}
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Fechar
-          </Button>
-        </DialogFooter>
+        </DialogBody>
       </DialogContent>
     </Dialog>
   )

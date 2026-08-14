@@ -51,7 +51,7 @@ it('updates invite delivery status from whatsapp webhook', function () {
 });
 
 it('declines invite when whatsapp decline button is tapped', function () {
-    config(['services.whatsapp.decline_button_text' => '❌ Recusar']);
+    config(['services.whatsapp.decline_button_text' => 'Recusar']);
 
     $tenant = Tenant::factory()->create();
     $builder = User::factory()->builder()->for($tenant)->create();
@@ -70,8 +70,8 @@ it('declines invite when whatsapp decline button is tapped', function () {
                     'messages' => [[
                         'type' => 'button',
                         'button' => [
-                            'text' => '❌ Recusar',
-                            'payload' => '❌ Recusar',
+                            'text' => 'Recusar',
+                            'payload' => 'Recusar',
                         ],
                         'context' => [
                             'id' => 'wamid.abc123',

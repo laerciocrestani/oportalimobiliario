@@ -1,17 +1,44 @@
-import { useEffect, useState } from 'react'
-import { InboxIcon, SendIcon, type LucideIcon } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { useEffect, useState, type KeyboardEvent } from 'react'
+import { ArrowDownIcon, MessageSquareIcon, SendIcon } from 'lucide-react'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Label } from '@/components/ui/label'
-import { Separator } from '@/components/ui/separator'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
+import { Field, FieldError, FieldLabel } from '@/components/ui/field'
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupButton,
+  InputGroupTextarea,
+} from '@/components/ui/input-group'
+import {
+  Message,
+  MessageAvatar,
+  MessageContent,
+  MessageFooter,
+  MessageHeader,
+} from '@/components/ui/message'
+import {
+  MessageScroller,
+  MessageScrollerButton,
+  MessageScrollerContent,
+  MessageScrollerItem,
+  MessageScrollerProvider,
+  MessageScrollerViewport,
+} from '@/components/ui/message-scroller'
+import { Skeleton } from '@/components/ui/skeleton'
 import { builderApi, brokerApi, type ReservationMessage } from '@/lib/api'
 import { notifyReservationBadgeRefresh } from '@/lib/reservation-badge-events'
 
@@ -23,16 +50,6 @@ type ReservationMessagesDialogProps = {
   onMessageSent?: () => void
 }
 
-const MESSAGE_PREVIEW_MAX_LENGTH = 200
-
-function isLongMessage(body: string): boolean {
-  return body.length > MESSAGE_PREVIEW_MAX_LENGTH
-}
-
-function truncateMessage(body: string): string {
-  return `${body.slice(0, MESSAGE_PREVIEW_MAX_LENGTH).trimEnd()}...`
-}
-
 function formatDateTime(value: string): string {
   return new Intl.DateTimeFormat('pt-BR', {
     dateStyle: 'short',
@@ -40,32 +57,25 @@ function formatDateTime(value: string): string {
   }).format(new Date(value))
 }
 
+function authorInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+
+  if (parts.length === 0) {
+    return '?'
+  }
+
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase()
+  }
+
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+}
+
 function isSentByCurrentProfile(
   message: ReservationMessage,
   profile: ReservationMessagesDialogProps['profile'],
 ): boolean {
   return message.author.role === profile
-}
-
-function messageDirectionTag(
-  message: ReservationMessage,
-  profile: ReservationMessagesDialogProps['profile'],
-): { label: string; className: string; Icon: LucideIcon } {
-  const authorName = message.author.name
-
-  if (isSentByCurrentProfile(message, profile)) {
-    return {
-      label: `${authorName}`,
-      className: 'bg-orange-500/15 text-orange-700 dark:text-orange-400',
-      Icon: SendIcon,
-    }
-  }
-
-  return {
-    label: `${authorName}`,
-    className: 'bg-green-500/15 text-green-700 dark:text-green-400',
-    Icon: InboxIcon,
-  }
 }
 
 export function ReservationMessagesDialog({
@@ -76,7 +86,6 @@ export function ReservationMessagesDialog({
   onMessageSent,
 }: ReservationMessagesDialogProps) {
   const [messages, setMessages] = useState<ReservationMessage[]>([])
-  const [expandedMessage, setExpandedMessage] = useState<ReservationMessage | null>(null)
   const [body, setBody] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -103,7 +112,6 @@ export function ReservationMessagesDialog({
     setBody('')
     setError(null)
     setMessages([])
-    setExpandedMessage(null)
   }
 
   async function handleSubmit() {
@@ -127,6 +135,13 @@ export function ReservationMessagesDialog({
     }
   }
 
+  function handleComposerKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault()
+      void handleSubmit()
+    }
+  }
+
   return (
     <Dialog
       open={open}
@@ -137,118 +152,116 @@ export function ReservationMessagesDialog({
         onOpenChange(nextOpen)
       }}
     >
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent
+        overlayClassName="bg-transparent pointer-events-none supports-backdrop-filter:backdrop-blur-none"
+        className="top-auto right-4 bottom-4 left-auto flex h-[min(36rem,calc(100vh-2rem))] w-[min(26rem,calc(100vw-2rem))] max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden p-0"
+      >
+        <DialogHeader className="border-b px-4 py-3 pr-12 text-left">
           <DialogTitle>Conversa da reserva</DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="sr-only">
             Troca de mensagens entre construtora e corretor sobre esta reserva.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="flex min-h-0 flex-1 flex-col">
           {loading ? (
-            <p className="text-sm text-muted-foreground">Carregando mensagens...</p>
+            <div className="flex flex-1 flex-col justify-end gap-4 p-4">
+              <Skeleton className="h-16 w-3/4" />
+              <Skeleton className="h-12 w-2/3 self-end" />
+            </div>
           ) : null}
 
           {!loading && messages.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma mensagem ainda.</p>
+            <Empty className="border-0">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <MessageSquareIcon />
+                </EmptyMedia>
+                <EmptyTitle>Nenhuma mensagem ainda</EmptyTitle>
+                <EmptyDescription>Envie a primeira mensagem sobre esta reserva.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : null}
 
-          <ul className="flex flex-col divide-y rounded-lg border">
-            {messages.map((message) => {
-              const tag = messageDirectionTag(message, profile)
+          {!loading && messages.length > 0 ? (
+            <MessageScrollerProvider autoScroll defaultScrollPosition="end">
+              <MessageScroller className="flex-1">
+                <MessageScrollerViewport aria-label="Mensagens da reserva">
+                  <MessageScrollerContent>
+                    {messages.map((message) => {
+                      const own = isSentByCurrentProfile(message, profile)
 
-              return (
-                <li key={message.id} className="flex flex-col gap-2 px-3 py-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <Badge variant="secondary" className={tag.className}>
-                      <tag.Icon data-icon="inline-start" />
-                      {tag.label}
-                    </Badge>
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      {formatDateTime(message.created_at)}
-                    </span>
-                  </div>
-                  <span className="text-sm font-medium">{message.author.name}</span>
-                  <Separator />
-                  {isLongMessage(message.body) ? (
-                    <div className="flex flex-col items-start gap-1">
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                        {truncateMessage(message.body)}
-                      </p>
-                      <Button
-                        type="button"
-                        variant="link"
-                        className="h-auto p-0"
-                        onClick={() => setExpandedMessage(message)}
-                      >
-                        Leia mais
-                      </Button>
-                    </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{message.body}</p>
-                  )}
-                </li>
-              )
-            })}
-          </ul>
-
-          <div className="space-y-2">
-            <Label htmlFor="reservation-message">Sua mensagem</Label>
-            <textarea
-              id="reservation-message"
-              className="flex min-h-24 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Escreva sua resposta..."
-            />
-          </div>
-
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+                      return (
+                        <MessageScrollerItem
+                          key={message.id}
+                          messageId={String(message.id)}
+                          scrollAnchor={own}
+                        >
+                          <Message align={own ? 'end' : 'start'}>
+                            <MessageAvatar>
+                              <Avatar size="sm">
+                                <AvatarFallback>{authorInitials(message.author.name)}</AvatarFallback>
+                              </Avatar>
+                            </MessageAvatar>
+                            <MessageContent>
+                              <MessageHeader>{message.author.name}</MessageHeader>
+                              <Bubble variant={own ? 'default' : 'secondary'}>
+                                <BubbleContent className="whitespace-pre-wrap">{message.body}</BubbleContent>
+                              </Bubble>
+                              <MessageFooter>{formatDateTime(message.created_at)}</MessageFooter>
+                            </MessageContent>
+                          </Message>
+                        </MessageScrollerItem>
+                      )
+                    })}
+                  </MessageScrollerContent>
+                </MessageScrollerViewport>
+                <MessageScrollerButton>
+                  <ArrowDownIcon />
+                  <span className="sr-only">Ir para o final</span>
+                </MessageScrollerButton>
+              </MessageScroller>
+            </MessageScrollerProvider>
+          ) : null}
         </div>
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-            Fechar
-          </Button>
-          <Button
-            type="button"
-            disabled={body.trim() === '' || submitting}
-            onClick={() => void handleSubmit()}
-          >
-            {submitting ? 'Enviando...' : 'Enviar'}
-          </Button>
-        </DialogFooter>
+        <form
+          className="border-t p-3"
+          onSubmit={(event) => {
+            event.preventDefault()
+            void handleSubmit()
+          }}
+        >
+          <Field>
+            <FieldLabel htmlFor="reservation-message" className="sr-only">
+              Sua mensagem
+            </FieldLabel>
+            <InputGroup>
+              <InputGroupTextarea
+                id="reservation-message"
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                onKeyDown={handleComposerKeyDown}
+                placeholder="Escreva sua mensagem..."
+                disabled={submitting}
+                rows={2}
+              />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  type="submit"
+                  size="icon-sm"
+                  variant="default"
+                  disabled={body.trim() === '' || submitting}
+                  aria-label="Enviar"
+                >
+                  <SendIcon />
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+            {error ? <FieldError>{error}</FieldError> : null}
+          </Field>
+        </form>
       </DialogContent>
-
-      <Dialog
-        open={expandedMessage !== null}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) {
-            setExpandedMessage(null)
-          }
-        }}
-      >
-        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-          {expandedMessage ? (
-            <>
-              <DialogHeader>
-                <DialogTitle>{expandedMessage.author.name}</DialogTitle>
-                <DialogDescription>
-                  {formatDateTime(expandedMessage.created_at)} ·{' '}
-                  {messageDirectionTag(expandedMessage, profile).label}
-                </DialogDescription>
-              </DialogHeader>
-              <p className="text-sm whitespace-pre-wrap">{expandedMessage.body}</p>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setExpandedMessage(null)}>
-                  Fechar
-                </Button>
-              </DialogFooter>
-            </>
-          ) : null}
-        </DialogContent>
-      </Dialog>
     </Dialog>
   )
 }

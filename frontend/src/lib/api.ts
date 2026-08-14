@@ -63,6 +63,12 @@ export type Building = {
   tenant?: { id: number; name: string }
 }
 
+export type UnitPreHold = {
+  reservation_id: number
+  expires_at: string
+  held_by_me: boolean
+}
+
 export type Unit = {
   id: number
   code: string
@@ -74,6 +80,7 @@ export type Unit = {
   tower?: Pick<Tower, 'id' | 'name'>
   building?: Building
   reservation?: Reservation | null
+  pre_hold?: UnitPreHold | null
 }
 
 export type Tenant = {
@@ -199,8 +206,9 @@ export type BrokerClient = {
 export type Reservation = {
   id: number
   unit_id: number
-  client_id: number
+  client_id: number | null
   broker_id: number
+  status?: string
   expires_at: string
   created_at?: string
   unit?: Unit
@@ -220,12 +228,34 @@ export type ReservationMessage = {
   }
 }
 
+export type ReservationSituationStep = {
+  key: string
+  label: string
+  occurred_at: string | null
+}
+
+export type ReservationWaitingOn = 'broker' | 'builder'
+
+export type ReservationSituation = {
+  previous: ReservationSituationStep | null
+  current: ReservationSituationStep & {
+    status: 'current' | 'failed' | 'completed'
+    waiting_on: ReservationWaitingOn | null
+  }
+  next: ReservationSituationStep | null
+}
+
 export type BuilderReservationListItem = {
   id: number
+  status: string
   created_at: string
   expires_at: string
   messages_count: number
   needs_reply: boolean
+  needs_proposal_decision: boolean
+  needs_deposit_proof_approval: boolean
+  deposit_overdue: boolean
+  situation: ReservationSituation
   client: Pick<BrokerClient, 'id' | 'name'> | null
   broker: Pick<LinkedBroker, 'id' | 'name'> | null
   unit: {
@@ -238,6 +268,113 @@ export type BuilderReservationListItem = {
 export type ReservationPendingRepliesCount = {
   count: number
 }
+
+export type ReservationTimelineStepStatus =
+  | 'completed'
+  | 'current'
+  | 'upcoming'
+  | 'skipped'
+  | 'failed'
+
+export type ReservationTimelineStep = {
+  key: string
+  label: string
+  status: ReservationTimelineStepStatus
+  occurred_at: string | null
+  due_at: string | null
+  actor: { id: number; name: string; role: string } | null
+  actions: string[]
+}
+
+export type ReservationAttachment = {
+  id: number
+  kind: string
+  original_name: string
+  mime_type: string
+  size_bytes: number
+  uploaded_by: number
+  created_at: string | null
+  file_url: string
+}
+
+export type ReservationTimelineClient = {
+  id: number
+  name: string
+  phone: string
+  email: string | null
+}
+
+export type ReservationTimeline = {
+  reservation_id: number
+  current_stage: string
+  expires_at: string | null
+  deposit_overdue: boolean
+  unit: {
+    id: number
+    code: string
+    status: string
+  }
+  client: ReservationTimelineClient | null
+  current_proposal: ReservationProposal | null
+  current_deposit_proof: ReservationAttachment | null
+  attachments: ReservationAttachment[]
+  steps: ReservationTimelineStep[]
+}
+
+export type ReservationContractDataInput = {
+  client_name: string
+  client_phone: string
+  client_email: string
+  client_cpf: string
+  client_rg: string
+  address: string
+  city: string
+  state: string
+  zip: string
+  marital_status: string
+  nationality: string
+  spouse_name: string
+  spouse_phone: string
+  spouse_email: string
+  spouse_cpf: string
+  spouse_rg: string
+  spouse_nationality: string
+}
+
+export type ReservationProposalInput = {
+  client_name: string
+  client_email: string
+  client_phone: string
+  client_cpf: string
+  address: string
+  city: string
+  state: string
+  zip: string
+  marital_status: string
+  nationality: string
+  land_value: number
+  payment_terms: string
+}
+
+export type ReservationProposal = ReservationProposalInput & {
+  id: number
+  version: number
+  decision: 'accepted' | 'rejected' | 'returned' | null
+  decision_note: string | null
+  submitted_by: number
+  decided_by: number | null
+  decided_at: string | null
+  created_at: string | null
+  client_rg?: string | null
+  spouse_name?: string | null
+  spouse_phone?: string | null
+  spouse_email?: string | null
+  spouse_cpf?: string | null
+  spouse_rg?: string | null
+  spouse_nationality?: string | null
+}
+
+export type ProposalDecision = 'accepted' | 'rejected' | 'returned'
 
 export type Paginated<T> = {
   data: T[]
@@ -547,8 +684,11 @@ export const builderApi = {
   listReservations: () => apiFetch<BuilderReservationListItem[]>('/builder/reservations'),
   pendingRepliesCount: () =>
     apiFetch<ReservationPendingRepliesCount>('/builder/reservations/pending-replies-count'),
-  cancelReservation: (reservationId: number) =>
-    apiFetch<void>(`/builder/reservations/${reservationId}`, { method: 'DELETE' }),
+  cancelReservation: (reservationId: number, reason: string) =>
+    apiFetch<void>(`/builder/reservations/${reservationId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ reason: reason.trim() }),
+    }),
   listReservationMessages: (reservationId: number) =>
     apiFetch<ReservationMessage[]>(`/builder/reservations/${reservationId}/messages`),
   replyReservation: (reservationId: number, body: string) =>
@@ -556,6 +696,28 @@ export const builderApi = {
       method: 'POST',
       body: JSON.stringify({ body }),
     }),
+  getReservationTimeline: (reservationId: number) =>
+    apiFetch<ReservationTimeline>(`/builder/reservations/${reservationId}/timeline`),
+  decideReservationProposal: (
+    reservationId: number,
+    decision: ProposalDecision,
+    decisionNote?: string,
+  ) =>
+    apiFetch<{ status: string; proposal: ReservationProposal }>(
+      `/builder/reservations/${reservationId}/proposal/decision`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          decision,
+          decision_note: decisionNote?.trim() || undefined,
+        }),
+      },
+    ),
+  approveDepositProof: (reservationId: number) =>
+    apiFetch<{ status: string }>(
+      `/builder/reservations/${reservationId}/deposit-proof/approve`,
+      { method: 'PATCH' },
+    ),
 }
 
 export const brokerApi = {
@@ -579,8 +741,60 @@ export const brokerApi = {
         observations: observations?.trim() || undefined,
       }),
     }),
-  cancelReservation: (reservationId: number) =>
-    apiFetch<void>(`/broker/reservations/${reservationId}`, { method: 'DELETE' }),
+  createPreHold: (unitId: number) =>
+    apiFetch<Reservation>('/broker/reservations/pre-hold', {
+      method: 'POST',
+      body: JSON.stringify({ unit_id: unitId }),
+    }),
+  confirmReservation: (reservationId: number, data: ReservationProposalInput) =>
+    apiFetch<Reservation>(`/broker/reservations/${reservationId}/confirm`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  submitReservationProposal: (reservationId: number, data: ReservationProposalInput) =>
+    apiFetch<Reservation & { proposal?: ReservationProposal }>(
+      `/broker/reservations/${reservationId}/proposal`,
+      {
+        method: 'POST',
+        body: JSON.stringify(data),
+      },
+    ),
+  uploadDepositProof: (reservationId: number, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    return apiUpload<{ status: string; attachment: ReservationAttachment }>(
+      `/broker/reservations/${reservationId}/deposit-proof`,
+      formData,
+    )
+  },
+  submitContractData: (
+    reservationId: number,
+    data: ReservationContractDataInput,
+    files: File[],
+  ) => {
+    const formData = new FormData()
+
+    for (const [key, value] of Object.entries(data)) {
+      formData.append(key, value)
+    }
+
+    for (const file of files) {
+      formData.append('files[]', file)
+    }
+
+    return apiUpload<{ status: string; attachments: ReservationAttachment[] }>(
+      `/broker/reservations/${reservationId}/contract-data`,
+      formData,
+    )
+  },
+  releasePreHold: (reservationId: number) =>
+    apiFetch<void>(`/broker/reservations/${reservationId}/pre-hold`, { method: 'DELETE' }),
+  cancelReservation: (reservationId: number, reason: string) =>
+    apiFetch<void>(`/broker/reservations/${reservationId}`, {
+      method: 'DELETE',
+      body: JSON.stringify({ reason: reason.trim() }),
+    }),
   listReservationMessages: (reservationId: number) =>
     apiFetch<ReservationMessage[]>(`/broker/reservations/${reservationId}/messages`),
   replyReservation: (reservationId: number, body: string) =>
@@ -588,6 +802,8 @@ export const brokerApi = {
       method: 'POST',
       body: JSON.stringify({ body }),
     }),
+  getReservationTimeline: (reservationId: number) =>
+    apiFetch<ReservationTimeline>(`/broker/reservations/${reservationId}/timeline`),
   previewInvite: (token: string) =>
     apiFetch<BrokerInvitePreview>(
       `/broker/invites/preview?token=${encodeURIComponent(token)}`,

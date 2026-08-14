@@ -6,6 +6,7 @@ import {
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -108,7 +109,8 @@ export function UnitCreateDialog({
           <DialogDescription>Cadastre uma nova unidade no empreendimento.</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
+          <DialogBody>
           {!hasTowers ? (
             <p className="text-sm text-muted-foreground">
               Cadastre uma torre antes de incluir unidades.
@@ -206,11 +208,9 @@ export function UnitCreateDialog({
               ))}
             </select>
           </div>
+          </DialogBody>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
             <Button type="submit" disabled={saving || !hasTowers}>
               {saving ? 'Salvando...' : 'Criar unidade'}
             </Button>

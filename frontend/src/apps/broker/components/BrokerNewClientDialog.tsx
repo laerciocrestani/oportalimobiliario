@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -73,8 +74,9 @@ export function BrokerNewClientDialog({
           <DialogDescription>Cadastre o cliente e vincule à reserva.</DialogDescription>
         </DialogHeader>
 
-        <form className="space-y-4" onSubmit={(e) => void handleSubmit(e)}>
-          <div className="space-y-2">
+        <form className="flex min-h-0 flex-1 flex-col gap-4" onSubmit={(e) => void handleSubmit(e)}>
+          <DialogBody>
+          <div className="flex flex-col gap-2">
             <Label htmlFor="new-client-name">Nome *</Label>
             <Input
               id="new-client-name"
@@ -83,7 +85,7 @@ export function BrokerNewClientDialog({
               required
             />
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="new-client-phone">Telefone *</Label>
             <Input
               id="new-client-phone"
@@ -92,7 +94,7 @@ export function BrokerNewClientDialog({
               required
             />
           </div>
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="new-client-email">E-mail</Label>
             <Input
               id="new-client-email"
@@ -103,11 +105,9 @@ export function BrokerNewClientDialog({
           </div>
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          </DialogBody>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
             <Button type="submit" disabled={submitting}>
               Salvar cliente
             </Button>

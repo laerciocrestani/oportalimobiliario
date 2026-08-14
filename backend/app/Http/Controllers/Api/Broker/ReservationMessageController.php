@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Broker;
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
 use App\Models\ReservationMessage;
+use App\Services\ReservationTimelineService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,6 +14,10 @@ use Illuminate\Http\Request;
  */
 class ReservationMessageController extends Controller
 {
+    public function __construct(
+        private readonly ReservationTimelineService $timelineService,
+    ) {}
+
     public function index(Request $request, Reservation $reservation): JsonResponse
     {
         if ($reservation->broker_id !== $request->user()->id) {
@@ -44,6 +49,8 @@ class ReservationMessageController extends Controller
         ]);
 
         $message->load('user');
+
+        $this->timelineService->recordDialogue($reservation, $request->user());
 
         return response()->json($this->formatMessage($message), 201);
     }

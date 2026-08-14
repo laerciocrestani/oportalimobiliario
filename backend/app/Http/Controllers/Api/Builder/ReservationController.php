@@ -2,21 +2,23 @@
 
 namespace App\Http\Controllers\Api\Builder;
 
-use App\Enums\UnitStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
-use App\Models\Unit;
+use App\Services\ReservationCancellationService;
 use App\Services\ReservationPendingReplyService;
+use App\Support\ReservationCancelRules;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Http\Request;
 
 /**
  * @see REQ-BLD-RES-001
  * @see REQ-BLD-RES-002
+ * @see REQ-BLD-RES-003
  */
 class ReservationController extends Controller
 {
     public function __construct(
+        private readonly ReservationCancellationService $cancellationService,
         private readonly ReservationPendingReplyService $reservationPendingReplyService,
     ) {}
 
@@ -27,7 +29,8 @@ class ReservationController extends Controller
         $user = request()->user();
 
         $reservations = Reservation::query()
-            ->with(['client', 'broker', 'unit.building'])
+            ->listed()
+            ->with(['client', 'broker', 'unit.building', 'timelineEvents', 'messages', 'proposals'])
             ->withCount('messages')
             ->orderByDesc('created_at')
             ->get()
@@ -45,18 +48,13 @@ class ReservationController extends Controller
         ]);
     }
 
-    public function destroy(Reservation $reservation): JsonResponse
+    public function destroy(Request $request, Reservation $reservation): JsonResponse
     {
         $this->authorize('cancel', $reservation);
 
-        DB::transaction(function () use ($reservation) {
-            $unit = Unit::query()
-                ->lockForUpdate()
-                ->findOrFail($reservation->unit_id);
+        $data = $request->validate(ReservationCancelRules::payload());
 
-            $unit->update(['status' => UnitStatus::Available]);
-            $reservation->delete();
-        });
+        $this->cancellationService->cancel($request->user(), $reservation, $data['reason']);
 
         return response()->json(null, 204);
     }

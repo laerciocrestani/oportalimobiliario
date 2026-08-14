@@ -36,9 +36,6 @@ export function RemoveBrokerDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
-            Cancelar
-          </Button>
           <Button type="button" variant="destructive" disabled={submitting} onClick={onConfirm}>
             {submitting ? 'Removendo...' : 'Remover vínculo'}
           </Button>

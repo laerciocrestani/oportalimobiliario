@@ -5,6 +5,8 @@
  * @see REQ-RES-002
  * @see REQ-RES-004
  */
+use App\Enums\ReservationStatus;
+use App\Enums\ReservationTimelineEventType;
 use App\Enums\UnitStatus;
 use App\Models\BrokerClient;
 use App\Models\Building;
@@ -29,6 +31,8 @@ it('creates reservation for accessible unit with client', function () {
         'broker_id' => $broker->id,
         'unit_id' => $unit->id,
     ]);
+
+    linkBrokerToTenant($broker, $tenant);
 
     Sanctum::actingAs($broker);
 
@@ -56,6 +60,8 @@ it('creates reservation with building access only', function () {
         'building_id' => $building->id,
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->postJson('/api/broker/reservations', [
@@ -77,6 +83,8 @@ it('rejects reservation without client_id', function () {
         'unit_id' => $unit->id,
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->postJson('/api/broker/reservations', ['unit_id' => $unit->id])
@@ -96,6 +104,8 @@ it('rejects reservation with client from another broker', function () {
         'unit_id' => $unit->id,
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->postJson('/api/broker/reservations', [
@@ -105,9 +115,12 @@ it('rejects reservation with client from another broker', function () {
 });
 
 it('rejects reservation without access', function () {
-    $unit = Unit::factory()->create(['status' => UnitStatus::Available]);
+    $tenant = Tenant::factory()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Available]);
     $broker = User::factory()->broker()->create();
     $client = BrokerClient::factory()->for($broker, 'broker')->create();
+
+    linkBrokerToTenant($broker, $tenant);
 
     Sanctum::actingAs($broker);
 
@@ -123,6 +136,7 @@ it('expires reservations and frees unit', function () {
     Reservation::factory()->create([
         'tenant_id' => $tenant->id,
         'unit_id' => $unit->id,
+        'status' => ReservationStatus::Confirmed,
         'expires_at' => now()->subMinute(),
     ]);
 
@@ -156,13 +170,50 @@ it('cancels reservation for owning broker and frees unit', function () {
         'client_id' => $client->id,
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
+    Sanctum::actingAs($broker);
+
+    $this->deleteJson("/api/broker/reservations/{$reservation->id}", [
+        'reason' => 'Cliente desistiu da compra.',
+    ])->assertNoContent();
+
+    expect($reservation->fresh()->status)->toBe(ReservationStatus::Cancelled);
+    expect($unit->fresh()->status)->toBe(UnitStatus::Available);
+    expect($reservation->timelineEvents()->where('type', ReservationTimelineEventType::Cancelled)->first())
+        ->not->toBeNull()
+        ->payload->toMatchArray(['reason' => 'Cliente desistiu da compra.']);
+});
+
+it('requires a reason to cancel a reservation', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $client = BrokerClient::factory()->for($broker, 'broker')->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+
+    UnitAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'unit_id' => $unit->id,
+    ]);
+
+    $reservation = Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+        'client_id' => $client->id,
+    ]);
+
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->deleteJson("/api/broker/reservations/{$reservation->id}")
-        ->assertNoContent();
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['reason']);
 
-    expect(Reservation::query()->find($reservation->id))->toBeNull();
-    expect($unit->fresh()->status)->toBe(UnitStatus::Available);
+    expect($reservation->fresh()->status)->toBe(ReservationStatus::DepositPending);
+    expect($unit->fresh()->status)->toBe(UnitStatus::Reserved);
 });
 
 it('rejects cancel reservation from another broker', function () {
@@ -176,6 +227,8 @@ it('rejects cancel reservation from another broker', function () {
         'unit_id' => $unit->id,
         'broker_id' => $otherBroker->id,
     ]);
+
+    linkBrokerToTenant($broker, $tenant);
 
     Sanctum::actingAs($broker);
 
@@ -205,6 +258,8 @@ it('lists unit reservation with client for broker', function () {
         'client_id' => $client->id,
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->getJson('/api/broker/units')
@@ -223,6 +278,8 @@ it('creates initial message when broker sends observations', function () {
         'broker_id' => $broker->id,
         'unit_id' => $unit->id,
     ]);
+
+    linkBrokerToTenant($broker, $tenant);
 
     Sanctum::actingAs($broker);
 
@@ -255,6 +312,8 @@ it('allows broker to read and reply reservation messages', function () {
         'body' => 'Podemos agendar visita.',
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->getJson("/api/broker/reservations/{$reservation->id}/messages")
@@ -279,6 +338,8 @@ it('rejects broker messages for reservation owned by another broker', function (
         'unit_id' => $unit->id,
         'broker_id' => $otherBroker->id,
     ]);
+
+    linkBrokerToTenant($broker, $tenant);
 
     Sanctum::actingAs($broker);
 
@@ -313,13 +374,18 @@ it('lists reservations for owning broker only', function () {
         'broker_id' => $otherBroker->id,
     ]);
 
+    linkBrokerToTenant($broker, $tenant);
+
     Sanctum::actingAs($broker);
 
     $this->getJson('/api/broker/reservations')
         ->assertOk()
         ->assertJsonCount(1)
         ->assertJsonPath('0.client.name', 'Maria Souza')
-        ->assertJsonPath('0.unit.building.name', 'Torre Central');
+        ->assertJsonPath('0.unit.building.name', 'Torre Central')
+        ->assertJsonPath('0.situation.current.key', 'deposit_window')
+        ->assertJsonPath('0.situation.previous.label', 'Decisão do gestor')
+        ->assertJsonPath('0.situation.next.label', 'Comprovante de pagamento');
 });
 
 it('returns pending replies count for broker', function () {
@@ -337,6 +403,8 @@ it('returns pending replies count for broker', function () {
         'reservation_id' => $reservation->id,
         'user_id' => $builder->id,
     ]);
+
+    linkBrokerToTenant($broker, $tenant);
 
     Sanctum::actingAs($broker);
 

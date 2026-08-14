@@ -11,6 +11,10 @@
                 "artisan",
                 "boost:mcp"
             ]
+        },
+        "devtools": {
+            "url": "https://mcp.facebook.com/devtools",
+            "type": "http"
         }
     }
 }

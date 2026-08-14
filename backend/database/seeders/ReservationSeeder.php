@@ -59,6 +59,7 @@ class ReservationSeeder extends Seeder
                 [
                     'tenant_id' => $unit->tenant_id,
                     'broker_id' => $broker->id,
+                    'status' => \App\Enums\ReservationStatus::Confirmed,
                     'expires_at' => now()->addHours($definition['expires_in_hours'] ?? $ttlHours),
                 ],
             );

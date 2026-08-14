@@ -43,9 +43,9 @@ return [
         'api_version' => env('WHATSAPP_API_VERSION', 'v21.0'),
         'template_language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'pt_BR'),
         'templates' => [
-            'broker_invite' => env('WHATSAPP_TEMPLATE_BROKER_INVITE', 'broker_invite'),
+            'broker_invite' => env('WHATSAPP_TEMPLATE_BROKER_INVITE', 'broker_invite_start'),
         ],
-        'decline_button_text' => env('WHATSAPP_DECLINE_BUTTON_TEXT', '❌ Recusar'),
+        'decline_button_text' => env('WHATSAPP_DECLINE_BUTTON_TEXT', 'Recusar'),
     ],
 
 ];

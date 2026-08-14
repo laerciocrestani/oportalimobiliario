@@ -49,3 +49,6 @@ sites/.astro/
 
 # Docker
 docker-data/
+
+# Graphify (grafo local da IA — cache/artefato gerado, não código)
+graphify-out/

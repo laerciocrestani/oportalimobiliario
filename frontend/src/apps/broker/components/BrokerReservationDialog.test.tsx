@@ -6,7 +6,8 @@ import { BrokerReservationDialog } from '@/apps/broker/components/BrokerReservat
 vi.mock('@/lib/api', () => ({
   brokerApi: {
     listClients: vi.fn(),
-    createReservation: vi.fn(),
+    submitReservationProposal: vi.fn(),
+    releasePreHold: vi.fn(),
   },
 }))
 
@@ -22,54 +23,60 @@ const unit = {
   floor: 12,
   area_m2: '72',
   price: '450000',
-  status: 'available',
-  building: {
-    id: 1,
-    name: 'Aurora',
-    description: null,
-    city: 'São Paulo',
-    state: 'SP',
-    published: true,
-    seo_title: null,
-    seo_description: null,
-  },
+  status: 'pre_reserved',
+}
+
+const validProposal = {
+  client_name: 'Ana Silva',
+  client_email: 'ana@example.com',
+  client_phone: '(11) 88888-8888',
+  client_cpf: '12345678901',
+  address: 'Rua A, 100',
+  city: 'São Paulo',
+  state: 'SP',
+  zip: '01000-000',
+  marital_status: 'solteira',
+  nationality: 'brasileira',
+  land_value: 50000,
+  payment_terms: 'Pix R$ 10.000 + 24x',
 }
 
 describe('BrokerReservationDialog', () => {
-  it('disables confirm until a client is selected', async () => {
-    vi.mocked(brokerApi.listClients).mockResolvedValue([
-      { id: 1, name: 'João', phone: '(11) 99999-9999', email: null },
-    ])
+  it('disables submit until required proposal fields are filled', async () => {
+    vi.mocked(brokerApi.listClients).mockResolvedValue([])
 
     render(
       <BrokerReservationDialog
         open
         onOpenChange={() => {}}
         unit={unit}
+        reservationId={55}
+        expiresAt="2099-01-01T12:00:00.000000Z"
         onReserved={() => {}}
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'Confirmar reserva' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Enviar proposta' })).toBeDisabled()
 
     await waitFor(() => {
       expect(brokerApi.listClients).toHaveBeenCalled()
     })
   })
 
-  it('creates reservation with selected client', async () => {
+  it('prefills client data from selection and submits proposal', async () => {
     const user = userEvent.setup()
     const onReserved = vi.fn()
 
     vi.mocked(brokerApi.listClients).mockResolvedValue([
       { id: 2, name: 'Ana', phone: '(11) 88888-8888', email: 'ana@example.com' },
     ])
-    vi.mocked(brokerApi.createReservation).mockResolvedValue({
-      id: 99,
+    vi.mocked(brokerApi.submitReservationProposal).mockResolvedValue({
+      id: 55,
       unit_id: 10,
-      client_id: 2,
+      client_id: null,
       broker_id: 1,
-      expires_at: '2026-06-14T12:00:00.000000Z',
+      expires_at: '2099-01-01T12:00:00.000000Z',
+      status: 'proposal_pending',
     })
 
     render(
@@ -77,6 +84,8 @@ describe('BrokerReservationDialog', () => {
         open
         onOpenChange={() => {}}
         unit={unit}
+        reservationId={55}
+        expiresAt="2099-01-01T12:00:00.000000Z"
         onReserved={onReserved}
       />,
     )
@@ -85,52 +94,33 @@ describe('BrokerReservationDialog', () => {
       expect(screen.getByRole('option', { name: 'Ana · (11) 88888-8888' })).toBeInTheDocument()
     })
 
-    await user.selectOptions(screen.getByLabelText('Cliente *'), '2')
-    await user.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
+    await user.selectOptions(screen.getByLabelText('Cliente cadastrado'), '2')
+    await user.type(screen.getByLabelText('CPF *'), validProposal.client_cpf)
+    await user.type(screen.getByLabelText('Endereço *'), validProposal.address)
+    await user.type(screen.getByLabelText('Cidade *'), validProposal.city)
+    await user.type(screen.getByLabelText('UF *'), validProposal.state)
+    await user.type(screen.getByLabelText('CEP *'), validProposal.zip)
+    await user.type(screen.getByLabelText('Estado civil *'), validProposal.marital_status)
+    await user.type(screen.getByLabelText('Valor do terreno *'), String(validProposal.land_value))
+    await user.type(screen.getByLabelText('Condições de pagamento *'), validProposal.payment_terms)
+    await user.click(screen.getByRole('button', { name: 'Enviar proposta' }))
 
     await waitFor(() => {
-      expect(brokerApi.createReservation).toHaveBeenCalledWith(10, 2, undefined)
+      expect(brokerApi.submitReservationProposal).toHaveBeenCalledWith(55, {
+        client_name: 'Ana',
+        client_email: 'ana@example.com',
+        client_phone: '(11) 88888-8888',
+        client_cpf: validProposal.client_cpf,
+        address: validProposal.address,
+        city: validProposal.city,
+        state: validProposal.state,
+        zip: validProposal.zip,
+        marital_status: validProposal.marital_status,
+        nationality: 'brasileira',
+        land_value: validProposal.land_value,
+        payment_terms: validProposal.payment_terms,
+      })
       expect(onReserved).toHaveBeenCalled()
-    })
-  })
-
-  it('sends observations when provided', async () => {
-    const user = userEvent.setup()
-
-    vi.mocked(brokerApi.listClients).mockResolvedValue([
-      { id: 2, name: 'Ana', phone: '(11) 88888-8888', email: null },
-    ])
-    vi.mocked(brokerApi.createReservation).mockResolvedValue({
-      id: 99,
-      unit_id: 10,
-      client_id: 2,
-      broker_id: 1,
-      expires_at: '2026-06-14T12:00:00.000000Z',
-    })
-
-    render(
-      <BrokerReservationDialog
-        open
-        onOpenChange={() => {}}
-        unit={unit}
-        onReserved={() => {}}
-      />,
-    )
-
-    await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'Ana · (11) 88888-8888' })).toBeInTheDocument()
-    })
-
-    await user.selectOptions(screen.getByLabelText('Cliente *'), '2')
-    await user.type(screen.getByLabelText('Observações'), 'Cliente prefere unidade de canto.')
-    await user.click(screen.getByRole('button', { name: 'Confirmar reserva' }))
-
-    await waitFor(() => {
-      expect(brokerApi.createReservation).toHaveBeenCalledWith(
-        10,
-        2,
-        'Cliente prefere unidade de canto.',
-      )
     })
   })
 })

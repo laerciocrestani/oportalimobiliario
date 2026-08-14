@@ -13,6 +13,7 @@ Dashboard do corretor com visão geral (charts mock), empreendimentos com fluxo 
 - `REQ-BRK-CLI-002`: Cadastro inline de cliente durante reserva (dialog aninhado)
 - `REQ-BRK-RES-001`: Reserva exige `client_id` do corretor autenticado
 - `REQ-BRK-RES-002`: Acesso à unidade via `BuildingAccess` OU `UnitAccess` legado
+- `REQ-BRK-RES-003`: Corretor cancela própria reserva (`DELETE /api/broker/reservations/{id}`) — libera unidade
 
 ## Dependências
 

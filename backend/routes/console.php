@@ -9,3 +9,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('opim:expire-reservations')->hourly();
+Schedule::command('opim:expire-pre-reservations')->everyMinute();
+Schedule::command('opim:check-deposit-windows')->hourly();

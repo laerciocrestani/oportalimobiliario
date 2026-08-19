@@ -54,6 +54,7 @@
 - ~~**`reservation-timeline` Fase B:**~~ proposta (form corretor + decisão gestor); `PATCH confirm` alias de `POST /proposal`; TTL 48h após aceite; recusa soft
 - ~~**`reservation-timeline` Fase C:**~~ sinal (comprovante + aprovação + alerta 48h)
 - ~~**`reservation-timeline` Fase D:**~~ GOV, upload do contrato assinado, `sold`
-- Deploy domínio `diadimoveis.com.br` (REQ-SUB-012)
+- **`user-activity-log`:** log append-only de atividade por pessoa (discovery em `docs/discovery/resumo-log-atividade-usuario.md`; spec/tasks pendentes)
 - ~~Policies Spatie granulares por permission~~ → feature `builder-team` **done**
 - ~~`schedule:work` ou cron em produção para expiração de reservations~~ **done** (serviço Docker `scheduler`; produção: mesmo processo ou cron `schedule:run`)
+- Deploy `diadimoveis.com.br` (REQ-SUB-012) — **adiado**

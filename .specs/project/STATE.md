@@ -34,8 +34,8 @@
 
 - **Fase:** pós-MVP
 - **Última etapa concluída:** scheduler Docker (`schedule:work`) para expirar reservas/pré-reservas e checar janela de sinal
-- **Próxima etapa:** deploy `diadimoveis.com.br` (REQ-PUB-005 / REQ-SUB-012) — exige DNS + SSL, fora do repo
-- **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md` (wizard done)
+- **Próxima etapa:** `user-activity-log` — discovery pronta, ainda sem spec/tasks
+- **Discovery:** `docs/discovery/resumo-log-atividade-usuario.md` (próxima feature); wizard done
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 
 ## Blockers

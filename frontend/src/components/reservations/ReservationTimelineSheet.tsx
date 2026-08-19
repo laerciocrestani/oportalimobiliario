@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { BrokerReservationDialog } from '@/apps/broker/components/BrokerReservationDialog'
 import { BrokerContractDataDialog } from '@/components/reservations/BrokerContractDataDialog'
 import { BrokerDepositProofDialog } from '@/components/reservations/BrokerDepositProofDialog'
+import { BrokerGovSignatureDialog } from '@/components/reservations/BrokerGovSignatureDialog'
+import { BrokerSignedContractDialog } from '@/components/reservations/BrokerSignedContractDialog'
+import { BuilderContractValidatePanel } from '@/components/reservations/BuilderContractValidatePanel'
 import { BuilderDepositProofApprovalPanel } from '@/components/reservations/BuilderDepositProofApprovalPanel'
 import { BuilderProposalDecisionPanel } from '@/components/reservations/BuilderProposalDecisionPanel'
 import { BuilderIssueContractDialog } from '@/components/reservations/BuilderIssueContractDialog'
@@ -39,6 +42,8 @@ export function ReservationTimelineSheet({
   const [depositProofOpen, setDepositProofOpen] = useState(false)
   const [contractDataOpen, setContractDataOpen] = useState(false)
   const [issueContractOpen, setIssueContractOpen] = useState(false)
+  const [govSignatureOpen, setGovSignatureOpen] = useState(false)
+  const [signedContractOpen, setSignedContractOpen] = useState(false)
 
   async function loadTimeline() {
     if (reservationId === null) {
@@ -104,6 +109,16 @@ export function ReservationTimelineSheet({
 
     if (action === 'issue_contract') {
       setIssueContractOpen(true)
+      return
+    }
+
+    if (action === 'mark_signed_gov') {
+      setGovSignatureOpen(true)
+      return
+    }
+
+    if (action === 'upload_signed_contract') {
+      setSignedContractOpen(true)
     }
   }
 
@@ -167,6 +182,16 @@ export function ReservationTimelineSheet({
                   />
                 ) : null}
 
+                {profile === 'builder' &&
+                timeline.current_signed_contract &&
+                timeline.current_stage === 'contract_uploaded' ? (
+                  <BuilderContractValidatePanel
+                    reservationId={timeline.reservation_id}
+                    attachment={timeline.current_signed_contract}
+                    onValidated={() => void handleRefresh()}
+                  />
+                ) : null}
+
                 <ReservationTimeline timeline={timeline} onAction={handleAction} />
               </>
             ) : null}
@@ -205,6 +230,18 @@ export function ReservationTimelineSheet({
             reservationId={reservationId}
             client={timeline?.client ?? null}
             proposal={timeline?.current_proposal ?? null}
+            onSubmitted={() => void handleRefresh()}
+          />
+          <BrokerGovSignatureDialog
+            open={govSignatureOpen}
+            onOpenChange={setGovSignatureOpen}
+            reservationId={reservationId}
+            onSubmitted={() => void handleRefresh()}
+          />
+          <BrokerSignedContractDialog
+            open={signedContractOpen}
+            onOpenChange={setSignedContractOpen}
+            reservationId={reservationId}
             onSubmitted={() => void handleRefresh()}
           />
         </>

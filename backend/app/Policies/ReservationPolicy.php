@@ -62,4 +62,9 @@ class ReservationPolicy
     {
         return $this->view($user, $reservation);
     }
+
+    public function validateContract(User $user, Reservation $reservation): bool
+    {
+        return $this->view($user, $reservation);
+    }
 }

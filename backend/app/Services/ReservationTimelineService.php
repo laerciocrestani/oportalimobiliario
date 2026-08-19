@@ -111,6 +111,10 @@ class ReservationTimelineService
             ->where('kind', ReservationAttachmentKind::DepositProof)
             ->sortByDesc('id')
             ->first();
+        $currentSignedContract = $reservation->attachments
+            ->where('kind', ReservationAttachmentKind::ContractSigned)
+            ->sortByDesc('id')
+            ->first();
 
         $depositOverdue = $events->contains(
             fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::DepositOverdue,
@@ -134,6 +138,7 @@ class ReservationTimelineService
             ],
             'current_proposal' => $currentProposal?->toApiArray(),
             'current_deposit_proof' => $currentDepositProof?->toApiArray($attachmentPrefix),
+            'current_signed_contract' => $currentSignedContract?->toApiArray($attachmentPrefix),
             'attachments' => $visibleAttachments,
             'steps' => $steps,
         ];
@@ -238,8 +243,18 @@ class ReservationTimelineService
             return 'proposal_submitted';
         }
 
-        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractUploaded)) {
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractValidated)
+            || $reservation->isSold()) {
+            return 'sold';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractUploaded)
+            || $reservation->isContractUploaded()) {
             return 'contract_validate';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractSignedGov)) {
+            return 'contract_upload';
         }
 
         if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractIssued)) {
@@ -279,7 +294,7 @@ class ReservationTimelineService
 
     private function resolveCurrentStage(Reservation $reservation, string $currentStepKey): string
     {
-        if ($currentStepKey === 'sold') {
+        if ($reservation->isSold()) {
             return 'sold';
         }
 
@@ -293,6 +308,10 @@ class ReservationTimelineService
 
         if ($reservation->isProposalReturned()) {
             return 'proposal_returned';
+        }
+
+        if ($reservation->isContractUploaded()) {
+            return 'contract_uploaded';
         }
 
         if ($reservation->isContractIssued()) {
@@ -563,7 +582,7 @@ class ReservationTimelineService
             'deposit_proof' => $isBroker ? [] : ['approve_deposit_proof'],
             'contract_data' => $isBroker ? ['submit_contract_data'] : [],
             'contract_issue' => $isBroker ? [] : ['issue_contract'],
-            'contract_sign_gov' => $isBroker ? ['upload_signed_contract'] : ['issue_contract'],
+            'contract_sign_gov' => $isBroker ? ['mark_signed_gov'] : ['issue_contract'],
             'contract_upload' => $isBroker ? ['upload_signed_contract'] : [],
             'contract_validate' => $isBroker ? [] : ['validate_contract'],
             default => [],

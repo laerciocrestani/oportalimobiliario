@@ -53,6 +53,8 @@ class Reservation extends Model
             ReservationStatus::DepositProofPending,
             ReservationStatus::ContractDataPending,
             ReservationStatus::ContractIssued,
+            ReservationStatus::ContractUploaded,
+            ReservationStatus::Sold,
         ]);
     }
 
@@ -99,6 +101,16 @@ class Reservation extends Model
         return $this->status === ReservationStatus::ContractIssued;
     }
 
+    public function isContractUploaded(): bool
+    {
+        return $this->status === ReservationStatus::ContractUploaded;
+    }
+
+    public function isSold(): bool
+    {
+        return $this->status === ReservationStatus::Sold;
+    }
+
     public function isCancelled(): bool
     {
         return $this->status === ReservationStatus::Cancelled;
@@ -112,6 +124,7 @@ class Reservation extends Model
             ReservationStatus::DepositProofPending,
             ReservationStatus::ContractDataPending,
             ReservationStatus::ContractIssued,
+            ReservationStatus::ContractUploaded,
         ], true);
     }
 
@@ -123,6 +136,21 @@ class Reservation extends Model
     public function canSubmitContractData(): bool
     {
         return $this->isContractDataPending();
+    }
+
+    public function canMarkSignedGov(): bool
+    {
+        return $this->isContractIssued();
+    }
+
+    public function canUploadSignedContract(): bool
+    {
+        return $this->isContractIssued();
+    }
+
+    public function canValidateContract(): bool
+    {
+        return $this->isContractUploaded();
     }
 
     public function contractTemplate(): BelongsTo

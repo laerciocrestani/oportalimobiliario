@@ -68,4 +68,20 @@ class ReservationFactory extends Factory
             'expires_at' => now()->addHours(48),
         ]);
     }
+
+    public function contractIssued(): static
+    {
+        return $this->state(fn () => [
+            'status' => \App\Enums\ReservationStatus::ContractIssued,
+            'expires_at' => null,
+        ]);
+    }
+
+    public function contractUploaded(): static
+    {
+        return $this->state(fn () => [
+            'status' => \App\Enums\ReservationStatus::ContractUploaded,
+            'expires_at' => null,
+        ]);
+    }
 }

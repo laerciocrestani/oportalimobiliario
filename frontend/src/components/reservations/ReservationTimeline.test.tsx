@@ -12,6 +12,7 @@ const sampleTimeline: ReservationTimelineData = {
   client: null,
   current_proposal: null,
   current_deposit_proof: null,
+  current_signed_contract: null,
   attachments: [],
   steps: [
     {
@@ -110,6 +111,30 @@ describe('ReservationTimeline', () => {
 
     expect(screen.getByText('Dados para contrato')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Enviar dados do contrato' })).toBeInTheDocument()
+  })
+
+  it('renders GOV signature action for the current step', () => {
+    render(
+      <ReservationTimeline
+        timeline={{
+          ...sampleTimeline,
+          current_stage: 'contract_issued',
+          steps: [
+            {
+              key: 'contract_sign_gov',
+              label: 'Assinatura GOV',
+              status: 'current',
+              occurred_at: null,
+              due_at: null,
+              actor: null,
+              actions: ['mark_signed_gov'],
+            },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Registrar assinatura GOV' })).toBeInTheDocument()
   })
 
   it('labels issue_contract as Reemitir when a PDF already exists', () => {

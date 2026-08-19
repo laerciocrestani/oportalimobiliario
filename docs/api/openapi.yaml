@@ -1552,7 +1552,9 @@ paths:
   /api/builder/reservations/{reservation}/contract/validate:
     patch:
       summary: Validate signed contract and mark unit sold (builder)
-      description: Planned — final validation, builder GOV signature (manual v1), unit sold.
+      description: |
+        Builder confirms own GOV signature (manual v1) and marks the unit sold.
+        Requires `gov_signed: true` and a signed PDF uploaded by the broker.
       security:
         - bearerAuth: []
       parameters:
@@ -1561,13 +1563,23 @@ paths:
           required: true
           schema:
             type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [gov_signed]
+              properties:
+                gov_signed:
+                  type: boolean
       responses:
         '200':
           description: Contract validated, unit sold
         '403':
           description: Forbidden
         '422':
-          description: Invalid stage
+          description: Invalid stage or missing GOV confirmation
   /api/broker/clients:
     get:
       summary: List broker clients
@@ -2000,10 +2012,42 @@ paths:
           description: Not the reservation owner
         '422':
           description: Invalid stage or missing remaining client fields
+  /api/broker/reservations/{reservation}/contract/gov:
+    post:
+      summary: Register GOV signature (broker)
+      description: |
+        Manual v1 record that client and broker signed the contract on GOV.
+        Required before uploading the signed PDF.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
+      responses:
+        '200':
+          description: GOV signature registered
+        '403':
+          description: Not the reservation owner
+        '422':
+          description: Invalid stage or already registered
   /api/broker/reservations/{reservation}/contract/signed:
     post:
       summary: Upload GOV-signed contract (broker)
-      description: Planned — broker uploads contract signed via gov.br.
+      description: Broker uploads the contract PDF signed via gov.br after registering GOV.
       security:
         - bearerAuth: []
       parameters:
@@ -2030,7 +2074,7 @@ paths:
         '403':
           description: Not the reservation owner
         '422':
-          description: Invalid stage
+          description: Invalid stage, missing GOV registration, or invalid file
   /api/broker/invites/preview:
     get:
       summary: Preview broker invite (public)
@@ -2962,6 +3006,10 @@ components:
           allOf:
             - $ref: '#/components/schemas/ReservationProposal'
         current_deposit_proof:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/ReservationAttachment'
+        current_signed_contract:
           nullable: true
           allOf:
             - $ref: '#/components/schemas/ReservationAttachment'

@@ -20,6 +20,7 @@ const ACTION_LABELS: Record<string, string> = {
   submit_contract_data: 'Enviar dados do contrato',
   issue_contract: 'Emitir contrato',
   upload_signed_contract: 'Enviar contrato assinado',
+  mark_signed_gov: 'Registrar assinatura GOV',
   validate_contract: 'Validar e concluir venda',
 }
 

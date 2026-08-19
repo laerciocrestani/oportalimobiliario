@@ -475,6 +475,7 @@ export type ReservationTimeline = {
   client: ReservationTimelineClient | null
   current_proposal: ReservationProposal | null
   current_deposit_proof: ReservationAttachment | null
+  current_signed_contract: ReservationAttachment | null
   attachments: ReservationAttachment[]
   steps: ReservationTimelineStep[]
 }
@@ -892,6 +893,14 @@ export const builderApi = {
       `/builder/reservations/${reservationId}/deposit-proof/approve`,
       { method: 'PATCH' },
     ),
+  validateSignedContract: (reservationId: number) =>
+    apiFetch<{ status: string; unit_status: string }>(
+      `/builder/reservations/${reservationId}/contract/validate`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ gov_signed: true }),
+      },
+    ),
   listContractVariables: () => apiFetch<ContractSystemVariable[]>('/builder/contract-variables'),
   listContractTemplates: () => apiFetch<ContractTemplate[]>('/builder/contract-templates'),
   createContractTemplate: (data: {
@@ -1001,6 +1010,20 @@ export const brokerApi = {
 
     return apiUpload<{ status: string; attachments: ReservationAttachment[] }>(
       `/broker/reservations/${reservationId}/contract-data`,
+      formData,
+    )
+  },
+  markContractGovSigned: (reservationId: number, note?: string) =>
+    apiFetch<{ status: string }>(`/broker/reservations/${reservationId}/contract/gov`, {
+      method: 'POST',
+      body: JSON.stringify({ note: note?.trim() || undefined }),
+    }),
+  uploadSignedContract: (reservationId: number, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    return apiUpload<{ status: string; attachment: ReservationAttachment }>(
+      `/broker/reservations/${reservationId}/contract/signed`,
       formData,
     )
   },

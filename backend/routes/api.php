@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\Broker\ClientController as BrokerClientController;
 use App\Http\Controllers\Api\Broker\ReservationAttachmentController as BrokerReservationAttachmentController;
 use App\Http\Controllers\Api\Broker\ReservationController;
 use App\Http\Controllers\Api\Broker\ReservationContractDataController as BrokerReservationContractDataController;
+use App\Http\Controllers\Api\Broker\ReservationContractSignedController as BrokerReservationContractSignedController;
 use App\Http\Controllers\Api\Broker\ReservationDepositController as BrokerReservationDepositController;
 use App\Http\Controllers\Api\Broker\ReservationMessageController as BrokerReservationMessageController;
 use App\Http\Controllers\Api\Broker\ReservationProposalController as BrokerReservationProposalController;
@@ -37,6 +38,7 @@ use App\Http\Controllers\Api\Builder\ReservationDepositController as BuilderRese
 use App\Http\Controllers\Api\Builder\ReservationMessageController as BuilderReservationMessageController;
 use App\Http\Controllers\Api\Builder\ReservationProposalController as BuilderReservationProposalController;
 use App\Http\Controllers\Api\Builder\ReservationTimelineController as BuilderReservationTimelineController;
+use App\Http\Controllers\Api\Builder\ReservationContractValidateController as BuilderReservationContractValidateController;
 use App\Http\Controllers\Api\Builder\TeamMemberController;
 use App\Http\Controllers\Api\Builder\UnitController;
 use App\Http\Controllers\Api\Public\BuildingController as PublicBuildingController;
@@ -142,6 +144,7 @@ Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permiss
     Route::get('/reservations/{reservation}/contract/templates', [ContractIssueController::class, 'templates']);
     Route::get('/reservations/{reservation}/contract/preview', [ContractIssueController::class, 'preview']);
     Route::post('/reservations/{reservation}/contract/issue', [ContractIssueController::class, 'store']);
+    Route::patch('/reservations/{reservation}/contract/validate', [BuilderReservationContractValidateController::class, 'update']);
     Route::get('/reservations/{reservation}/attachments/{attachment}/file', [BuilderReservationAttachmentController::class, 'file']);
     Route::get('/reservations/{reservation}/messages', [BuilderReservationMessageController::class, 'index']);
     Route::post('/reservations/{reservation}/messages', [BuilderReservationMessageController::class, 'store']);
@@ -164,6 +167,8 @@ Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('bro
         Route::post('/reservations/{reservation}/proposal', [BrokerReservationProposalController::class, 'store']);
         Route::post('/reservations/{reservation}/deposit-proof', [BrokerReservationDepositController::class, 'store']);
         Route::post('/reservations/{reservation}/contract-data', [BrokerReservationContractDataController::class, 'store']);
+        Route::post('/reservations/{reservation}/contract/gov', [BrokerReservationContractSignedController::class, 'gov']);
+        Route::post('/reservations/{reservation}/contract/signed', [BrokerReservationContractSignedController::class, 'store']);
         Route::get('/reservations/{reservation}/attachments/{attachment}/file', [BrokerReservationAttachmentController::class, 'file']);
         Route::delete('/reservations/{reservation}/pre-hold', [ReservationController::class, 'releasePreHold']);
         Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy']);

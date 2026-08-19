@@ -28,6 +28,10 @@ class ReservationCancellationService
             abort(422, 'Reservation cannot be cancelled.');
         }
 
+        if ($reservation->isSold()) {
+            abort(422, 'Reservation cannot be cancelled.');
+        }
+
         DB::transaction(function () use ($actor, $reservation, $reason) {
             $unit = Unit::query()
                 ->withoutGlobalScope('tenant')

@@ -33,8 +33,8 @@
 ## Sessão atual
 
 - **Fase:** pós-MVP
-- **Última etapa concluída:** T-21 edição pós-wizard + T-22 massing; seed CEP `01310100`
-- **Próxima etapa:** `reservation-timeline` Fase B (proposta), conforme ROADMAP
+- **Última etapa concluída:** `reservation-timeline` Fase B alinhada (TTL, recusa soft, `PATCH confirm` alias)
+- **Próxima etapa:** `reservation-timeline` Fase D (GOV + contrato assinado + `sold`)
 - **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md` (wizard done)
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 

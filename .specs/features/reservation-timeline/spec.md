@@ -79,24 +79,24 @@ O corretor inicia sempre com pré-reserva, troca informações com a construtora
 
 | Comportamento atual | Comportamento alvo |
 |---------------------|-------------------|
-| `PATCH confirm` → `confirmed` + `reserved` | `PATCH confirm` renomeado conceitualmente para **envio de proposta** → `proposal_pending` |
-| TTL 48h na confirmação | TTL 48h inicia **após aceite da proposta** (sinal) |
+| `PATCH confirm` → `confirmed` + `reserved` | `PATCH confirm` é alias de `POST /proposal` → `proposal_pending`; unidade permanece `pre_reserved` |
+| TTL 48h na confirmação | TTL 48h inicia **após aceite da proposta** (sinal); envio da proposta zera `expires_at` |
 | `observations` no confirm | Vira `payment_terms` na proposta |
-| Hard delete em cancelamento | Hard delete apenas em `pre_hold`; soft após `reserved` |
+| Hard delete em cancelamento | Hard delete apenas em `pre_hold`; recusa/cancelamento posterior = `cancelled` (unique parcial por unidade ativa) |
 
 > Detalhes técnicos: [design.md](./design.md)
 
-## Decisões pendentes
+## Decisões v1
 
-Registradas em [design.md § Decisões pendentes](./design.md#decisões-pendentes). Devem ser resolvidas antes da Fase B (implementação da proposta).
+Registradas em [design.md § Decisões pendentes](./design.md#decisões-pendentes). Adotadas para a v1:
 
-| # | Tema | Opções |
-|---|------|--------|
-| D-01 | Cancelamento após `reserved` | Gestor pode cancelar em qual etapa? Corretor também? |
-| D-02 | Assinatura GOV | v1: registro manual + upload (recomendado) vs integração futura |
-| D-03 | Geração PDF contrato | v1: upload manual do gestor vs template automático por tenant |
-| D-04 | Expiração do sinal | Alerta apenas (reunião) vs liberar unidade após X dias sem comprovante |
-| D-05 | Migração `confirmed` existente | Mapear para `deposit_pending` ou `reserved` conforme `expires_at` |
+| # | Tema | Decisão v1 |
+|---|------|------------|
+| D-01 | Cancelamento após `reserved` | Gestor pode cancelar até `contract_uploaded`; corretor só cancela em `pre_hold` (hard delete) e `proposal_returned`. Recusa de proposta = `cancelled` sem apagar o histórico. |
+| D-02 | Assinatura GOV | Registro manual + upload (sem API gov.br) — Fase D |
+| D-03 | Geração PDF contrato | Template automático do tenant (`builder-contracts`); reemissão até existir assinado |
+| D-04 | Expiração do sinal | Alerta apenas (`opim:check-deposit-windows`); não cancela |
+| D-05 | Migração `confirmed` | `confirmed` trata-se como `deposit_pending` no código (`isDepositPending`) |
 
 ## Dependências
 
@@ -105,4 +105,4 @@ Registradas em [design.md § Decisões pendentes](./design.md#decisões-pendente
 
 ## Status
 
-**specified** — Fase A implementada (GET timeline + UI + eventos pre_hold/diálogo). Fases B–D pendentes.
+**in_progress** — Fases A–C implementadas. Fase B alinhada (`POST /proposal`, `PATCH confirm` alias, TTL pós-aceite, recusa soft). Fase D: GOV + contrato assinado + `sold`.

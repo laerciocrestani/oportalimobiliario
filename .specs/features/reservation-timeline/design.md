@@ -368,13 +368,13 @@ Padrão de upload: [`BuildingMediaController`](../../../backend/app/Http/Control
 
 Ver [spec.md § Decisões pendentes](./spec.md#decisões-pendentes).
 
-**Recomendações v1:**
+**Recomendações v1 (adotadas):**
 
-- **D-01:** Gestor pode cancelar até `contract_uploaded`; corretor só cancela em `pre_hold` e `proposal_returned`
+- **D-01:** Gestor pode cancelar até `contract_uploaded`; corretor só cancela em `pre_hold` e `proposal_returned`. Recusa de proposta mantém a reserva em `cancelled` (índice único só em reservas ativas).
 - **D-02:** Registro manual + upload (sem API gov.br)
-- **D-03:** Upload manual do PDF pelo gestor na v1; template automático em v2
+- **D-03:** Template do tenant + emissão PDF (`builder-contracts`); não é mais upload manual avulso
 - **D-04:** Alerta apenas na v1 (reunião); command `opim:check-deposit-windows`
-- **D-05:** `confirmed` → `deposit_pending` se `expires_at` futuro; senão `reserved`
+- **D-05:** `confirmed` é tratado como `deposit_pending` em `Reservation::isDepositPending()`
 
 ---
 
@@ -383,7 +383,7 @@ Ver [spec.md § Decisões pendentes](./spec.md#decisões-pendentes).
 | Fase | Escopo | Gate |
 |------|--------|------|
 | **A** | Migrations, enums, `timeline_events`, GET timeline mapeando `pre_hold` + mensagens | Pest + Vitest `ReservationTimeline` |
-| **B** | Proposta (form corretor + decisão gestor); migrar `confirm` | Feature tests + OpenAPI |
+| **B** | Proposta (form corretor + decisão gestor); `PATCH confirm` alias de `POST /proposal` | Feature tests + OpenAPI — **done** |
 | **C** | Sinal (upload comprovante + aprovação + alerta 48h) | Command + badge/notificação |
 | **D** | Contrato (dados, PDF, upload assinado, venda) | Teste manual E2E |
 

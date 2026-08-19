@@ -32,7 +32,7 @@ sequenceDiagram
 
 ## 2. Reserva soft (broker → expiração)
 
-> **v2 (pré-reserva):** fluxo em 2 fases com hold de 10 min antes de confirmar. Ver seção 2.1.
+> **v2 (pré-reserva):** hold de 10 min → proposta → aceite do gestor. Ver seção 2.1 e 4.
 
 ```mermaid
 sequenceDiagram
@@ -43,12 +43,10 @@ sequenceDiagram
 
     B->>API: POST /api/broker/reservations/pre-hold
     API->>U: status → pre_reserved
-    B->>API: PATCH /api/broker/reservations/{id}/confirm
-    API->>U: status → reserved
-    API-->>B: reservation + expires_at (TTL 48h)
-    Note over B: observations opcional → 1ª mensagem da thread
-    CMD->>API: opim:expire-reservations (hourly)
-    CMD->>U: status → available (se expirou)
+    B->>API: POST /api/broker/reservations/{id}/proposal
+    Note over API: stage proposal_pending; unidade segue pre_reserved
+    Note over B: PATCH /confirm permanece como alias do POST /proposal
+    CMD->>API: opim:expire-reservations (hourly, só deposit_pending legado confirmed)
 ```
 
 ### 2.1 Pré-reserva e concorrência (v2)
@@ -68,7 +66,7 @@ sequenceDiagram
         B->>API: GET /broker/units
         API-->>B: unit pre_reserved + held_by_me false
     end
-    A->>API: PATCH /broker/reservations/{id}/confirm
+    A->>API: POST /broker/reservations/{id}/proposal
     A->>API: DELETE /broker/reservations/{id}/pre-hold (cancelar dialog)
     CMD->>API: opim:expire-pre-reservations (every minute)
 ```
@@ -224,11 +222,13 @@ Resposta: `current_stage`, `expires_at`, `steps[]` com status `completed` | `cur
 
 ### 4.4 Alinhamento com v2 atual
 
-| Implementado hoje | Próximo passo (Fase B+) |
+| Implementado hoje | Próximo passo (Fase D) |
 |-------------------|-------------------------|
-| `pre_hold` + mensagens | Timeline steps 1–2 via GET |
-| `PATCH confirm` → `confirmed` | Virar envio de proposta |
-| Hard delete cancelamento | Soft `cancelled` após `reserved` |
+| `pre_hold` + mensagens + GET timeline | GOV + upload assinado + `sold` |
+| `POST /proposal` + `PATCH proposal/decision` | — |
+| `PATCH confirm` alias de `POST /proposal` | — |
+| Recusa → `cancelled` (histórico preservado) | — |
+| TTL 48h após aceite (janela do sinal) | — |
 
 **Arquivos previstos:** ver [reservation-timeline/design.md § Arquivos previstos](../features/reservation-timeline/design.md#arquivos-previstos-implementação).
 

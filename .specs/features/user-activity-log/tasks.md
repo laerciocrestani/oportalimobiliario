@@ -48,7 +48,7 @@ Ordem: backend (schema → logger → auth → APIs → instrumentação) antes 
 
 ## Backend — instrumentação do catálogo v1
 
-- [ ] **T-07** Corretor: CRUD cliente; criar/cancelar/confirmar pré-reserva e reserva; proposta, comprovante, dados de contrato, mensagens. Mesmo ponto da timeline quando houver.
+- [x] **T-07** Corretor: CRUD cliente; criar/cancelar/confirmar pré-reserva e reserva; proposta, comprovante, dados de contrato, mensagens. Mesmo ponto da timeline quando houver.
   - Req: `REQ-LOG-003`
   - Gate: testes de reserva/cliente existentes + asserts de `user_activity_events` nos fluxos cobertos
   - Tests: feature

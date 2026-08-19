@@ -44,6 +44,10 @@ class ReservationTimelineService
         ['key' => 'sold', 'label' => 'Unidade vendida', 'event_types' => [ReservationTimelineEventType::Sold]],
     ];
 
+    public function __construct(
+        private readonly UserActivityCatalog $activityCatalog,
+    ) {}
+
     /**
      * @param  array<string, mixed>|null  $payload
      */
@@ -53,12 +57,18 @@ class ReservationTimelineService
         ?User $actor = null,
         ?array $payload = null,
     ): ReservationTimelineEvent {
-        return ReservationTimelineEvent::query()->create([
+        $event = ReservationTimelineEvent::query()->create([
             'reservation_id' => $reservation->id,
             'type' => $type,
             'actor_id' => $actor?->id,
             'payload' => $payload,
         ]);
+
+        if ($actor !== null) {
+            $this->activityCatalog->recordFromTimeline($reservation, $type, $actor, $payload);
+        }
+
+        return $event;
     }
 
     public function recordPreHoldCreated(Reservation $reservation, User $broker): void

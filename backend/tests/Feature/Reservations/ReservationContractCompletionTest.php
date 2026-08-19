@@ -8,6 +8,7 @@
 use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
 use App\Enums\UnitStatus;
+use App\Enums\UserActivityAction;
 use App\Models\Reservation;
 use App\Models\ReservationAttachment;
 use App\Models\ReservationTimelineEvent;
@@ -55,6 +56,7 @@ it('registers GOV signature for client and broker', function () {
 
     expect($unit->fresh()->status)->toBe(UnitStatus::Reserved);
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::ContractSignedGov)->exists())->toBeTrue();
+    assertUserActivity($broker, UserActivityAction::ReservationContractUploaded, 'assinatura GOV');
 
     $this->getJson("/api/broker/reservations/{$reservation->id}/timeline")
         ->assertOk()

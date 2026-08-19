@@ -7,6 +7,7 @@ use App\Enums\ReservationAttachmentKind;
 use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
 use App\Enums\UnitStatus;
+use App\Enums\UserActivityAction;
 use App\Models\Reservation;
 use App\Models\ReservationAttachment;
 use App\Models\ReservationProposal;
@@ -81,6 +82,7 @@ it('submits remaining client data and documentation from contract data pending',
     expect($reservation->fresh()->status)->toBe(ReservationStatus::ContractDataPending);
     expect(ReservationAttachment::query()->where('kind', ReservationAttachmentKind::ContractDocumentation)->count())->toBe(2);
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::ContractDataSubmitted)->exists())->toBeTrue();
+    assertUserActivity($broker, UserActivityAction::ReservationContractDataSubmitted, '52998224725');
 
     $proposal->refresh();
     expect($proposal->client_name)->toBe('Maria Silva');

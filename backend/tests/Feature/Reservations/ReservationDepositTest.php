@@ -9,6 +9,7 @@
 use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
 use App\Enums\UnitStatus;
+use App\Enums\UserActivityAction;
 use App\Models\Reservation;
 use App\Models\ReservationAttachment;
 use App\Models\ReservationTimelineEvent;
@@ -51,6 +52,7 @@ it('submits deposit proof from deposit pending reservation', function () {
     expect($reservation->fresh()->status)->toBe(ReservationStatus::DepositProofPending);
     expect(ReservationAttachment::query()->count())->toBe(1);
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::DepositProofSubmitted)->exists())->toBeTrue();
+    assertUserActivity($broker, UserActivityAction::ReservationDepositProofSubmitted, 'comprovante.pdf');
 });
 
 it('rejects deposit proof upload when reservation is not deposit pending', function () {

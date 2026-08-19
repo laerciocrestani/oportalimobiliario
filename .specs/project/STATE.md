@@ -32,12 +32,13 @@
 
 ## Sessão atual
 
-- **Fase:** `user-activity-log` (T-01…T-06, T-11 done)
+- **Fase:** `user-activity-log` (T-01…T-07, T-11 done)
 - **Branch:** `feature/user-activity-log`
-- **Última etapa concluída:** T-04/T-05/T-06/T-11 — APIs de leitura + CSV admin + OpenAPI
-- **Próxima etapa:** T-07 — instrumentar mutações do corretor
+- **Última etapa concluída:** T-07 — catálogo do corretor (`UserActivityCatalog` + hook na timeline)
+- **Próxima etapa:** T-08 — instrumentar mutações da construtora
 - **Discovery:** `docs/discovery/resumo-log-atividade-usuario.md` (premissas aceitas em `context.md`)
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
+- **Nota T-07:** assinatura GOV reusa `reservation.contract.uploaded` (catálogo v1 não tem action própria); jobs de expiração não geram log
 
 ## Blockers
 

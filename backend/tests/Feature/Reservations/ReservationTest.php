@@ -8,6 +8,7 @@
 use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
 use App\Enums\UnitStatus;
+use App\Enums\UserActivityAction;
 use App\Models\BrokerClient;
 use App\Models\Building;
 use App\Models\BuildingAccess;
@@ -45,6 +46,7 @@ it('creates reservation for accessible unit with client', function () {
         ->assertJsonPath('client_id', $client->id);
 
     expect($unit->fresh()->status)->toBe(UnitStatus::Reserved);
+    assertUserActivity($broker, UserActivityAction::ReservationCreated, $client->name);
 });
 
 it('creates reservation with building access only', function () {
@@ -184,6 +186,8 @@ it('cancels reservation for owning broker and frees unit', function () {
         ->not->toBeNull()
         ->payload->toMatchArray(['reason' => 'Cliente desistiu da compra.']);
 
+    assertUserActivity($broker, UserActivityAction::ReservationCancelled, 'Cliente desistiu da compra.');
+
     $this->postJson('/api/broker/reservations/pre-hold', ['unit_id' => $unit->id])
         ->assertCreated()
         ->assertJsonPath('status', ReservationStatus::PreHold->value);
@@ -297,6 +301,7 @@ it('creates initial message when broker sends observations', function () {
 
     expect(ReservationMessage::query()->where('reservation_id', $reservationId)->count())->toBe(1);
     expect(ReservationMessage::query()->first()?->body)->toBe('Cliente prefere unidade de canto.');
+    assertUserActivity($broker, UserActivityAction::ReservationMessageSent, 'Cliente prefere unidade de canto.');
 });
 
 it('allows broker to read and reply reservation messages', function () {
@@ -330,6 +335,8 @@ it('allows broker to read and reply reservation messages', function () {
     ])
         ->assertCreated()
         ->assertJsonPath('author.role', 'broker');
+
+    assertUserActivity($broker, UserActivityAction::ReservationMessageSent, 'Perfeito, amanhã às 10h.');
 });
 
 it('rejects broker messages for reservation owned by another broker', function () {

@@ -276,6 +276,7 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 | REQ-LOG-008 | GET admin activity + CSV | `Admin/ActivityController.php` | — | `AdminActivityTest.php` |
 | REQ-LOG-009 | Permissão `audit.view` | `BuilderPermissions.php` | — | `UserActivityLoggerTest.php`, `BuilderActivityTest.php` |
 | REQ-LOG-010 | Isolamento de leitura | controllers activity | — | `BuilderActivityTest.php`, `BrokerActivityTest.php` |
+| REQ-LOG-012 | Retenção de 5 anos (purge) | `PurgeUserActivity.php`, `UserActivityEvent.php`, `routes/console.php` | — | `PurgeUserActivityTest.php`, `ScheduleRegistrationTest.php` |
 
 ---
 

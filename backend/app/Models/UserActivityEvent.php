@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\UserActivityAction;
+use DateTimeInterface;
 use Database\Factories\UserActivityEventFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,6 +13,7 @@ use LogicException;
 
 /**
  * @see REQ-LOG-001
+ * @see REQ-LOG-012
  */
 #[Fillable([
     'actor_user_id',
@@ -56,6 +58,17 @@ class UserActivityEvent extends Model
         static::deleting(function (): never {
             throw new LogicException('User activity events are append-only.');
         });
+    }
+
+    /**
+     * Retention exception to append-only: delete events older than the cutoff.
+     */
+    public static function purgeOlderThan(DateTimeInterface $cutoff): int
+    {
+        return static::query()
+            ->where('created_at', '<', $cutoff)
+            ->toBase()
+            ->delete();
     }
 
     public function actor(): BelongsTo

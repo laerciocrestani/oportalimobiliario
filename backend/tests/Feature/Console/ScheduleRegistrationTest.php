@@ -3,6 +3,7 @@
 /**
  * @see REQ-RES-002
  * @see REQ-RES-008
+ * @see REQ-LOG-012
  */
 use Illuminate\Console\Scheduling\Schedule;
 
@@ -18,4 +19,5 @@ it('registers reservation and deposit schedule commands', function (string $comm
     'expire reservations hourly' => ['opim:expire-reservations', '0 * * * *'],
     'expire pre-reservations every minute' => ['opim:expire-pre-reservations', '* * * * *'],
     'check deposit windows hourly' => ['opim:check-deposit-windows', '0 * * * *'],
+    'purge user activity daily' => ['opim:purge-user-activity', '0 3 * * *'],
 ]);

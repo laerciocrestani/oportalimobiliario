@@ -15,3 +15,7 @@ Schedule::command('opim:fetch-incc')
     ->dailyAt('08:05')
     ->timezone('America/Sao_Paulo')
     ->withoutOverlapping();
+Schedule::command('opim:purge-user-activity')
+    ->dailyAt('03:00')
+    ->timezone('America/Sao_Paulo')
+    ->withoutOverlapping();

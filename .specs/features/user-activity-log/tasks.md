@@ -66,7 +66,7 @@ Ordem: backend (schema → logger → auth → APIs → instrumentação) antes 
   - Tests: feature
   - Depends on: T-03
 
-- [ ] **T-10** Command `opim:purge-user-activity` (5 anos) + schedule diário. Teste: evento antigo some, recente permanece.
+- [x] **T-10** Command `opim:purge-user-activity` (5 anos) + schedule diário. Teste: evento antigo some, recente permanece.
   - Req: `REQ-LOG-012`
   - Gate: `php artisan test --compact --filter=PurgeUserActivity`
   - Tests: feature

@@ -7,6 +7,7 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | PT (legacy) | EN (code) |
 |-------------|-----------|
 | empreendimento | `building` |
+| adicional | `amenity` |
 | unidade | `unit` |
 | reserva | `reservation` |
 | pré-reserva | `pre_hold` / `pre_reservation` |

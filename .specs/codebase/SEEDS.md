@@ -15,7 +15,7 @@ docker compose exec backend php artisan db:seed
 Ordem de execução (`DatabaseSeeder`):
 
 ```
-TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → BuildingSeeder → TowerSeeder
+TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → AmenitySeeder → BuildingSeeder → TowerSeeder
 → UnitSeeder → BuildingMediaSeeder → BrokerInviteSeeder → BrokerTenantSeeder
 → UnitAccessSeeder → BuildingAccessSeeder → ReservationSeeder → ContractTemplateSeeder
 ```
@@ -56,6 +56,7 @@ TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → Bui
 | Seeder | O que cria |
 |--------|------------|
 | `InccIndexSeeder` | Índice INCC-M global (fev–jul/2026, valores demo) |
+| `AmenitySeeder` | Catálogo fechado de adicionais (água quente, piscina, etc.) |
 | `BuildingSeeder` | Empreendimentos por tenant (publicados e rascunho) |
 | `TowerSeeder` | Torres vinculadas aos buildings |
 | `UnitSeeder` | Unidades com status variados (`available`, `reserved`, `sold`) |

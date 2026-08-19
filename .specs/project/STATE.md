@@ -33,8 +33,8 @@
 ## Sessão atual
 
 - **Fase:** building-wizard
-- **Última etapa concluída:** T-05 (defaults do prédio, ficha da unidade, `price_base`, backfill de `floors`)
-- **Próxima etapa:** T-04 amenities (catálogo admin + GET builder) → T-10 pivôs → T-06 calculadora INCC → T-02 job
+- **Última etapa concluída:** T-04 catálogo de adicionais (admin CRUD + GET builder)
+- **Próxima etapa:** T-10 pivôs no wizard (unir adicionais do prédio + unidade) → T-06 calculadora INCC → T-02 job
 - **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md`
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 

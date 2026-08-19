@@ -17,6 +17,13 @@ export type TeamMember = {
   created_at?: string
 }
 
+export type Amenity = {
+  id: number
+  slug: string
+  name: string
+  active: boolean
+}
+
 export type ContractCustomVariable = {
   slug: string
   label: string
@@ -636,6 +643,7 @@ export const builderApi = {
       body: JSON.stringify(data),
     }),
   lookupCep: (cep: string) => apiFetch<CepAddress>(`/builder/cep/${cep}`),
+  listAmenities: () => apiFetch<Amenity[]>('/builder/amenities'),
   updateBuilding: (id: number, data: Partial<Building>) =>
     apiFetch<Building>(`/builder/buildings/${id}`, {
       method: 'PATCH',
@@ -1028,6 +1036,17 @@ export const adminApi = {
     apiFetch<ImpersonationResponse>(`/admin/tenants/${tenantId}/impersonate`, {
       method: 'POST',
       body: JSON.stringify({ user_id: userId }),
+    }),
+  listAmenities: () => apiFetch<Amenity[]>('/admin/amenities'),
+  createAmenity: (data: { name: string; slug?: string; active?: boolean }) =>
+    apiFetch<Amenity>('/admin/amenities', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateAmenity: (id: number, data: Partial<Pick<Amenity, 'name' | 'active'>>) =>
+    apiFetch<Amenity>(`/admin/amenities/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     }),
 }
 

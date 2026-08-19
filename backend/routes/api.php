@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\AmenityController as AdminAmenityController;
 use App\Http\Controllers\Api\Admin\TenantController as AdminTenantController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Broker\BrokerInviteController as BrokerBrokerInviteController;
@@ -15,6 +16,7 @@ use App\Http\Controllers\Api\Broker\ReservationProposalController as BrokerReser
 use App\Http\Controllers\Api\Broker\ReservationTimelineController as BrokerReservationTimelineController;
 use App\Http\Controllers\Api\Broker\UnitController as BrokerUnitController;
 use App\Http\Controllers\Api\Broker\BuildingMediaController as BrokerBuildingMediaController;
+use App\Http\Controllers\Api\Builder\AmenityController as BuilderAmenityController;
 use App\Http\Controllers\Api\Builder\BrokerController as BuilderBrokerController;
 use App\Http\Controllers\Api\Builder\BrokerInviteController as BuilderBrokerInviteController;
 use App\Http\Controllers\Api\Builder\TenantBrokerInviteLinkController;
@@ -87,6 +89,7 @@ Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permiss
     });
 
     Route::get('/cep/{cep}', [CepController::class, 'show']);
+    Route::get('/amenities', [BuilderAmenityController::class, 'index']);
     Route::apiResource('buildings', BuildingController::class);
     Route::put('/buildings/{building}/structure', [BuildingStructureController::class, 'update']);
     Route::put('/buildings/{building}/unit-grid', [BuildingUnitGridController::class, 'update']);
@@ -173,4 +176,7 @@ Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'admin'])->prefix('admi
     Route::get('tenants/{tenant}/users', [AdminTenantController::class, 'users']);
     Route::post('tenants/{tenant}/impersonate', [AdminTenantController::class, 'impersonate']);
     Route::apiResource('tenants', AdminTenantController::class)->except(['destroy']);
+    Route::get('amenities', [AdminAmenityController::class, 'index']);
+    Route::post('amenities', [AdminAmenityController::class, 'store']);
+    Route::patch('amenities/{amenity}', [AdminAmenityController::class, 'update']);
 });

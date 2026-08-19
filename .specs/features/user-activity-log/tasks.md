@@ -84,7 +84,7 @@ Ordem: backend (schema → logger → auth → APIs → instrumentação) antes 
   - Tests: unit FE
   - Depends on: T-01
 
-- [ ] **T-13** `ActivityPage` construtora (date range; seletor de membro se `audit.view`) + cliente API + Vitest.
+- [x] **T-13** `ActivityPage` construtora (date range; seletor de membro se `audit.view`) + cliente API + Vitest.
   - Req: `REQ-LOG-007`, `REQ-LOG-013`
   - Gate: `pnpm test` `ActivityPage`
   - Tests: component

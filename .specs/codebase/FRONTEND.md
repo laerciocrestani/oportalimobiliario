@@ -33,6 +33,7 @@ Definidas em `frontend/src/App.tsx`.
 | `/invites` | `InvitesPage` | `builderApi.*` invites |
 | `/reservations` | `ReservationsPage` | `builderApi.getReservations` |
 | `/contracts` | `ContractsPage` | `builderApi.listContractTemplates` / `issueContract` |
+| `/activity` | `ActivityPage` | `builderApi.listActivity` / `listActivityMembers` |
 | `/auth/impersonate` | `ImpersonatePage` | `authApi.exchangeImpersonation` |
 
 ### Broker (`corretor.localhost`)

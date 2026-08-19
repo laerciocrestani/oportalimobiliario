@@ -17,6 +17,7 @@ import { BrokersPage } from '@/apps/builder/BrokersPage'
 import { ReservationsPage } from '@/apps/builder/ReservationsPage'
 import { ContractsPage } from '@/apps/builder/ContractsPage'
 import { TeamPage } from '@/apps/builder/TeamPage'
+import { ActivityPage } from '@/apps/builder/ActivityPage'
 import { BrokerBuildingsPage } from '@/apps/broker/BrokerBuildingsPage'
 import { BrokerClientsPage } from '@/apps/broker/BrokerClientsPage'
 import { BrokerOverviewPage } from '@/apps/broker/BrokerOverviewPage'
@@ -136,6 +137,14 @@ function AuthenticatedPortal() {
               element={
                 <ProfileGuard profile={profile}>
                   <ContractsPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/activity"
+              element={
+                <ProfileGuard profile={profile}>
+                  <ActivityPage />
                 </ProfileGuard>
               }
             />

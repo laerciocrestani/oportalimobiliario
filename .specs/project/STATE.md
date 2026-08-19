@@ -32,10 +32,10 @@
 
 ## Sessão atual
 
-- **Fase:** building-wizard
-- **Última etapa concluída:** T-12 OpenAPI residual do wizard
-- **Próxima etapa:** T-20 seeds demo + TRACEABILITY/STATE de encerramento
-- **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md`
+- **Fase:** pós-MVP
+- **Última etapa concluída:** T-20 seeds demo + TRACEABILITY/STATE — `building-wizard` encerrado
+- **Próxima etapa:** `reservation-timeline` Fase B (proposta), conforme ROADMAP
+- **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md` (wizard done)
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 
 ## Blockers

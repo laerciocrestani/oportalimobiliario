@@ -1,6 +1,6 @@
 ---
 branch: main
-status: in_progress
+status: done
 depends_on: buildings, tenancy, auth
 source: docs/discovery/resumo-wizard-empreendimentos.md
 ---

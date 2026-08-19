@@ -78,7 +78,7 @@ class UnitSeeder extends Seeder
         foreach (self::definitions() as $buildingName => $units) {
             $building = Building::query()->where('name', $buildingName)->first();
 
-            if ($building === null) {
+            if ($building === null || $building->slug === WizardBuildingSeeder::SLUG || $building->wizard_completed_at !== null) {
                 continue;
             }
 
@@ -100,6 +100,8 @@ class UnitSeeder extends Seeder
                         'floor' => $unit['floor'],
                         'area_m2' => $unit['area_m2'],
                         'price' => $unit['price'],
+                        'price_base' => $unit['price'],
+                        'price_competence' => '2026-02-01',
                         'status' => $unit['status'],
                     ],
                 );

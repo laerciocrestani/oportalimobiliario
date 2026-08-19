@@ -49,11 +49,12 @@ docker compose exec backend php artisan db:seed
 2. **Corretor** — http://corretor.localhost:5173/login → `corretor@demo.com` → `/buildings` mostra unidades com acesso.
 3. **Cross-portal** — `corretor@demo.com` em `construtora.localhost` → erro de role (ProfileGuard).
 4. **Isolamento tenant** — login beta não vê buildings da alpha.
-5. **Admin** — http://admin.localhost:5173/login → `admin@oportalimobiliario.com.br` → tenants, **INCC-M** (`/incc`) e **Adicionais** (`/amenities`).
+5. **Admin** — http://admin.localhost:5173/login → `admin@oportalimobiliario.com.br` → tenants, **INCC-M** (`/incc`, competências fev–jul/2026) e **Adicionais** (`/amenities`).
 6. **Impersonate** — admin escolhe usuário da equipe → redireciona para `/auth/impersonate` na construtora.
-7. **Público** — http://www.localhost:5173/ → listagem sem login (apenas `published=true`).
+7. **Público** — http://www.localhost:5173/ → listagem sem login (apenas `published=true`). **Residencial Bosque** mostra preço INCC-M calculado (não o bruto).
 8. **Reservas** — corretor cria reserva em unidade disponível → aparece em `/reservations` nos dois portais.
 9. **Contratos** — `construtora@alpha.demo` → menu **Contratos** (`/contracts`) cadastra modelos; na reserva com dados enviados, **Emitir contrato** gera o PDF. Corretor vê/baixa no andamento.
+10. **Wizard** — construtora → `/buildings` rascunhos com **Continuar cadastro**; `/buildings/new` abre o wizard de 4 steps. Bosque já está concluído (não deve oferecer continuar).
 
 ## Login via API (debug)
 

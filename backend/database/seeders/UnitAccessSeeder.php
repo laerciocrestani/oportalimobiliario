@@ -15,6 +15,9 @@ class UnitAccessSeeder extends Seeder
     public static function definitions(): array
     {
         return [
+            ['building' => 'Residencial Bosque', 'code' => '101', 'broker_email' => 'corretor@demo.com'],
+            ['building' => 'Residencial Bosque', 'code' => '201', 'broker_email' => 'corretor@demo.com'],
+            ['building' => 'Residencial Bosque', 'code' => '301', 'broker_email' => 'corretor@demo.com'],
             ['building' => 'Residencial Aurora', 'code' => '101', 'broker_email' => 'corretor@demo.com'],
             ['building' => 'Residencial Aurora', 'code' => '102', 'broker_email' => 'corretor@demo.com'],
             ['building' => 'Residencial Aurora', 'code' => '201', 'broker_email' => 'corretor@demo.com'],

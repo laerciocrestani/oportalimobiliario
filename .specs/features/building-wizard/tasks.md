@@ -1,6 +1,6 @@
 ---
 feature: building-wizard
-status: in_progress
+status: done
 ---
 
 # Tasks — building-wizard
@@ -54,4 +54,4 @@ Ordem: backend (schema → serviços → API) antes do frontend que consome. 1 c
 
 ## Encerramento
 
-- [ ] **T-20** Seeds demo (INCC, amenities, um building via estrutura) + TRACEABILITY + STATE.
+- [x] **T-20** Seeds demo (INCC, amenities, um building via estrutura) + TRACEABILITY + STATE.

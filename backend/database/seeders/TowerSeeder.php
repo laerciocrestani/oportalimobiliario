@@ -24,6 +24,10 @@ class TowerSeeder extends Seeder
     public function run(): void
     {
         Building::query()->orderBy('id')->each(function (Building $building): void {
+            if ($building->slug === WizardBuildingSeeder::SLUG || $building->wizard_completed_at !== null) {
+                return;
+            }
+
             $customTowers = self::definitions()[$building->name] ?? null;
 
             if ($customTowers !== null) {

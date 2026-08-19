@@ -257,7 +257,7 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 | REQ-WIZ-014 | Step 4 mídia, descritivo e IA | `BuildingDescriptionController.php`, `BuildingDescriptionGenerator.php` | `BuildingWizardMediaStep.tsx`, `BuildingMediaGallery.tsx` | `GenerateDescriptionTest.php`, `BuildingWizardPage.test.tsx` |
 | REQ-WIZ-015 | Publicar exige unidade `available` com preço | `BuildingController.php` | `BuildingWizardPage.tsx` | `BuildingTest.php`, `BuildingWizardPage.test.tsx` |
 | REQ-WIZ-016 | APIs broker/público expõem preço calculado | `BrokerUnitSerializer.php`, `Public/BuildingController.php` | `unit-listing.ts`, `BrokerUnitsDialog.tsx`, `PublicUnitList.tsx`, `BuildingCard.tsx`, `sites/` | `BuildingPriceCalculationTest.php`, `unit-listing.test.ts`, `BrokerUnitsDialog.test.tsx`, `PublicUnitList.test.tsx` |
-| REQ-WIZ-017 | Pest + OpenAPI + Vitest do wizard | rotas em `api.php` | wizard + admin + broker/público | `docs/api/openapi.yaml` + testes das T-01…T-19 |
+| REQ-WIZ-017 | Pest + OpenAPI + Vitest + seeds/factories | `WizardBuildingSeeder.php`, `InccIndexSeeder.php`, `AmenitySeeder.php` | wizard + admin + broker/público | `docs/api/openapi.yaml` + testes T-01…T-19; `WizardBuildingSeederTest.php` |
 
 ---
 

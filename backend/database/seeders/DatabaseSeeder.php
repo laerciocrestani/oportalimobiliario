@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
             InccIndexSeeder::class,
             AmenitySeeder::class,
             BuildingSeeder::class,
+            WizardBuildingSeeder::class,
             TowerSeeder::class,
             UnitSeeder::class,
             BuildingMediaSeeder::class,

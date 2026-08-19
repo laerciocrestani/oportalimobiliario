@@ -42,12 +42,12 @@
 | admin-tenants | done | inline | inline | done |
 | public-portal | done | inline | inline | done |
 | subdomain-portals | done | done | done | done |
-| building-wizard | in_progress | in_progress | in_progress | T-01 done |
+| building-wizard | done | done | done | done |
 | builder-contracts | done | done | done | done |
 
 ## Próximos passos (pós-MVP v1)
 
-- **`building-wizard`:** T-06 (INCC na leitura) e T-02 (`opim:fetch-incc`) — ficha/adicionais do step 3 feitos
+- ~~**`building-wizard`**~~ **done** (wizard 4 steps, INCC-M na leitura, admin INCC/amenities, seed `Residencial Bosque`)
 - **`builder-contracts`:** catálogo + emissão PDF **done**; GOV / upload assinado / `sold` ficam na timeline Fase D
 - **`reservation-timeline` Fase A:** migrations + GET timeline + componente UI (mapeia pre_hold/mensagens)
 - **`reservation-timeline` Fase B:** proposta (form corretor + decisão gestor); realinhar `PATCH confirm`

@@ -1,6 +1,6 @@
 ---
 feature: building-wizard
-status: in_progress
+status: done
 ---
 
 # Design — Wizard de criação de empreendimentos

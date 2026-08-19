@@ -15,8 +15,8 @@ docker compose exec backend php artisan db:seed
 Ordem de execução (`DatabaseSeeder`):
 
 ```
-TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → AmenitySeeder → BuildingSeeder → TowerSeeder
-→ UnitSeeder → BuildingMediaSeeder → BrokerInviteSeeder → BrokerTenantSeeder
+TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → AmenitySeeder → BuildingSeeder
+→ WizardBuildingSeeder → TowerSeeder → UnitSeeder → BuildingMediaSeeder → BrokerInviteSeeder → BrokerTenantSeeder
 → UnitAccessSeeder → BuildingAccessSeeder → ReservationSeeder → ContractTemplateSeeder
 ```
 
@@ -55,11 +55,12 @@ TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → Ame
 
 | Seeder | O que cria |
 |--------|------------|
-| `InccIndexSeeder` | Índice INCC-M global (fev–jul/2026, valores demo) |
-| `AmenitySeeder` | Catálogo fechado de adicionais (água quente, piscina, etc.) |
-| `BuildingSeeder` | Empreendimentos por tenant (publicados e rascunho) |
-| `TowerSeeder` | Torres vinculadas aos buildings |
-| `UnitSeeder` | Unidades com status variados (`available`, `reserved`, `sold`) |
+| `InccIndexSeeder` | Índice INCC-M global (fev–jul/2026, valores demo, `source=manual`) |
+| `AmenitySeeder` | Catálogo fechado de adicionais (água quente, piscina, academia, etc.) |
+| `BuildingSeeder` | Empreendimentos por tenant (publicados e rascunho) — fluxo legado |
+| `WizardBuildingSeeder` | **Residencial Bosque** (`residencial-bosque`) via `BuildingStructureService` + `BuildingUnitGridService`: endereço, defaults, adicionais do prédio, 1 torre / 3 andares, ficha, `price_base` + competência `2026-02-01`, publicado com `wizard_completed_at` |
+| `TowerSeeder` | Torres vinculadas aos buildings (pula Bosque / wizard concluído) |
+| `UnitSeeder` | Unidades com status variados; preenche `price_base` e `price_competence` para o cálculo INCC-M (pula Bosque) |
 | `BuildingMediaSeeder` | Mídias de capa e galeria |
 | `BrokerInviteSeeder` | Convites pendentes/aceitos |
 | `BuildingAccessSeeder` | Acesso do corretor demo a empreendimentos |
@@ -67,6 +68,22 @@ TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → Ame
 | `BrokerTenantSeeder` | Vínculo corretor ↔ tenant após aceite |
 | `ReservationSeeder` | Reservas ativas e expiradas para testes |
 | `ContractTemplateSeeder` | Modelo **Compra e venda padrão** no tenant Alpha |
+
+### Residencial Bosque (caminho do wizard)
+
+Slug `residencial-bosque`, tenant Alpha, **publicado**. Não passa por `TowerSeeder`/`UnitSeeder`.
+
+| Campo | Valor demo |
+|-------|------------|
+| Endereço | Av. Paulista, 1578 — Bela Vista, São Paulo/SP, CEP 01310-100 |
+| Defaults | forro gesso, esquadria alumínio, piso porcelanato, solar norte, sol manhã |
+| Adicionais do prédio | piscina, academia, água quente |
+| Estrutura | Torre A, 3 andares (`floors.kind`: 1–2 residencial, 3 comercial) |
+| Unidades | 101, 102, 201, 202, 301 — `price_base` + competência `2026-02-01` |
+| Extra 301 | adicional `closet` (união com os do prédio) |
+| Corretor demo | acesso a 101, 201 e 301 |
+
+Re-seed é idempotente: se `published` ou `wizard_completed_at` já existem, o seeder não regrava a estrutura (409 no serviço).
 
 ---
 

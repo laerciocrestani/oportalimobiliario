@@ -221,6 +221,26 @@ paths:
                   type: integer
                   minimum: 1
                   maximum: 4
+                ceiling_type:
+                  type: string
+                  nullable: true
+                  enum: [plaster, pvc, wood, concrete, none]
+                opening_type:
+                  type: string
+                  nullable: true
+                  enum: [aluminum, wood, pvc, steel]
+                flooring_type:
+                  type: string
+                  nullable: true
+                  enum: [porcelain, ceramic, wood, vinyl, laminate, polished_concrete]
+                solar_position:
+                  type: string
+                  nullable: true
+                  enum: [north, northeast, east, southeast, south, southwest, west, northwest]
+                sun_period:
+                  type: string
+                  nullable: true
+                  enum: [morning, afternoon, full_day]
       responses:
         '201':
           description: Created
@@ -312,6 +332,26 @@ paths:
                 state:
                   type: string
                   nullable: true
+                ceiling_type:
+                  type: string
+                  nullable: true
+                  enum: [plaster, pvc, wood, concrete, none]
+                opening_type:
+                  type: string
+                  nullable: true
+                  enum: [aluminum, wood, pvc, steel]
+                flooring_type:
+                  type: string
+                  nullable: true
+                  enum: [porcelain, ceramic, wood, vinyl, laminate, polished_concrete]
+                solar_position:
+                  type: string
+                  nullable: true
+                  enum: [north, northeast, east, southeast, south, southwest, west, northwest]
+                sun_period:
+                  type: string
+                  nullable: true
+                  enum: [morning, afternoon, full_day]
       responses:
         '200':
           description: Building updated
@@ -541,6 +581,74 @@ paths:
       summary: Create unit
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tower_id, code]
+              properties:
+                tower_id:
+                  type: integer
+                code:
+                  type: string
+                floor:
+                  type: integer
+                  nullable: true
+                area_m2:
+                  type: number
+                  nullable: true
+                private_area_m2:
+                  type: number
+                  nullable: true
+                total_area_m2:
+                  type: number
+                  nullable: true
+                bedrooms:
+                  type: integer
+                  nullable: true
+                bathrooms:
+                  type: integer
+                  nullable: true
+                suites:
+                  type: integer
+                  nullable: true
+                powder_rooms:
+                  type: integer
+                  nullable: true
+                balconies:
+                  type: integer
+                  nullable: true
+                price:
+                  type: number
+                  nullable: true
+                price_base:
+                  type: number
+                  nullable: true
+                price_competence:
+                  type: string
+                  format: date
+                  nullable: true
+                property_position:
+                  type: string
+                  nullable: true
+                  enum: [corner, front, rear]
+                solar_position:
+                  type: string
+                  nullable: true
+                sun_period:
+                  type: string
+                  nullable: true
+                ceiling_type:
+                  type: string
+                  nullable: true
+                opening_type:
+                  type: string
+                  nullable: true
+                flooring_type:
+                  type: string
+                  nullable: true
       responses:
         '201':
           description: Created

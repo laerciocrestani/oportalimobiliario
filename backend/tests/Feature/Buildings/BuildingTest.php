@@ -3,6 +3,8 @@
 /**
  * @see REQ-EMP-001
  * @see REQ-EMP-005
+ * @see REQ-WIZ-008
+ * @see REQ-WIZ-009
  * @see REQ-WIZ-015
  */
 use App\Enums\UnitStatus;
@@ -293,4 +295,77 @@ it('keeps a wizard draft unpublished after media step', function () {
         ->assertJsonPath('published', false)
         ->assertJsonPath('wizard_step', 4)
         ->assertJsonPath('wizard_completed_at', null);
+});
+
+it('stores building finishing defaults on update', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create();
+
+    Sanctum::actingAs($user);
+
+    $this->patchJson("/api/builder/buildings/{$building->id}", [
+        'ceiling_type' => 'plaster',
+        'opening_type' => 'aluminum',
+        'flooring_type' => 'porcelain',
+        'solar_position' => 'north',
+        'sun_period' => 'morning',
+    ])
+        ->assertOk()
+        ->assertJsonPath('ceiling_type', 'plaster')
+        ->assertJsonPath('opening_type', 'aluminum')
+        ->assertJsonPath('flooring_type', 'porcelain')
+        ->assertJsonPath('solar_position', 'north')
+        ->assertJsonPath('sun_period', 'morning');
+});
+
+it('rejects unknown building finishing defaults', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create();
+
+    Sanctum::actingAs($user);
+
+    $this->patchJson("/api/builder/buildings/{$building->id}", [
+        'ceiling_type' => 'marble',
+    ])->assertUnprocessable();
+});
+
+it('stores unit spec sheet and mirrors price into price_base', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create();
+    $tower = Tower::factory()->for($tenant)->for($building)->create();
+
+    Sanctum::actingAs($user);
+
+    $response = $this->postJson("/api/builder/buildings/{$building->id}/units", [
+        'tower_id' => $tower->id,
+        'code' => '704',
+        'floor' => 7,
+        'price' => 610000,
+        'bedrooms' => 2,
+        'bathrooms' => 2,
+        'suites' => 1,
+        'powder_rooms' => 0,
+        'balconies' => 1,
+        'private_area_m2' => 78.5,
+        'total_area_m2' => 92,
+        'property_position' => 'front',
+        'solar_position' => 'east',
+        'sun_period' => 'afternoon',
+        'ceiling_type' => 'plaster',
+        'price_competence' => '2026-07-01',
+    ]);
+
+    $response
+        ->assertCreated()
+        ->assertJsonPath('code', '704')
+        ->assertJsonPath('price', '610000.00')
+        ->assertJsonPath('price_base', '610000.00')
+        ->assertJsonPath('private_area_m2', '78.50')
+        ->assertJsonPath('bedrooms', 2)
+        ->assertJsonPath('property_position', 'front');
+
+    expect($response->json('floor_id'))->not->toBeNull();
 });

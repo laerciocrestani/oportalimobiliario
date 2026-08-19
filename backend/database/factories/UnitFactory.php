@@ -23,8 +23,10 @@ class UnitFactory extends Factory
             'building_id' => Building::factory(),
             'code' => strtoupper(fake()->bothify('??-###')),
             'floor' => fake()->numberBetween(1, 20),
-            'area_m2' => fake()->randomFloat(2, 40, 200),
-            'price' => fake()->randomFloat(2, 200000, 1500000),
+            'area_m2' => $area = fake()->randomFloat(2, 40, 200),
+            'private_area_m2' => $area,
+            'price' => $price = fake()->randomFloat(2, 200000, 1500000),
+            'price_base' => $price,
             'status' => UnitStatus::Available,
         ];
     }

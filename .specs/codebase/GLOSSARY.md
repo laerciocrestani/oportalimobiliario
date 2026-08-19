@@ -38,6 +38,9 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | andar | `floor` |
 | preco | `price` |
 | preco congelado | `frozen_price_brl` |
+| preco-base | `price_base` |
+| area privativa | `private_area_m2` |
+| posicao solar | `solar_position` |
 | corretor_id | `broker_id` |
 | empreendimento_id | `building_id` |
 | unidade_id | `unit_id` |

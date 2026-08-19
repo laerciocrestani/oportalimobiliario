@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers\Api\Builder;
 
+use App\Enums\CeilingType;
+use App\Enums\FlooringType;
+use App\Enums\OpeningType;
+use App\Enums\SolarPosition;
+use App\Enums\SunPeriod;
 use App\Enums\UnitStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Building;
@@ -20,6 +25,7 @@ use Illuminate\Validation\ValidationException;
  * @see REQ-EMP-004
  * @see REQ-WIZ-002
  * @see REQ-WIZ-003
+ * @see REQ-WIZ-009
  * @see REQ-WIZ-015
  */
 class BuildingController extends Controller
@@ -46,6 +52,11 @@ class BuildingController extends Controller
             'description' => ['nullable', 'string'],
             'city' => ['nullable', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'size:2'],
+            'ceiling_type' => ['nullable', Rule::enum(CeilingType::class)],
+            'opening_type' => ['nullable', Rule::enum(OpeningType::class)],
+            'flooring_type' => ['nullable', Rule::enum(FlooringType::class)],
+            'solar_position' => ['nullable', Rule::enum(SolarPosition::class)],
+            'sun_period' => ['nullable', Rule::enum(SunPeriod::class)],
             'published' => ['sometimes', 'boolean'],
             'wizard_step' => ['sometimes', 'integer', 'min:1', 'max:4'],
             'seo_title' => ['nullable', 'string', 'max:255'],
@@ -77,7 +88,7 @@ class BuildingController extends Controller
      */
     private function blankAddressToNull(array $data): array
     {
-        foreach (['zip', 'street', 'number', 'complement', 'neighborhood', 'city', 'state'] as $field) {
+        foreach (['zip', 'street', 'number', 'complement', 'neighborhood', 'city', 'state', 'ceiling_type', 'opening_type', 'flooring_type', 'solar_position', 'sun_period'] as $field) {
             if (array_key_exists($field, $data) && $data[$field] === '') {
                 $data[$field] = null;
             }

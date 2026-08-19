@@ -3,6 +3,11 @@
 namespace App\Models;
 
 use App\Enums\BuildingMediaCategory;
+use App\Enums\CeilingType;
+use App\Enums\FlooringType;
+use App\Enums\OpeningType;
+use App\Enums\SolarPosition;
+use App\Enums\SunPeriod;
 use App\Enums\UnitStatus;
 use App\Models\Concerns\ComputesUnitsSummary;
 use App\Tenancy\Concerns\BelongsToTenant;
@@ -27,6 +32,11 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'description',
     'city',
     'state',
+    'ceiling_type',
+    'opening_type',
+    'flooring_type',
+    'solar_position',
+    'sun_period',
     'published',
     'wizard_step',
     'wizard_completed_at',
@@ -44,6 +54,11 @@ class Building extends Model
             'published' => 'boolean',
             'wizard_step' => 'integer',
             'wizard_completed_at' => 'datetime',
+            'ceiling_type' => CeilingType::class,
+            'opening_type' => OpeningType::class,
+            'flooring_type' => FlooringType::class,
+            'solar_position' => SolarPosition::class,
+            'sun_period' => SunPeriod::class,
         ];
     }
 

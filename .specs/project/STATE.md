@@ -32,12 +32,11 @@
 
 ## Sessão atual
 
-- **Fase:** builder-contracts — catálogo + emissão PDF implementados (2026-08-19)
-- **Última etapa concluída:** T-01…T-13 (API + menu Contratos + dialog emitir na timeline)
-- **Próxima etapa:** retomar `building-wizard` (T-05/T-10 ficha/adicionais, T-02 job INCC) — `units.frozen_price_brl` já existe; não duplicar a coluna
-- **Discovery:** `docs/discovery/resumo-gerenciador-contratos.md` (aprovado 2026-08-19)
-- **Acesso:** `construtora.localhost:5173` → menu **Contratos** (`contracts.manage`); Reservas → andamento → **Emitir contrato** (`reservations.cancel`)
-- **Pausa encerrada em contratos;** wizard permanece in_progress
+- **Fase:** building-wizard
+- **Última etapa concluída:** T-05 (defaults do prédio, ficha da unidade, `price_base`, backfill de `floors`)
+- **Próxima etapa:** T-04 amenities (catálogo admin + GET builder) → T-10 pivôs → T-06 calculadora INCC → T-02 job
+- **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md`
+- **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 
 ## Blockers
 

@@ -2,6 +2,12 @@
 
 namespace App\Models;
 
+use App\Enums\CeilingType;
+use App\Enums\FlooringType;
+use App\Enums\OpeningType;
+use App\Enums\PropertyPosition;
+use App\Enums\SolarPosition;
+use App\Enums\SunPeriod;
 use App\Enums\UnitStatus;
 use App\Tenancy\Concerns\BelongsToTenant;
 use Database\Factories\UnitFactory;
@@ -20,9 +26,24 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'code',
     'floor',
     'area_m2',
-            'price',
-            'frozen_price_brl',
-            'status',
+    'private_area_m2',
+    'total_area_m2',
+    'bedrooms',
+    'bathrooms',
+    'suites',
+    'powder_rooms',
+    'balconies',
+    'solar_position',
+    'sun_period',
+    'property_position',
+    'ceiling_type',
+    'opening_type',
+    'flooring_type',
+    'price',
+    'price_base',
+    'price_competence',
+    'frozen_price_brl',
+    'status',
 ])]
 class Unit extends Model
 {
@@ -38,7 +59,22 @@ class Unit extends Model
         return [
             'status' => UnitStatus::class,
             'area_m2' => 'decimal:2',
+            'private_area_m2' => 'decimal:2',
+            'total_area_m2' => 'decimal:2',
+            'bedrooms' => 'integer',
+            'bathrooms' => 'integer',
+            'suites' => 'integer',
+            'powder_rooms' => 'integer',
+            'balconies' => 'integer',
+            'solar_position' => SolarPosition::class,
+            'sun_period' => SunPeriod::class,
+            'property_position' => PropertyPosition::class,
+            'ceiling_type' => CeilingType::class,
+            'opening_type' => OpeningType::class,
+            'flooring_type' => FlooringType::class,
             'price' => 'decimal:2',
+            'price_base' => 'decimal:2',
+            'price_competence' => 'date',
             'frozen_price_brl' => 'decimal:2',
         ];
     }

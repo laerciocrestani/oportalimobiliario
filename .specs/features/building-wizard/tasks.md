@@ -15,8 +15,8 @@ Ordem: backend (schema → serviços → API) antes do frontend que consome. 1 c
   - Gate: job não duplica competência; falha de API não quebra.
 - [ ] **T-03** CRUD admin INCC + `GET hint` + OpenAPI.
 - [ ] **T-04** `amenities` + pivôs + CRUD admin + `GET /builder/amenities`.
-- [ ] **T-05** Migrations building endereço/defaults/wizard; tower `floors_count`; tabela `floors`; colunas de `units` (preço-base, ficha, `floor_id`, `frozen_price_brl`). Backfill `floors` a partir de `units.floor` existentes.
-  - Parcial: endereço/wizard (T-07), `floors_count` + tabela `floors` (T-08), `units.floor_id` (T-09). Faltam defaults do prédio, colunas de ficha/preço-base e backfill.
+- [x] **T-05** Migrations building endereço/defaults/wizard; tower `floors_count`; tabela `floors`; colunas de `units` (preço-base, ficha, `floor_id`). `frozen_price_brl` veio de builder-contracts — não duplicar. Backfill `floors` a partir de `units.floor`.
+  - Gate: `php artisan test --compact --filter=BuildingTest`; `UnitFloorBackfillTest`
 - [ ] **T-06** `UnitPriceCalculator` + serialização de `price` calculado nas APIs builder/broker/public. Testes: sobe, desce, sem índice, `frozen_price_brl`.
 
 ## Backend — wizard

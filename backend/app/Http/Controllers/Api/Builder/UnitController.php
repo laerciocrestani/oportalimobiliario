@@ -2,11 +2,18 @@
 
 namespace App\Http\Controllers\Api\Builder;
 
+use App\Enums\CeilingType;
+use App\Enums\FlooringType;
+use App\Enums\OpeningType;
+use App\Enums\PropertyPosition;
+use App\Enums\SolarPosition;
+use App\Enums\SunPeriod;
 use App\Enums\UnitStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Models\Tower;
 use App\Models\Unit;
+use App\Services\UnitFloorBackfill;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,6 +21,7 @@ use Illuminate\Validation\Rule;
 /**
  * @see REQ-EMP-002
  * @see REQ-EMP-003
+ * @see REQ-WIZ-008
  */
 class UnitController extends Controller
 {
@@ -45,13 +53,15 @@ class UnitController extends Controller
             'area_m2' => ['nullable', 'numeric', 'min:0'],
             'price' => ['nullable', 'numeric', 'min:0'],
             'status' => ['sometimes', Rule::enum(UnitStatus::class)],
+            ...$this->specRules(),
         ]);
 
         $tower = Tower::query()->findOrFail($data['tower_id']);
 
         $this->ensureUniqueCodeInTower($tower, $data['code']);
 
-        $unit = $building->units()->create($data);
+        $unit = $building->units()->create($this->syncLegacyPriceAndArea($data));
+        app(UnitFloorBackfill::class)->attachFloor($unit);
 
         return response()->json($unit->fresh()->load('tower:id,name'), 201);
     }
@@ -75,6 +85,7 @@ class UnitController extends Controller
             'area_m2' => ['nullable', 'numeric', 'min:0'],
             'price' => ['nullable', 'numeric', 'min:0'],
             'status' => ['sometimes', Rule::enum(UnitStatus::class)],
+            ...$this->specRules(),
         ]);
 
         $towerId = $data['tower_id'] ?? $unit->tower_id;
@@ -94,7 +105,8 @@ class UnitController extends Controller
             $this->authorize('update', $unit);
         }
 
-        $unit->update($data);
+        $unit->update($this->syncLegacyPriceAndArea($data));
+        app(UnitFloorBackfill::class)->attachFloor($unit->fresh());
 
         return response()->json($unit->fresh()->load('tower:id,name'));
     }
@@ -126,5 +138,54 @@ class UnitController extends Controller
         if ($exists) {
             abort(422, 'The code has already been taken for this tower.');
         }
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function specRules(): array
+    {
+        return [
+            'private_area_m2' => ['nullable', 'numeric', 'min:0'],
+            'total_area_m2' => ['nullable', 'numeric', 'min:0'],
+            'bedrooms' => ['nullable', 'integer', 'min:0'],
+            'bathrooms' => ['nullable', 'integer', 'min:0'],
+            'suites' => ['nullable', 'integer', 'min:0'],
+            'powder_rooms' => ['nullable', 'integer', 'min:0'],
+            'balconies' => ['nullable', 'integer', 'min:0'],
+            'solar_position' => ['nullable', Rule::enum(SolarPosition::class)],
+            'sun_period' => ['nullable', Rule::enum(SunPeriod::class)],
+            'property_position' => ['nullable', Rule::enum(PropertyPosition::class)],
+            'ceiling_type' => ['nullable', Rule::enum(CeilingType::class)],
+            'opening_type' => ['nullable', Rule::enum(OpeningType::class)],
+            'flooring_type' => ['nullable', Rule::enum(FlooringType::class)],
+            'price_base' => ['nullable', 'numeric', 'min:0'],
+            'price_competence' => ['nullable', 'date'],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function syncLegacyPriceAndArea(array $data): array
+    {
+        if (array_key_exists('price', $data) && ! array_key_exists('price_base', $data)) {
+            $data['price_base'] = $data['price'];
+        }
+
+        if (array_key_exists('price_base', $data) && ! array_key_exists('price', $data)) {
+            $data['price'] = $data['price_base'];
+        }
+
+        if (array_key_exists('area_m2', $data) && ! array_key_exists('private_area_m2', $data)) {
+            $data['private_area_m2'] = $data['area_m2'];
+        }
+
+        if (array_key_exists('private_area_m2', $data) && ! array_key_exists('area_m2', $data)) {
+            $data['area_m2'] = $data['private_area_m2'];
+        }
+
+        return $data;
     }
 }

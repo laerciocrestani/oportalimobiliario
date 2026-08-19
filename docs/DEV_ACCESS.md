@@ -53,6 +53,7 @@ docker compose exec backend php artisan db:seed
 6. **Impersonate** — admin escolhe usuário da equipe → redireciona para `/auth/impersonate` na construtora.
 7. **Público** — http://www.localhost:5173/ → listagem sem login (apenas `published=true`).
 8. **Reservas** — corretor cria reserva em unidade disponível → aparece em `/reservations` nos dois portais.
+9. **Contratos** — `construtora@alpha.demo` → menu **Contratos** (`/contracts`) cadastra modelos; na reserva com dados enviados, **Emitir contrato** gera o PDF. Corretor vê/baixa no andamento.
 
 ## Login via API (debug)
 

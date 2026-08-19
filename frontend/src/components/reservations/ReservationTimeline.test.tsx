@@ -112,6 +112,42 @@ describe('ReservationTimeline', () => {
     expect(screen.getByRole('button', { name: 'Enviar dados do contrato' })).toBeInTheDocument()
   })
 
+  it('labels issue_contract as Reemitir when a PDF already exists', () => {
+    render(
+      <ReservationTimeline
+        timeline={{
+          ...sampleTimeline,
+          current_stage: 'contract_issued',
+          attachments: [
+            {
+              id: 11,
+              kind: 'contract_pdf',
+              original_name: 'contrato.pdf',
+              mime_type: 'application/pdf',
+              size_bytes: 4096,
+              uploaded_by: 1,
+              created_at: '2026-08-19T12:00:00+00:00',
+              file_url: '/builder/reservations/1/attachments/11/file',
+            },
+          ],
+          steps: [
+            {
+              key: 'contract_sign_gov',
+              label: 'Assinatura',
+              status: 'current',
+              occurred_at: null,
+              due_at: null,
+              actor: null,
+              actions: ['issue_contract'],
+            },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Reemitir contrato' })).toBeInTheDocument()
+  })
+
   it('renders upcoming steps with a disabled gray tone', () => {
     render(
       <ReservationTimeline

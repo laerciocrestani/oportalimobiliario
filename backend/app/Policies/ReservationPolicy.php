@@ -57,4 +57,9 @@ class ReservationPolicy
     {
         return $this->view($user, $reservation);
     }
+
+    public function issueContract(User $user, Reservation $reservation): bool
+    {
+        return $this->view($user, $reservation);
+    }
 }

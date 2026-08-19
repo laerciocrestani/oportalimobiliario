@@ -419,7 +419,7 @@ it('hides issued contract pdf from broker timeline attachments', function () {
     $kinds = collect($response->json('attachments'))->pluck('kind');
 
     expect($kinds)->toContain(ReservationAttachmentKind::DepositProof->value)
-        ->and($kinds)->not->toContain(ReservationAttachmentKind::ContractPdf->value);
+        ->and($kinds)->toContain(ReservationAttachmentKind::ContractPdf->value);
 });
 
 it('includes issued contract pdf on builder timeline attachments', function () {

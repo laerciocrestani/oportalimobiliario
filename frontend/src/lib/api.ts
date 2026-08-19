@@ -17,6 +17,47 @@ export type TeamMember = {
   created_at?: string
 }
 
+export type ContractCustomVariable = {
+  slug: string
+  label: string
+}
+
+export type ContractTemplate = {
+  id: number
+  name: string
+  body_markdown: string
+  custom_variables: ContractCustomVariable[]
+  is_active: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export type ContractSystemVariable = {
+  slug: string
+  label: string
+  group: string
+}
+
+export type ContractIssuePreview = {
+  template: { id: number; name: string }
+  system_values: Record<string, string>
+  custom_variables: ContractCustomVariable[]
+  unknown_placeholders: string[]
+  required_custom_slugs: string[]
+  suggested_price: string | number | null
+}
+
+export type ContractIssueResult = {
+  status: string
+  frozen_price_brl: string | number | null
+  attachment: {
+    id: number
+    kind: string
+    original_name: string
+    file_url: string
+  }
+}
+
 export type LoginResponse = {
   token: string
   user: AuthUser
@@ -31,13 +72,39 @@ export type UnitsSummary = {
   unavailable: number
 }
 
+export type FloorKind = 'residential' | 'commercial'
+
+export type Floor = {
+  id: number
+  tower_id: number
+  number: number
+  kind: FloorKind
+}
+
 export type Tower = {
   id: number
   name: string
   sort_order: number
   building_id?: number
+  floors_count?: number
+  floors?: Floor[]
   units_summary?: UnitsSummary
   units?: Unit[]
+}
+
+export type BuildingStructurePayload = {
+  towers: Array<{ name: string; floors_count: number }>
+}
+
+export type BuildingUnitGridPayload = {
+  towers: Array<{
+    id: number
+    floors: Array<{
+      number: number
+      kind: FloorKind
+      units: Array<{ code: string; area_m2?: number | null }>
+    }>
+  }>
 }
 
 export type CoverImage = {
@@ -50,9 +117,16 @@ export type Building = {
   slug: string
   name: string
   description: string | null
+  zip?: string | null
+  street?: string | null
+  number?: string | null
+  complement?: string | null
+  neighborhood?: string | null
   city: string | null
   state: string | null
   published: boolean
+  wizard_step?: number
+  wizard_completed_at?: string | null
   seo_title: string | null
   seo_description: string | null
   units_count?: number
@@ -61,6 +135,15 @@ export type Building = {
   towers?: Tower[]
   units?: Unit[]
   tenant?: { id: number; name: string }
+}
+
+export type CepAddress = {
+  zip: string
+  street: string
+  neighborhood: string
+  city: string
+  state: string
+  complement: string
 }
 
 export type UnitPreHold = {
@@ -73,6 +156,7 @@ export type Unit = {
   id: number
   code: string
   floor: number | null
+  floor_id?: number | null
   area_m2: string | null
   price: string | null
   status: string
@@ -551,10 +635,25 @@ export const builderApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  lookupCep: (cep: string) => apiFetch<CepAddress>(`/builder/cep/${cep}`),
   updateBuilding: (id: number, data: Partial<Building>) =>
     apiFetch<Building>(`/builder/buildings/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    }),
+  replaceBuildingStructure: (id: number, data: BuildingStructurePayload) =>
+    apiFetch<Building>(`/builder/buildings/${id}/structure`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  replaceBuildingUnitGrid: (id: number, data: BuildingUnitGridPayload) =>
+    apiFetch<Building>(`/builder/buildings/${id}/unit-grid`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  generateBuildingDescription: (id: number) =>
+    apiFetch<{ description: string }>(`/builder/buildings/${id}/generate-description`, {
+      method: 'POST',
     }),
   listBuildingMedia: (buildingId: number, category?: BuildingMediaCategory) => {
     const query = category ? `?category=${category}` : ''
@@ -718,6 +817,53 @@ export const builderApi = {
       `/builder/reservations/${reservationId}/deposit-proof/approve`,
       { method: 'PATCH' },
     ),
+  listContractVariables: () => apiFetch<ContractSystemVariable[]>('/builder/contract-variables'),
+  listContractTemplates: () => apiFetch<ContractTemplate[]>('/builder/contract-templates'),
+  createContractTemplate: (data: {
+    name: string
+    body_markdown: string
+    custom_variables?: ContractCustomVariable[]
+    is_active?: boolean
+  }) =>
+    apiFetch<ContractTemplate>('/builder/contract-templates', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateContractTemplate: (
+    id: number,
+    data: Partial<{
+      name: string
+      body_markdown: string
+      custom_variables: ContractCustomVariable[]
+      is_active: boolean
+    }>,
+  ) =>
+    apiFetch<ContractTemplate>(`/builder/contract-templates/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteContractTemplate: (id: number) =>
+    apiFetch<void>(`/builder/contract-templates/${id}`, { method: 'DELETE' }),
+  listIssueContractTemplates: (reservationId: number) =>
+    apiFetch<Array<{ id: number; name: string }>>(
+      `/builder/reservations/${reservationId}/contract/templates`,
+    ),
+  previewContractIssue: (reservationId: number, templateId: number) =>
+    apiFetch<ContractIssuePreview>(
+      `/builder/reservations/${reservationId}/contract/preview?template_id=${templateId}`,
+    ),
+  issueContract: (
+    reservationId: number,
+    data: {
+      contract_template_id: number
+      values: Record<string, string>
+      final_price_brl: number
+    },
+  ) =>
+    apiFetch<ContractIssueResult>(`/builder/reservations/${reservationId}/contract/issue`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 }
 
 export const brokerApi = {

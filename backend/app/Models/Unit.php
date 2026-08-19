@@ -16,11 +16,13 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'tenant_id',
     'building_id',
     'tower_id',
+    'floor_id',
     'code',
     'floor',
     'area_m2',
-    'price',
-    'status',
+            'price',
+            'frozen_price_brl',
+            'status',
 ])]
 class Unit extends Model
 {
@@ -37,6 +39,7 @@ class Unit extends Model
             'status' => UnitStatus::class,
             'area_m2' => 'decimal:2',
             'price' => 'decimal:2',
+            'frozen_price_brl' => 'decimal:2',
         ];
     }
 
@@ -53,6 +56,11 @@ class Unit extends Model
     public function tower(): BelongsTo
     {
         return $this->belongsTo(Tower::class);
+    }
+
+    public function floorRecord(): BelongsTo
+    {
+        return $this->belongsTo(Floor::class, 'floor_id');
     }
 
     public function reservation(): HasOne

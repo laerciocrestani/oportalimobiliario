@@ -233,7 +233,10 @@ export function ReservationTimeline({ timeline, onAction }: ReservationTimelineP
                         variant={action === 'open_dialogue' ? 'outline' : 'default'}
                         onClick={() => onAction?.(action)}
                       >
-                        {ACTION_LABELS[action] ?? action}
+                        {action === 'issue_contract' &&
+                        timeline.attachments.some((attachment) => attachment.kind === 'contract_pdf')
+                          ? 'Reemitir contrato'
+                          : (ACTION_LABELS[action] ?? action)}
                       </Button>
                     ))}
                   </div>

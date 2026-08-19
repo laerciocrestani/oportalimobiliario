@@ -142,7 +142,7 @@ class ReservationTimelineService
     /**
      * Historic files stay available after the process moves on.
      *
-     * Brokers do not receive the issued contract PDF (REQ-RTL-018).
+     * Brokers can download the issued contract PDF (read-only).
      *
      * @return list<array<string, mixed>>
      */
@@ -151,12 +151,6 @@ class ReservationTimelineService
         $attachments = $reservation->attachments
             ->sortBy('id')
             ->values();
-
-        if ($viewer->role === 'broker') {
-            $attachments = $attachments->reject(
-                fn (ReservationAttachment $attachment) => $attachment->kind === ReservationAttachmentKind::ContractPdf,
-            );
-        }
 
         return $attachments
             ->map(fn (ReservationAttachment $attachment) => $attachment->toApiArray($attachmentPrefix))
@@ -295,6 +289,10 @@ class ReservationTimelineService
 
         if ($reservation->isProposalReturned()) {
             return 'proposal_returned';
+        }
+
+        if ($reservation->isContractIssued()) {
+            return 'contract_issued';
         }
 
         if ($reservation->isContractDataPending()) {
@@ -557,6 +555,7 @@ class ReservationTimelineService
             'deposit_proof' => $isBroker ? [] : ['approve_deposit_proof'],
             'contract_data' => $isBroker ? ['submit_contract_data'] : [],
             'contract_issue' => $isBroker ? [] : ['issue_contract'],
+            'contract_sign_gov' => $isBroker ? ['upload_signed_contract'] : ['issue_contract'],
             'contract_upload' => $isBroker ? ['upload_signed_contract'] : [],
             'contract_validate' => $isBroker ? [] : ['validate_contract'],
             default => [],

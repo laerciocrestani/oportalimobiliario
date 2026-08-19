@@ -22,6 +22,11 @@ it('lists team members for manager', function () {
         ->assertJsonCount(2);
 });
 
+it('includes contracts.manage in the permission catalog', function () {
+    expect(BuilderPermissions::all())->toContain(BuilderPermissions::MANAGE_CONTRACTS)
+        ->and(BuilderPermissions::labels()[BuilderPermissions::MANAGE_CONTRACTS])->toBe('Gerenciar contratos');
+});
+
 it('creates team member with custom permissions', function () {
     $tenant = Tenant::factory()->create();
     $manager = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();

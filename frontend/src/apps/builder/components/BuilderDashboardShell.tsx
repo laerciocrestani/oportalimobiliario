@@ -29,6 +29,9 @@ export function BuilderDashboardShell({ title, children, actions }: BuilderDashb
         if (item.url === '/reservations') {
           return canManageReservations
         }
+        if (item.url === '/contracts') {
+          return permissions.includes('contracts.manage')
+        }
         if (item.url === '/team') {
           return permissions.includes('team.manage')
         }

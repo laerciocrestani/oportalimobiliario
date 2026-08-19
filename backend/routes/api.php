@@ -20,6 +20,12 @@ use App\Http\Controllers\Api\Builder\BrokerInviteController as BuilderBrokerInvi
 use App\Http\Controllers\Api\Builder\TenantBrokerInviteLinkController;
 use App\Http\Controllers\Api\Builder\BuildingAccessController;
 use App\Http\Controllers\Api\Builder\BuildingController;
+use App\Http\Controllers\Api\Builder\BuildingDescriptionController;
+use App\Http\Controllers\Api\Builder\BuildingStructureController;
+use App\Http\Controllers\Api\Builder\BuildingUnitGridController;
+use App\Http\Controllers\Api\Builder\CepController;
+use App\Http\Controllers\Api\Builder\ContractIssueController;
+use App\Http\Controllers\Api\Builder\ContractTemplateController;
 use App\Http\Controllers\Api\Builder\BuildingMediaController as BuilderBuildingMediaController;
 use App\Http\Controllers\Api\Builder\TowerController;
 use App\Http\Controllers\Api\Builder\ReservationAttachmentController as BuilderReservationAttachmentController;
@@ -80,7 +86,11 @@ Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permiss
         return TenantNote::query()->orderBy('id')->get();
     });
 
+    Route::get('/cep/{cep}', [CepController::class, 'show']);
     Route::apiResource('buildings', BuildingController::class);
+    Route::put('/buildings/{building}/structure', [BuildingStructureController::class, 'update']);
+    Route::put('/buildings/{building}/unit-grid', [BuildingUnitGridController::class, 'update']);
+    Route::post('/buildings/{building}/generate-description', [BuildingDescriptionController::class, 'store']);
     Route::apiResource('buildings.towers', TowerController::class);
     Route::apiResource('buildings.units', UnitController::class);
     Route::get('/buildings/{building}/media', [BuilderBuildingMediaController::class, 'index']);
@@ -114,12 +124,20 @@ Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permiss
         ->parameters(['team' => 'teamMember'])
         ->except(['show']);
 
+    Route::get('/contract-variables', [ContractTemplateController::class, 'variables']);
+    Route::apiResource('contract-templates', ContractTemplateController::class)
+        ->parameters(['contract-templates' => 'contractTemplate'])
+        ->except(['show']);
+
     Route::get('/reservations', [BuilderReservationController::class, 'index']);
     Route::get('/reservations/pending-replies-count', [BuilderReservationController::class, 'pendingRepliesCount']);
     Route::delete('/reservations/{reservation}', [BuilderReservationController::class, 'destroy']);
     Route::get('/reservations/{reservation}/timeline', [BuilderReservationTimelineController::class, 'show']);
     Route::patch('/reservations/{reservation}/proposal/decision', [BuilderReservationProposalController::class, 'decide']);
     Route::patch('/reservations/{reservation}/deposit-proof/approve', [BuilderReservationDepositController::class, 'approve']);
+    Route::get('/reservations/{reservation}/contract/templates', [ContractIssueController::class, 'templates']);
+    Route::get('/reservations/{reservation}/contract/preview', [ContractIssueController::class, 'preview']);
+    Route::post('/reservations/{reservation}/contract/issue', [ContractIssueController::class, 'store']);
     Route::get('/reservations/{reservation}/attachments/{attachment}/file', [BuilderReservationAttachmentController::class, 'file']);
     Route::get('/reservations/{reservation}/messages', [BuilderReservationMessageController::class, 'index']);
     Route::post('/reservations/{reservation}/messages', [BuilderReservationMessageController::class, 'store']);

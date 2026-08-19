@@ -19,10 +19,17 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'tenant_id',
     'name',
     'slug',
+    'zip',
+    'street',
+    'number',
+    'complement',
+    'neighborhood',
     'description',
     'city',
     'state',
     'published',
+    'wizard_step',
+    'wizard_completed_at',
     'seo_title',
     'seo_description',
 ])]
@@ -35,6 +42,8 @@ class Building extends Model
     {
         return [
             'published' => 'boolean',
+            'wizard_step' => 'integer',
+            'wizard_completed_at' => 'datetime',
         ];
     }
 

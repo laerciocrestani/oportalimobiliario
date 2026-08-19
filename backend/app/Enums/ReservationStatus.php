@@ -10,6 +10,7 @@ enum ReservationStatus: string
     case DepositPending = 'deposit_pending';
     case DepositProofPending = 'deposit_proof_pending';
     case ContractDataPending = 'contract_data_pending';
+    case ContractIssued = 'contract_issued';
     case Confirmed = 'confirmed';
     case Cancelled = 'cancelled';
 }

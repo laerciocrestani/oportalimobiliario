@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'building_id',
     'name',
     'sort_order',
+    'floors_count',
 ])]
 class Tower extends Model
 {
@@ -24,7 +25,15 @@ class Tower extends Model
 
     protected $attributes = [
         'sort_order' => 0,
+        'floors_count' => 0,
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'floors_count' => 'integer',
+        ];
+    }
 
     public function tenant(): BelongsTo
     {
@@ -34,6 +43,11 @@ class Tower extends Model
     public function building(): BelongsTo
     {
         return $this->belongsTo(Building::class);
+    }
+
+    public function floors(): HasMany
+    {
+        return $this->hasMany(Floor::class)->orderBy('number');
     }
 
     public function units(): HasMany

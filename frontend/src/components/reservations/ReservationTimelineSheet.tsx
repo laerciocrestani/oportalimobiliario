@@ -4,6 +4,7 @@ import { BrokerContractDataDialog } from '@/components/reservations/BrokerContra
 import { BrokerDepositProofDialog } from '@/components/reservations/BrokerDepositProofDialog'
 import { BuilderDepositProofApprovalPanel } from '@/components/reservations/BuilderDepositProofApprovalPanel'
 import { BuilderProposalDecisionPanel } from '@/components/reservations/BuilderProposalDecisionPanel'
+import { BuilderIssueContractDialog } from '@/components/reservations/BuilderIssueContractDialog'
 import { ReservationMessagesDialog } from '@/apps/builder/components/ReservationMessagesDialog'
 import { ReservationTimeline } from '@/components/reservations/ReservationTimeline'
 import {
@@ -37,6 +38,7 @@ export function ReservationTimelineSheet({
   const [proposalOpen, setProposalOpen] = useState(false)
   const [depositProofOpen, setDepositProofOpen] = useState(false)
   const [contractDataOpen, setContractDataOpen] = useState(false)
+  const [issueContractOpen, setIssueContractOpen] = useState(false)
 
   async function loadTimeline() {
     if (reservationId === null) {
@@ -97,6 +99,11 @@ export function ReservationTimelineSheet({
 
     if (action === 'submit_contract_data') {
       setContractDataOpen(true)
+      return
+    }
+
+    if (action === 'issue_contract') {
+      setIssueContractOpen(true)
     }
   }
 
@@ -200,6 +207,15 @@ export function ReservationTimelineSheet({
             onSubmitted={() => void handleRefresh()}
           />
         </>
+      ) : null}
+
+      {profile === 'builder' && reservationId !== null ? (
+        <BuilderIssueContractDialog
+          open={issueContractOpen}
+          onOpenChange={setIssueContractOpen}
+          reservationId={reservationId}
+          onIssued={() => void handleRefresh()}
+        />
       ) : null}
     </>
   )

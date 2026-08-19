@@ -13,13 +13,79 @@ use App\Support\UnitsSummary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * @see REQ-EMP-001
  * @see REQ-EMP-004
+ * @see REQ-WIZ-002
+ * @see REQ-WIZ-003
+ * @see REQ-WIZ-015
  */
 class BuildingController extends Controller
 {
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildingRules(?Building $building = null): array
+    {
+        $slugUnique = Rule::unique('buildings', 'slug');
+
+        if ($building !== null) {
+            $slugUnique = $slugUnique->ignore($building->id);
+        }
+
+        return [
+            'name' => [$building === null ? 'required' : 'sometimes', 'string', 'max:255'],
+            'slug' => ['nullable', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slugUnique],
+            'zip' => ['nullable', 'string', 'regex:/^\d{8}$/'],
+            'street' => ['nullable', 'string', 'max:255'],
+            'number' => ['nullable', 'string', 'max:30'],
+            'complement' => ['nullable', 'string', 'max:255'],
+            'neighborhood' => ['nullable', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'city' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'size:2'],
+            'published' => ['sometimes', 'boolean'],
+            'wizard_step' => ['sometimes', 'integer', 'min:1', 'max:4'],
+            'seo_title' => ['nullable', 'string', 'max:255'],
+            'seo_description' => ['nullable', 'string', 'max:500'],
+        ];
+    }
+
+    private function prepareBuildingRequest(Request $request): void
+    {
+        $merge = [];
+
+        if ($request->exists('zip')) {
+            $digits = preg_replace('/\D/', '', (string) $request->input('zip')) ?: null;
+            $merge['zip'] = $digits;
+        }
+
+        if ($request->exists('state') && is_string($request->input('state'))) {
+            $merge['state'] = strtoupper($request->input('state')) ?: null;
+        }
+
+        if ($merge !== []) {
+            $request->merge($merge);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function blankAddressToNull(array $data): array
+    {
+        foreach (['zip', 'street', 'number', 'complement', 'neighborhood', 'city', 'state'] as $field) {
+            if (array_key_exists($field, $data) && $data[$field] === '') {
+                $data[$field] = null;
+            }
+        }
+
+        return $data;
+    }
+
     public function index(): JsonResponse
     {
         $this->authorize('viewAny', Building::class);
@@ -51,18 +117,12 @@ class BuildingController extends Controller
     {
         $this->authorize('create', Building::class);
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'slug' => ['nullable', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', 'unique:buildings,slug'],
-            'description' => ['nullable', 'string'],
-            'city' => ['nullable', 'string', 'max:255'],
-            'state' => ['nullable', 'string', 'size:2'],
-            'published' => ['sometimes', 'boolean'],
-            'seo_title' => ['nullable', 'string', 'max:255'],
-            'seo_description' => ['nullable', 'string', 'max:500'],
-        ]);
+        $this->prepareBuildingRequest($request);
+        $data = $this->blankAddressToNull($request->validate($this->buildingRules()));
 
         $data['slug'] = $data['slug'] ?? BuildingSlug::generateUnique($data['name']);
+        $data['published'] = $data['published'] ?? false;
+        $data['wizard_step'] = $data['wizard_step'] ?? 1;
 
         $building = Building::query()->create($data);
         $building->setAttribute('units_summary', UnitsSummary::empty());
@@ -76,6 +136,7 @@ class BuildingController extends Controller
 
         $building->load([
             'towers' => fn ($query) => $query->orderBy('sort_order')->orderBy('name'),
+            'towers.floors' => fn ($query) => $query->orderBy('number'),
             'towers.units' => fn ($query) => $query->orderByDesc('floor')->orderBy('code'),
             'units.tower:id,name,building_id',
             'units' => fn ($query) => $query->orderByDesc('floor')->orderBy('code'),
@@ -94,26 +155,32 @@ class BuildingController extends Controller
     {
         $this->authorize('update', $building);
 
-        $data = $request->validate([
-            'name' => ['sometimes', 'string', 'max:255'],
-            'slug' => [
-                'nullable',
-                'string',
-                'max:255',
-                'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
-                Rule::unique('buildings', 'slug')->ignore($building->id),
-            ],
-            'description' => ['nullable', 'string'],
-            'city' => ['nullable', 'string', 'max:255'],
-            'state' => ['nullable', 'string', 'size:2'],
-            'published' => ['sometimes', 'boolean'],
-            'seo_title' => ['nullable', 'string', 'max:255'],
-            'seo_description' => ['nullable', 'string', 'max:500'],
-        ]);
+        $this->prepareBuildingRequest($request);
+        $data = $this->blankAddressToNull($request->validate($this->buildingRules($building)));
+
+        if (array_key_exists('published', $data) && filter_var($data['published'], FILTER_VALIDATE_BOOLEAN)) {
+            $this->assertCanPublish($building);
+            $data['wizard_completed_at'] = now();
+            $data['wizard_step'] = $data['wizard_step'] ?? 4;
+        }
 
         $building->update($data);
 
         return response()->json($building->fresh());
+    }
+
+    private function assertCanPublish(Building $building): void
+    {
+        $availableWithoutPrice = $building->units()
+            ->where('status', UnitStatus::Available)
+            ->whereNull('price')
+            ->exists();
+
+        if ($availableWithoutPrice) {
+            throw ValidationException::withMessages([
+                'published' => 'Cannot publish while available units have no price.',
+            ]);
+        }
     }
 
     public function destroy(Building $building): JsonResponse

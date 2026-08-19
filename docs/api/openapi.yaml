@@ -184,9 +184,68 @@ paths:
       summary: Create building
       security:
         - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                zip:
+                  type: string
+                  description: CEP with 8 digits (hyphens accepted)
+                street:
+                  type: string
+                  nullable: true
+                number:
+                  type: string
+                  nullable: true
+                complement:
+                  type: string
+                  nullable: true
+                neighborhood:
+                  type: string
+                  nullable: true
+                city:
+                  type: string
+                  nullable: true
+                state:
+                  type: string
+                  nullable: true
+                published:
+                  type: boolean
+                wizard_step:
+                  type: integer
+                  minimum: 1
+                  maximum: 4
       responses:
         '201':
           description: Created
+        '422':
+          description: Validation error
+  /api/builder/cep/{cep}:
+    get:
+      summary: Lookup address by CEP (ViaCEP proxy)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cep
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Address found
+        '404':
+          description: CEP not found
+        '422':
+          description: Invalid CEP
+        '503':
+          description: ViaCEP unavailable
   /api/builder/buildings/{building}:
     get:
       summary: Show building with towers, units and units_summary
@@ -203,6 +262,209 @@ paths:
           description: Building detail
         '404':
           description: Not found
+    patch:
+      summary: Update building identity, description or publish flag
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                  nullable: true
+                published:
+                  type: boolean
+                  description: false keeps the wizard draft; true publishes and sets wizard_completed_at
+                wizard_step:
+                  type: integer
+                  minimum: 1
+                  maximum: 4
+                zip:
+                  type: string
+                  nullable: true
+                street:
+                  type: string
+                  nullable: true
+                number:
+                  type: string
+                  nullable: true
+                complement:
+                  type: string
+                  nullable: true
+                neighborhood:
+                  type: string
+                  nullable: true
+                city:
+                  type: string
+                  nullable: true
+                state:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: Building updated
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+        '422':
+          description: Validation error (including publish without price on available units)
+  /api/builder/buildings/{building}/structure:
+    put:
+      summary: Replace towers and floors (draft wizard step 2)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [towers]
+              properties:
+                towers:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items:
+                    type: object
+                    required: [name, floors_count]
+                    properties:
+                      name:
+                        type: string
+                      floors_count:
+                        type: integer
+                        minimum: 1
+                        maximum: 80
+      responses:
+        '200':
+          description: Building with replaced towers and floors
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+        '409':
+          description: Building is published or wizard is completed
+        '422':
+          description: Validation error
+  /api/builder/buildings/{building}/unit-grid:
+    put:
+      summary: Replace unit grid (draft wizard step 3)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [towers]
+              properties:
+                towers:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [id, floors]
+                    properties:
+                      id:
+                        type: integer
+                      floors:
+                        type: array
+                        minItems: 1
+                        items:
+                          type: object
+                          required: [number, kind, units]
+                          properties:
+                            number:
+                              type: integer
+                            kind:
+                              type: string
+                              enum: [residential, commercial]
+                            units:
+                              type: array
+                              minItems: 1
+                              items:
+                                type: object
+                                required: [code]
+                                properties:
+                                  code:
+                                    type: string
+                                  area_m2:
+                                    type: number
+                                    nullable: true
+                                    description: Private area in m²; same typical position (101, 201, 301) usually shares this value
+      responses:
+        '200':
+          description: Building with generated units
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+        '409':
+          description: Building is published or wizard is completed
+        '422':
+          description: Validation error (empty floor, missing tower/floor, duplicate codes)
+  /api/builder/buildings/{building}/generate-description:
+    post:
+      summary: Generate building description with the configured LLM (Gemini or OpenAI)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Generated text (not persisted until PATCH)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [description]
+                properties:
+                  description:
+                    type: string
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+        '422':
+          description: Provider unavailable, missing key, or generation failed
   /api/builder/buildings/{building}/towers:
     get:
       summary: List towers for building
@@ -614,6 +876,98 @@ paths:
           description: Forbidden
         '422':
           description: Cannot remove last team manager
+  /api/builder/contract-variables:
+    get:
+      summary: List closed-catalog contract template variables
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: System variable legend (slug, label, group)
+        '403':
+          description: Missing contracts.manage permission
+  /api/builder/contract-templates:
+    get:
+      summary: List contract templates (builder)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Templates for the current tenant
+        '403':
+          description: Missing contracts.manage permission
+    post:
+      summary: Create contract template
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, body_markdown]
+              properties:
+                name:
+                  type: string
+                body_markdown:
+                  type: string
+                custom_variables:
+                  type: array
+                  items:
+                    type: object
+                    required: [slug, label]
+                    properties:
+                      slug:
+                        type: string
+                      label:
+                        type: string
+                is_active:
+                  type: boolean
+      responses:
+        '201':
+          description: Created
+        '403':
+          description: Missing contracts.manage permission
+        '422':
+          description: Validation error
+  /api/builder/contract-templates/{contractTemplate}:
+    patch:
+      summary: Update contract template
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: contractTemplate
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Updated
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found in tenant
+        '422':
+          description: Validation error
+    delete:
+      summary: Delete contract template
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: contractTemplate
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found in tenant
   /api/builder/reservations:
     get:
       summary: List reservations (builder)
@@ -791,10 +1145,50 @@ paths:
           description: Forbidden
         '422':
           description: Invalid stage
+  /api/builder/reservations/{reservation}/contract/templates:
+    get:
+      summary: List active contract templates for issue dialog
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Active templates (id, name)
+        '403':
+          description: Forbidden
+        '422':
+          description: Reservation is not in contract issue stage
+  /api/builder/reservations/{reservation}/contract/preview:
+    get:
+      summary: Preview system values for a contract template
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: template_id
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: System values, custom fields, suggested price
+        '403':
+          description: Forbidden
+        '422':
+          description: Invalid stage or inactive template
   /api/builder/reservations/{reservation}/contract/issue:
     post:
-      summary: Issue contract PDF (builder)
-      description: Planned — emits contract PDF after document review.
+      summary: Issue contract PDF from a template (builder)
       security:
         - bearerAuth: []
       parameters:
@@ -804,21 +1198,28 @@ paths:
           schema:
             type: integer
       requestBody:
+        required: true
         content:
-          multipart/form-data:
+          application/json:
             schema:
               type: object
+              required: [contract_template_id, values, final_price_brl]
               properties:
-                file:
-                  type: string
-                  format: binary
+                contract_template_id:
+                  type: integer
+                values:
+                  type: object
+                  additionalProperties:
+                    type: string
+                final_price_brl:
+                  type: number
       responses:
         '201':
-          description: Contract issued
+          description: Contract issued (PDF attachment + frozen price)
         '403':
           description: Forbidden
         '422':
-          description: Invalid stage
+          description: Invalid stage, inactive template, or missing required values
   /api/builder/reservations/{reservation}/contract/validate:
     patch:
       summary: Validate signed contract and mark unit sold (builder)

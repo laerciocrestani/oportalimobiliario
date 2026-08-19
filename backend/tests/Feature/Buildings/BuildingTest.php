@@ -3,6 +3,7 @@
 /**
  * @see REQ-EMP-001
  * @see REQ-EMP-005
+ * @see REQ-WIZ-015
  */
 use App\Enums\UnitStatus;
 use App\Models\Building;
@@ -88,6 +89,70 @@ it('creates building for builder', function () {
     expect(Building::query()->count())->toBe(1);
 });
 
+it('creates building with address as unpublished wizard draft', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/builder/buildings', [
+        'name' => 'Residencial Aurora',
+        'zip' => '01310-100',
+        'street' => 'Avenida Paulista',
+        'number' => '1000',
+        'complement' => 'Conjunto 12',
+        'neighborhood' => 'Bela Vista',
+        'city' => 'São Paulo',
+        'state' => 'sp',
+        'wizard_step' => 1,
+    ])
+        ->assertCreated()
+        ->assertJsonPath('name', 'Residencial Aurora')
+        ->assertJsonPath('zip', '01310100')
+        ->assertJsonPath('street', 'Avenida Paulista')
+        ->assertJsonPath('number', '1000')
+        ->assertJsonPath('neighborhood', 'Bela Vista')
+        ->assertJsonPath('city', 'São Paulo')
+        ->assertJsonPath('state', 'SP')
+        ->assertJsonPath('published', false)
+        ->assertJsonPath('wizard_step', 1)
+        ->assertJsonPath('wizard_completed_at', null);
+});
+
+it('updates building address', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create(['name' => 'Rascunho']);
+
+    Sanctum::actingAs($user);
+
+    $this->patchJson("/api/builder/buildings/{$building->id}", [
+        'zip' => '01310100',
+        'street' => 'Rua Augusta',
+        'number' => '200',
+        'neighborhood' => 'Consolação',
+        'city' => 'São Paulo',
+        'state' => 'SP',
+        'wizard_step' => 1,
+    ])
+        ->assertOk()
+        ->assertJsonPath('street', 'Rua Augusta')
+        ->assertJsonPath('zip', '01310100')
+        ->assertJsonPath('wizard_step', 1);
+});
+
+it('rejects invalid zip on create', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+
+    Sanctum::actingAs($user);
+
+    $this->postJson('/api/builder/buildings', [
+        'name' => 'Sem CEP válido',
+        'zip' => '123',
+    ])->assertUnprocessable()->assertJsonValidationErrors(['zip']);
+});
+
 it('shows building with towers units and summary', function () {
     $tenant = Tenant::factory()->create();
     $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
@@ -158,4 +223,74 @@ it('isolates buildings between tenants on show', function () {
 
     $this->getJson("/api/builder/buildings/{$building->id}")
         ->assertNotFound();
+});
+
+it('publishes a draft when available units have price', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create([
+        'published' => false,
+        'wizard_step' => 4,
+        'wizard_completed_at' => null,
+    ]);
+    Unit::factory()->for($tenant)->for($building)->create([
+        'status' => UnitStatus::Available,
+        'price' => 520000,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->patchJson("/api/builder/buildings/{$building->id}", [
+        'description' => 'Residencial com duas torres.',
+        'published' => true,
+        'wizard_step' => 4,
+    ])
+        ->assertOk()
+        ->assertJsonPath('published', true)
+        ->assertJsonPath('description', 'Residencial com duas torres.')
+        ->assertJsonPath('wizard_step', 4);
+
+    expect($building->fresh()->wizard_completed_at)->not->toBeNull();
+});
+
+it('rejects publishing when an available unit has no price', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create(['published' => false]);
+    Unit::factory()->for($tenant)->for($building)->create([
+        'status' => UnitStatus::Available,
+        'price' => null,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->patchJson("/api/builder/buildings/{$building->id}", [
+        'published' => true,
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['published']);
+
+    expect($building->fresh()->published)->toBeFalse()
+        ->and($building->fresh()->wizard_completed_at)->toBeNull();
+});
+
+it('keeps a wizard draft unpublished after media step', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create([
+        'published' => false,
+        'wizard_step' => 3,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->patchJson("/api/builder/buildings/{$building->id}", [
+        'description' => 'Texto do rascunho.',
+        'published' => false,
+        'wizard_step' => 4,
+    ])
+        ->assertOk()
+        ->assertJsonPath('published', false)
+        ->assertJsonPath('wizard_step', 4)
+        ->assertJsonPath('wizard_completed_at', null);
 });

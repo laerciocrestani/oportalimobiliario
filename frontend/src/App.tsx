@@ -8,10 +8,12 @@ import { TenantEditPage } from '@/apps/admin/TenantEditPage'
 import { BuildingDetailPage } from '@/apps/builder/BuildingDetailPage'
 import { BuildingEditPage } from '@/apps/builder/BuildingEditPage'
 import { BuilderHome } from '@/apps/builder/BuilderHome'
+import { BuildingWizardPage } from '@/apps/builder/BuildingWizardPage'
 import { BuildingsPage } from '@/apps/builder/BuildingsPage'
 import { InvitesPage } from '@/apps/builder/InvitesPage'
 import { BrokersPage } from '@/apps/builder/BrokersPage'
 import { ReservationsPage } from '@/apps/builder/ReservationsPage'
+import { ContractsPage } from '@/apps/builder/ContractsPage'
 import { TeamPage } from '@/apps/builder/TeamPage'
 import { BrokerBuildingsPage } from '@/apps/broker/BrokerBuildingsPage'
 import { BrokerClientsPage } from '@/apps/broker/BrokerClientsPage'
@@ -64,6 +66,22 @@ function AuthenticatedPortal() {
               }
             />
             <Route
+              path="/buildings/new"
+              element={
+                <ProfileGuard profile={profile}>
+                  <BuildingWizardPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/buildings/:buildingId/wizard"
+              element={
+                <ProfileGuard profile={profile}>
+                  <BuildingWizardPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
               path="/buildings/:buildingId/edit"
               element={
                 <ProfileGuard profile={profile}>
@@ -108,6 +126,14 @@ function AuthenticatedPortal() {
               element={
                 <ProfileGuard profile={profile}>
                   <ReservationsPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/contracts"
+              element={
+                <ProfileGuard profile={profile}>
+                  <ContractsPage />
                 </ProfileGuard>
               }
             />

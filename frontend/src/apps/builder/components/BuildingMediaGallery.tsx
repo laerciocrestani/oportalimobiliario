@@ -12,6 +12,7 @@ import {
 
 type BuildingMediaGalleryProps = {
   buildingId: number
+  showFloorPlans?: boolean
 }
 
 type ImageTab = 'internal' | 'external'
@@ -177,7 +178,7 @@ function MediaGrid({
   )
 }
 
-export function BuildingMediaGallery({ buildingId }: BuildingMediaGalleryProps) {
+export function BuildingMediaGallery({ buildingId, showFloorPlans = true }: BuildingMediaGalleryProps) {
   const [media, setMedia] = useState<BuildingMedia[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
@@ -269,7 +270,7 @@ export function BuildingMediaGallery({ buildingId }: BuildingMediaGalleryProps) 
       <Tabs defaultValue="images">
         <TabsList>
           <TabsTrigger value="images">Imagens</TabsTrigger>
-          <TabsTrigger value="floor_plans">Plantas</TabsTrigger>
+          {showFloorPlans ? <TabsTrigger value="floor_plans">Plantas</TabsTrigger> : null}
         </TabsList>
 
         <TabsContent value="images" className="mt-4 space-y-4">
@@ -323,29 +324,31 @@ export function BuildingMediaGallery({ buildingId }: BuildingMediaGalleryProps) 
           </Tabs>
         </TabsContent>
 
-        <TabsContent value="floor_plans" className="mt-4 space-y-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Badge variant="secondary">Restrito à construtora e corretor</Badge>
-            <UploadButton
-              label={uploading ? 'Enviando...' : 'Enviar plantas (imagem ou PDF)'}
-              accept="image/*,.pdf,application/pdf"
-              multiple
-              disabled={uploading}
-              onFilesSelected={(files) => {
-                void handleUpload('floor_plan', files)
-              }}
-            />
-          </div>
+        {showFloorPlans ? (
+          <TabsContent value="floor_plans" className="mt-4 space-y-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge variant="secondary">Restrito à construtora e corretor</Badge>
+              <UploadButton
+                label={uploading ? 'Enviando...' : 'Enviar plantas (imagem ou PDF)'}
+                accept="image/*,.pdf,application/pdf"
+                multiple
+                disabled={uploading}
+                onFilesSelected={(files) => {
+                  void handleUpload('floor_plan', files)
+                }}
+              />
+            </div>
 
-          <MediaGrid
-            buildingId={buildingId}
-            items={floorPlanMedia}
-            showPublish={false}
-            onPublishChange={handlePublishChange}
-            onDelete={handleDelete}
-            onOpenPdf={handleOpenPdf}
-          />
-        </TabsContent>
+            <MediaGrid
+              buildingId={buildingId}
+              items={floorPlanMedia}
+              showPublish={false}
+              onPublishChange={handlePublishChange}
+              onDelete={handleDelete}
+              onOpenPdf={handleOpenPdf}
+            />
+          </TabsContent>
+        ) : null}
       </Tabs>
     </div>
   )

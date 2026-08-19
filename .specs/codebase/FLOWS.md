@@ -218,6 +218,9 @@ Resposta: `current_stage`, `expires_at`, `steps[]` com status `completed` | `cur
 | Proposta devolvida | Corretor corrige e reenvia; diálogo continua |
 | Proposta recusada | Encerra fluxo; unidade volta `available` |
 | Comprovante vencido | Alerta corretor + gestor; unidade permanece reservada (v1) |
+| Emissão de contrato | Gestor escolhe modelo ativo, preenche variáveis + R$ final; gera PDF (`contract_pdf`) e congela `frozen_price_brl` |
+| Reemissão | Substitui o PDF até existir contrato assinado / evento GOV |
+| PDF para o corretor | Somente leitura/download no andamento da reserva |
 
 ### 4.4 Alinhamento com v2 atual
 

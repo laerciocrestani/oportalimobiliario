@@ -1,6 +1,7 @@
 import {
   Building2Icon,
   CalendarClockIcon,
+  FileTextIcon,
   HandshakeIcon,
   LayoutDashboardIcon,
   Settings2Icon,
@@ -52,6 +53,11 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
         title: 'Reservas',
         url: '/reservations',
         icon: <CalendarClockIcon />,
+      },
+      {
+        title: 'Contratos',
+        url: '/contracts',
+        icon: <FileTextIcon />,
       },
       {
         title: 'Convites',

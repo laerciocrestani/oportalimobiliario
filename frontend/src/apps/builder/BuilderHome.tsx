@@ -24,6 +24,18 @@ export function BuilderHome() {
           </Card>
         ) : null}
 
+        {can('contracts.manage') ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Contratos</CardTitle>
+              <CardDescription>Cadastre modelos e emita o PDF nas reservas.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button render={<Link to="/contracts" />}>Ver contratos</Button>
+            </CardContent>
+          </Card>
+        ) : null}
+
         {can('invites.send') || can('access.manage') ? (
           <Card>
             <CardHeader>

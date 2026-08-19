@@ -25,11 +25,14 @@ Definidas em `frontend/src/App.tsx`.
 | `/login` | `LoginPage` | `authApi.login` |
 | `/` | `BuilderHome` | — |
 | `/buildings` | `BuildingsPage` | `builderApi.getBuildings` |
+| `/buildings/new` | `BuildingWizardPage` | `builderApi.createBuilding`, `lookupCep` |
+| `/buildings/:id/wizard` | `BuildingWizardPage` | `builderApi.getBuilding` / `updateBuilding` / `replaceBuildingStructure` / `replaceBuildingUnitGrid` / `generateBuildingDescription` |
 | `/buildings/:id` | `BuildingDetailPage` | `builderApi.getBuilding` |
 | `/buildings/:id/edit` | `BuildingEditPage` | `builderApi.updateBuilding` |
 | `/team` | `TeamPage` | `builderApi.*` team |
 | `/invites` | `InvitesPage` | `builderApi.*` invites |
 | `/reservations` | `ReservationsPage` | `builderApi.getReservations` |
+| `/contracts` | `ContractsPage` | `builderApi.listContractTemplates` / `issueContract` |
 | `/auth/impersonate` | `ImpersonatePage` | `authApi.exchangeImpersonation` |
 
 ### Broker (`corretor.localhost`)

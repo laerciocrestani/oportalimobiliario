@@ -16,6 +16,8 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | condições de pagamento | `payment_terms` |
 | valor do terreno | `land_value` |
 | emissão de contrato | `contract_issue` |
+| modelo de contrato | `contract_template` |
+| preço congelado | `frozen_price_brl` |
 | contrato assinado | `contract_signed` |
 | convite corretor | `broker_invite` |
 | acesso unidade | `unit_access` |
@@ -35,6 +37,7 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | codigo | `code` |
 | andar | `floor` |
 | preco | `price` |
+| preco congelado | `frozen_price_brl` |
 | corretor_id | `broker_id` |
 | empreendimento_id | `building_id` |
 | unidade_id | `unit_id` |

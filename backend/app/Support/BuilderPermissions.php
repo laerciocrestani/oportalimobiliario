@@ -24,6 +24,8 @@ class BuilderPermissions
 
     public const MANAGE_TEAM = 'team.manage';
 
+    public const MANAGE_CONTRACTS = 'contracts.manage';
+
     /**
      * @return list<string>
      */
@@ -38,6 +40,7 @@ class BuilderPermissions
             self::MANAGE_ACCESS,
             self::CANCEL_RESERVATIONS,
             self::MANAGE_TEAM,
+            self::MANAGE_CONTRACTS,
         ];
     }
 
@@ -55,6 +58,7 @@ class BuilderPermissions
             self::MANAGE_ACCESS => 'Gerenciar acesso de corretores',
             self::CANCEL_RESERVATIONS => 'Cancelar reservas',
             self::MANAGE_TEAM => 'Gerenciar equipe',
+            self::MANAGE_CONTRACTS => 'Gerenciar contratos',
         ];
     }
 

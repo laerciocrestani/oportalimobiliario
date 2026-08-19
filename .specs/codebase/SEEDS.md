@@ -17,7 +17,7 @@ Ordem de execução (`DatabaseSeeder`):
 ```
 TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → BuildingSeeder → TowerSeeder
 → UnitSeeder → BuildingMediaSeeder → BrokerInviteSeeder → BrokerTenantSeeder
-→ UnitAccessSeeder → BuildingAccessSeeder → ReservationSeeder
+→ UnitAccessSeeder → BuildingAccessSeeder → ReservationSeeder → ContractTemplateSeeder
 ```
 
 ---
@@ -65,6 +65,7 @@ TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → Bui
 | `UnitAccessSeeder` | Acesso legado por unidade |
 | `BrokerTenantSeeder` | Vínculo corretor ↔ tenant após aceite |
 | `ReservationSeeder` | Reservas ativas e expiradas para testes |
+| `ContractTemplateSeeder` | Modelo **Compra e venda padrão** no tenant Alpha |
 
 ---
 

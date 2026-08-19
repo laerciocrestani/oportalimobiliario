@@ -61,4 +61,14 @@ describe('BuildingMediaGallery', () => {
       ).toBeInTheDocument()
     })
   })
+
+  it('hides floor plans when showFloorPlans is false', async () => {
+    render(<BuildingMediaGallery buildingId={1} showFloorPlans={false} />)
+
+    await waitFor(() => {
+      expect(screen.getByRole('tab', { name: 'Internas' })).toBeInTheDocument()
+    })
+
+    expect(screen.queryByRole('tab', { name: 'Plantas' })).not.toBeInTheDocument()
+  })
 })

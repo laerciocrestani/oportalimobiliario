@@ -21,6 +21,7 @@ class TowerFactory extends Factory
             'building_id' => Building::factory(),
             'name' => fake()->randomElement(['Torre A', 'Torre B', 'Torre Comercial', 'Torre única']),
             'sort_order' => 0,
+            'floors_count' => 0,
         ];
     }
 }

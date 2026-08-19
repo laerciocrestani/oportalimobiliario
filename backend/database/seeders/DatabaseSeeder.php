@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             UnitAccessSeeder::class,
             BuildingAccessSeeder::class,
             ReservationSeeder::class,
+            ContractTemplateSeeder::class,
         ]);
     }
 }

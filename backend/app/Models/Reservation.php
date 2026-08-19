@@ -17,8 +17,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'unit_id',
     'broker_id',
     'client_id',
-    'status',
-    'expires_at',
+            'status',
+            'expires_at',
+            'contract_template_id',
+            'contract_values',
 ])]
 class Reservation extends Model
 {
@@ -30,6 +32,7 @@ class Reservation extends Model
         return [
             'status' => ReservationStatus::class,
             'expires_at' => 'datetime',
+            'contract_values' => 'array',
         ];
     }
 
@@ -49,6 +52,7 @@ class Reservation extends Model
             ReservationStatus::DepositPending,
             ReservationStatus::DepositProofPending,
             ReservationStatus::ContractDataPending,
+            ReservationStatus::ContractIssued,
         ]);
     }
 
@@ -90,6 +94,11 @@ class Reservation extends Model
         return $this->status === ReservationStatus::ContractDataPending;
     }
 
+    public function isContractIssued(): bool
+    {
+        return $this->status === ReservationStatus::ContractIssued;
+    }
+
     public function isCancelled(): bool
     {
         return $this->status === ReservationStatus::Cancelled;
@@ -102,6 +111,7 @@ class Reservation extends Model
             ReservationStatus::DepositPending,
             ReservationStatus::DepositProofPending,
             ReservationStatus::ContractDataPending,
+            ReservationStatus::ContractIssued,
         ], true);
     }
 
@@ -113,6 +123,11 @@ class Reservation extends Model
     public function canSubmitContractData(): bool
     {
         return $this->isContractDataPending();
+    }
+
+    public function contractTemplate(): BelongsTo
+    {
+        return $this->belongsTo(ContractTemplate::class);
     }
 
     public function tenant(): BelongsTo

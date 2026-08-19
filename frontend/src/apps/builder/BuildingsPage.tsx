@@ -1,20 +1,29 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { PlusIcon } from 'lucide-react'
 import { unitStatusLegend } from '@/apps/builder/lib/unit-status'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { BuildingCoverImage } from '@/components/buildings/BuildingCoverImage'
 import { BuilderDashboardShell } from '@/apps/builder/components/BuilderDashboardShell'
 import { useBuilderPermissions } from '@/apps/builder/hooks/use-builder-permissions'
 import { builderApi, type Building } from '@/lib/api'
 
+function buildingHref(building: Building): string {
+  if (!building.published && !building.wizard_completed_at) {
+    return `/buildings/${building.id}/wizard`
+  }
+
+  return `/buildings/${building.id}`
+}
+
 function BuildingCard({ building }: { building: Building }) {
   const summary = building.units_summary
   const location = [building.city, building.state].filter(Boolean).join(' / ')
 
   return (
-    <Link to={`/buildings/${building.id}`} className="block transition-opacity hover:opacity-90">
+    <Link to={buildingHref(building)} className="block transition-opacity hover:opacity-90">
       <Card className="h-full overflow-hidden">
         <div className="relative">
           <BuildingCoverImage
@@ -53,7 +62,9 @@ function BuildingCard({ building }: { building: Building }) {
               })}
             </div>
           ) : (
-            <p className="text-xs text-muted-foreground">Nenhuma unidade cadastrada</p>
+            <p className="text-xs text-muted-foreground">
+              {building.published ? 'Nenhuma unidade cadastrada' : 'Continuar cadastro'}
+            </p>
           )}
         </CardContent>
       </Card>
@@ -64,7 +75,6 @@ function BuildingCard({ building }: { building: Building }) {
 export function BuildingsPage() {
   const { can } = useBuilderPermissions()
   const [buildings, setBuildings] = useState<Building[]>([])
-  const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -83,30 +93,23 @@ export function BuildingsPage() {
     void load()
   }, [])
 
-  async function handleCreateBuilding(e: React.FormEvent) {
-    e.preventDefault()
-    await builderApi.createBuilding({ name, published: false })
-    setName('')
-    await load()
-  }
-
   return (
-    <BuilderDashboardShell title="Empreendimentos">
+    <BuilderDashboardShell
+      title="Empreendimentos"
+      actions={
+        can('buildings.manage') ? (
+          <Link
+            to="/buildings/new"
+            aria-label="Novo empreendimento"
+            className={buttonVariants({ variant: 'default', size: 'icon-sm' })}
+          >
+            <PlusIcon />
+          </Link>
+        ) : null
+      }
+    >
       <div className="space-y-6">
         {error && <p className="text-sm text-destructive">{error}</p>}
-
-        {can('buildings.manage') ? (
-          <form onSubmit={handleCreateBuilding} className="flex gap-2">
-            <input
-              className="flex-1 rounded-md border border-input px-3 py-2 text-sm"
-              placeholder="Nome do novo empreendimento"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-            <Button type="submit">Novo empreendimento</Button>
-          </form>
-        ) : null}
 
         <div className="flex flex-wrap gap-3">
           {unitStatusLegend.map(({ status, label, color }) => (

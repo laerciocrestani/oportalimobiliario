@@ -51,4 +51,41 @@ describe('BuildingsPage', () => {
       expect(screen.getByText(/2 disponível/)).toBeInTheDocument()
     })
   })
+
+  it('sends the header plus button to the create wizard', async () => {
+    vi.spyOn(api.builderApi, 'listBuildings').mockResolvedValue([])
+    vi.spyOn(api.builderApi, 'createBuilding')
+
+    render(
+      <MemoryRouter>
+        <BuildingsPage />
+      </MemoryRouter>,
+    )
+
+    const createLink = await screen.findByRole('link', { name: 'Novo empreendimento' })
+    expect(createLink).toHaveAttribute('href', '/buildings/new')
+    expect(screen.queryByPlaceholderText('Nome do novo empreendimento')).not.toBeInTheDocument()
+    expect(api.builderApi.createBuilding).not.toHaveBeenCalled()
+  })
+
+  it('hides the create button without buildings.manage', async () => {
+    vi.spyOn(api, 'fetchMe').mockResolvedValue({
+      id: 2,
+      name: 'Comercial',
+      email: 'comercial@test.com',
+      role: 'builder',
+      tenant_id: 1,
+      permissions: ['buildings.view'],
+    })
+    vi.spyOn(api.builderApi, 'listBuildings').mockResolvedValue([])
+
+    render(
+      <MemoryRouter>
+        <BuildingsPage />
+      </MemoryRouter>,
+    )
+
+    await screen.findByText('Nenhum empreendimento cadastrado.')
+    expect(screen.queryByRole('link', { name: 'Novo empreendimento' })).not.toBeInTheDocument()
+  })
 })

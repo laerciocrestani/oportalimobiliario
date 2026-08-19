@@ -99,6 +99,30 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 | REQ-RTL-013..017 | Sinal + comprovante + alerta 48h | `ReservationDepositService.php`, `ReservationAttachment.php`, `CheckDepositWindows.php`, controllers deposit | `BrokerDepositProofDialog.tsx`, `BuilderDepositProofApprovalPanel.tsx`, `ReservationAttachmentField.tsx` | `ReservationDepositTest.php` |
 | REQ-RTL-018..023 | Contrato + venda + anexos no andamento | `ReservationContractDataService.php`, `Broker/ReservationContractDataController.php`, `Support/Cpf.php`, `ReservationTimelineService.php` | `BrokerContractDataDialog.tsx`, `lib/br-docs.ts`, `ReservationTimeline.tsx`, `ReservationAttachmentPreview.tsx` | `ReservationContractDataTest.php`, `Support/CpfTest.php`, `ReservationTimelineTest.php`, `BrokerContractDataDialog.test.tsx`, `br-docs.test.ts`, `ReservationTimeline.test.tsx` |
 
+Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **builder-contracts** abaixo. GOV + upload assinado + `sold` continuam fora.
+
+---
+
+## builder-contracts
+
+> Spec: `.specs/features/builder-contracts/spec.md` · Design: `design.md` · Status: **implementado** (catálogo + emissão PDF; GOV fora)
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-CTR-001 | Menu Contratos | — | `config/dashboard-nav.tsx`, `App.tsx` `/contracts`, `BuilderDashboardShell.tsx` | `dashboard-nav.test.ts`, `BuilderDashboardShell.test.tsx` |
+| REQ-CTR-002 | `contracts.manage` (CRUD); emitir usa `reservations.cancel` | `BuilderPermissions.php`, `ContractTemplatePolicy.php`, `ReservationPolicy::issueContract` | `lib/builder-permissions.ts` | `TeamTest.php` |
+| REQ-CTR-003 | CRUD modelos por tenant | `Builder/ContractTemplateController.php`, `Models/ContractTemplate.php` | `apps/builder/ContractsPage.tsx`, `lib/api.ts` | `ContractTemplateTest.php`, `ContractsPage.test.tsx` |
+| REQ-CTR-004 | Editor Markdown + inserção `{{slug}}` | — | `ContractsPage.tsx` (textarea + legenda) | `ContractsPage.test.tsx` |
+| REQ-CTR-005 | Variáveis do sistema | `Support/ContractSystemVariables.php`, `GET /contract-variables` | `ContractsPage.tsx` | `ContractVariableTest.php` |
+| REQ-CTR-006 | Custom + placeholder desconhecido obrigatório na emissão | `ContractVariableResolver.php` | `BuilderIssueContractDialog.tsx` | `ContractVariableTest.php`, `ContractIssueTest.php` |
+| REQ-CTR-007 | Inativo some da lista de emitir | `ContractIssueService.php` | dialog de emissão | `ContractIssueTest.php` |
+| REQ-CTR-008 | Emitir PDF + evento + status | `ContractIssueService.php`, `ContractPdfRenderer.php`, `Builder/ContractIssueController.php` | `BuilderIssueContractDialog.tsx`, `ReservationTimelineSheet.tsx` | `ContractIssueTest.php`, `ContractPdfRendererTest.php`, `BuilderIssueContractDialog.test.tsx` |
+| REQ-CTR-009 | Reemitir até assinado (substitui PDF) | `ContractIssueService.php` | label **Reemitir contrato** | `ContractIssueTest.php`, `ReservationTimeline.test.tsx` |
+| REQ-CTR-010 | `units.frozen_price_brl` na emissão | migration `add_contract_issue_columns`, `ContractIssueService.php` | campo valor final no dialog | `ContractIssueTest.php` |
+| REQ-CTR-011 | Corretor vê/baixa PDF | `ReservationTimelineService` (attachment visível) | `ReservationTimeline.tsx`, `ReservationAttachmentPreview.tsx` | `ReservationTimelineTest.php` |
+| REQ-CTR-012 | Download autenticado | attachment existente | — | `ReservationTimelineTest.php` |
+| REQ-CTR-013 | Testes + OpenAPI + seed | `ContractTemplateSeeder.php`, `docs/api/openapi.yaml` | — | Pest + Vitest acima |
+
 ---
 
 ## builder-reservations
@@ -218,8 +242,16 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 
 | REQ | Descrição | BE | FE | Testes |
 |-----|-----------|----|----|--------|
+| REQ-WIZ-002 | Step 1 nome + endereço / ViaCEP | `BuildingController.php`, `CepController.php`, `ViaCepClient.php` | `BuildingWizardPage.tsx` | `BuildingTest.php`, `CepLookupTest.php`, `BuildingWizardPage.test.tsx` |
+| REQ-WIZ-003 | Persistência por step (rascunho) | `buildings.wizard_step` | `/buildings/new`, `/buildings/:id/wizard` | `BuildingWizardPage.test.tsx` |
+| REQ-WIZ-004 | Step 2 torres + andares + prédio CSS | `BuildingStructureController.php`, `BuildingStructureService.php`, `Floor.php` | `BuildingWizardTowersStep.tsx`, `BuildingMassing.tsx` | `BuildingStructureTest.php`, `BuildingWizardPage.test.tsx`, `BuildingMassing.test.tsx` |
+| REQ-WIZ-005 | Step 3 planta típica + códigos `101…` | `BuildingUnitGridController.php`, `BuildingUnitGridService.php` | `BuildingWizardUnitsStep.tsx`, `lib/unit-grid.ts` | `BuildingUnitGridTest.php`, `BuildingWizardPage.test.tsx` |
+| REQ-WIZ-006 | Exceção redesenha o andar | `BuildingUnitGridService.php` | `BuildingWizardUnitsStep.tsx` | `BuildingWizardPage.test.tsx` |
+| REQ-WIZ-007 | Tipo do andar residencial/comercial | `floors.kind` | `BuildingWizardUnitsStep.tsx` | `BuildingUnitGridTest.php` |
 | REQ-WIZ-012 | Tabela INCC-M (fonte do cálculo) | `InccIndex.php`, `incc_indices` migration, `InccIndexSeeder.php` | — | `tests/Feature/Admin/InccIndexTest.php` |
 | REQ-WIZ-013 | Admin CRUD INCC + hint BCB | (T-03) | (T-18) | (T-03) |
+| REQ-WIZ-014 | Step 4 mídia, descritivo e IA | `BuildingDescriptionController.php`, `BuildingDescriptionGenerator.php` | `BuildingWizardMediaStep.tsx`, `BuildingMediaGallery.tsx` | `GenerateDescriptionTest.php`, `BuildingWizardPage.test.tsx` |
+| REQ-WIZ-015 | Publicar exige unidade `available` com preço | `BuildingController.php` | `BuildingWizardPage.tsx` | `BuildingTest.php`, `BuildingWizardPage.test.tsx` |
 
 ---
 

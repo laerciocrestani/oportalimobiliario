@@ -27,6 +27,7 @@ Labels PT em `BuilderPermissions::labels()`.
 | `access.manage` | Gerenciar acesso de corretores | `building_access` por corretor |
 | `reservations.cancel` | Cancelar reservas | Listar/cancelar reservas, thread de mensagens (builder) |
 | `team.manage` | Gerenciar equipe | CRUD `/api/builder/team` |
+| `contracts.manage` | Gerenciar contratos | CRUD modelos de contrato |
 
 ### Policies que usam permissions
 
@@ -40,6 +41,7 @@ Labels PT em `BuilderPermissions::labels()`.
 | `BuildingAccessPolicy` | `access.manage` |
 | `ReservationPolicy` | `reservations.cancel` (builder); ownership (broker) |
 | `TeamMemberPolicy` | `team.manage` |
+| `ContractTemplatePolicy` | `contracts.manage` |
 
 Todas as policies builder usam `AuthorizesBuilderTenant` para validar mesmo `tenant_id`.
 
@@ -70,6 +72,7 @@ Impersonate: `POST /api/admin/tenants/{tenant}/impersonate`.
 - Hook: `apps/builder/hooks/use-builder-permissions.ts`
 - Constantes espelhadas: `apps/builder/lib/builder-permissions.ts`
 - Nav item **Reservas** (builder): visível apenas com `reservations.cancel`
+- Nav item **Contratos**: visível apenas com `contracts.manage` (CRUD de modelos; emitir PDF na reserva usa `reservations.cancel`)
 - Nav item **Equipe**: visível apenas com `team.manage`
 
 ---
@@ -78,7 +81,7 @@ Impersonate: `POST /api/admin/tenants/{tenant}/impersonate`.
 
 | Usuário | Permissions |
 |---------|-------------|
-| `construtora@alpha.demo` | todas (8) |
+| `construtora@alpha.demo` | todas (9) |
 | `comercial@alpha.demo` | `buildings.view`, `invites.send` |
 | `supervisor@alpha.demo` | `buildings.view`, `units.update_status`, `reservations.cancel` |
 

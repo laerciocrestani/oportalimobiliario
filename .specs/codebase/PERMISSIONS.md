@@ -28,6 +28,7 @@ Labels PT em `BuilderPermissions::labels()`.
 | `reservations.cancel` | Cancelar reservas | Listar/cancelar reservas, thread de mensagens (builder) |
 | `team.manage` | Gerenciar equipe | CRUD `/api/builder/team` |
 | `contracts.manage` | Gerenciar contratos | CRUD modelos de contrato |
+| `audit.view` | Auditar atividade da equipe | Ver log de outros builders do mesmo tenant |
 
 ### Policies que usam permissions
 
@@ -81,7 +82,7 @@ Impersonate: `POST /api/admin/tenants/{tenant}/impersonate`.
 
 | Usuário | Permissions |
 |---------|-------------|
-| `construtora@alpha.demo` | todas (9) |
+| `construtora@alpha.demo` | todas (10) |
 | `comercial@alpha.demo` | `buildings.view`, `invites.send` |
 | `supervisor@alpha.demo` | `buildings.view`, `units.update_status`, `reservations.cancel` |
 

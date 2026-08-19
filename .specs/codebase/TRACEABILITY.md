@@ -262,6 +262,22 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 
 ---
 
+## user-activity-log
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-LOG-001 | Tabela append-only `user_activity_events` | `UserActivityEvent.php`, migration `create_user_activity_events_table` | — | `UserActivityLoggerTest.php` |
+| REQ-LOG-002 | Action + frase PT-BR + old/new | `UserActivityLogger.php`, `UserActivityAction.php` | — | `UserActivityLoggerTest.php` |
+| REQ-LOG-004 | Login / logout / login falho | `AuthController.php` | — | `LoginTest.php` |
+| REQ-LOG-005 | Impersonate start/stop nos dois logs | `AuthController.php` | — | `TenantImpersonationTest.php` |
+| REQ-LOG-006 | GET broker activity | `Broker/ActivityController.php`, `UserActivityQuery.php` | — | `BrokerActivityTest.php` |
+| REQ-LOG-007 | GET builder activity (+ membros) | `Builder/ActivityController.php` | — | `BuilderActivityTest.php` |
+| REQ-LOG-008 | GET admin activity + CSV | `Admin/ActivityController.php` | — | `AdminActivityTest.php` |
+| REQ-LOG-009 | Permissão `audit.view` | `BuilderPermissions.php` | — | `UserActivityLoggerTest.php`, `BuilderActivityTest.php` |
+| REQ-LOG-010 | Isolamento de leitura | controllers activity | — | `BuilderActivityTest.php`, `BrokerActivityTest.php` |
+
+---
+
 ## Manutenção
 
 Ao implementar feature nova:

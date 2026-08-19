@@ -45,7 +45,7 @@
 | building-wizard | done | done | done | done |
 | builder-contracts | done | done | done | done |
 | builder-team | done | inline | inline | done |
-| user-activity-log | in_progress | in_progress | in_progress | T-01…T-03 done |
+| user-activity-log | in_progress | in_progress | in_progress | T-01…T-06 + T-11 done |
 
 ## Próximos passos (pós-MVP v1)
 

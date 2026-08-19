@@ -32,10 +32,10 @@
 
 ## Sessão atual
 
-- **Fase:** `user-activity-log` (T-01…T-03 done)
+- **Fase:** `user-activity-log` (T-01…T-06, T-11 done)
 - **Branch:** `feature/user-activity-log`
-- **Última etapa concluída:** T-03 — impersonate start/stop nos dois logs
-- **Próxima etapa:** T-04 — `GET /api/builder/activity`
+- **Última etapa concluída:** T-04/T-05/T-06/T-11 — APIs de leitura + CSV admin + OpenAPI
+- **Próxima etapa:** T-07 — instrumentar mutações do corretor
 - **Discovery:** `docs/discovery/resumo-log-atividade-usuario.md` (premissas aceitas em `context.md`)
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 

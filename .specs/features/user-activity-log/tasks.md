@@ -28,19 +28,19 @@ Ordem: backend (schema → logger → auth → APIs → instrumentação) antes 
 
 ## Backend — leitura
 
-- [ ] **T-04** `UserActivityQuery` + `GET /api/builder/activity` (próprio; `user_id` exige `audit.view` + mesmo tenant builder) + `GET /api/builder/activity/members`. 401/403/422 + isolamento.
+- [x] **T-04** `UserActivityQuery` + `GET /api/builder/activity` (próprio; `user_id` exige `audit.view` + mesmo tenant builder) + `GET /api/builder/activity/members`. 401/403/422 + isolamento.
   - Req: `REQ-LOG-007`, `REQ-LOG-009`, `REQ-LOG-010`
   - Gate: `php artisan test --compact --filter=BuilderActivity`
   - Tests: feature
   - Depends on: T-01
 
-- [ ] **T-05** `GET /api/broker/activity` (só próprio; filtro `tenant_id` opcional). 403 se `user_id` alheio.
+- [x] **T-05** `GET /api/broker/activity` (só próprio; filtro `tenant_id` opcional). 403 se `user_id` alheio.
   - Req: `REQ-LOG-006`, `REQ-LOG-010`
   - Gate: `php artisan test --compact --filter=BrokerActivity`
   - Tests: feature
   - Depends on: T-01
 
-- [ ] **T-06** `GET /api/admin/activity` + `GET /api/admin/activity/export` (CSV streamed, mesmos filtros, `from`/`to` required, sem teto de intervalo).
+- [x] **T-06** `GET /api/admin/activity` + `GET /api/admin/activity/export` (CSV streamed, mesmos filtros, `from`/`to` required, sem teto de intervalo).
   - Req: `REQ-LOG-008`
   - Gate: `php artisan test --compact --filter=AdminActivity`
   - Tests: feature
@@ -72,7 +72,7 @@ Ordem: backend (schema → logger → auth → APIs → instrumentação) antes 
   - Tests: feature
   - Depends on: T-01
 
-- [ ] **T-11** OpenAPI dos endpoints novos.
+- [x] **T-11** OpenAPI dos endpoints novos.
   - Req: `REQ-LOG-013`
   - Depends on: T-04, T-05, T-06
 

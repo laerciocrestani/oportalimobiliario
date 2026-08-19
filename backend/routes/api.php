@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\ActivityController as AdminActivityController;
 use App\Http\Controllers\Api\Admin\AmenityController as AdminAmenityController;
 use App\Http\Controllers\Api\Admin\InccIndexController as AdminInccIndexController;
 use App\Http\Controllers\Api\Admin\TenantController as AdminTenantController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\Broker\ActivityController as BrokerActivityController;
 use App\Http\Controllers\Api\Broker\BrokerInviteController as BrokerBrokerInviteController;
 use App\Http\Controllers\Api\Broker\BrokerJoinController;
 use App\Http\Controllers\Api\Broker\BrokerProfileController;
@@ -18,6 +20,7 @@ use App\Http\Controllers\Api\Broker\ReservationProposalController as BrokerReser
 use App\Http\Controllers\Api\Broker\ReservationTimelineController as BrokerReservationTimelineController;
 use App\Http\Controllers\Api\Broker\UnitController as BrokerUnitController;
 use App\Http\Controllers\Api\Broker\BuildingMediaController as BrokerBuildingMediaController;
+use App\Http\Controllers\Api\Builder\ActivityController as BuilderActivityController;
 use App\Http\Controllers\Api\Builder\AmenityController as BuilderAmenityController;
 use App\Http\Controllers\Api\Builder\BrokerController as BuilderBrokerController;
 use App\Http\Controllers\Api\Builder\BrokerInviteController as BuilderBrokerInviteController;
@@ -91,6 +94,8 @@ Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permiss
         return TenantNote::query()->orderBy('id')->get();
     });
 
+    Route::get('/activity/members', [BuilderActivityController::class, 'members']);
+    Route::get('/activity', [BuilderActivityController::class, 'index']);
     Route::get('/cep/{cep}', [CepController::class, 'show']);
     Route::get('/amenities', [BuilderAmenityController::class, 'index']);
     Route::apiResource('buildings', BuildingController::class);
@@ -152,6 +157,7 @@ Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permiss
 
 Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('broker')->group(function () {
     Route::get('/profile', [BrokerProfileController::class, 'show']);
+    Route::get('/activity', [BrokerActivityController::class, 'index']);
 
     Route::middleware('broker.active')->group(function () {
         Route::get('/clients', [BrokerClientController::class, 'index']);
@@ -179,6 +185,8 @@ Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('bro
 });
 
 Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'admin'])->prefix('admin')->group(function () {
+    Route::get('activity/export', [AdminActivityController::class, 'export']);
+    Route::get('activity', [AdminActivityController::class, 'index']);
     Route::get('tenants/{tenant}/users', [AdminTenantController::class, 'users']);
     Route::post('tenants/{tenant}/impersonate', [AdminTenantController::class, 'impersonate']);
     Route::apiResource('tenants', AdminTenantController::class)->except(['destroy']);

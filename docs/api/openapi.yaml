@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Oportalimobiliário API
-  version: 0.5.0
+  version: 0.6.0
 paths:
   /api/health:
     get:
@@ -1149,6 +1149,65 @@ paths:
       responses:
         '204':
           description: Revoked
+  /api/builder/activity:
+    get:
+      summary: List builder user activity
+      description: Own log by default. `user_id` of a teammate requires `audit.view`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated activity events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserActivityEvent'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+        '422':
+          description: Missing or invalid date range
+  /api/builder/activity/members:
+    get:
+      summary: List builder teammates for activity picker
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Builder users of the current tenant
+        '403':
+          description: Missing audit.view permission
   /api/builder/team:
     get:
       summary: List builder team members
@@ -1580,6 +1639,60 @@ paths:
           description: Forbidden
         '422':
           description: Invalid stage or missing GOV confirmation
+  /api/broker/activity:
+    get:
+      summary: List broker own activity
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: tenant_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: integer
+            description: Must be omitted or equal to the authenticated broker
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated activity events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserActivityEvent'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Attempt to read another user log
+        '422':
+          description: Missing or invalid date range
   /api/broker/clients:
     get:
       summary: List broker clients
@@ -2160,6 +2273,111 @@ paths:
       responses:
         '200':
           description: Event received
+  /api/admin/activity:
+    get:
+      summary: List activity across all users and tenants
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: tenant_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: per_page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Paginated activity events
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserActivityEvent'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+        '422':
+          description: Missing or invalid date range
+  /api/admin/activity/export:
+    get:
+      summary: Export activity as CSV
+      description: Same filters as list. No period size cap. Streamed `text/csv`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: tenant_id
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CSV download
+          content:
+            text/csv:
+              schema:
+                type: string
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+        '422':
+          description: Missing or invalid date range
   /api/admin/tenants:
     get:
       summary: List tenants
@@ -3114,3 +3332,101 @@ components:
               type: string
               format: date-time
               nullable: true
+    UserActivityEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        action:
+          type: string
+        message:
+          type: string
+        resource_type:
+          type: string
+          nullable: true
+        resource_id:
+          type: integer
+          nullable: true
+        old_values:
+          type: object
+          nullable: true
+          additionalProperties: true
+        new_values:
+          type: object
+          nullable: true
+          additionalProperties: true
+        tenant_id:
+          type: integer
+          nullable: true
+        actor_user_id:
+          type: integer
+          nullable: true
+        actor:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+        impersonator_user_id:
+          type: integer
+          nullable: true
+        impersonated_user_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true
+    UserActivityEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+        action:
+          type: string
+        message:
+          type: string
+        resource_type:
+          type: string
+          nullable: true
+        resource_id:
+          type: integer
+          nullable: true
+        old_values:
+          type: object
+          nullable: true
+          additionalProperties: true
+        new_values:
+          type: object
+          nullable: true
+          additionalProperties: true
+        tenant_id:
+          type: integer
+          nullable: true
+        actor_user_id:
+          type: integer
+          nullable: true
+        actor:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            email:
+              type: string
+        impersonator_user_id:
+          type: integer
+          nullable: true
+        impersonated_user_id:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          nullable: true

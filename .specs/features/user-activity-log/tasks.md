@@ -90,11 +90,11 @@ Ordem: backend (schema → logger → auth → APIs → instrumentação) antes 
   - Tests: component
   - Depends on: T-04, T-12
 
-- [ ] **T-14** `ActivityPage` corretor (date range + tenant opcional) + Vitest.
+- [x] **T-14** `ActivityPage` corretor (date range + tenant opcional) + Vitest.
   - Req: `REQ-LOG-006`
   - Depends on: T-05, T-12
 
-- [ ] **T-15** `ActivityPage` admin (filtros + export CSV) + Vitest.
+- [x] **T-15** `ActivityPage` admin (filtros + export CSV) + Vitest.
   - Req: `REQ-LOG-008`
   - Depends on: T-06, T-12
 

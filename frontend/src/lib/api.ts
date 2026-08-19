@@ -573,6 +573,8 @@ export type ActivityListParams = {
   from: string
   to: string
   user_id?: number
+  tenant_id?: number
+  action?: string
   page?: number
 }
 
@@ -1104,6 +1106,15 @@ export const brokerApi = {
     }),
   getReservationTimeline: (reservationId: number) =>
     apiFetch<ReservationTimeline>(`/broker/reservations/${reservationId}/timeline`),
+  listActivity: (params: ActivityListParams) =>
+    apiFetch<Paginated<UserActivityEvent>>(
+      `/broker/activity${toQueryString({
+        from: params.from,
+        to: params.to,
+        tenant_id: params.tenant_id,
+        page: params.page,
+      })}`,
+    ),
   previewInvite: (token: string) =>
     apiFetch<BrokerInvitePreview>(
       `/broker/invites/preview?token=${encodeURIComponent(token)}`,
@@ -1209,6 +1220,27 @@ export const adminApi = {
       body: JSON.stringify(data),
     }),
   getInccHint: () => apiFetch<InccHint>('/admin/incc-indices/hint'),
+  listActivity: (params: ActivityListParams) =>
+    apiFetch<Paginated<UserActivityEvent>>(
+      `/admin/activity${toQueryString({
+        from: params.from,
+        to: params.to,
+        user_id: params.user_id,
+        tenant_id: params.tenant_id,
+        action: params.action,
+        page: params.page,
+      })}`,
+    ),
+  exportActivity: (params: ActivityListParams) =>
+    fetchAuthenticatedBlob(
+      `/admin/activity/export${toQueryString({
+        from: params.from,
+        to: params.to,
+        user_id: params.user_id,
+        tenant_id: params.tenant_id,
+        action: params.action,
+      })}`,
+    ),
 }
 
 export const publicApi = {

@@ -46,6 +46,7 @@ Definidas em `frontend/src/App.tsx`.
 | `/clients` | `BrokerClientsPage` | `brokerApi.getClients` |
 | `/reservations` | `BrokerReservationsPage` | `brokerApi.getReservations` |
 | `/invite/:token` | `InviteAcceptPage` | `brokerApi.acceptInvite` |
+| `/activity` | `ActivityPage` | `brokerApi.listActivity` |
 
 ### Admin (`admin.localhost`)
 
@@ -56,6 +57,7 @@ Definidas em `frontend/src/App.tsx`.
 | `/tenants/:id/edit` | `TenantEditPage` | `adminApi.updateTenant` |
 | `/incc` | `InccIndicesPage` | `adminApi.listInccIndices` / `createInccIndex` / `updateInccIndex` / `getInccHint` |
 | `/amenities` | `AmenitiesPage` | `adminApi.listAmenities` / `createAmenity` / `updateAmenity` |
+| `/activity` | `ActivityPage` | `adminApi.listActivity` / `exportActivity` |
 
 ### Público (`www.localhost`)
 

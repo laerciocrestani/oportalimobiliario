@@ -3,7 +3,9 @@
 /**
  * @see REQ-ADM-001
  * @see REQ-ADM-003
+ * @see REQ-LOG-003
  */
+use App\Enums\UserActivityAction;
 use App\Models\Tenant;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
@@ -18,7 +20,8 @@ it('lists tenants for admin', function () {
 });
 
 it('creates tenant as admin', function () {
-    Sanctum::actingAs(User::factory()->admin()->create());
+    $admin = User::factory()->admin()->create();
+    Sanctum::actingAs($admin);
 
     $this->postJson('/api/admin/tenants', [
         'name' => 'Nova Construtora',
@@ -26,6 +29,12 @@ it('creates tenant as admin', function () {
     ])
         ->assertCreated()
         ->assertJsonPath('name', 'Nova Construtora');
+
+    $tenant = Tenant::query()->where('slug', 'nova-construtora')->first();
+
+    $event = assertUserActivity($admin, UserActivityAction::TenantCreated, 'Nova Construtora', $tenant?->id);
+    expect($event->tenant_id)->toBe($tenant?->id)
+        ->and($event->message)->toContain('slug nova-construtora');
 });
 
 it('denies admin routes to non admin', function () {
@@ -36,11 +45,17 @@ it('denies admin routes to non admin', function () {
 
 it('deactivates tenant', function () {
     $tenant = Tenant::factory()->create(['active' => true]);
-    Sanctum::actingAs(User::factory()->admin()->create());
+    $admin = User::factory()->admin()->create();
+    Sanctum::actingAs($admin);
 
     $this->putJson("/api/admin/tenants/{$tenant->id}", ['active' => false])
         ->assertOk()
         ->assertJsonPath('active', false);
+
+    $event = assertUserActivity($admin, UserActivityAction::TenantUpdated, $tenant->name, $tenant->id);
+    expect($event->message)->toContain('inativa')
+        ->and($event->old_values)->toMatchArray(['active' => true])
+        ->and($event->new_values)->toMatchArray(['active' => false]);
 });
 
 it('shows tenant with users count', function () {
@@ -59,7 +74,8 @@ it('updates tenant name and slug', function () {
         'name' => 'Original',
         'slug' => 'original',
     ]);
-    Sanctum::actingAs(User::factory()->admin()->create());
+    $admin = User::factory()->admin()->create();
+    Sanctum::actingAs($admin);
 
     $this->putJson("/api/admin/tenants/{$tenant->id}", [
         'name' => 'Atualizada',
@@ -68,6 +84,11 @@ it('updates tenant name and slug', function () {
         ->assertOk()
         ->assertJsonPath('name', 'Atualizada')
         ->assertJsonPath('slug', 'atualizada');
+
+    $event = assertUserActivity($admin, UserActivityAction::TenantUpdated, 'Atualizada', $tenant->id);
+    expect($event->message)->toContain('slug atualizada')
+        ->and($event->old_values)->toMatchArray(['name' => 'Original', 'slug' => 'original'])
+        ->and($event->new_values)->toMatchArray(['name' => 'Atualizada', 'slug' => 'atualizada']);
 });
 
 it('rejects duplicate slug on update', function () {

@@ -13,6 +13,7 @@ use App\Models\BuildingAccess;
 use App\Models\Reservation;
 use App\Models\ReservationAttachment;
 use App\Models\ReservationProposal;
+use App\Models\Tenant;
 use App\Models\Tower;
 use App\Models\Unit;
 use App\Models\User;
@@ -362,6 +363,45 @@ class UserActivityCatalog
                 'phone' => $invite->phone,
                 'channel' => $invite->channel->value,
             ],
+        );
+    }
+
+    public function recordTenantCreated(User $actor, Tenant $tenant): void
+    {
+        $status = $tenant->active ? 'ativa' : 'inativa';
+
+        $this->logger->record(
+            action: UserActivityAction::TenantCreated,
+            message: "Cadastrou a construtora {$tenant->name} (slug {$tenant->slug}, {$status}).",
+            actor: $actor,
+            tenantId: $tenant->id,
+            resourceType: 'tenant',
+            resourceId: $tenant->id,
+            newValues: [
+                'name' => $tenant->name,
+                'slug' => $tenant->slug,
+                'active' => $tenant->active,
+            ],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $oldValues
+     * @param  array<string, mixed>  $newValues
+     */
+    public function recordTenantUpdated(User $actor, Tenant $tenant, array $oldValues, array $newValues): void
+    {
+        $status = $tenant->active ? 'ativa' : 'inativa';
+
+        $this->logger->record(
+            action: UserActivityAction::TenantUpdated,
+            message: "Atualizou a construtora {$tenant->name} (slug {$tenant->slug}, {$status}).",
+            actor: $actor,
+            tenantId: $tenant->id,
+            resourceType: 'tenant',
+            resourceId: $tenant->id,
+            oldValues: $oldValues,
+            newValues: $newValues,
         );
     }
 

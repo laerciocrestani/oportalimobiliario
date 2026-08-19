@@ -60,7 +60,7 @@ Ordem: backend (schema → logger → auth → APIs → instrumentação) antes 
   - Tests: feature
   - Depends on: T-01
 
-- [ ] **T-09** Admin: CRUD tenants; mutação durante impersonate duplica (cobertura além de T-03).
+- [x] **T-09** Admin: CRUD tenants; mutação durante impersonate duplica (cobertura além de T-03).
   - Req: `REQ-LOG-003`, `REQ-LOG-005`
   - Gate: `php artisan test --compact --filter=TenantTest` / impersonation
   - Tests: feature

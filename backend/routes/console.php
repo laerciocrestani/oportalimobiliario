@@ -11,3 +11,6 @@ Artisan::command('inspire', function () {
 Schedule::command('opim:expire-reservations')->hourly();
 Schedule::command('opim:expire-pre-reservations')->everyMinute();
 Schedule::command('opim:check-deposit-windows')->hourly();
+Schedule::command('opim:fetch-incc')
+    ->dailyAt('08:05')
+    ->timezone('America/Sao_Paulo');

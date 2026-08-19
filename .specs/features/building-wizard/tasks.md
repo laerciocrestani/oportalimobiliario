@@ -11,7 +11,7 @@ Ordem: backend (schema → serviços → API) antes do frontend que consome. 1 c
 
 - [x] **T-01** Migration `incc_indices` + model/factory/seeder + Pest isolamento admin.
   - Gate: `php artisan test --compact --filter=Incc`
-- [ ] **T-02** Command `opim:fetch-incc` + schedule `08:05` `America/Sao_Paulo` + insert-only + teste com HTTP fake.
+- [x] **T-02** Command `opim:fetch-incc` + schedule `08:05` `America/Sao_Paulo` + insert-only + teste com HTTP fake.
   - Gate: job não duplica competência; falha de API não quebra.
 - [ ] **T-03** CRUD admin INCC + `GET hint` + OpenAPI.
 - [x] **T-04** `amenities` + pivôs + CRUD admin + `GET /builder/amenities`.

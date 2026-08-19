@@ -18,4 +18,10 @@ return [
         'openai_api_key' => env('OPENAI_API_KEY'),
         'openai_model' => env('OPIM_OPENAI_MODEL', 'gpt-4o-mini'),
     ],
+
+    'incc' => [
+        // BCB SGS 7456 is INCC-M monthly variation %. The job only persists number-index values.
+        'bcb_series_id' => (int) env('OPIM_INCC_BCB_SERIES_ID', 7456),
+        'bcb_timeout' => (int) env('OPIM_INCC_BCB_TIMEOUT', 5),
+    ],
 ];

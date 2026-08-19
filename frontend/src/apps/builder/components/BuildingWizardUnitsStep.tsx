@@ -302,6 +302,7 @@ export function BuildingWizardUnitsStep({
           towers={grids.map((item) => ({
             name: item.name,
             floorsCount: item.floors.length,
+            typicalCount: item.typicalCount,
           }))}
           selectedTowerIndex={towerIndex}
           selectedFloor={floorNumber}

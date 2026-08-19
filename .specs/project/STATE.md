@@ -33,7 +33,7 @@
 ## Sessão atual
 
 - **Fase:** pós-MVP
-- **Última etapa concluída:** T-20 seeds demo + TRACEABILITY/STATE — `building-wizard` encerrado
+- **Última etapa concluída:** T-21 edição pós-wizard + T-22 massing; seed CEP `01310100`
 - **Próxima etapa:** `reservation-timeline` Fase B (proposta), conforme ROADMAP
 - **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md` (wizard done)
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna

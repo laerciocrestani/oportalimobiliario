@@ -59,3 +59,4 @@ Ordem: backend (schema → serviços → API) antes do frontend que consome. 1 c
 ## Follow-up (pós-T-20)
 
 - [x] **T-21** Edição pós-wizard: endereço/defaults/adicionais no empreendimento; ficha INCC na unidade.
+- [x] **T-22** Massing CSS com planta típica no laje (finais + totais).

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   applyTypicalAreaToMatchingFloors,
   applyTypicalToTower,
+  applyUnitSpecToMatchingFloors,
   emptyTypicalSlots,
   typicalPositionHint,
   unitCode,
@@ -43,5 +44,15 @@ describe('unit-grid', () => {
     expect(grid.floors.map((floor) => floor.units[0].areaM2)).toEqual(['72.5', '72.5', '72.5'])
     expect(grid.floors.map((floor) => floor.units[0].code)).toEqual(['101', '201', '301'])
     expect(unitGridPayload([grid]).towers[0].floors[0].units[0].area_m2).toBe(72.5)
+  })
+
+  it('copies the selected unit spec to the same position on typical floors', () => {
+    const grid = sampleGrid()
+    const source = { ...grid.floors[0].units[0], bedrooms: '2', extraAmenityIds: [9] }
+    const next = applyUnitSpecToMatchingFloors(grid, 0, source)
+
+    expect(next.floors.map((floor) => floor.units[0].bedrooms)).toEqual(['2', '2', '2'])
+    expect(next.floors[1].units[0].extraAmenityIds).toEqual([9])
+    expect(next.floors[1].units[0].code).toBe('201')
   })
 })

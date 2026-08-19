@@ -33,8 +33,8 @@
 ## Sessão atual
 
 - **Fase:** building-wizard
-- **Última etapa concluída:** T-10 pivôs de adicionais (união no DTO + herança de defaults)
-- **Próxima etapa:** T-16 restante (ficha/herança/adicionais no step 3) → T-06 calculadora INCC → T-02 job
+- **Última etapa concluída:** T-16 step 3 (ficha, herança e adicionais)
+- **Próxima etapa:** T-06 calculadora INCC → T-02 job → T-03 CRUD admin INCC
 - **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md`
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 

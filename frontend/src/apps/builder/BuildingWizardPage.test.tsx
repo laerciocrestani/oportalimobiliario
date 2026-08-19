@@ -54,6 +54,7 @@ describe('BuildingWizardPage', () => {
       permissions: ['buildings.view', 'buildings.manage'],
     })
     vi.spyOn(api.builderApi, 'listBuildingMedia').mockResolvedValue([])
+    vi.spyOn(api.builderApi, 'listAmenities').mockResolvedValue([])
   })
 
   it('creates a draft with name and address and advances to towers', async () => {
@@ -204,6 +205,9 @@ describe('BuildingWizardPage', () => {
     vi.spyOn(api.builderApi, 'replaceBuildingUnitGrid').mockResolvedValue(
       draftBuilding({ wizard_step: 3, towers: [towerA] }),
     )
+    vi.spyOn(api.builderApi, 'updateBuilding').mockResolvedValue(
+      draftBuilding({ wizard_step: 3, towers: [towerA] }),
+    )
 
     renderWizard('/buildings/10/wizard')
 
@@ -212,25 +216,93 @@ describe('BuildingWizardPage', () => {
     await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
 
     await waitFor(() => {
-      expect(api.builderApi.replaceBuildingUnitGrid).toHaveBeenCalledWith(10, {
-        towers: [
-          {
-            id: 1,
-            floors: [
-              {
-                number: 1,
-                kind: 'residential',
-                units: [
-                  { code: '101', area_m2: null },
-                  { code: '102', area_m2: null },
-                  { code: '103', area_m2: null },
-                ],
-              },
-            ],
-          },
-        ],
-      })
+      expect(api.builderApi.updateBuilding).toHaveBeenCalledWith(
+        10,
+        expect.objectContaining({
+          published: false,
+          wizard_step: 3,
+          amenity_ids: [],
+        }),
+      )
+      expect(api.builderApi.replaceBuildingUnitGrid).toHaveBeenCalledWith(
+        10,
+        expect.objectContaining({
+          towers: [
+            expect.objectContaining({
+              id: 1,
+              floors: [
+                expect.objectContaining({
+                  number: 1,
+                  kind: 'residential',
+                  units: [
+                    expect.objectContaining({ code: '101', area_m2: null, bedrooms: null }),
+                    expect.objectContaining({ code: '102', area_m2: null }),
+                    expect.objectContaining({ code: '103', area_m2: null }),
+                  ],
+                }),
+              ],
+            }),
+          ],
+        }),
+      )
       expect(screen.getByRole('heading', { name: 'Mídia' })).toBeInTheDocument()
+    })
+  })
+
+  it('saves building defaults, amenities and the selected unit spec sheet', async () => {
+    const user = userEvent.setup()
+    const towerA = {
+      id: 1,
+      name: 'Torre A',
+      sort_order: 0,
+      floors_count: 1,
+      floors: [{ id: 1, tower_id: 1, number: 1, kind: 'residential' as const }],
+    }
+    const piscina = { id: 11, slug: 'piscina', name: 'Piscina', active: true }
+    const closet = { id: 12, slug: 'closet', name: 'Closet', active: true }
+
+    vi.spyOn(api.builderApi, 'listAmenities').mockResolvedValue([piscina, closet])
+    vi.spyOn(api.builderApi, 'getBuilding').mockResolvedValue(
+      draftBuilding({
+        wizard_step: 2,
+        ceiling_type: 'plaster',
+        towers: [towerA],
+      }),
+    )
+    vi.spyOn(api.builderApi, 'updateBuilding').mockResolvedValue(
+      draftBuilding({ wizard_step: 3, towers: [towerA], amenities: [piscina] }),
+    )
+    vi.spyOn(api.builderApi, 'replaceBuildingUnitGrid').mockResolvedValue(
+      draftBuilding({ wizard_step: 3, towers: [towerA] }),
+    )
+
+    renderWizard('/buildings/10/wizard')
+
+    expect(await screen.findByRole('heading', { name: 'Padrão do empreendimento' })).toBeInTheDocument()
+    expect(await screen.findByRole('checkbox', { name: 'Piscina' })).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: 'Piscina' }))
+    await user.type(screen.getByLabelText('Quartos'), '2')
+    expect(screen.getByText(/Herdar do empreendimento \(Gesso\)/)).toBeInTheDocument()
+    await user.click(screen.getByRole('checkbox', { name: 'Extra: Closet' }))
+    await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
+
+    await waitFor(() => {
+      expect(api.builderApi.updateBuilding).toHaveBeenCalledWith(
+        10,
+        expect.objectContaining({
+          ceiling_type: 'plaster',
+          amenity_ids: [11],
+        }),
+      )
+      const gridPayload = vi.mocked(api.builderApi.replaceBuildingUnitGrid).mock.calls[0][1]
+      expect(gridPayload.towers[0].floors[0].units[0]).toEqual(
+        expect.objectContaining({
+          code: '101',
+          bedrooms: 2,
+          amenity_ids: [12],
+          ceiling_type: null,
+        }),
+      )
     })
   })
 

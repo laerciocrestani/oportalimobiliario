@@ -15,8 +15,12 @@ import {
 } from '@/apps/builder/components/BuildingWizardTowersStep'
 import { BuildingWizardUnitsStep } from '@/apps/builder/components/BuildingWizardUnitsStep'
 import { gridsFromBuilding, unitGridIsValid, unitGridPayload, type TowerUnitGrid } from '@/apps/builder/lib/unit-grid'
+import {
+  emptyBuildingDefaults,
+  type BuildingDefaultsForm,
+} from '@/apps/builder/lib/unit-spec'
 import { Button } from '@/components/ui/button'
-import { ApiRequestError, builderApi, type Building } from '@/lib/api'
+import { ApiRequestError, builderApi, type Amenity, type Building } from '@/lib/api'
 
 type WizardLocationState = {
   step?: number
@@ -32,6 +36,30 @@ function identityFromBuilding(building: Building): BuildingIdentityForm {
     neighborhood: building.neighborhood ?? '',
     city: building.city ?? '',
     state: building.state ?? '',
+  }
+}
+
+function defaultsFromBuilding(building: Building): BuildingDefaultsForm {
+  return {
+    ceiling_type: building.ceiling_type ?? '',
+    opening_type: building.opening_type ?? '',
+    flooring_type: building.flooring_type ?? '',
+    solar_position: building.solar_position ?? '',
+    sun_period: building.sun_period ?? '',
+    amenity_ids: (building.amenities ?? []).map((amenity) => amenity.id),
+  }
+}
+
+function defaultsPayload(defaults: BuildingDefaultsForm) {
+  return {
+    ceiling_type: defaults.ceiling_type || null,
+    opening_type: defaults.opening_type || null,
+    flooring_type: defaults.flooring_type || null,
+    solar_position: defaults.solar_position || null,
+    sun_period: defaults.sun_period || null,
+    amenity_ids: defaults.amenity_ids,
+    published: false,
+    wizard_step: 3,
   }
 }
 
@@ -70,6 +98,8 @@ export function BuildingWizardPage() {
   const [form, setForm] = useState<BuildingIdentityForm>(emptyIdentityForm)
   const [towers, setTowers] = useState<TowerDraft[]>(() => [emptyTowerDraft(0)])
   const [unitGrids, setUnitGrids] = useState<TowerUnitGrid[]>([])
+  const [buildingDefaults, setBuildingDefaults] = useState<BuildingDefaultsForm>(emptyBuildingDefaults)
+  const [amenities, setAmenities] = useState<Amenity[]>([])
   const [selectedTowerIndex, setSelectedTowerIndex] = useState(0)
   const [selectedFloor, setSelectedFloor] = useState<number | null>(null)
   const [description, setDescription] = useState('')
@@ -105,6 +135,7 @@ export function BuildingWizardPage() {
         setForm(identityFromBuilding(building))
         setTowers(towersFromBuilding(building))
         setUnitGrids(gridsFromBuilding(building))
+        setBuildingDefaults(defaultsFromBuilding(building))
         setSelectedTowerIndex(0)
         setSelectedFloor(1)
         setDescription(building.description ?? '')
@@ -130,6 +161,27 @@ export function BuildingWizardPage() {
       cancelled = true
     }
   }, [buildingId, location.state])
+
+  useEffect(() => {
+    let cancelled = false
+
+    void builderApi
+      .listAmenities()
+      .then((items) => {
+        if (!cancelled) {
+          setAmenities(items)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAmenities([])
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   async function handleLookupCep() {
     if (form.zip.length !== 8) {
@@ -203,6 +255,7 @@ export function BuildingWizardPage() {
       return
     }
 
+    await builderApi.updateBuilding(Number(buildingId), defaultsPayload(buildingDefaults))
     await builderApi.replaceBuildingUnitGrid(Number(buildingId), unitGridPayload(unitGrids))
     goToStep(4)
   }
@@ -344,7 +397,7 @@ export function BuildingWizardPage() {
             <div>
               <h2 className="text-base font-semibold">Unidades</h2>
               <p className="text-sm text-muted-foreground">
-                Defina a planta típica da torre: quantidade de unidades e a metragem de cada posição.
+                Defina o padrão do empreendimento, a planta típica e a ficha da unidade selecionada.
                 101, 201 e 301 herdam a mesma área. Exceção: clique no andar no prédio e altere só ele.
                 {selectedTower ? ` ${selectedTower.name}, andar ${selectedFloor ?? 1}.` : null}
               </p>
@@ -353,7 +406,10 @@ export function BuildingWizardPage() {
               grids={unitGrids}
               selectedTowerIndex={Math.min(selectedTowerIndex, Math.max(unitGrids.length - 1, 0))}
               selectedFloor={selectedFloor}
+              defaults={buildingDefaults}
+              amenities={amenities}
               onChange={setUnitGrids}
+              onDefaultsChange={setBuildingDefaults}
               onSelectTower={setSelectedTowerIndex}
               onSelectFloor={(towerIndex, floor) => {
                 setSelectedTowerIndex(towerIndex)

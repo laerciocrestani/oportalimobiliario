@@ -482,6 +482,58 @@ paths:
                                     type: number
                                     nullable: true
                                     description: Private area in m²; same typical position (101, 201, 301) usually shares this value
+                                  private_area_m2:
+                                    type: number
+                                    nullable: true
+                                  total_area_m2:
+                                    type: number
+                                    nullable: true
+                                  bedrooms:
+                                    type: integer
+                                    nullable: true
+                                  bathrooms:
+                                    type: integer
+                                    nullable: true
+                                  suites:
+                                    type: integer
+                                    nullable: true
+                                  powder_rooms:
+                                    type: integer
+                                    nullable: true
+                                  balconies:
+                                    type: integer
+                                    nullable: true
+                                  price_base:
+                                    type: number
+                                    nullable: true
+                                  price_competence:
+                                    type: string
+                                    format: date
+                                    nullable: true
+                                  property_position:
+                                    type: string
+                                    nullable: true
+                                    enum: [corner, front, rear]
+                                  solar_position:
+                                    type: string
+                                    nullable: true
+                                  sun_period:
+                                    type: string
+                                    nullable: true
+                                  ceiling_type:
+                                    type: string
+                                    nullable: true
+                                  opening_type:
+                                    type: string
+                                    nullable: true
+                                  flooring_type:
+                                    type: string
+                                    nullable: true
+                                  amenity_ids:
+                                    type: array
+                                    items:
+                                      type: integer
+                                    description: Extra amenities on the unit. Building amenities are ignored and not copied to unit_amenity.
       responses:
         '200':
           description: Building with generated units. Building amenities are not copied onto unit_amenity; nested units still expose the union DTO.

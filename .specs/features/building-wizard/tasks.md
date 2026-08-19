@@ -39,7 +39,7 @@ Ordem: backend (schema → serviços → API) antes do frontend que consome. 1 c
 - [x] **T-14** Step 1 (CEP + endereço) + Vitest.
 - [x] **T-15** Step 2 + `BuildingMassing` CSS clicável + Vitest de interação.
 - [x] **T-16** Step 3 (grade, exceção, ficha, herança, adicionais).
-  - Parcial: grade por torre, códigos, exceção de andar e tipo residencial/comercial. Ficha completa, herança e adicionais dependem de T-05/T-10.
+  - Gate: `pnpm test` `BuildingWizardPage.test.tsx`; ficha e adicionais persistem no unit-grid + PATCH building.
 - [x] **T-17** Step 4 (mídia interna/externa, descritivo, IA, switch rascunho).
 
 ## Frontend — admin + consumo

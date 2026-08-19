@@ -117,7 +117,26 @@ export type BuildingUnitGridPayload = {
     floors: Array<{
       number: number
       kind: FloorKind
-      units: Array<{ code: string; area_m2?: number | null }>
+      units: Array<{
+        code: string
+        area_m2?: number | null
+        private_area_m2?: number | null
+        total_area_m2?: number | null
+        bedrooms?: number | null
+        bathrooms?: number | null
+        suites?: number | null
+        powder_rooms?: number | null
+        balconies?: number | null
+        price_base?: number | null
+        price_competence?: string | null
+        property_position?: string | null
+        solar_position?: string | null
+        sun_period?: string | null
+        ceiling_type?: string | null
+        opening_type?: string | null
+        flooring_type?: string | null
+        amenity_ids?: number[]
+      }>
     }>
   }>
 }
@@ -139,6 +158,11 @@ export type Building = {
   neighborhood?: string | null
   city: string | null
   state: string | null
+  ceiling_type?: string | null
+  opening_type?: string | null
+  flooring_type?: string | null
+  solar_position?: string | null
+  sun_period?: string | null
   published: boolean
   wizard_step?: number
   wizard_completed_at?: string | null
@@ -174,7 +198,22 @@ export type Unit = {
   floor: number | null
   floor_id?: number | null
   area_m2: string | null
+  private_area_m2?: string | null
+  total_area_m2?: string | null
+  bedrooms?: number | null
+  bathrooms?: number | null
+  suites?: number | null
+  powder_rooms?: number | null
+  balconies?: number | null
   price: string | null
+  price_base?: string | null
+  price_competence?: string | null
+  property_position?: string | null
+  solar_position?: string | null
+  sun_period?: string | null
+  ceiling_type?: string | null
+  opening_type?: string | null
+  flooring_type?: string | null
   status: string
   tower_id?: number
   tower?: Pick<Tower, 'id' | 'name'>

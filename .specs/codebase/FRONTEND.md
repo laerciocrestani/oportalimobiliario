@@ -26,7 +26,7 @@ Definidas em `frontend/src/App.tsx`.
 | `/` | `BuilderHome` | — |
 | `/buildings` | `BuildingsPage` | `builderApi.getBuildings` |
 | `/buildings/new` | `BuildingWizardPage` | `builderApi.createBuilding`, `lookupCep` |
-| `/buildings/:id/wizard` | `BuildingWizardPage` | `builderApi.getBuilding` / `updateBuilding` / `replaceBuildingStructure` / `replaceBuildingUnitGrid` / `generateBuildingDescription` |
+| `/buildings/:id/wizard` | `BuildingWizardPage` | `builderApi.getBuilding` / `updateBuilding` / `replaceBuildingStructure` / `replaceBuildingUnitGrid` / `listAmenities` / `generateBuildingDescription` |
 | `/buildings/:id` | `BuildingDetailPage` | `builderApi.getBuilding` |
 | `/buildings/:id/edit` | `BuildingEditPage` | `builderApi.updateBuilding` |
 | `/team` | `TeamPage` | `builderApi.*` team |

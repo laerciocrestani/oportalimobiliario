@@ -13,11 +13,15 @@ use Illuminate\Validation\ValidationException;
  * @see REQ-WIZ-005
  * @see REQ-WIZ-006
  * @see REQ-WIZ-007
+ * @see REQ-WIZ-008
+ * @see REQ-WIZ-009
  */
 class BuildingUnitGridService
 {
+    public function __construct(private AmenityAssignmentService $amenities) {}
+
     /**
-     * @param  list<array{id: int, floors: list<array{number: int, kind: string, units: list<array{code: string, area_m2?: float|int|string|null}>}>}>  $towers
+     * @param  list<array<string, mixed>>  $towers
      */
     public function replace(Building $building, array $towers): Building
     {
@@ -26,7 +30,7 @@ class BuildingUnitGridService
         }
 
         DB::transaction(function () use ($building, $towers): void {
-            $building->load(['towers.floors']);
+            $building->load(['towers.floors', 'amenities']);
 
             $this->assertCompleteGrid($building, $towers);
 
@@ -54,16 +58,13 @@ class BuildingUnitGridService
                     ]);
 
                     foreach ($floorData['units'] as $unitData) {
-                        $area = $unitData['area_m2'] ?? null;
+                        $unit = $building->units()->create(
+                            $this->unitAttributes($unitData, $tower->id, $floor->id, $number),
+                        );
 
-                        $building->units()->create([
-                            'tower_id' => $tower->id,
-                            'floor_id' => $floor->id,
-                            'floor' => $number,
-                            'code' => $unitData['code'],
-                            'area_m2' => $area === '' ? null : $area,
-                            'status' => 'available',
-                        ]);
+                        if (array_key_exists('amenity_ids', $unitData)) {
+                            $this->amenities->syncUnitExtras($unit, $unitData['amenity_ids'] ?? []);
+                        }
                     }
                 }
             }
@@ -88,7 +89,58 @@ class BuildingUnitGridService
     }
 
     /**
-     * @param  list<array{id: int, floors: list<array{number: int, kind: string, units: list<array{code: string, area_m2?: float|int|string|null}>}>}>  $towers
+     * @param  array<string, mixed>  $unitData
+     * @return array<string, mixed>
+     */
+    private function unitAttributes(array $unitData, int $towerId, int $floorId, int $number): array
+    {
+        $area = $this->blankToNull($unitData['area_m2'] ?? null);
+        $private = $this->blankToNull($unitData['private_area_m2'] ?? null) ?? $area;
+        $price = $this->blankToNull($unitData['price'] ?? null);
+        $priceBase = $this->blankToNull($unitData['price_base'] ?? null) ?? $price;
+
+        return [
+            'tower_id' => $towerId,
+            'floor_id' => $floorId,
+            'floor' => $number,
+            'code' => $unitData['code'],
+            'area_m2' => $private,
+            'private_area_m2' => $private,
+            'total_area_m2' => $this->blankToNull($unitData['total_area_m2'] ?? null),
+            'bedrooms' => $this->nullableInt($unitData['bedrooms'] ?? null),
+            'bathrooms' => $this->nullableInt($unitData['bathrooms'] ?? null),
+            'suites' => $this->nullableInt($unitData['suites'] ?? null),
+            'powder_rooms' => $this->nullableInt($unitData['powder_rooms'] ?? null),
+            'balconies' => $this->nullableInt($unitData['balconies'] ?? null),
+            'price' => $priceBase,
+            'price_base' => $priceBase,
+            'price_competence' => $this->blankToNull($unitData['price_competence'] ?? null),
+            'property_position' => $this->blankToNull($unitData['property_position'] ?? null),
+            'solar_position' => $this->blankToNull($unitData['solar_position'] ?? null),
+            'sun_period' => $this->blankToNull($unitData['sun_period'] ?? null),
+            'ceiling_type' => $this->blankToNull($unitData['ceiling_type'] ?? null),
+            'opening_type' => $this->blankToNull($unitData['opening_type'] ?? null),
+            'flooring_type' => $this->blankToNull($unitData['flooring_type'] ?? null),
+            'status' => 'available',
+        ];
+    }
+
+    private function blankToNull(mixed $value): mixed
+    {
+        return $value === '' ? null : $value;
+    }
+
+    private function nullableInt(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return (int) $value;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $towers
      */
     private function assertCompleteGrid(Building $building, array $towers): void
     {

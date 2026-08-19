@@ -47,7 +47,7 @@
 
 ## Próximos passos (pós-MVP v1)
 
-- **`building-wizard`:** T-05/T-10 (ficha, adicionais) e T-02 (`opim:fetch-incc`) — retomada após contratos
+- **`building-wizard`:** T-06 (INCC na leitura) e T-02 (`opim:fetch-incc`) — ficha/adicionais do step 3 feitos
 - **`builder-contracts`:** catálogo + emissão PDF **done**; GOV / upload assinado / `sold` ficam na timeline Fase D
 - **`reservation-timeline` Fase A:** migrations + GET timeline + componente UI (mapeia pre_hold/mensagens)
 - **`reservation-timeline` Fase B:** proposta (form corretor + decisão gestor); realinhar `PATCH confirm`

@@ -5,6 +5,7 @@
  * @see REQ-WIZ-006
  * @see REQ-WIZ-007
  */
+use App\Models\Amenity;
 use App\Models\Building;
 use App\Models\Floor;
 use App\Models\Tenant;
@@ -91,6 +92,61 @@ it('generates units from typical floor plan per tower', function () {
         ->and(Unit::query()->where('tower_id', $towerB->id)->pluck('code')->all())->toBe(['101'])
         ->and(Unit::query()->where('code', '101')->where('tower_id', $towerA->id)->value('floor_id'))
         ->not->toBeNull();
+});
+
+it('persists unit spec sheet and extra amenities without copying building amenities', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create([
+        'published' => false,
+        'wizard_step' => 2,
+    ]);
+    $tower = makeDraftTower($tenant, $building, 'Torre A', 1);
+    $shared = Amenity::factory()->create(['slug' => 'piscina']);
+    $extra = Amenity::factory()->create(['slug' => 'closet']);
+    $building->amenities()->attach($shared);
+
+    Sanctum::actingAs($user);
+
+    $this->putJson("/api/builder/buildings/{$building->id}/unit-grid", [
+        'towers' => [
+            [
+                'id' => $tower->id,
+                'floors' => [
+                    [
+                        'number' => 1,
+                        'kind' => 'residential',
+                        'units' => [
+                            [
+                                'code' => '101',
+                                'area_m2' => 78.5,
+                                'total_area_m2' => 92,
+                                'bedrooms' => 2,
+                                'bathrooms' => 2,
+                                'suites' => 1,
+                                'price_base' => 610000,
+                                'price_competence' => '2026-07-01',
+                                'property_position' => 'front',
+                                'ceiling_type' => 'wood',
+                                'amenity_ids' => [$shared->id, $extra->id],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ])
+        ->assertOk()
+        ->assertJsonPath('units.0.bedrooms', 2)
+        ->assertJsonPath('units.0.property_position', 'front')
+        ->assertJsonPath('units.0.ceiling_type', 'wood')
+        ->assertJsonPath('units.0.extra_amenities.0.slug', 'closet');
+
+    $unit = Unit::query()->where('code', '101')->firstOrFail();
+
+    expect((float) $unit->private_area_m2)->toBe(78.5)
+        ->and((float) $unit->price_base)->toBe(610000.0)
+        ->and($unit->amenities()->pluck('amenities.id')->all())->toBe([$extra->id]);
 });
 
 it('rejects a floor with zero units', function () {

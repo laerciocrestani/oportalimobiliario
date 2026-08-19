@@ -6,6 +6,7 @@ use App\Enums\FloorKind;
 use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Services\BuildingUnitGridService;
+use App\Support\AmenityPresentation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -34,6 +35,6 @@ class BuildingUnitGridController extends Controller
 
         $building = $grid->replace($building, $data['towers']);
 
-        return response()->json($building);
+        return response()->json(AmenityPresentation::decorateBuilding($building));
     }
 }

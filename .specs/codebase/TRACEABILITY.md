@@ -249,7 +249,7 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 | REQ-WIZ-006 | Exceção redesenha o andar | `BuildingUnitGridService.php` | `BuildingWizardUnitsStep.tsx` | `BuildingWizardPage.test.tsx` |
 | REQ-WIZ-007 | Tipo do andar residencial/comercial | `floors.kind` | `BuildingWizardUnitsStep.tsx` | `BuildingUnitGridTest.php` |
 | REQ-WIZ-008 | Ficha da unidade (áreas, cômodos, preço-base) | migration `add_building_defaults_and_unit_specs`, `UnitController.php` | (T-16 restante) | `BuildingTest.php` |
-| REQ-WIZ-009 | Defaults do empreendimento (herança por NULL) | `BuildingController.php`, `buildings.ceiling_type` etc. | (T-16 restante) | `BuildingTest.php` |
+| REQ-WIZ-009 | Defaults do empreendimento (herança por NULL + união de adicionais) | `AmenityAssignmentService.php`, `AmenityPresentation.php`, `BuildingController.php`, `UnitController.php` | (T-16 restante) | `BuildingTest.php`, `BuildingAmenityTest.php` |
 | REQ-WIZ-010 | Catálogo fechado de adicionais (admin) | `Admin/AmenityController.php`, `Builder/AmenityController.php`, `Amenity.php` | (T-18) | `tests/Feature/Admin/AmenityTest.php` |
 | REQ-WIZ-012 | Tabela INCC-M (fonte do cálculo) | `InccIndex.php`, `incc_indices` migration, `InccIndexSeeder.php` | — | `tests/Feature/Admin/InccIndexTest.php` |
 | REQ-WIZ-013 | Admin CRUD INCC + hint BCB | (T-03) | (T-18) | (T-03) |

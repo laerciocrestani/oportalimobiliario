@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\FloorKind;
 use App\Models\Building;
 use App\Models\Tower;
+use App\Support\AmenityPresentation;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -75,6 +76,7 @@ class BuildingUnitGridService
             'towers.floors' => fn ($query) => $query->orderBy('number'),
             'towers.units' => fn ($query) => $query->orderByDesc('floor')->orderBy('code'),
             'units' => fn ($query) => $query->orderByDesc('floor')->orderBy('code'),
+            ...AmenityPresentation::buildingEagerLoad(),
         ]) ?? $building;
 
         $fresh->setAttribute('units_summary', $fresh->computeUnitsSummary());

@@ -19,6 +19,10 @@ class Amenity extends Model
     /** @use HasFactory<AmenityFactory> */
     use HasFactory;
 
+    protected $hidden = [
+        'pivot',
+    ];
+
     protected $attributes = [
         'active' => true,
     ];

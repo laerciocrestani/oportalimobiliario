@@ -24,6 +24,14 @@ export type Amenity = {
   active: boolean
 }
 
+export type UnitResolvedDefaults = {
+  ceiling_type: string | null
+  opening_type: string | null
+  flooring_type: string | null
+  solar_position: string | null
+  sun_period: string | null
+}
+
 export type ContractCustomVariable = {
   slug: string
   label: string
@@ -141,6 +149,7 @@ export type Building = {
   cover_image?: CoverImage | null
   towers?: Tower[]
   units?: Unit[]
+  amenities?: Amenity[]
   tenant?: { id: number; name: string }
 }
 
@@ -172,6 +181,10 @@ export type Unit = {
   building?: Building
   reservation?: Reservation | null
   pre_hold?: UnitPreHold | null
+  amenities?: Amenity[]
+  inherited_amenities?: Amenity[]
+  extra_amenities?: Amenity[]
+  resolved_defaults?: UnitResolvedDefaults
 }
 
 export type Tenant = {
@@ -637,14 +650,14 @@ export async function fetchMe(): Promise<AuthUser> {
 export const builderApi = {
   listBuildings: () => apiFetch<Building[]>('/builder/buildings'),
   getBuilding: (id: number) => apiFetch<Building>(`/builder/buildings/${id}`),
-  createBuilding: (data: Partial<Building>) =>
+  createBuilding: (data: Partial<Building> & { amenity_ids?: number[] }) =>
     apiFetch<Building>('/builder/buildings', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
   lookupCep: (cep: string) => apiFetch<CepAddress>(`/builder/cep/${cep}`),
   listAmenities: () => apiFetch<Amenity[]>('/builder/amenities'),
-  updateBuilding: (id: number, data: Partial<Building>) =>
+  updateBuilding: (id: number, data: Partial<Building> & { amenity_ids?: number[] }) =>
     apiFetch<Building>(`/builder/buildings/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -709,12 +722,12 @@ export const builderApi = {
     }),
   listUnits: (buildingId: number) =>
     apiFetch<Unit[]>(`/builder/buildings/${buildingId}/units`),
-  createUnit: (buildingId: number, data: Partial<Unit>) =>
+  createUnit: (buildingId: number, data: Partial<Unit> & { amenity_ids?: number[] }) =>
     apiFetch<Unit>(`/builder/buildings/${buildingId}/units`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  updateUnit: (buildingId: number, unitId: number, data: Partial<Unit>) =>
+  updateUnit: (buildingId: number, unitId: number, data: Partial<Unit> & { amenity_ids?: number[] }) =>
     apiFetch<Unit>(`/builder/buildings/${buildingId}/units/${unitId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),

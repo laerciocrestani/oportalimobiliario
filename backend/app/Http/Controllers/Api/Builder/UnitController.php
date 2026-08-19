@@ -13,7 +13,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Models\Tower;
 use App\Models\Unit;
+use App\Services\AmenityAssignmentService;
 use App\Services\UnitFloorBackfill;
+use App\Support\AmenityPresentation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -22,6 +24,7 @@ use Illuminate\Validation\Rule;
  * @see REQ-EMP-002
  * @see REQ-EMP-003
  * @see REQ-WIZ-008
+ * @see REQ-WIZ-009
  */
 class UnitController extends Controller
 {
@@ -29,16 +32,23 @@ class UnitController extends Controller
     {
         $this->authorize('view', $building);
 
-        return response()->json(
-            $building->units()
-                ->with('tower:id,name')
-                ->orderByDesc('floor')
-                ->orderBy('code')
-                ->get()
-        );
+        $building->load(['amenities' => fn ($query) => $query->orderBy('name')]);
+
+        $units = $building->units()
+            ->with([
+                'tower:id,name',
+                'amenities' => fn ($query) => $query->orderBy('name'),
+            ])
+            ->orderByDesc('floor')
+            ->orderBy('code')
+            ->get();
+
+        $units->each(fn (Unit $unit) => AmenityPresentation::decorateUnit($unit, $building));
+
+        return response()->json($units);
     }
 
-    public function store(Request $request, Building $building): JsonResponse
+    public function store(Request $request, Building $building, AmenityAssignmentService $amenities): JsonResponse
     {
         $this->authorize('create', Unit::class);
 
@@ -54,7 +64,9 @@ class UnitController extends Controller
             'price' => ['nullable', 'numeric', 'min:0'],
             'status' => ['sometimes', Rule::enum(UnitStatus::class)],
             ...$this->specRules(),
+            ...$amenities->rules(),
         ]);
+        $amenityIds = $this->pullAmenityIds($data);
 
         $tower = Tower::query()->findOrFail($data['tower_id']);
 
@@ -63,7 +75,11 @@ class UnitController extends Controller
         $unit = $building->units()->create($this->syncLegacyPriceAndArea($data));
         app(UnitFloorBackfill::class)->attachFloor($unit);
 
-        return response()->json($unit->fresh()->load('tower:id,name'), 201);
+        if ($amenityIds !== null) {
+            $amenities->syncUnitExtras($unit, $amenityIds);
+        }
+
+        return response()->json($this->presentUnit($unit, $building), 201);
     }
 
     public function show(Building $building, Unit $unit): JsonResponse
@@ -71,10 +87,10 @@ class UnitController extends Controller
         $this->ensureUnitBelongsToBuilding($building, $unit);
         $this->authorize('view', $unit);
 
-        return response()->json($unit->load('tower:id,name'));
+        return response()->json($this->presentUnit($unit, $building));
     }
 
-    public function update(Request $request, Building $building, Unit $unit): JsonResponse
+    public function update(Request $request, Building $building, Unit $unit, AmenityAssignmentService $amenities): JsonResponse
     {
         $this->ensureUnitBelongsToBuilding($building, $unit);
 
@@ -86,7 +102,9 @@ class UnitController extends Controller
             'price' => ['nullable', 'numeric', 'min:0'],
             'status' => ['sometimes', Rule::enum(UnitStatus::class)],
             ...$this->specRules(),
+            ...$amenities->rules(),
         ]);
+        $amenityIds = $this->pullAmenityIds($data);
 
         $towerId = $data['tower_id'] ?? $unit->tower_id;
         $code = $data['code'] ?? $unit->code;
@@ -101,14 +119,20 @@ class UnitController extends Controller
         }
 
         $nonStatusFields = collect($data)->except('status');
-        if ($nonStatusFields->isNotEmpty()) {
+        if ($nonStatusFields->isNotEmpty() || $amenityIds !== null) {
             $this->authorize('update', $unit);
         }
 
-        $unit->update($this->syncLegacyPriceAndArea($data));
-        app(UnitFloorBackfill::class)->attachFloor($unit->fresh());
+        if ($data !== []) {
+            $unit->update($this->syncLegacyPriceAndArea($data));
+            app(UnitFloorBackfill::class)->attachFloor($unit->fresh());
+        }
 
-        return response()->json($unit->fresh()->load('tower:id,name'));
+        if ($amenityIds !== null) {
+            $amenities->syncUnitExtras($unit, $amenityIds);
+        }
+
+        return response()->json($this->presentUnit($unit, $building));
     }
 
     public function destroy(Building $building, Unit $unit): JsonResponse
@@ -187,5 +211,36 @@ class UnitController extends Controller
         }
 
         return $data;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return list<int>|null
+     */
+    private function pullAmenityIds(array &$data): ?array
+    {
+        if (! array_key_exists('amenity_ids', $data)) {
+            return null;
+        }
+
+        $ids = collect($data['amenity_ids'])
+            ->map(fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
+        unset($data['amenity_ids']);
+
+        return $ids;
+    }
+
+    private function presentUnit(Unit $unit, Building $building): Unit
+    {
+        $fresh = $unit->fresh()?->load([
+            'tower:id,name',
+            'amenities' => fn ($query) => $query->orderBy('name'),
+        ]) ?? $unit;
+
+        $building->loadMissing(['amenities' => fn ($query) => $query->orderBy('name')]);
+
+        return AmenityPresentation::decorateUnit($fresh, $building);
     }
 }

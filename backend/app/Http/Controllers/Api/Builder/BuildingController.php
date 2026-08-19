@@ -12,11 +12,14 @@ use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Models\Tower;
 use App\Models\Unit;
+use App\Services\AmenityAssignmentService;
+use App\Support\AmenityPresentation;
 use App\Support\BuildingCoverImage;
 use App\Support\BuildingSlug;
 use App\Support\UnitsSummary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -97,12 +100,34 @@ class BuildingController extends Controller
         return $data;
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     * @return list<int>|null
+     */
+    private function pullAmenityIds(array &$data): ?array
+    {
+        if (! array_key_exists('amenity_ids', $data)) {
+            return null;
+        }
+
+        $ids = collect($data['amenity_ids'])
+            ->map(fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
+        unset($data['amenity_ids']);
+
+        return $ids;
+    }
+
     public function index(): JsonResponse
     {
         $this->authorize('viewAny', Building::class);
 
         $buildings = Building::query()
-            ->with('coverMedia')
+            ->with([
+                'coverMedia',
+                'amenities' => fn ($query) => $query->orderBy('name'),
+            ])
             ->orderBy('name')
             ->get();
 
@@ -119,26 +144,37 @@ class BuildingController extends Controller
                     "/builder/buildings/{$building->id}/media",
                 ),
             );
+            AmenityPresentation::decorateBuilding($building);
         });
 
         return response()->json($buildings);
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(Request $request, AmenityAssignmentService $amenities): JsonResponse
     {
         $this->authorize('create', Building::class);
 
         $this->prepareBuildingRequest($request);
-        $data = $this->blankAddressToNull($request->validate($this->buildingRules()));
+        $data = $this->blankAddressToNull($request->validate([
+            ...$this->buildingRules(),
+            ...$amenities->rules(),
+        ]));
+        $amenityIds = $this->pullAmenityIds($data);
 
         $data['slug'] = $data['slug'] ?? BuildingSlug::generateUnique($data['name']);
         $data['published'] = $data['published'] ?? false;
         $data['wizard_step'] = $data['wizard_step'] ?? 1;
 
         $building = Building::query()->create($data);
-        $building->setAttribute('units_summary', UnitsSummary::empty());
 
-        return response()->json($building, 201);
+        if ($amenityIds !== null) {
+            $amenities->syncBuilding($building, $amenityIds);
+        }
+
+        $fresh = AmenityPresentation::decorateBuilding($building->fresh(['amenities']) ?? $building);
+        $fresh->setAttribute('units_summary', UnitsSummary::empty());
+
+        return response()->json($fresh, 201);
     }
 
     public function show(Building $building): JsonResponse
@@ -151,6 +187,7 @@ class BuildingController extends Controller
             'towers.units' => fn ($query) => $query->orderByDesc('floor')->orderBy('code'),
             'units.tower:id,name,building_id',
             'units' => fn ($query) => $query->orderByDesc('floor')->orderBy('code'),
+            ...AmenityPresentation::buildingEagerLoad(),
         ]);
 
         $building->setAttribute('units_summary', $building->computeUnitsSummary());
@@ -159,15 +196,19 @@ class BuildingController extends Controller
             $tower->setAttribute('units_summary', $tower->computeUnitsSummary());
         });
 
-        return response()->json($building);
+        return response()->json(AmenityPresentation::decorateBuilding($building));
     }
 
-    public function update(Request $request, Building $building): JsonResponse
+    public function update(Request $request, Building $building, AmenityAssignmentService $amenities): JsonResponse
     {
         $this->authorize('update', $building);
 
         $this->prepareBuildingRequest($request);
-        $data = $this->blankAddressToNull($request->validate($this->buildingRules($building)));
+        $data = $this->blankAddressToNull($request->validate([
+            ...$this->buildingRules($building),
+            ...$amenities->rules(),
+        ]));
+        $amenityIds = $this->pullAmenityIds($data);
 
         if (array_key_exists('published', $data) && filter_var($data['published'], FILTER_VALIDATE_BOOLEAN)) {
             $this->assertCanPublish($building);
@@ -177,7 +218,15 @@ class BuildingController extends Controller
 
         $building->update($data);
 
-        return response()->json($building->fresh());
+        if ($amenityIds !== null) {
+            $amenities->syncBuilding($building, $amenityIds);
+        }
+
+        return response()->json(
+            AmenityPresentation::decorateBuilding(
+                $building->fresh(['amenities']) ?? $building,
+            ),
+        );
     }
 
     private function assertCanPublish(Building $building): void
@@ -204,10 +253,10 @@ class BuildingController extends Controller
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, int>  $buildingIds
-     * @return \Illuminate\Support\Collection<int, \Illuminate\Support\Collection<string, int>>
+     * @param  Collection<int, int>  $buildingIds
+     * @return Collection<int, Collection<string, int>>
      */
-    private function summariesForBuildings(\Illuminate\Support\Collection $buildingIds): \Illuminate\Support\Collection
+    private function summariesForBuildings(Collection $buildingIds): Collection
     {
         if ($buildingIds->isEmpty()) {
             return collect();

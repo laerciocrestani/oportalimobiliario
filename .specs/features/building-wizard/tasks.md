@@ -27,7 +27,8 @@ Ordem: backend (schema → serviços → API) antes do frontend que consome. 1 c
   - Gate: `php artisan test --compact --filter=BuildingStructure`
 - [x] **T-09** `PUT .../unit-grid` (planta típica, exceção redesenha andar, códigos `101…`); 422 andar com 0 unidades.
   - Gate: `php artisan test --compact --filter=BuildingUnitGrid`
-- [ ] **T-10** Defaults + pivôs de adicionais; DTO une adicionais do prédio + unidade (unidade não remove o do prédio).
+- [x] **T-10** Defaults + pivôs de adicionais; DTO une adicionais do prédio + unidade (unidade não remove o do prédio).
+  - Gate: `php artisan test --compact --filter=BuildingAmenity`
 - [x] **T-11** `POST .../generate-description` (provider env, fake HTTP); PATCH `published` bloqueia sem preço.
   - Gate: `php artisan test --compact --filter=GenerateDescription`; publish sem preço 422.
 - [ ] **T-12** OpenAPI completo dos endpoints novos/alterados.

@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\Amenity;
 use App\Models\Building;
 use App\Models\Unit;
+use App\Services\UnitPriceCalculator;
 use BackedEnum;
 use Illuminate\Support\Collection;
 
@@ -12,6 +13,7 @@ use Illuminate\Support\Collection;
  * Serializes building amenities and the unit union DTO (building ∪ extras).
  *
  * @see REQ-WIZ-009
+ * @see REQ-WIZ-011
  */
 class AmenityPresentation
 {
@@ -59,6 +61,8 @@ class AmenityPresentation
 
     public static function decorateUnit(Unit $unit, ?Building $building = null): Unit
     {
+        app(UnitPriceCalculator::class)->decorate($unit);
+
         if (array_key_exists('resolved_defaults', $unit->getAttributes())) {
             return $unit;
         }

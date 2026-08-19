@@ -5,6 +5,7 @@
  * @see REQ-EMP-005
  * @see REQ-WIZ-008
  * @see REQ-WIZ-009
+ * @see REQ-WIZ-011
  * @see REQ-WIZ-015
  */
 use App\Enums\UnitStatus;
@@ -361,8 +362,9 @@ it('stores unit spec sheet and mirrors price into price_base', function () {
     $response
         ->assertCreated()
         ->assertJsonPath('code', '704')
-        ->assertJsonPath('price', '610000.00')
+        ->assertJsonPath('price', null)
         ->assertJsonPath('price_base', '610000.00')
+        ->assertJsonPath('price_incc_current', null)
         ->assertJsonPath('private_area_m2', '78.50')
         ->assertJsonPath('bedrooms', 2)
         ->assertJsonPath('property_position', 'front');

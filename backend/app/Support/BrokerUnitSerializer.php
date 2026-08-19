@@ -5,7 +5,12 @@ namespace App\Support;
 use App\Enums\ReservationStatus;
 use App\Models\Reservation;
 use App\Models\Unit;
+use App\Services\UnitPriceCalculator;
 
+/**
+ * @see REQ-WIZ-011
+ * @see REQ-WIZ-016
+ */
 class BrokerUnitSerializer
 {
     /**
@@ -13,6 +18,8 @@ class BrokerUnitSerializer
      */
     public static function serialize(Unit $unit, int $brokerId): array
     {
+        app(UnitPriceCalculator::class)->decorate($unit);
+
         $payload = $unit->toArray();
         $reservation = $unit->relationLoaded('reservation') ? $unit->reservation : null;
 

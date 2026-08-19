@@ -32,11 +32,13 @@ it('returns cheapest available unit on public building list', function () {
     Unit::factory()->for($tenant)->for($building)->create([
         'code' => 'EXPENSIVE',
         'price' => 900000,
+        'price_base' => 900000,
         'status' => UnitStatus::Available,
     ]);
     Unit::factory()->for($tenant)->for($building)->create([
         'code' => 'CHEAP',
         'price' => 350000,
+        'price_base' => 350000,
         'area_m2' => 65.5,
         'floor' => 3,
         'status' => UnitStatus::Available,
@@ -49,7 +51,8 @@ it('returns cheapest available unit on public building list', function () {
     $this->getJson('/api/public/buildings')
         ->assertOk()
         ->assertJsonPath('0.cheapest_unit.code', 'CHEAP')
-        ->assertJsonPath('0.cheapest_unit.price', '350000.00')
+        ->assertJsonPath('0.cheapest_unit.price', null)
+        ->assertJsonPath('0.cheapest_unit.price_base', '350000.00')
         ->assertJsonPath('0.cheapest_unit.area_m2', '65.50')
         ->assertJsonPath('0.cheapest_unit.floor', 3);
 });

@@ -33,8 +33,8 @@
 ## Sessão atual
 
 - **Fase:** building-wizard
-- **Última etapa concluída:** T-16 step 3 (ficha, herança e adicionais)
-- **Próxima etapa:** T-06 calculadora INCC → T-02 job → T-03 CRUD admin INCC
+- **Última etapa concluída:** T-06 calculadora INCC (`price` na leitura)
+- **Próxima etapa:** T-02 job `opim:fetch-incc` → T-03 CRUD admin INCC
 - **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md`
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 

@@ -53,6 +53,19 @@ paths:
                           type: string
                         price:
                           type: string
+                          nullable: true
+                          description: INCC-M display price calculated on read. Null when the competence index is missing.
+                        price_base:
+                          type: string
+                          nullable: true
+                        price_competence:
+                          type: string
+                          format: date
+                          nullable: true
+                        price_incc_current:
+                          type: string
+                          nullable: true
+                          description: Latest INCC-M index value used in the formula
                         area_m2:
                           type: string
                           nullable: true
@@ -78,7 +91,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Building detail
+          description: Building detail with available units. Each unit `price` is the INCC-M display value.
         '404':
           description: Not found
   /api/public/buildings/{slug}/media:
@@ -294,7 +307,7 @@ paths:
             type: integer
       responses:
         '200':
-          description: Building detail including amenities; nested units expose amenities (union), inherited_amenities, extra_amenities and resolved_defaults
+          description: Building detail including amenities; nested units expose amenities (union), inherited_amenities, extra_amenities, resolved_defaults and INCC-M display `price`
         '404':
           description: Not found
     patch:
@@ -648,7 +661,7 @@ paths:
         - bearerAuth: []
       responses:
         '200':
-          description: Units list with amenities union, inherited_amenities, extra_amenities and resolved_defaults
+          description: Units list with amenities union, inherited_amenities, extra_amenities, resolved_defaults and INCC-M display `price`
     post:
       summary: Create unit
       security:
@@ -695,6 +708,7 @@ paths:
                 price:
                   type: number
                   nullable: true
+                  description: Write stores the base amount (mirrored into price_base). Responses expose the INCC-M display price instead.
                 price_base:
                   type: number
                   nullable: true
@@ -728,7 +742,7 @@ paths:
                   description: Extra amenities on the unit. IDs already on the building are ignored (not stored on unit_amenity and not 422).
       responses:
         '201':
-          description: Created with amenities union, inherited_amenities, extra_amenities and resolved_defaults
+          description: Created with amenities union, inherited_amenities, extra_amenities, resolved_defaults, calculated `price`, `price_base`, `price_competence` and `price_incc_current`
   /api/builder/buildings/{building}/media:
     get:
       summary: List building media
@@ -1463,7 +1477,7 @@ paths:
         - bearerAuth: []
       responses:
         '200':
-          description: Units list
+          description: Units list with INCC-M display `price`, `price_base`, `price_competence` and `price_incc_current`
   /api/broker/buildings/{building}/media:
     get:
       summary: List building media for broker with access

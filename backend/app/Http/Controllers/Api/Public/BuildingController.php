@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Public;
 
 use App\Http\Controllers\Controller;
 use App\Models\Building;
+use App\Services\UnitPriceCalculator;
 use App\Support\BuildingCoverImage;
 use Illuminate\Http\JsonResponse;
 
@@ -13,9 +14,13 @@ use Illuminate\Http\JsonResponse;
  * @see REQ-PUB-006
  * @see REQ-PUB-007
  * @see REQ-PUB-009
+ * @see REQ-WIZ-011
+ * @see REQ-WIZ-016
  */
 class BuildingController extends Controller
 {
+    public function __construct(private UnitPriceCalculator $prices) {}
+
     public function index(): JsonResponse
     {
         $buildings = Building::query()
@@ -39,6 +44,7 @@ class BuildingController extends Controller
         }
 
         $building->load(['units' => fn ($q) => $q->where('status', 'available')]);
+        $this->prices->decorateMany($building->units);
 
         return response()->json($building);
     }
@@ -51,6 +57,10 @@ class BuildingController extends Controller
         $cheapest = $building->cheapestAvailableUnit;
         $cover = $building->publicCoverMedia;
         $mediaPrefix = "/public/buildings/{$building->slug}/media";
+
+        if ($cheapest !== null) {
+            $this->prices->decorate($cheapest);
+        }
 
         return [
             'id' => $building->id,
@@ -65,6 +75,9 @@ class BuildingController extends Controller
             'cheapest_unit' => $cheapest ? [
                 'code' => $cheapest->code,
                 'price' => $cheapest->price,
+                'price_base' => $cheapest->price_base,
+                'price_competence' => $cheapest->price_competence?->toDateString(),
+                'price_incc_current' => $cheapest->price_incc_current,
                 'area_m2' => $cheapest->area_m2,
                 'floor' => $cheapest->floor,
             ] : null,

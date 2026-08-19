@@ -29,6 +29,7 @@ use Illuminate\Validation\ValidationException;
  * @see REQ-WIZ-002
  * @see REQ-WIZ-003
  * @see REQ-WIZ-009
+ * @see REQ-WIZ-011
  * @see REQ-WIZ-015
  */
 class BuildingController extends Controller

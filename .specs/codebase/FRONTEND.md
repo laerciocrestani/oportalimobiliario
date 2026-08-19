@@ -53,6 +53,8 @@ Definidas em `frontend/src/App.tsx`.
 | `/login` | `LoginPage` | `authApi.login` |
 | `/` | `AdminHome` | `adminApi.getTenants` |
 | `/tenants/:id/edit` | `TenantEditPage` | `adminApi.updateTenant` |
+| `/incc` | `InccIndicesPage` | `adminApi.listInccIndices` / `createInccIndex` / `updateInccIndex` / `getInccHint` |
+| `/amenities` | `AmenitiesPage` | `adminApi.listAmenities` / `createAmenity` / `updateAmenity` |
 
 ### Público (`www.localhost`)
 

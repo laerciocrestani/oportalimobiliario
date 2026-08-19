@@ -46,7 +46,8 @@ Ordem: backend (schema → serviços → API) antes do frontend que consome. 1 c
 
 ## Frontend — admin + consumo
 
-- [ ] **T-18** Admin: INCC (tabela, editar, hint) e adicionais.
+- [x] **T-18** Admin: INCC (tabela, editar, hint) e adicionais.
+  - Gate: `pnpm test` `InccIndicesPage.test.tsx` `AmenitiesPage.test.tsx`
 - [ ] **T-19** Broker/público: preço calculado; campos novos no detalhe (subconjunto útil).
 
 ## Encerramento

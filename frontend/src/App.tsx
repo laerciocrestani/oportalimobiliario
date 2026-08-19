@@ -4,6 +4,8 @@ import { LoginPage } from '@/apps/auth/LoginPage'
 import { LegacyPathNotice } from '@/apps/auth/LegacyPathNotice'
 import { PortalGuidePage } from '@/apps/auth/PortalGuidePage'
 import { AdminHome } from '@/apps/admin/AdminHome'
+import { AmenitiesPage } from '@/apps/admin/AmenitiesPage'
+import { InccIndicesPage } from '@/apps/admin/InccIndicesPage'
 import { TenantEditPage } from '@/apps/admin/TenantEditPage'
 import { BuildingDetailPage } from '@/apps/builder/BuildingDetailPage'
 import { BuildingEditPage } from '@/apps/builder/BuildingEditPage'
@@ -214,6 +216,22 @@ function AuthenticatedPortal() {
               element={
                 <ProfileGuard profile={profile}>
                   <TenantEditPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/incc"
+              element={
+                <ProfileGuard profile={profile}>
+                  <InccIndicesPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/amenities"
+              element={
+                <ProfileGuard profile={profile}>
+                  <AmenitiesPage />
                 </ProfileGuard>
               }
             />

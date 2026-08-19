@@ -24,6 +24,20 @@ export type Amenity = {
   active: boolean
 }
 
+export type InccIndex = {
+  id: number
+  competence: string
+  value: string
+  source: 'job' | 'manual'
+  fetched_at: string | null
+}
+
+export type InccHint = {
+  competence: string
+  value: string
+  is_index_number: boolean
+}
+
 export type UnitResolvedDefaults = {
   ceiling_type: string | null
   opening_type: string | null
@@ -1100,6 +1114,18 @@ export const adminApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  listInccIndices: () => apiFetch<InccIndex[]>('/admin/incc-indices'),
+  createInccIndex: (data: { competence: string; value: number }) =>
+    apiFetch<InccIndex>('/admin/incc-indices', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateInccIndex: (id: number, data: { competence?: string; value?: number }) =>
+    apiFetch<InccIndex>(`/admin/incc-indices/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  getInccHint: () => apiFetch<InccHint>('/admin/incc-indices/hint'),
 }
 
 export const publicApi = {

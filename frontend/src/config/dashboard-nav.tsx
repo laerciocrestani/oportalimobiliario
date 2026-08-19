@@ -3,9 +3,11 @@ import {
   CalendarClockIcon,
   FileTextIcon,
   HandshakeIcon,
+  LayersIcon,
   LayoutDashboardIcon,
   Settings2Icon,
   ShieldIcon,
+  TrendingUpIcon,
   UserRoundCheckIcon,
   UsersIcon,
 } from 'lucide-react'
@@ -135,6 +137,16 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
         title: 'Tenants',
         url: '/',
         icon: <ShieldIcon />,
+      },
+      {
+        title: 'INCC-M',
+        url: '/incc',
+        icon: <TrendingUpIcon />,
+      },
+      {
+        title: 'Adicionais',
+        url: '/amenities',
+        icon: <LayersIcon />,
       },
     ],
     navSecondary: [

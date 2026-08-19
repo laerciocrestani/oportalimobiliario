@@ -29,7 +29,7 @@ A construtora cadastra **modelos de contrato** (Markdown + variáveis) no tenant
 
 ## Fora desta fatia
 
-- Assinatura GOV, upload do contrato assinado, validar venda (`sold`).
+- Assinatura GOV, upload do contrato assinado, validar venda (`sold`) — cobertos em `reservation-timeline` Fase D.
 - Envio por e-mail/WhatsApp.
 - Editar o texto completo no dialog de emitir (só no catálogo).
 - Vários modelos emitidos em paralelo na mesma reserva.

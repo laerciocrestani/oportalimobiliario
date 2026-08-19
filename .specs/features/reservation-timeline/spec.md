@@ -1,6 +1,6 @@
 ---
 branch: main
-status: in_progress
+status: done
 depends_on: reservations, reservation-pre-hold, builder-reservations
 source: reuniao L37-L65
 ---
@@ -105,4 +105,4 @@ Registradas em [design.md § Decisões pendentes](./design.md#decisões-pendente
 
 ## Status
 
-**in_progress** — Fases A–C implementadas. Fase B alinhada (`POST /proposal`, `PATCH confirm` alias, TTL pós-aceite, recusa soft). Fase D: GOV + contrato assinado + `sold`.
+**done** — Fases A–D implementadas. GOV (registro manual), upload do PDF assinado e `sold`.

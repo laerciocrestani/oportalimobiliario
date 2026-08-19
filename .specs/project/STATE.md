@@ -33,8 +33,8 @@
 ## Sessão atual
 
 - **Fase:** pós-MVP
-- **Última etapa concluída:** `reservation-timeline` Fase B alinhada (TTL, recusa soft, `PATCH confirm` alias)
-- **Próxima etapa:** `reservation-timeline` Fase D (GOV + contrato assinado + `sold`)
+- **Última etapa concluída:** `reservation-timeline` Fase D (GOV + contrato assinado + `sold`)
+- **Próxima etapa:** pós-MVP restante (deploy `diadimoveis.com.br`, `builder-team`)
 - **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md` (wizard done)
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 

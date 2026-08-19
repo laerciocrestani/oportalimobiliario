@@ -385,7 +385,7 @@ Ver [spec.md § Decisões pendentes](./spec.md#decisões-pendentes).
 | **A** | Migrations, enums, `timeline_events`, GET timeline mapeando `pre_hold` + mensagens | Pest + Vitest `ReservationTimeline` |
 | **B** | Proposta (form corretor + decisão gestor); `PATCH confirm` alias de `POST /proposal` | Feature tests + OpenAPI — **done** |
 | **C** | Sinal (upload comprovante + aprovação + alerta 48h) | Command + badge/notificação |
-| **D** | Contrato (dados, PDF, upload assinado, venda) | Teste manual E2E |
+| **D** | Contrato (GOV, PDF assinado, venda) | Feature tests + Vitest — **done** |
 
 ---
 

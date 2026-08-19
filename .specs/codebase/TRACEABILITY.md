@@ -88,7 +88,7 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 
 ## reservation-timeline
 
-> Spec: `.specs/features/reservation-timeline/spec.md` · Design: `design.md` · Status: **Fase A+B+C implementadas** (contrato/venda = Fase D)
+> Spec: `.specs/features/reservation-timeline/spec.md` · Design: `design.md` · Status: **Fases A–D implementadas**
 
 | REQ | Descrição | BE | FE | Testes |
 |-----|-----------|----|----|--------|
@@ -97,9 +97,9 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 | REQ-RTL-029 | Eventos append-only | `ReservationTimelineEvent.php`, hooks em services | — | `ReservationTimelineTest.php` |
 | REQ-RTL-005..012 | Proposta + decisão gestor | `ReservationProposalService.php`, controllers proposal, unique ativo `reservations_active_unit_unique` | `BrokerReservationDialog.tsx`, `BuilderProposalDecisionPanel.tsx` | `ReservationProposalTest.php` |
 | REQ-RTL-013..017 | Sinal + comprovante + alerta 48h | `ReservationDepositService.php`, `ReservationAttachment.php`, `CheckDepositWindows.php`, controllers deposit | `BrokerDepositProofDialog.tsx`, `BuilderDepositProofApprovalPanel.tsx`, `ReservationAttachmentField.tsx` | `ReservationDepositTest.php` |
-| REQ-RTL-018..023 | Contrato + venda + anexos no andamento | `ReservationContractDataService.php`, `Broker/ReservationContractDataController.php`, `Support/Cpf.php`, `ReservationTimelineService.php` | `BrokerContractDataDialog.tsx`, `lib/br-docs.ts`, `ReservationTimeline.tsx`, `ReservationAttachmentPreview.tsx` | `ReservationContractDataTest.php`, `Support/CpfTest.php`, `ReservationTimelineTest.php`, `BrokerContractDataDialog.test.tsx`, `br-docs.test.ts`, `ReservationTimeline.test.tsx` |
+| REQ-RTL-018..023 | Contrato + venda + anexos no andamento | `ReservationContractDataService.php`, `ReservationContractCompletionService.php`, `Broker/ReservationContractSignedController.php`, `Builder/ReservationContractValidateController.php` | `BrokerContractDataDialog.tsx`, `BrokerGovSignatureDialog.tsx`, `BrokerSignedContractDialog.tsx`, `BuilderContractValidatePanel.tsx`, `ReservationTimeline.tsx` | `ReservationContractDataTest.php`, `ReservationContractCompletionTest.php`, `BrokerGovSignatureDialog.test.tsx`, `BrokerSignedContractDialog.test.tsx`, `BuilderContractValidatePanel.test.tsx` |
 
-Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **builder-contracts** abaixo. GOV + upload assinado + `sold` continuam fora.
+Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **builder-contracts** abaixo.
 
 ---
 

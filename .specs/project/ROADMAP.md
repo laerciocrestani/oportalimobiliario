@@ -37,7 +37,7 @@
 | auth | done | done | done | done |
 | buildings | done | inline | inline | done |
 | reservations | done | inline | inline | done |
-| reservation-timeline | done | done | — | in_progress (Fases A–C done; D: GOV/assinado/sold) |
+| reservation-timeline | done | done | — | done |
 | broker-invites | done | inline | inline | done |
 | admin-tenants | done | inline | inline | done |
 | public-portal | done | inline | inline | done |
@@ -48,12 +48,11 @@
 ## Próximos passos (pós-MVP v1)
 
 - ~~**`building-wizard`**~~ **done** (wizard 4 steps, INCC-M na leitura, admin INCC/amenities, seed `Residencial Bosque`)
-- **`builder-contracts`:** catálogo + emissão PDF **done**; GOV / upload assinado / `sold` ficam na timeline Fase D
+- **`builder-contracts`:** catálogo + emissão PDF **done**; GOV / upload assinado / `sold` na timeline **done**
 - ~~**`reservation-timeline` Fase A:**~~ migrations + GET timeline + componente UI
 - ~~**`reservation-timeline` Fase B:**~~ proposta (form corretor + decisão gestor); `PATCH confirm` alias de `POST /proposal`; TTL 48h após aceite; recusa soft
 - ~~**`reservation-timeline` Fase C:**~~ sinal (comprovante + aprovação + alerta 48h)
-- **`reservation-timeline` Fase D:** GOV, upload do contrato assinado, `sold`
-- Executar `subdomain-portals` (subdomínios dev + CORS + guards FE)
+- ~~**`reservation-timeline` Fase D:**~~ GOV, upload do contrato assinado, `sold`
 - Deploy domínio `diadimoveis.com.br` (REQ-SUB-012)
 - ~~Policies Spatie granulares por permission~~ → feature `builder-team` (em andamento)
 - `schedule:work` ou cron em produção para expiração de reservations

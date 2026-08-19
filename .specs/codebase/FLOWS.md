@@ -191,8 +191,9 @@ sequenceDiagram
     Bld->>API: PATCH deposit-proof/approve
     Brk->>API: POST contract-data (docs)
     Bld->>API: POST contract/issue (PDF)
-    Brk->>API: POST contract/signed (GOV)
-    Bld->>API: PATCH contract/validate
+    Brk->>API: POST contract/gov (registro manual)
+    Brk->>API: POST contract/signed (PDF)
+    Bld->>API: PATCH contract/validate (gov_signed)
     Note over API: unit sold
     CMD->>API: deposit_overdue alert (se 48h sem comprovante)
 ```
@@ -222,13 +223,7 @@ Resposta: `current_stage`, `expires_at`, `steps[]` com status `completed` | `cur
 
 ### 4.4 Alinhamento com v2 atual
 
-| Implementado hoje | Próximo passo (Fase D) |
-|-------------------|-------------------------|
-| `pre_hold` + mensagens + GET timeline | GOV + upload assinado + `sold` |
-| `POST /proposal` + `PATCH proposal/decision` | — |
-| `PATCH confirm` alias de `POST /proposal` | — |
-| Recusa → `cancelled` (histórico preservado) | — |
-| TTL 48h após aceite (janela do sinal) | — |
+Fluxo completo: pré-reserva → diálogo → proposta → sinal → dados/contrato → GOV → PDF assinado → `sold`.
 
 **Arquivos previstos:** ver [reservation-timeline/design.md § Arquivos previstos](../features/reservation-timeline/design.md#arquivos-previstos-implementação).
 

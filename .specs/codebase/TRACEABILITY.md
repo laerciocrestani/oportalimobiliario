@@ -214,6 +214,15 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 
 ---
 
+## building-wizard
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-WIZ-012 | Tabela INCC-M (fonte do cálculo) | `InccIndex.php`, `incc_indices` migration, `InccIndexSeeder.php` | — | `tests/Feature/Admin/InccIndexTest.php` |
+| REQ-WIZ-013 | Admin CRUD INCC + hint BCB | (T-03) | (T-18) | (T-03) |
+
+---
+
 ## Manutenção
 
 Ao implementar feature nova:

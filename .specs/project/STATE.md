@@ -28,12 +28,14 @@
 | Route binding tenancy | `SetTenantFromUser` priorizado antes de `SubstituteBindings` |
 | Portais por subdomínio | `construtora` / `corretor` / `admin` + `www` (:4321 Astro) + API em `api.localhost` |
 | Sessão multi-portal | Bearer + `localStorage` isolado por subdomínio (sem cookie compartilhado) |
+| Preço de unidade | Sempre INCC-M; cálculo na leitura a partir de `incc_indices`; job diário 08:05 insert-only |
 
 ## Sessão atual
 
-- **Fase:** reservation-pre-hold — concluída
-- **Última etapa concluída:** smoke test reservas (API, 14/14 pass) — pre-hold → confirm → thread → cancel
-- **Próxima etapa:** backlog pós-MVP (expires_at na UI, notificações, aprovação formal)
+- **Fase:** building-wizard — T-01 concluído (`incc_indices`)
+- **Última etapa concluída:** T-01 — migration/model/factory/seeder + Pest (tabela global, sem `tenant_id`)
+- **Próxima etapa:** T-02 (`opim:fetch-incc` + schedule 08:05 insert-only)
+- **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md` (aprovado 2026-08-19)
 
 ## Blockers
 

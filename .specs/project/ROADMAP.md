@@ -42,9 +42,11 @@
 | admin-tenants | done | inline | inline | done |
 | public-portal | done | inline | inline | done |
 | subdomain-portals | done | done | done | done |
+| building-wizard | in_progress | in_progress | in_progress | T-01 done |
 
 ## Próximos passos (pós-MVP v1)
 
+- **`building-wizard`:** T-02 (`opim:fetch-incc`) → ver `.specs/features/building-wizard/tasks.md`
 - **`reservation-timeline` Fase A:** migrations + GET timeline + componente UI (mapeia pre_hold/mensagens)
 - **`reservation-timeline` Fase B:** proposta (form corretor + decisão gestor); realinhar `PATCH confirm`
 - **`reservation-timeline` Fases C–D:** sinal, contrato, venda

@@ -39,6 +39,8 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | empreendimento_id | `building_id` |
 | unidade_id | `unit_id` |
 | unidades_count | `units_count` |
+| INCC-M | `incc_indices` / `InccIndex` |
+| competência INCC | `competence` (1º do mês) |
 
 ## Status values
 

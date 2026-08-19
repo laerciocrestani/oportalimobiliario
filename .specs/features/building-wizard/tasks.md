@@ -33,7 +33,8 @@ Ordem: backend (schema → serviços → API) antes do frontend que consome. 1 c
   - Gate: `php artisan test --compact --filter=BuildingAmenity`
 - [x] **T-11** `POST .../generate-description` (provider env, fake HTTP); PATCH `published` bloqueia sem preço.
   - Gate: `php artisan test --compact --filter=GenerateDescription`; publish sem preço 422.
-- [ ] **T-12** OpenAPI completo dos endpoints novos/alterados.
+- [x] **T-12** OpenAPI completo dos endpoints novos/alterados.
+  - Gate: `docs/api/openapi.yaml` v0.5.0 com schemas `Building`/`Unit`/`Amenity`/`InccIndex` e path `units/{unit}`.
 
 ## Frontend — construtora
 

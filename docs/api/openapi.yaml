@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Oportalimobiliário API
-  version: 0.4.0
+  version: 0.5.0
 paths:
   /api/health:
     get:
@@ -20,66 +20,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    id:
-                      type: integer
-                    slug:
-                      type: string
-                    name:
-                      type: string
-                    description:
-                      type: string
-                      nullable: true
-                    city:
-                      type: string
-                      nullable: true
-                    state:
-                      type: string
-                      nullable: true
-                    seo_title:
-                      type: string
-                      nullable: true
-                    seo_description:
-                      type: string
-                      nullable: true
-                    units_count:
-                      type: integer
-                    cheapest_unit:
-                      type: object
-                      nullable: true
-                      properties:
-                        code:
-                          type: string
-                        price:
-                          type: string
-                          nullable: true
-                          description: INCC-M display price calculated on read. Null when the competence index is missing.
-                        price_base:
-                          type: string
-                          nullable: true
-                        price_competence:
-                          type: string
-                          format: date
-                          nullable: true
-                        price_incc_current:
-                          type: string
-                          nullable: true
-                          description: Latest INCC-M index value used in the formula
-                        area_m2:
-                          type: string
-                          nullable: true
-                        floor:
-                          type: integer
-                          nullable: true
-                    cover_image:
-                      type: object
-                      nullable: true
-                      properties:
-                        id:
-                          type: integer
-                        url:
-                          type: string
+                  $ref: '#/components/schemas/PublicBuildingListItem'
   /api/public/buildings/{slug}:
     get:
       summary: Show published building by slug
@@ -92,6 +33,10 @@ paths:
       responses:
         '200':
           description: Building detail with available units. Each unit `price` is the INCC-M display value, plus spec sheet fields (`bedrooms`, `area_m2`, `amenities` union).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicBuildingDetail'
         '404':
           description: Not found
   /api/public/buildings/{slug}/media:
@@ -193,6 +138,16 @@ paths:
       responses:
         '200':
           description: Tenant-scoped list with units_summary per building
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Building'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
     post:
       summary: Create building
       security:
@@ -207,6 +162,18 @@ paths:
               properties:
                 name:
                   type: string
+                slug:
+                  type: string
+                  nullable: true
+                description:
+                  type: string
+                  nullable: true
+                seo_title:
+                  type: string
+                  nullable: true
+                seo_description:
+                  type: string
+                  nullable: true
                 zip:
                   type: string
                   description: CEP with 8 digits (hyphens accepted)
@@ -261,7 +228,15 @@ paths:
                   description: Active amenity catalog IDs to attach to the building
       responses:
         '201':
-          description: Created
+          description: Created as unpublished wizard draft (`wizard_step` defaults to 1)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Building'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
         '422':
           description: Validation error
   /api/builder/amenities:
@@ -272,6 +247,14 @@ paths:
       responses:
         '200':
           description: Active amenities ordered by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Amenity'
+        '401':
+          description: Unauthenticated
         '403':
           description: Missing buildings.view
   /api/builder/cep/{cep}:
@@ -288,6 +271,10 @@ paths:
       responses:
         '200':
           description: Address found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CepAddress'
         '404':
           description: CEP not found
         '422':
@@ -308,6 +295,10 @@ paths:
       responses:
         '200':
           description: Building detail including amenities; nested units expose amenities (union), inherited_amenities, extra_amenities, resolved_defaults and INCC-M display `price`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Building'
         '404':
           description: Not found
     patch:
@@ -329,7 +320,16 @@ paths:
               properties:
                 name:
                   type: string
+                slug:
+                  type: string
+                  nullable: true
                 description:
+                  type: string
+                  nullable: true
+                seo_title:
+                  type: string
+                  nullable: true
+                seo_description:
                   type: string
                   nullable: true
                 published:
@@ -388,6 +388,10 @@ paths:
       responses:
         '200':
           description: Building updated with amenities and, for nested units, union DTO
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Building'
         '401':
           description: Unauthenticated
         '403':
@@ -432,6 +436,10 @@ paths:
       responses:
         '200':
           description: Building with replaced towers and floors
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Building'
         '401':
           description: Unauthenticated
         '403':
@@ -516,6 +524,10 @@ paths:
                                   balconies:
                                     type: integer
                                     nullable: true
+                                  price:
+                                    type: number
+                                    nullable: true
+                                    description: Alias of price_base on write.
                                   price_base:
                                     type: number
                                     nullable: true
@@ -530,18 +542,23 @@ paths:
                                   solar_position:
                                     type: string
                                     nullable: true
+                                    enum: [north, northeast, east, southeast, south, southwest, west, northwest]
                                   sun_period:
                                     type: string
                                     nullable: true
+                                    enum: [morning, afternoon, full_day]
                                   ceiling_type:
                                     type: string
                                     nullable: true
+                                    enum: [plaster, pvc, wood, concrete, none]
                                   opening_type:
                                     type: string
                                     nullable: true
+                                    enum: [aluminum, wood, pvc, steel]
                                   flooring_type:
                                     type: string
                                     nullable: true
+                                    enum: [porcelain, ceramic, wood, vinyl, laminate, polished_concrete]
                                   amenity_ids:
                                     type: array
                                     items:
@@ -550,6 +567,10 @@ paths:
       responses:
         '200':
           description: Building with generated units. Building amenities are not copied onto unit_amenity; nested units still expose the union DTO.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Building'
         '401':
           description: Unauthenticated
         '403':
@@ -662,6 +683,12 @@ paths:
       responses:
         '200':
           description: Units list with amenities union, inherited_amenities, extra_amenities, resolved_defaults and INCC-M display `price`
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Unit'
     post:
       summary: Create unit
       security:
@@ -716,6 +743,9 @@ paths:
                   type: string
                   format: date
                   nullable: true
+                status:
+                  type: string
+                  enum: [available, pre_reserved, reserved, sold, unavailable]
                 property_position:
                   type: string
                   nullable: true
@@ -723,18 +753,23 @@ paths:
                 solar_position:
                   type: string
                   nullable: true
+                  enum: [north, northeast, east, southeast, south, southwest, west, northwest]
                 sun_period:
                   type: string
                   nullable: true
+                  enum: [morning, afternoon, full_day]
                 ceiling_type:
                   type: string
                   nullable: true
+                  enum: [plaster, pvc, wood, concrete, none]
                 opening_type:
                   type: string
                   nullable: true
+                  enum: [aluminum, wood, pvc, steel]
                 flooring_type:
                   type: string
                   nullable: true
+                  enum: [porcelain, ceramic, wood, vinyl, laminate, polished_concrete]
                 amenity_ids:
                   type: array
                   items:
@@ -743,6 +778,101 @@ paths:
       responses:
         '201':
           description: Created with amenities union, inherited_amenities, extra_amenities, resolved_defaults, calculated `price`, `price_base`, `price_competence` and `price_incc_current`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unit'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+        '422':
+          description: Validation error
+  /api/builder/buildings/{building}/units/{unit}:
+    get:
+      summary: Show unit
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: unit
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Unit with amenities union and INCC-M display `price`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unit'
+        '404':
+          description: Not found
+    patch:
+      summary: Update unit spec sheet, price-base or status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: unit
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnitWrite'
+      responses:
+        '200':
+          description: Updated with amenities union and INCC-M display `price`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unit'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
+        '422':
+          description: Validation error
+    delete:
+      summary: Delete unit
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: building
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: unit
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found
   /api/builder/buildings/{building}/media:
     get:
       summary: List building media
@@ -1477,7 +1607,17 @@ paths:
         - bearerAuth: []
       responses:
         '200':
-          description: Units list with INCC-M display `price`, `price_base`, `price_competence` and `price_incc_current`
+          description: Units list with INCC-M display `price`, `price_base`, `price_competence`, `price_incc_current` and amenities union
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Unit'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
   /api/broker/buildings/{building}/media:
     get:
       summary: List building media for broker with access
@@ -2082,6 +2222,12 @@ paths:
       responses:
         '200':
           description: INCC-M rows ordered by competence descending
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InccIndex'
         '401':
           description: Unauthenticated
         '403':
@@ -2108,6 +2254,10 @@ paths:
       responses:
         '201':
           description: Created with source=manual
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InccIndex'
         '422':
           description: Validation error (duplicate competence)
   /api/admin/incc-indices/hint:
@@ -2121,15 +2271,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  competence:
-                    type: string
-                    format: date
-                  value:
-                    type: string
-                  is_index_number:
-                    type: boolean
+                $ref: '#/components/schemas/InccHint'
         '404':
           description: BCB returned no observation
         '503':
@@ -2160,6 +2302,10 @@ paths:
       responses:
         '200':
           description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InccIndex'
         '404':
           description: Not found
         '422':
@@ -2172,6 +2318,16 @@ paths:
       responses:
         '200':
           description: Amenities ordered by name
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Amenity'
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Forbidden
     post:
       summary: Create amenity
       security:
@@ -2195,9 +2351,12 @@ paths:
       responses:
         '201':
           description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Amenity'
         '422':
           description: Validation error
-  /api/admin/amenities/{amenity}:
     patch:
       summary: Update amenity name or active flag
       security:
@@ -2222,6 +2381,10 @@ paths:
       responses:
         '200':
           description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Amenity'
         '404':
           description: Not found
 components:
@@ -2230,6 +2393,447 @@ components:
       type: http
       scheme: bearer
   schemas:
+    Amenity:
+      type: object
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        name:
+          type: string
+        active:
+          type: boolean
+    InccIndex:
+      type: object
+      properties:
+        id:
+          type: integer
+        competence:
+          type: string
+          format: date
+        value:
+          type: string
+          description: Index number with 6 decimal places
+        source:
+          type: string
+          enum: [job, manual]
+        fetched_at:
+          type: string
+          format: date-time
+          nullable: true
+    InccHint:
+      type: object
+      properties:
+        competence:
+          type: string
+          format: date
+        value:
+          type: string
+        is_index_number:
+          type: boolean
+          description: false when the BCB series looks like monthly variation %
+    CepAddress:
+      type: object
+      properties:
+        zip:
+          type: string
+        street:
+          type: string
+        neighborhood:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        complement:
+          type: string
+    UnitsSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+        available:
+          type: integer
+        pre_reserved:
+          type: integer
+        reserved:
+          type: integer
+        sold:
+          type: integer
+        unavailable:
+          type: integer
+    UnitResolvedDefaults:
+      type: object
+      properties:
+        ceiling_type:
+          type: string
+          nullable: true
+        opening_type:
+          type: string
+          nullable: true
+        flooring_type:
+          type: string
+          nullable: true
+        solar_position:
+          type: string
+          nullable: true
+        sun_period:
+          type: string
+          nullable: true
+    Unit:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        floor:
+          type: integer
+          nullable: true
+        floor_id:
+          type: integer
+          nullable: true
+        area_m2:
+          type: string
+          nullable: true
+        private_area_m2:
+          type: string
+          nullable: true
+        total_area_m2:
+          type: string
+          nullable: true
+        bedrooms:
+          type: integer
+          nullable: true
+        bathrooms:
+          type: integer
+          nullable: true
+        suites:
+          type: integer
+          nullable: true
+        powder_rooms:
+          type: integer
+          nullable: true
+        balconies:
+          type: integer
+          nullable: true
+        price:
+          type: string
+          nullable: true
+          description: INCC-M display price calculated on read. Null when the competence index is missing.
+        price_base:
+          type: string
+          nullable: true
+        price_competence:
+          type: string
+          format: date
+          nullable: true
+        price_incc_current:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [available, pre_reserved, reserved, sold, unavailable]
+        property_position:
+          type: string
+          nullable: true
+        solar_position:
+          type: string
+          nullable: true
+        sun_period:
+          type: string
+          nullable: true
+        ceiling_type:
+          type: string
+          nullable: true
+        opening_type:
+          type: string
+          nullable: true
+        flooring_type:
+          type: string
+          nullable: true
+        amenities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Amenity'
+          description: Building amenities ∪ unit extras
+        inherited_amenities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Amenity'
+        extra_amenities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Amenity'
+        resolved_defaults:
+          $ref: '#/components/schemas/UnitResolvedDefaults'
+    UnitWrite:
+      type: object
+      properties:
+        tower_id:
+          type: integer
+        code:
+          type: string
+        floor:
+          type: integer
+          nullable: true
+        area_m2:
+          type: number
+          nullable: true
+        private_area_m2:
+          type: number
+          nullable: true
+        total_area_m2:
+          type: number
+          nullable: true
+        bedrooms:
+          type: integer
+          nullable: true
+        bathrooms:
+          type: integer
+          nullable: true
+        suites:
+          type: integer
+          nullable: true
+        powder_rooms:
+          type: integer
+          nullable: true
+        balconies:
+          type: integer
+          nullable: true
+        price:
+          type: number
+          nullable: true
+          description: Write stores the base amount (mirrored into price_base).
+        price_base:
+          type: number
+          nullable: true
+        price_competence:
+          type: string
+          format: date
+          nullable: true
+        status:
+          type: string
+          enum: [available, pre_reserved, reserved, sold, unavailable]
+        property_position:
+          type: string
+          nullable: true
+          enum: [corner, front, rear]
+        solar_position:
+          type: string
+          nullable: true
+          enum: [north, northeast, east, southeast, south, southwest, west, northwest]
+        sun_period:
+          type: string
+          nullable: true
+          enum: [morning, afternoon, full_day]
+        ceiling_type:
+          type: string
+          nullable: true
+          enum: [plaster, pvc, wood, concrete, none]
+        opening_type:
+          type: string
+          nullable: true
+          enum: [aluminum, wood, pvc, steel]
+        flooring_type:
+          type: string
+          nullable: true
+          enum: [porcelain, ceramic, wood, vinyl, laminate, polished_concrete]
+        amenity_ids:
+          type: array
+          items:
+            type: integer
+    CoverImage:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: integer
+        url:
+          type: string
+    PublicCheapestUnit:
+      type: object
+      nullable: true
+      properties:
+        code:
+          type: string
+        price:
+          type: string
+          nullable: true
+          description: INCC-M display price calculated on read. Null when the competence index is missing.
+        price_base:
+          type: string
+          nullable: true
+        price_competence:
+          type: string
+          format: date
+          nullable: true
+        price_incc_current:
+          type: string
+          nullable: true
+        area_m2:
+          type: string
+          nullable: true
+        floor:
+          type: integer
+          nullable: true
+    PublicBuildingListItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        seo_title:
+          type: string
+          nullable: true
+        seo_description:
+          type: string
+          nullable: true
+        units_count:
+          type: integer
+        cheapest_unit:
+          $ref: '#/components/schemas/PublicCheapestUnit'
+        cover_image:
+          $ref: '#/components/schemas/CoverImage'
+    PublicUnit:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+        floor:
+          type: integer
+          nullable: true
+        area_m2:
+          type: string
+          nullable: true
+        private_area_m2:
+          type: string
+          nullable: true
+        bedrooms:
+          type: integer
+          nullable: true
+        bathrooms:
+          type: integer
+          nullable: true
+        suites:
+          type: integer
+          nullable: true
+        price:
+          type: string
+          nullable: true
+        price_base:
+          type: string
+          nullable: true
+        price_competence:
+          type: string
+          format: date
+          nullable: true
+        price_incc_current:
+          type: string
+          nullable: true
+        status:
+          type: string
+        amenities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Amenity'
+    PublicBuildingDetail:
+      allOf:
+        - $ref: '#/components/schemas/PublicBuildingListItem'
+        - type: object
+          properties:
+            units:
+              type: array
+              items:
+                $ref: '#/components/schemas/PublicUnit'
+    Building:
+      type: object
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+          nullable: true
+        zip:
+          type: string
+          nullable: true
+        street:
+          type: string
+          nullable: true
+        number:
+          type: string
+          nullable: true
+        complement:
+          type: string
+          nullable: true
+        neighborhood:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        published:
+          type: boolean
+        wizard_step:
+          type: integer
+          nullable: true
+        wizard_completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        ceiling_type:
+          type: string
+          nullable: true
+        opening_type:
+          type: string
+          nullable: true
+        flooring_type:
+          type: string
+          nullable: true
+        solar_position:
+          type: string
+          nullable: true
+        sun_period:
+          type: string
+          nullable: true
+        seo_title:
+          type: string
+          nullable: true
+        seo_description:
+          type: string
+          nullable: true
+        amenities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Amenity'
+        units_summary:
+          $ref: '#/components/schemas/UnitsSummary'
+        units:
+          type: array
+          items:
+            $ref: '#/components/schemas/Unit'
     ReservationSituationStep:
       type: object
       properties:

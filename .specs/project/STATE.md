@@ -33,8 +33,8 @@
 ## Sessão atual
 
 - **Fase:** building-wizard
-- **Última etapa concluída:** T-19 broker/público preço calculado e ficha no detalhe
-- **Próxima etapa:** T-12 OpenAPI residual → T-20 seeds demo + TRACEABILITY/STATE de encerramento
+- **Última etapa concluída:** T-12 OpenAPI residual do wizard
+- **Próxima etapa:** T-20 seeds demo + TRACEABILITY/STATE de encerramento
 - **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md`
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 

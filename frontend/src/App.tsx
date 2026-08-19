@@ -7,6 +7,7 @@ import { AdminHome } from '@/apps/admin/AdminHome'
 import { AmenitiesPage } from '@/apps/admin/AmenitiesPage'
 import { InccIndicesPage } from '@/apps/admin/InccIndicesPage'
 import { TenantEditPage } from '@/apps/admin/TenantEditPage'
+import { ActivityPage as AdminActivityPage } from '@/apps/admin/ActivityPage'
 import { BuildingDetailPage } from '@/apps/builder/BuildingDetailPage'
 import { BuildingEditPage } from '@/apps/builder/BuildingEditPage'
 import { BuilderHome } from '@/apps/builder/BuilderHome'
@@ -17,10 +18,12 @@ import { BrokersPage } from '@/apps/builder/BrokersPage'
 import { ReservationsPage } from '@/apps/builder/ReservationsPage'
 import { ContractsPage } from '@/apps/builder/ContractsPage'
 import { TeamPage } from '@/apps/builder/TeamPage'
+import { ActivityPage } from '@/apps/builder/ActivityPage'
 import { BrokerBuildingsPage } from '@/apps/broker/BrokerBuildingsPage'
 import { BrokerClientsPage } from '@/apps/broker/BrokerClientsPage'
 import { BrokerOverviewPage } from '@/apps/broker/BrokerOverviewPage'
 import { BrokerReservationsPage } from '@/apps/broker/BrokerReservationsPage'
+import { ActivityPage as BrokerActivityPage } from '@/apps/broker/ActivityPage'
 import { InviteAcceptPage } from '@/apps/broker/InviteAcceptPage'
 import { JoinAcceptPage } from '@/apps/broker/JoinAcceptPage'
 import { PendingApprovalPage } from '@/apps/broker/PendingApprovalPage'
@@ -139,6 +142,14 @@ function AuthenticatedPortal() {
                 </ProfileGuard>
               }
             />
+            <Route
+              path="/activity"
+              element={
+                <ProfileGuard profile={profile}>
+                  <ActivityPage />
+                </ProfileGuard>
+              }
+            />
           </>
         ) : profile === 'broker' ? (
           <>
@@ -200,6 +211,16 @@ function AuthenticatedPortal() {
                 </ProfileGuard>
               }
             />
+            <Route
+              path="/activity"
+              element={
+                <ProfileGuard profile={profile}>
+                  <BrokerAccessGuard>
+                    <BrokerActivityPage />
+                  </BrokerAccessGuard>
+                </ProfileGuard>
+              }
+            />
           </>
         ) : profile === 'admin' ? (
           <>
@@ -232,6 +253,14 @@ function AuthenticatedPortal() {
               element={
                 <ProfileGuard profile={profile}>
                   <AmenitiesPage />
+                </ProfileGuard>
+              }
+            />
+            <Route
+              path="/activity"
+              element={
+                <ProfileGuard profile={profile}>
+                  <AdminActivityPage />
                 </ProfileGuard>
               }
             />

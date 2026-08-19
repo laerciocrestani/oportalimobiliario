@@ -9,6 +9,7 @@
  */
 use App\Enums\ReservationStatus;
 use App\Enums\UnitStatus;
+use App\Enums\UserActivityAction;
 use App\Models\BrokerClient;
 use App\Models\Building;
 use App\Models\BuildingAccess;
@@ -17,6 +18,7 @@ use App\Models\Tenant;
 use App\Models\Unit;
 use App\Models\UnitAccess;
 use App\Models\User;
+use App\Models\UserActivityEvent;
 use App\Services\PreReservationService;
 use Laravel\Sanctum\Sanctum;
 
@@ -42,6 +44,7 @@ it('creates pre-hold for available unit', function () {
 
     expect($unit->fresh()->status)->toBe(UnitStatus::PreReserved);
     expect(Reservation::query()->first()?->client_id)->toBeNull();
+    assertUserActivity($broker, UserActivityAction::ReservationPreHoldCreated, $unit->code);
 });
 
 it('rejects pre-hold when unit is already held', function () {
@@ -162,6 +165,7 @@ it('releases pre-hold and frees unit', function () {
 
     expect(Reservation::query()->find($reservation->id))->toBeNull();
     expect($unit->fresh()->status)->toBe(UnitStatus::Available);
+    assertUserActivity($broker, UserActivityAction::ReservationPreHoldCancelled, $unit->code, $reservation->id);
 });
 
 it('expires pre-holds via service', function () {
@@ -178,6 +182,7 @@ it('expires pre-holds via service', function () {
     expect($count)->toBe(1);
     expect(Reservation::query()->count())->toBe(0);
     expect($unit->fresh()->status)->toBe(UnitStatus::Available);
+    expect(UserActivityEvent::query()->count())->toBe(0);
 });
 
 it('runs expire pre-hold command', function () {

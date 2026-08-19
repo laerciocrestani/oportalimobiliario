@@ -45,8 +45,9 @@ TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → Ame
 
 ### Cenários de permissão
 
-- **comercial@alpha.demo** — vê empreendimentos e envia convites; não gerencia unidades nem cancela reservas.
-- **supervisor@alpha.demo** — altera status de unidades e cancela reservas; não gerencia equipe nem empreendimentos.
+- **comercial@alpha.demo** — vê empreendimentos e envia convites; não gerencia unidades nem cancela reservas; **não** tem `audit.view`.
+- **supervisor@alpha.demo** — altera status de unidades e cancela reservas; não gerencia equipe nem empreendimentos; **não** tem `audit.view`.
+- **construtora@alpha.demo** — `BuilderPermissions::all()` inclui `audit.view` (auditar atividade da equipe).
 - **construtora@beta.demo** — usar para testar **isolamento de tenant** (não deve ver dados da alpha).
 
 ---

@@ -12,6 +12,7 @@ use App\Enums\SunPeriod;
 use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Services\BuildingUnitGridService;
+use App\Services\UserActivityCatalog;
 use App\Support\AmenityPresentation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,10 @@ use Illuminate\Validation\Rule;
  */
 class BuildingUnitGridController extends Controller
 {
+    public function __construct(
+        private readonly UserActivityCatalog $activityCatalog,
+    ) {}
+
     public function update(Request $request, Building $building, BuildingUnitGridService $grid): JsonResponse
     {
         $this->authorize('update', $building);
@@ -60,6 +65,11 @@ class BuildingUnitGridController extends Controller
         ]);
 
         $building = $grid->replace($building, $data['towers']);
+        $this->activityCatalog->recordBuildingUnitGridReplaced(
+            $request->user(),
+            $building,
+            $building->units()->count(),
+        );
 
         return response()->json(AmenityPresentation::decorateBuilding($building));
     }

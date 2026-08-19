@@ -262,6 +262,26 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 
 ---
 
+## user-activity-log
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-LOG-001 | Tabela append-only `user_activity_events` | `UserActivityEvent.php`, migration `create_user_activity_events_table` | — | `UserActivityLoggerTest.php` |
+| REQ-LOG-002 | Action + frase PT-BR + old/new | `UserActivityLogger.php`, `UserActivityAction.php` | — | `UserActivityLoggerTest.php` |
+| REQ-LOG-003 | Catálogo v1 no ponto da mutação | `UserActivityCatalog.php`, `ReservationTimelineService.php`, `Admin/TenantController.php` | — | `BrokerActivityRecordingTest.php`, `BuilderActivityRecordingTest.php`, `TenantTest.php` |
+| REQ-LOG-004 | Login / logout / login falho | `AuthController.php` | — | `LoginTest.php` |
+| REQ-LOG-005 | Impersonate start/stop e mutação nos dois logs | `AuthController.php`, `UserActivityLogger.php` | — | `TenantImpersonationTest.php` |
+| REQ-LOG-006 | GET broker activity | `Broker/ActivityController.php`, `UserActivityQuery.php` | `broker/ActivityPage.tsx` | `BrokerActivityTest.php`, `broker/ActivityPage.test.tsx` |
+| REQ-LOG-007 | GET builder activity (+ membros) | `Builder/ActivityController.php` | `ActivityPage.tsx` | `BuilderActivityTest.php`, `ActivityPage.test.tsx` |
+| REQ-LOG-008 | GET admin activity + CSV | `Admin/ActivityController.php` | `admin/ActivityPage.tsx` | `AdminActivityTest.php`, `admin/ActivityPage.test.tsx` |
+| REQ-LOG-009 | Permissão `audit.view` | `BuilderPermissions.php` | `builder-permissions.ts`, `TeamPage.tsx` | `UserActivityLoggerTest.php`, `BuilderActivityTest.php` |
+| REQ-LOG-010 | Isolamento de leitura | controllers activity | — | `BuilderActivityTest.php`, `BrokerActivityTest.php` |
+| REQ-LOG-011 | PII completo na frase e snapshots | `UserActivityCatalog.php` | — | `BrokerActivityRecordingTest.php`, `BuilderActivityRecordingTest.php` |
+| REQ-LOG-012 | Retenção de 5 anos (purge) | `PurgeUserActivity.php`, `UserActivityEvent.php`, `routes/console.php` | — | `PurgeUserActivityTest.php`, `ScheduleRegistrationTest.php` |
+| REQ-LOG-013 | Telas `/activity` + OpenAPI | controllers activity | `ActivityPage.tsx` (3 portais), `dashboard-nav.tsx` | `ActivityPage.test.tsx`, `docs/api/openapi.yaml` |
+
+---
+
 ## Manutenção
 
 Ao implementar feature nova:

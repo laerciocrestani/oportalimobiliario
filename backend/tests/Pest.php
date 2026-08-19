@@ -20,9 +20,11 @@ $_SERVER['DB_URL'] = '';
 $_ENV['DB_URL'] = '';
 putenv('DB_URL');
 
+use App\Enums\UserActivityAction;
 use App\Models\BrokerTenant;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\UserActivityEvent;
 use App\Support\BuilderPermissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -63,4 +65,22 @@ function validProposalPayload(array $overrides = []): array
         'land_value' => 150000,
         'payment_terms' => 'Pix R$ 10.000 + 24x R$ 5.000',
     ], $overrides);
+}
+
+function assertUserActivity(User $actor, UserActivityAction $action, string $messageContains, ?int $resourceId = null): UserActivityEvent
+{
+    $query = UserActivityEvent::query()
+        ->where('actor_user_id', $actor->id)
+        ->where('action', $action);
+
+    if ($resourceId !== null) {
+        $query->where('resource_id', $resourceId);
+    }
+
+    $event = $query->latest('id')->first();
+
+    expect($event)->not->toBeNull();
+    expect($event->message)->toContain($messageContains);
+
+    return $event;
 }

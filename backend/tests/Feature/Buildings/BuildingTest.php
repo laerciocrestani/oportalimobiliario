@@ -9,6 +9,7 @@
  * @see REQ-WIZ-015
  */
 use App\Enums\UnitStatus;
+use App\Enums\UserActivityAction;
 use App\Models\Building;
 use App\Models\BuildingMedia;
 use App\Models\Tenant;
@@ -90,6 +91,7 @@ it('creates building for builder', function () {
         ->assertJsonPath('units_summary.total', 0);
 
     expect(Building::query()->count())->toBe(1);
+    assertUserActivity($user, UserActivityAction::BuildingCreated, 'New Building');
 });
 
 it('creates building with address as unpublished wizard draft', function () {

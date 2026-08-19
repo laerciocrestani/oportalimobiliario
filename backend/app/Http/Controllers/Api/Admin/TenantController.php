@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\UserActivityCatalog;
 use App\Support\BuilderPermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,9 +17,14 @@ use Illuminate\Validation\Rule;
  * @see REQ-ADM-001
  * @see REQ-ADM-002
  * @see REQ-ADM-003
+ * @see REQ-LOG-003
  */
 class TenantController extends Controller
 {
+    public function __construct(
+        private readonly UserActivityCatalog $activityCatalog,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $tenants = Tenant::query()
@@ -42,6 +48,8 @@ class TenantController extends Controller
 
         $tenant = Tenant::query()->create($data);
 
+        $this->activityCatalog->recordTenantCreated($request->user(), $tenant);
+
         return response()->json($tenant, 201);
     }
 
@@ -58,9 +66,17 @@ class TenantController extends Controller
             'active' => ['sometimes', 'boolean'],
         ]);
 
-        $tenant->update($data);
+        if ($data === []) {
+            return response()->json($tenant);
+        }
 
-        return response()->json($tenant->fresh());
+        $oldValues = $tenant->only(array_keys($data));
+        $tenant->update($data);
+        $fresh = $tenant->fresh() ?? $tenant;
+
+        $this->activityCatalog->recordTenantUpdated($request->user(), $fresh, $oldValues, $data);
+
+        return response()->json($fresh);
     }
 
     public function users(Tenant $tenant): JsonResponse

@@ -11,6 +11,7 @@ use App\Enums\ProposalDecision;
 use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
 use App\Enums\UnitStatus;
+use App\Enums\UserActivityAction;
 use App\Models\BrokerClient;
 use App\Models\Building;
 use App\Models\Reservation;
@@ -54,6 +55,7 @@ it('submits proposal from pre-hold', function () {
     expect($reservation->fresh()->expires_at)->toBeNull();
     expect(ReservationProposal::query()->count())->toBe(1);
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::ProposalSubmitted)->exists())->toBeTrue();
+    assertUserActivity($broker, UserActivityAction::ReservationProposalSubmitted, 'Maria Silva');
 });
 
 it('accepts proposal and opens deposit window', function () {
@@ -87,6 +89,7 @@ it('accepts proposal and opens deposit window', function () {
     expect($reservation->fresh()->client_id)->not->toBeNull();
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::DepositWindowOpened)->exists())->toBeTrue();
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::ProposalAccepted)->exists())->toBeTrue();
+    assertUserActivity($builder, UserActivityAction::ReservationProposalAccepted, $unit->code);
 });
 
 it('rejects proposal and frees unit', function () {

@@ -19,7 +19,9 @@ class PreReservationService
 {
     public function __construct(
         private readonly ReservationTimelineService $timelineService,
+        private readonly UserActivityCatalog $activityCatalog,
     ) {}
+
     /**
      * @param  array{tenant_id: int}  $access
      */
@@ -64,7 +66,10 @@ class PreReservationService
             abort(422, 'Reservation is not a pre-hold.');
         }
 
-        DB::transaction(function () use ($reservation) {
+        DB::transaction(function () use ($broker, $reservation) {
+            $reservation->loadMissing('unit');
+            $this->activityCatalog->recordPreHoldCancelled($broker, $reservation);
+
             $unit = Unit::query()
                 ->withoutGlobalScope('tenant')
                 ->lockForUpdate()

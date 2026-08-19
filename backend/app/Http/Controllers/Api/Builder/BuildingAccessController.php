@@ -7,6 +7,7 @@ use App\Models\BrokerTenant;
 use App\Models\Building;
 use App\Models\BuildingAccess;
 use App\Models\User;
+use App\Services\UserActivityCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -16,6 +17,10 @@ use Illuminate\Validation\Rule;
  */
 class BuildingAccessController extends Controller
 {
+    public function __construct(
+        private readonly UserActivityCatalog $activityCatalog,
+    ) {}
+
     public function store(Request $request, User $broker): JsonResponse
     {
         $this->authorize('create', BuildingAccess::class);
@@ -47,6 +52,10 @@ class BuildingAccessController extends Controller
             'tenant_id' => $tenantId,
         ]);
 
+        if ($access->wasRecentlyCreated) {
+            $this->activityCatalog->recordBuildingAccessGranted($request->user(), $access);
+        }
+
         return response()->json($access->load('building'), 201);
     }
 
@@ -60,6 +69,7 @@ class BuildingAccessController extends Controller
 
         $this->authorize('delete', $access);
 
+        $this->activityCatalog->recordBuildingAccessRevoked($request->user(), $access);
         $access->delete();
 
         return response()->json(null, 204);

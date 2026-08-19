@@ -14,6 +14,7 @@ use App\Services\ReservationCancellationService;
 use App\Services\ReservationPendingReplyService;
 use App\Services\ReservationProposalService;
 use App\Services\ReservationTimelineService;
+use App\Services\UserActivityCatalog;
 use App\Support\ReservationCancelRules;
 use App\Support\ReservationProposalRules;
 use Illuminate\Http\JsonResponse;
@@ -34,6 +35,7 @@ class ReservationController extends Controller
         private readonly ReservationPendingReplyService $reservationPendingReplyService,
         private readonly ReservationProposalService $proposalService,
         private readonly ReservationTimelineService $timelineService,
+        private readonly UserActivityCatalog $activityCatalog,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -178,11 +180,13 @@ class ReservationController extends Controller
         });
 
         $this->timelineService->recordDepositWindowOpened($reservation);
+        $this->activityCatalog->recordReservationCreated($broker, $reservation);
 
         $observations = trim((string) ($data['observations'] ?? ''));
 
         if ($observations !== '') {
             $this->timelineService->recordDialogue($reservation, $broker);
+            $this->activityCatalog->recordMessageSent($broker, $reservation, $observations);
         }
 
         return response()->json($reservation->load(['unit', 'client']), 201);

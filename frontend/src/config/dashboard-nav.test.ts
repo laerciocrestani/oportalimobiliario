@@ -9,4 +9,15 @@ describe('dashboardNav', () => {
       ]),
     )
   })
+
+  it.each(['builder', 'broker', 'admin'] as const)(
+    'includes Atividade in the %s sidebar',
+    (role) => {
+      expect(dashboardNav[role].navMain).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ title: 'Atividade', url: '/activity' }),
+        ]),
+      )
+    },
+  )
 })

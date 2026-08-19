@@ -4,11 +4,16 @@ namespace App\Http\Controllers\Api\Broker;
 
 use App\Http\Controllers\Controller;
 use App\Models\BrokerClient;
+use App\Services\UserActivityCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ClientController extends Controller
 {
+    public function __construct(
+        private readonly UserActivityCatalog $activityCatalog,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $clients = BrokerClient::query()
@@ -31,6 +36,8 @@ class ClientController extends Controller
             ...$data,
             'broker_id' => $request->user()->id,
         ]);
+
+        $this->activityCatalog->recordClientCreated($request->user(), $client);
 
         return response()->json($client, 201);
     }

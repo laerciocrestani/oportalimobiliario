@@ -3,13 +3,18 @@
 /**
  * @see REQ-BRK-CLI-001
  */
+use App\Enums\UserActivityAction;
 use App\Models\BrokerClient;
+use App\Models\Tenant;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 
 it('lists broker clients for authenticated broker', function () {
+    $tenant = Tenant::factory()->create();
     $broker = User::factory()->broker()->create();
     $otherBroker = User::factory()->broker()->create();
+
+    linkBrokerToTenant($broker, $tenant);
 
     BrokerClient::factory()->for($broker, 'broker')->create(['name' => 'Ana Silva']);
     BrokerClient::factory()->for($otherBroker, 'broker')->create(['name' => 'Outro Cliente']);
@@ -23,8 +28,10 @@ it('lists broker clients for authenticated broker', function () {
 });
 
 it('creates broker client with required fields', function () {
+    $tenant = Tenant::factory()->create();
     $broker = User::factory()->broker()->create();
 
+    linkBrokerToTenant($broker, $tenant);
     Sanctum::actingAs($broker);
 
     $this->postJson('/api/broker/clients', [
@@ -38,11 +45,14 @@ it('creates broker client with required fields', function () {
         ->assertJsonPath('email', 'joao@example.com');
 
     expect(BrokerClient::query()->where('broker_id', $broker->id)->count())->toBe(1);
+    assertUserActivity($broker, UserActivityAction::ClientCreated, 'João Souza');
 });
 
 it('rejects client creation without phone', function () {
+    $tenant = Tenant::factory()->create();
     $broker = User::factory()->broker()->create();
 
+    linkBrokerToTenant($broker, $tenant);
     Sanctum::actingAs($broker);
 
     $this->postJson('/api/broker/clients', [

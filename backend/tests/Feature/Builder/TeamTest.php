@@ -3,6 +3,7 @@
 /**
  * @see REQ-TEAM-003
  */
+use App\Enums\UserActivityAction;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\BuilderPermissions;
@@ -42,6 +43,8 @@ it('creates team member with custom permissions', function () {
         ->assertCreated()
         ->assertJsonPath('email', 'novo@demo.com')
         ->assertJsonPath('permissions', [BuilderPermissions::VIEW_BUILDINGS, BuilderPermissions::SEND_INVITES]);
+
+    assertUserActivity($manager, UserActivityAction::TeamMemberCreated, 'novo@demo.com');
 });
 
 it('updates team member permissions', function () {

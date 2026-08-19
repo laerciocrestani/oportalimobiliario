@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Reservation;
 use App\Models\ReservationMessage;
 use App\Services\ReservationTimelineService;
+use App\Services\UserActivityCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,6 +17,7 @@ class ReservationMessageController extends Controller
 {
     public function __construct(
         private readonly ReservationTimelineService $timelineService,
+        private readonly UserActivityCatalog $activityCatalog,
     ) {}
 
     public function index(Reservation $reservation): JsonResponse
@@ -47,6 +49,7 @@ class ReservationMessageController extends Controller
         $message->load('user');
 
         $this->timelineService->recordDialogue($reservation, $request->user());
+        $this->activityCatalog->recordMessageSent($request->user(), $reservation, $data['body']);
 
         return response()->json($this->formatMessage($message), 201);
     }

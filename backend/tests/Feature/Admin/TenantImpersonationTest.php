@@ -2,9 +2,12 @@
 
 /**
  * @see REQ-ADM-006
+ * @see REQ-LOG-005
  */
+use App\Enums\UserActivityAction;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\UserActivityEvent;
 use Illuminate\Support\Facades\Cache;
 use Laravel\Sanctum\Sanctum;
 
@@ -123,4 +126,78 @@ it('rejects reused impersonation code', function () {
 
     $this->postJson('/api/auth/impersonate/exchange', ['code' => $code])->assertOk();
     $this->postJson('/api/auth/impersonate/exchange', ['code' => $code])->assertUnprocessable();
+});
+
+it('records impersonate start on admin and builder logs', function () {
+    $tenant = Tenant::factory()->create(['active' => true]);
+    $builder = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $admin = User::factory()->admin()->create();
+    $code = '550e8400-e29b-41d4-a716-446655440002';
+
+    Cache::put("impersonate:{$code}", [
+        'user_id' => $builder->id,
+        'admin_id' => $admin->id,
+        'tenant_id' => $tenant->id,
+    ], 60);
+
+    $this->postJson('/api/auth/impersonate/exchange', ['code' => $code])->assertOk();
+
+    $events = UserActivityEvent::query()
+        ->where('action', UserActivityAction::ImpersonateStart)
+        ->get();
+
+    expect($events)->toHaveCount(2)
+        ->and($events->firstWhere('actor_user_id', $builder->id)?->impersonator_user_id)->toBe($admin->id)
+        ->and($events->firstWhere('actor_user_id', $admin->id)?->impersonated_user_id)->toBe($builder->id);
+});
+
+it('duplicates a catalog mutation onto the admin log while impersonating', function () {
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create(['name' => 'Construtora Alpha']);
+    $admin = User::factory()->admin()->create(['name' => 'Admin SaaS']);
+    $token = $builder->createToken('impersonate:'.$admin->id)->plainTextToken;
+
+    $this->withToken($token)
+        ->postJson('/api/builder/buildings', ['name' => 'Empreendimento Impersonado'])
+        ->assertCreated();
+
+    $events = UserActivityEvent::query()
+        ->where('action', UserActivityAction::BuildingCreated)
+        ->get();
+
+    expect($events)->toHaveCount(2);
+
+    $builderEvent = $events->firstWhere('actor_user_id', $builder->id);
+    $adminEvent = $events->firstWhere('actor_user_id', $admin->id);
+
+    expect($builderEvent)->not->toBeNull()
+        ->and($builderEvent->impersonator_user_id)->toBe($admin->id)
+        ->and($builderEvent->impersonated_user_id)->toBeNull()
+        ->and($builderEvent->tenant_id)->toBe($tenant->id)
+        ->and($builderEvent->message)->toContain('Empreendimento Impersonado')
+        ->and($builderEvent->message)->toContain('impersonado por Admin SaaS')
+        ->and($adminEvent)->not->toBeNull()
+        ->and($adminEvent->impersonated_user_id)->toBe($builder->id)
+        ->and($adminEvent->impersonator_user_id)->toBeNull()
+        ->and($adminEvent->tenant_id)->toBe($tenant->id)
+        ->and($adminEvent->message)->toContain('em nome de Construtora Alpha');
+});
+
+it('records impersonate stop on both logs when the impersonation token logs out', function () {
+    $tenant = Tenant::factory()->create(['active' => true]);
+    $builder = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $admin = User::factory()->admin()->create();
+    $token = $builder->createToken('impersonate:'.$admin->id)->plainTextToken;
+
+    $this->withToken($token)
+        ->postJson('/api/auth/logout')
+        ->assertOk();
+
+    $stopEvents = UserActivityEvent::query()
+        ->where('action', UserActivityAction::ImpersonateStop)
+        ->get();
+
+    expect($stopEvents)->toHaveCount(2)
+        ->and($stopEvents->firstWhere('actor_user_id', $builder->id)?->impersonator_user_id)->toBe($admin->id)
+        ->and($stopEvents->firstWhere('actor_user_id', $admin->id)?->impersonated_user_id)->toBe($builder->id);
 });

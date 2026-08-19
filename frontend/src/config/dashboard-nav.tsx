@@ -1,4 +1,5 @@
 import {
+  ActivityIcon,
   Building2Icon,
   CalendarClockIcon,
   FileTextIcon,
@@ -76,6 +77,11 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
         url: '/team',
         icon: <UsersIcon />,
       },
+      {
+        title: 'Atividade',
+        url: '/activity',
+        icon: <ActivityIcon />,
+      },
     ],
     navSecondary: [
       {
@@ -112,6 +118,11 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
         url: '/clients',
         icon: <UsersIcon />,
       },
+      {
+        title: 'Atividade',
+        url: '/activity',
+        icon: <ActivityIcon />,
+      },
     ],
     navSecondary: [
       {
@@ -147,6 +158,11 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
         title: 'Adicionais',
         url: '/amenities',
         icon: <LayersIcon />,
+      },
+      {
+        title: 'Atividade',
+        url: '/activity',
+        icon: <ActivityIcon />,
       },
     ],
     navSecondary: [

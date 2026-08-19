@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Models\Tower;
 use App\Models\Unit;
+use App\Services\UserActivityCatalog;
 use App\Support\UnitsSummary;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,6 +15,10 @@ use Illuminate\Validation\Rule;
 
 class TowerController extends Controller
 {
+    public function __construct(
+        private readonly UserActivityCatalog $activityCatalog,
+    ) {}
+
     public function index(Building $building): JsonResponse
     {
         $this->authorize('view', $building);
@@ -46,6 +51,8 @@ class TowerController extends Controller
 
         $tower->setAttribute('units_summary', UnitsSummary::empty());
 
+        $this->activityCatalog->recordTowerCreated($request->user(), $tower);
+
         return response()->json($tower, 201);
     }
 
@@ -73,12 +80,15 @@ class TowerController extends Controller
             'sort_order' => ['sometimes', 'integer', 'min:0'],
         ]);
 
+        $oldValues = $tower->only(array_keys($data));
         $tower->update($data);
+
+        $this->activityCatalog->recordTowerUpdated($request->user(), $tower, $oldValues, $data);
 
         return response()->json($tower->fresh());
     }
 
-    public function destroy(Building $building, Tower $tower): JsonResponse
+    public function destroy(Request $request, Building $building, Tower $tower): JsonResponse
     {
         $this->ensureTowerBelongsToBuilding($building, $tower);
         $this->authorize('delete', $tower);
@@ -87,6 +97,7 @@ class TowerController extends Controller
             abort(422, 'Cannot delete tower with units.');
         }
 
+        $this->activityCatalog->recordTowerDeleted($request->user(), $tower);
         $tower->delete();
 
         return response()->json(null, 204);

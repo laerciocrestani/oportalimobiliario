@@ -28,6 +28,7 @@ Labels PT em `BuilderPermissions::labels()`.
 | `reservations.cancel` | Cancelar reservas | Listar/cancelar reservas, thread de mensagens (builder) |
 | `team.manage` | Gerenciar equipe | CRUD `/api/builder/team` |
 | `contracts.manage` | Gerenciar contratos | CRUD modelos de contrato |
+| `audit.view` | Auditar atividade da equipe | Ver log de outros builders do mesmo tenant |
 
 ### Policies que usam permissions
 
@@ -74,6 +75,7 @@ Impersonate: `POST /api/admin/tenants/{tenant}/impersonate`.
 - Nav item **Reservas** (builder): visível apenas com `reservations.cancel`
 - Nav item **Contratos**: visível apenas com `contracts.manage` (CRUD de modelos; emitir PDF na reserva usa `reservations.cancel`)
 - Nav item **Equipe**: visível apenas com `team.manage`
+- Nav item **Atividade** (`/activity`): visível a todo builder autenticado (próprio log); seletor de equipe só com `audit.view`
 
 ---
 
@@ -81,8 +83,8 @@ Impersonate: `POST /api/admin/tenants/{tenant}/impersonate`.
 
 | Usuário | Permissions |
 |---------|-------------|
-| `construtora@alpha.demo` | todas (9) |
-| `comercial@alpha.demo` | `buildings.view`, `invites.send` |
-| `supervisor@alpha.demo` | `buildings.view`, `units.update_status`, `reservations.cancel` |
+| `construtora@alpha.demo` | todas (10, inclui `audit.view`) |
+| `comercial@alpha.demo` | `buildings.view`, `invites.send` (sem `audit.view`) |
+| `supervisor@alpha.demo` | `buildings.view`, `units.update_status`, `reservations.cancel` (sem `audit.view`) |
 
 Use estes perfis para testar 403 sem adivinhar permissões.

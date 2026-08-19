@@ -8,6 +8,7 @@
  * @see REQ-CONV-008
  * @see REQ-CONV-009
  */
+use App\Enums\UserActivityAction;
 use App\Mail\BrokerInviteMail;
 use App\Models\BrokerInvite;
 use App\Models\BrokerTenant;
@@ -43,6 +44,7 @@ it('creates invite as builder and sends email', function () {
         ->assertJsonStructure(['invite_url', 'last_sent_at']);
 
     Mail::assertSent(BrokerInviteMail::class);
+    assertUserActivity($user, UserActivityAction::BrokerInviteCreated, 'novo@broker.com');
 });
 
 it('rejects duplicate email invite while one is open', function () {

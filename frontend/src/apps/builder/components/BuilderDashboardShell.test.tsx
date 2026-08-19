@@ -63,4 +63,16 @@ describe('BuilderDashboardShell', () => {
 
     expect(screen.getByRole('link', { name: 'Contratos' })).toHaveAttribute('href', '/contracts')
   })
+
+  it('shows Atividade even without audit.view', () => {
+    permissionsRef.current = ['buildings.view']
+
+    render(
+      <BuilderDashboardShell title="Visão geral">
+        <p>conteúdo</p>
+      </BuilderDashboardShell>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Atividade' })).toHaveAttribute('href', '/activity')
+  })
 })

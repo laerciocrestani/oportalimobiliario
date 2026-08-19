@@ -8,6 +8,7 @@ export const BUILDER_PERMISSIONS = [
   'reservations.cancel',
   'team.manage',
   'contracts.manage',
+  'audit.view',
 ] as const
 
 export type BuilderPermission = (typeof BUILDER_PERMISSIONS)[number]
@@ -22,4 +23,5 @@ export const builderPermissionLabels: Record<BuilderPermission, string> = {
   'reservations.cancel': 'Cancelar reservas',
   'team.manage': 'Gerenciar equipe',
   'contracts.manage': 'Gerenciar contratos',
+  'audit.view': 'Auditar atividade da equipe',
 }

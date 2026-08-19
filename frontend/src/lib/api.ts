@@ -541,6 +541,43 @@ export type Paginated<T> = {
   last_page: number
 }
 
+export type UserActivityActor = {
+  id: number
+  name: string
+  email: string
+}
+
+export type UserActivityEvent = {
+  id: number
+  action: string
+  message: string
+  resource_type: string | null
+  resource_id: number | null
+  old_values: Record<string, unknown> | null
+  new_values: Record<string, unknown> | null
+  tenant_id: number | null
+  actor_user_id: number | null
+  actor: UserActivityActor | null
+  impersonator_user_id: number | null
+  impersonated_user_id: number | null
+  created_at: string | null
+}
+
+export type ActivityMember = {
+  id: number
+  name: string
+  email: string
+}
+
+export type ActivityListParams = {
+  from: string
+  to: string
+  user_id?: number
+  tenant_id?: number
+  action?: string
+  page?: number
+}
+
 export type BuildingMediaCategory = 'internal' | 'external' | 'floor_plan'
 
 export type BuildingMedia = {
@@ -609,6 +646,22 @@ export async function apiFetch<T>(
   }
 
   return response.json() as Promise<T>
+}
+
+function toQueryString(params: Record<string, string | number | undefined>): string {
+  const search = new URLSearchParams()
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === '') {
+      continue
+    }
+
+    search.set(key, String(value))
+  }
+
+  const query = search.toString()
+
+  return query === '' ? '' : `?${query}`
 }
 
 async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
@@ -948,6 +1001,16 @@ export const builderApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  listActivity: (params: ActivityListParams) =>
+    apiFetch<Paginated<UserActivityEvent>>(
+      `/builder/activity${toQueryString({
+        from: params.from,
+        to: params.to,
+        user_id: params.user_id,
+        page: params.page,
+      })}`,
+    ),
+  listActivityMembers: () => apiFetch<ActivityMember[]>('/builder/activity/members'),
 }
 
 export const brokerApi = {
@@ -1043,6 +1106,15 @@ export const brokerApi = {
     }),
   getReservationTimeline: (reservationId: number) =>
     apiFetch<ReservationTimeline>(`/broker/reservations/${reservationId}/timeline`),
+  listActivity: (params: ActivityListParams) =>
+    apiFetch<Paginated<UserActivityEvent>>(
+      `/broker/activity${toQueryString({
+        from: params.from,
+        to: params.to,
+        tenant_id: params.tenant_id,
+        page: params.page,
+      })}`,
+    ),
   previewInvite: (token: string) =>
     apiFetch<BrokerInvitePreview>(
       `/broker/invites/preview?token=${encodeURIComponent(token)}`,
@@ -1148,6 +1220,27 @@ export const adminApi = {
       body: JSON.stringify(data),
     }),
   getInccHint: () => apiFetch<InccHint>('/admin/incc-indices/hint'),
+  listActivity: (params: ActivityListParams) =>
+    apiFetch<Paginated<UserActivityEvent>>(
+      `/admin/activity${toQueryString({
+        from: params.from,
+        to: params.to,
+        user_id: params.user_id,
+        tenant_id: params.tenant_id,
+        action: params.action,
+        page: params.page,
+      })}`,
+    ),
+  exportActivity: (params: ActivityListParams) =>
+    fetchAuthenticatedBlob(
+      `/admin/activity/export${toQueryString({
+        from: params.from,
+        to: params.to,
+        user_id: params.user_id,
+        tenant_id: params.tenant_id,
+        action: params.action,
+      })}`,
+    ),
 }
 
 export const publicApi = {

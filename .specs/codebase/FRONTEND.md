@@ -33,6 +33,7 @@ Definidas em `frontend/src/App.tsx`.
 | `/invites` | `InvitesPage` | `builderApi.*` invites |
 | `/reservations` | `ReservationsPage` | `builderApi.getReservations` |
 | `/contracts` | `ContractsPage` | `builderApi.listContractTemplates` / `issueContract` |
+| `/activity` | `ActivityPage` | `builderApi.listActivity` / `listActivityMembers` |
 | `/auth/impersonate` | `ImpersonatePage` | `authApi.exchangeImpersonation` |
 
 ### Broker (`corretor.localhost`)
@@ -45,6 +46,7 @@ Definidas em `frontend/src/App.tsx`.
 | `/clients` | `BrokerClientsPage` | `brokerApi.getClients` |
 | `/reservations` | `BrokerReservationsPage` | `brokerApi.getReservations` |
 | `/invite/:token` | `InviteAcceptPage` | `brokerApi.acceptInvite` |
+| `/activity` | `ActivityPage` | `brokerApi.listActivity` |
 
 ### Admin (`admin.localhost`)
 
@@ -55,6 +57,7 @@ Definidas em `frontend/src/App.tsx`.
 | `/tenants/:id/edit` | `TenantEditPage` | `adminApi.updateTenant` |
 | `/incc` | `InccIndicesPage` | `adminApi.listInccIndices` / `createInccIndex` / `updateInccIndex` / `getInccHint` |
 | `/amenities` | `AmenitiesPage` | `adminApi.listAmenities` / `createAmenity` / `updateAmenity` |
+| `/activity` | `ActivityPage` | `adminApi.listActivity` / `exportActivity` |
 
 ### Público (`www.localhost`)
 
@@ -75,6 +78,8 @@ Shells que consomem:
 - `components/layout/DashboardShell.tsx` (admin)
 
 Badges dinâmicos (ex.: reservas pendentes) injetados nos shells, não no `dashboard-nav.tsx`.
+
+Item **Atividade** (`/activity`) existe nos três portais autenticados. No builder o item é visível para qualquer usuário logado (próprio log); o seletor de membro exige `audit.view`.
 
 ## Cliente HTTP
 

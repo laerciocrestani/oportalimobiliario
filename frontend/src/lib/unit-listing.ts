@@ -1,36 +1,15 @@
-export function formatPrice(value: string | null): string {
-  if (!value) {
-    return '—'
-  }
-
-  return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-export function formatListedPrice(value: string | null | undefined): string {
-  if (value == null || value === '') {
-    return 'Valor sob consulta'
-  }
-
-  return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-}
-
-export function formatLocation(city: string | null, state: string | null): string {
-  const parts = [city, state].filter(Boolean)
-
-  return parts.length > 0 ? parts.join(' / ') : 'Localização sob consulta'
-}
-
-type UnitListingAmenity = {
+export type UnitListingAmenity = {
   name: string
 }
 
-type UnitListingSpec = {
+export type UnitListingSpec = {
   area_m2?: string | null
   private_area_m2?: string | null
   floor?: number | null
   bedrooms?: number | null
   bathrooms?: number | null
   suites?: number | null
+  amenities?: UnitListingAmenity[] | null
 }
 
 function formatArea(value: string): string {
@@ -39,6 +18,14 @@ function formatArea(value: string): string {
 
 function plural(count: number, singular: string, pluralLabel: string): string {
   return `${count} ${count === 1 ? singular : pluralLabel}`
+}
+
+export function formatListedPrice(value: string | null | undefined): string {
+  if (value == null || value === '') {
+    return 'Valor sob consulta'
+  }
+
+  return Number(value).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 export function formatUnitSpecSummary(unit: UnitListingSpec): string {
@@ -82,3 +69,16 @@ export function formatAmenityNames(
   return extra > 0 ? `${names.join(', ')} +${extra}` : names.join(', ')
 }
 
+export function formatPriceCompetence(competence: string | null | undefined): string | null {
+  if (!competence) {
+    return null
+  }
+
+  const [, year, month] = competence.match(/^(\d{4})-(\d{2})/) ?? []
+
+  if (!year || !month) {
+    return null
+  }
+
+  return `${month}/${year}`
+}

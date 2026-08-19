@@ -5,7 +5,10 @@ export type CoverImage = {
 
 export type CheapestUnit = {
   code: string
-  price: string
+  price: string | null
+  price_base?: string | null
+  price_competence?: string | null
+  price_incc_current?: string | null
   area_m2: string | null
   floor: number | null
 }
@@ -24,13 +27,28 @@ export type PublicBuildingListItem = {
   cover_image: CoverImage | null
 }
 
+export type PublicAmenity = {
+  id: number
+  slug: string
+  name: string
+  active: boolean
+}
+
 export type PublicUnit = {
   id: number
   code: string
   floor: number | null
   area_m2: string | null
+  private_area_m2?: string | null
+  bedrooms?: number | null
+  bathrooms?: number | null
+  suites?: number | null
   price: string | null
+  price_base?: string | null
+  price_competence?: string | null
+  price_incc_current?: string | null
   status: string
+  amenities?: PublicAmenity[]
 }
 
 export type PublicBuildingDetail = PublicBuildingListItem & {

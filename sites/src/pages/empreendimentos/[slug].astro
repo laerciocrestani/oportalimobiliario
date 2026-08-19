@@ -3,7 +3,7 @@ import PublicFooter from '@/components/PublicFooter.astro'
 import PublicHeader from '@/components/PublicHeader.astro'
 import PublicLayout from '@/layouts/PublicLayout.astro'
 import { PublicApiError, getBuildingBySlug } from '@/lib/api'
-import { formatLocation } from '@/lib/format'
+import { formatAmenityNames, formatListedPrice, formatLocation, formatUnitSpecSummary } from '@/lib/format'
 import { buildBuildingSeo, siteBaseUrl } from '@/lib/seo'
 
 const { slug } = Astro.params
@@ -51,9 +51,21 @@ try {
         <section class="building-detail__units">
           <h2>Unidades disponíveis</h2>
           <ul class="building-detail__unit-list">
-            {building.units.map((unit) => (
-              <li>{unit.code}</li>
-            ))}
+            {building.units.map((unit) => {
+              const spec = formatUnitSpecSummary(unit)
+              const amenities = formatAmenityNames(unit.amenities)
+
+              return (
+                <li class="building-detail__unit-card">
+                  <div class="building-detail__unit-head">
+                    <span>{unit.code}</span>
+                    <span>{formatListedPrice(unit.price)}</span>
+                  </div>
+                  {spec ? <p class="building-detail__unit-meta">{spec}</p> : null}
+                  {amenities ? <p class="building-detail__unit-meta">{amenities}</p> : null}
+                </li>
+              )
+            })}
           </ul>
         </section>
       )

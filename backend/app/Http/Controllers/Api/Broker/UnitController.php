@@ -42,6 +42,8 @@ class UnitController extends Controller
             ->with([
                 'building.tenant',
                 'building.publicCoverMedia',
+                'building.amenities' => fn ($query) => $query->orderBy('name'),
+                'amenities' => fn ($query) => $query->orderBy('name'),
                 'reservation.client',
             ])
             ->where(function ($query) use ($buildingIds, $legacyUnitIds): void {

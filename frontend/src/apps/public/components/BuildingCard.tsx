@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { MapPinIcon } from 'lucide-react'
-import { formatPrice } from '@/apps/builder/lib/format-price'
+import { formatListedPrice, formatUnitSpecSummary } from '@/lib/unit-listing'
 import { Badge } from '@/components/ui/badge'
 import {
   Card,
@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils'
 
 type BuildingCardProps = {
   building: PublicBuildingListItem
-  onSelect: (id: number) => void
+  onSelect: (slug: string) => void
 }
 
 function formatLocation(city: string | null, state: string | null): string {
@@ -29,6 +29,7 @@ export function BuildingCard({ building, onSelect }: BuildingCardProps) {
   const [imageFailed, setImageFailed] = useState(false)
   const coverUrl = building.cover_image ? publicMediaUrl(building.cover_image.url) : null
   const cheapest = building.cheapest_unit
+  const cheapestSpec = cheapest ? formatUnitSpecSummary(cheapest) : ''
 
   useEffect(() => {
     setImageLoaded(false)
@@ -39,7 +40,7 @@ export function BuildingCard({ building, onSelect }: BuildingCardProps) {
     <button
       type="button"
       className="h-full w-full text-left"
-      onClick={() => onSelect(building.id)}
+      onClick={() => onSelect(building.slug)}
     >
       <Card className="h-full overflow-hidden transition-shadow hover:shadow-lg">
         <div className="relative aspect-[4/3] w-full overflow-hidden bg-muted">
@@ -89,12 +90,19 @@ export function BuildingCard({ building, onSelect }: BuildingCardProps) {
         <CardFooter className="mt-auto flex-col items-start gap-1">
           {cheapest ? (
             <>
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">A partir de</p>
-              <p className="text-lg font-semibold text-foreground">{formatPrice(cheapest.price)}</p>
+              {cheapest.price ? (
+                <>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">A partir de</p>
+                  <p className="text-lg font-semibold text-foreground">
+                    {formatListedPrice(cheapest.price)}
+                  </p>
+                </>
+              ) : (
+                <p className="text-lg font-semibold text-foreground">Valor sob consulta</p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Unidade {cheapest.code}
-                {cheapest.area_m2 ? ` · ${cheapest.area_m2} m²` : ''}
-                {cheapest.floor != null ? ` · ${cheapest.floor}º andar` : ''}
+                {cheapestSpec ? ` · ${cheapestSpec}` : ''}
               </p>
             </>
           ) : (

@@ -89,6 +89,33 @@ const building: BuildingWithUnits = {
 }
 
 describe('BrokerUnitsDialog', () => {
+  it('asks to consult when the calculated price is missing', () => {
+    render(
+      <BrokerUnitsDialog
+        open
+        onOpenChange={() => {}}
+        building={{
+          ...building,
+          units: [
+            {
+              id: 20,
+              code: '1301',
+              floor: 13,
+              area_m2: '80',
+              price: null,
+              price_base: '500000',
+              status: 'available',
+            },
+          ],
+        }}
+        onReserved={() => {}}
+      />,
+    )
+
+    expect(screen.getByText(/Valor sob consulta/)).toBeInTheDocument()
+    expect(screen.queryByText(/500000/)).not.toBeInTheDocument()
+  })
+
   it('shows pre-reserve button for available units', () => {
     render(
       <BrokerUnitsDialog
@@ -100,6 +127,8 @@ describe('BrokerUnitsDialog', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Pré-reservar' })).toBeInTheDocument()
+    expect(screen.getByText(/R\$\s*450\.000,00/)).toBeInTheDocument()
+    expect(screen.getAllByText('72 m² · 12º andar').length).toBeGreaterThan(0)
   })
 
   it('shows pre-reserved label for units held by another broker', () => {

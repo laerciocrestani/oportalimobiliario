@@ -60,7 +60,10 @@ Definidas em `frontend/src/App.tsx`.
 
 | Rota | Página | API principal |
 |------|--------|---------------|
-| `/` | `PublicHome` | `publicApi.getBuildings` |
+| `/` | `PublicHome` (SPA legado) | `publicApi.listBuildings` / `getBuilding` |
+| `/` + `/empreendimentos/:slug` | portal `sites/` (Astro SSR, `:4321`) | `GET /api/public/buildings` |
+
+O portal público de produção é `sites/` (`www.localhost:4321`). O SPA em `www.localhost:5173` permanece para smoke interno.
 
 ## Navegação (sidebar)
 

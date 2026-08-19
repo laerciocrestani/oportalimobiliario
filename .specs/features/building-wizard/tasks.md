@@ -48,7 +48,8 @@ Ordem: backend (schema → serviços → API) antes do frontend que consome. 1 c
 
 - [x] **T-18** Admin: INCC (tabela, editar, hint) e adicionais.
   - Gate: `pnpm test` `InccIndicesPage.test.tsx` `AmenitiesPage.test.tsx`
-- [ ] **T-19** Broker/público: preço calculado; campos novos no detalhe (subconjunto útil).
+- [x] **T-19** Broker/público: preço calculado; campos novos no detalhe (subconjunto útil).
+  - Gate: `pnpm test` `unit-listing.test.ts` `BrokerUnitsDialog.test.tsx` `BuildingCard.test.tsx` `PublicUnitList.test.tsx`; Pest `BuildingPriceCalculationTest.php`
 
 ## Encerramento
 

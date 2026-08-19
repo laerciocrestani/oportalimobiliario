@@ -1,10 +1,12 @@
 <?php
 
 /**
+ * @see REQ-WIZ-009
  * @see REQ-WIZ-011
  * @see REQ-WIZ-016
  */
 use App\Enums\UnitStatus;
+use App\Models\Amenity;
 use App\Models\Building;
 use App\Models\BuildingAccess;
 use App\Models\InccIndex;
@@ -54,11 +56,15 @@ it('serializes the calculated price on broker unit list', function () {
     $tenant = Tenant::factory()->create();
     $broker = User::factory()->broker()->create();
     $building = Building::factory()->for($tenant)->create();
+    $amenity = Amenity::factory()->create(['name' => 'Piscina']);
+    $building->amenities()->attach($amenity);
     Unit::factory()->for($tenant)->for($building)->create([
         'code' => '202',
         'price' => 100000,
         'price_base' => 100000,
         'price_competence' => '2026-02-01',
+        'bedrooms' => 2,
+        'area_m2' => 72,
     ]);
 
     linkBrokerToTenant($broker, $tenant);
@@ -74,7 +80,9 @@ it('serializes the calculated price on broker unit list', function () {
         ->assertOk()
         ->assertJsonPath('0.price', '102050.00')
         ->assertJsonPath('0.price_base', '100000.00')
-        ->assertJsonPath('0.price_incc_current', '1020.500000');
+        ->assertJsonPath('0.price_incc_current', '1020.500000')
+        ->assertJsonPath('0.bedrooms', 2)
+        ->assertJsonPath('0.amenities.0.name', 'Piscina');
 });
 
 it('serializes the calculated price on public listing and detail', function () {
@@ -82,11 +90,16 @@ it('serializes the calculated price on public listing and detail', function () {
 
     $tenant = Tenant::factory()->create();
     $building = Building::factory()->for($tenant)->published()->create(['name' => 'Public Price']);
+    $amenity = Amenity::factory()->create(['name' => 'Piscina']);
+    $building->amenities()->attach($amenity);
     Unit::factory()->for($tenant)->for($building)->create([
         'code' => '303',
         'price' => 100000,
         'price_base' => 100000,
         'price_competence' => '2026-02-01',
+        'area_m2' => 72,
+        'bedrooms' => 2,
+        'bathrooms' => 1,
         'status' => UnitStatus::Available,
     ]);
 
@@ -101,7 +114,9 @@ it('serializes the calculated price on public listing and detail', function () {
         ->assertOk()
         ->assertJsonPath('units.0.price', '102050.00')
         ->assertJsonPath('units.0.price_base', '100000.00')
-        ->assertJsonPath('units.0.price_incc_current', '1020.500000');
+        ->assertJsonPath('units.0.price_incc_current', '1020.500000')
+        ->assertJsonPath('units.0.bedrooms', 2)
+        ->assertJsonPath('units.0.amenities.0.name', 'Piscina');
 });
 
 it('serializes frozen_price_brl as price on builder and public apis', function () {

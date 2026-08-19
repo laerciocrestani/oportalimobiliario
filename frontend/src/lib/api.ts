@@ -222,6 +222,7 @@ export type Unit = {
   price: string | null
   price_base?: string | null
   price_competence?: string | null
+  price_incc_current?: string | null
   property_position?: string | null
   solar_position?: string | null
   sun_period?: string | null
@@ -1067,7 +1068,10 @@ export const brokerApi = {
 
 export type PublicCheapestUnit = {
   code: string
-  price: string
+  price: string | null
+  price_base?: string | null
+  price_competence?: string | null
+  price_incc_current?: string | null
   area_m2: string | null
   floor: number | null
 }

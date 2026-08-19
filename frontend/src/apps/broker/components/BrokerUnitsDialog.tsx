@@ -14,6 +14,12 @@ import {
 import type { BuildingWithUnits } from '@/apps/broker/lib/group-units-by-building'
 import { brokerApi, ApiRequestError, type Unit } from '@/lib/api'
 import {
+  formatAmenityNames,
+  formatListedPrice,
+  formatPriceCompetence,
+  formatUnitSpecSummary,
+} from '@/lib/unit-listing'
+import {
   buildStatusSnapshot,
   detectPreHoldTransitionToast,
   PRE_RESERVE_POLL_MS,
@@ -269,14 +275,26 @@ export function BrokerUnitsDialog({
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
           <ul className="divide-y rounded-lg border">
-            {units.map((unit) => (
+            {units.map((unit) => {
+              const spec = formatUnitSpecSummary(unit)
+              const amenities = formatAmenityNames(unit.amenities)
+              const competence = formatPriceCompetence(unit.price_competence)
+
+              return (
               <li key={unit.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                <div>
+                <div className="flex min-w-0 flex-col gap-0.5">
                   <p className="font-medium">{unit.code}</p>
                   <p className="text-xs text-muted-foreground">
                     {unitStatusLabels[unit.status as keyof typeof unitStatusLabels] ?? unit.status}
-                    {unit.price ? ` · R$ ${unit.price}` : ''}
+                    {` · ${formatListedPrice(unit.price)}`}
                   </p>
+                  {spec ? <p className="text-xs text-muted-foreground">{spec}</p> : null}
+                  {amenities ? <p className="text-xs text-muted-foreground">{amenities}</p> : null}
+                  {unit.price && competence ? (
+                    <p className="text-xs text-muted-foreground">
+                      Corrigido pelo INCC-M · competência {competence}
+                    </p>
+                  ) : null}
                 </div>
                 <UnitRowActions
                   unit={unit}
@@ -288,7 +306,8 @@ export function BrokerUnitsDialog({
                   cancelling={cancellingUnitId === unit.id}
                 />
               </li>
-            ))}
+              )
+            })}
             {units.length === 0 ? (
               <li className="px-4 py-6 text-center text-sm text-muted-foreground">
                 Nenhuma unidade liberada neste empreendimento.

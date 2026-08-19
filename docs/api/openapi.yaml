@@ -91,7 +91,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Building detail with available units. Each unit `price` is the INCC-M display value.
+          description: Building detail with available units. Each unit `price` is the INCC-M display value, plus spec sheet fields (`bedrooms`, `area_m2`, `amenities` union).
         '404':
           description: Not found
   /api/public/buildings/{slug}/media:

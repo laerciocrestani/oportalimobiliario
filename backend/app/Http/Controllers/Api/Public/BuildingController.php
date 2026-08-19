@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Public;
 use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Services\UnitPriceCalculator;
+use App\Support\AmenityPresentation;
 use App\Support\BuildingCoverImage;
 use Illuminate\Http\JsonResponse;
 
@@ -14,6 +15,7 @@ use Illuminate\Http\JsonResponse;
  * @see REQ-PUB-006
  * @see REQ-PUB-007
  * @see REQ-PUB-009
+ * @see REQ-WIZ-009
  * @see REQ-WIZ-011
  * @see REQ-WIZ-016
  */
@@ -43,8 +45,13 @@ class BuildingController extends Controller
             abort(404);
         }
 
-        $building->load(['units' => fn ($q) => $q->where('status', 'available')]);
-        $this->prices->decorateMany($building->units);
+        $building->load([
+            'amenities' => fn ($query) => $query->orderBy('name'),
+            'units' => fn ($query) => $query
+                ->where('status', 'available')
+                ->with(['amenities' => fn ($amenities) => $amenities->orderBy('name')]),
+        ]);
+        AmenityPresentation::decorateBuilding($building);
 
         return response()->json($building);
     }

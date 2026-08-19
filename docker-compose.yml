@@ -83,6 +83,29 @@ services:
     volumes:
       - ./backend:/var/www/html
 
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: opim_scheduler
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: php artisan schedule:work
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://api.localhost:8000
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${POSTGRES_DB:-oportalimobiliario}
+      DB_USERNAME: ${POSTGRES_USER:-oportalimobiliario}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-secret}
+      QUEUE_CONNECTION: database
+    volumes:
+      - ./backend:/var/www/html
+
   sites:
     image: node:22-bookworm
     container_name: opim_sites

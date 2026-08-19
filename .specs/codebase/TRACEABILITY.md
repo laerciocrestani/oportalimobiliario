@@ -75,13 +75,13 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 | REQ | Descrição | BE | FE | Testes |
 |-----|-----------|----|----|--------|
 | REQ-RES-001 | Criar reserva (broker) | `Broker/ReservationController.php` | `BrokerReservationDialog.tsx` | `tests/Feature/Reservations/ReservationTest.php` |
-| REQ-RES-002 | Expiração automática | `Services/ReservationExpirationService.php`, `Console/Commands/ExpireReservations.php` | — | `ReservationTest.php` |
+| REQ-RES-002 | Expiração automática | `Services/ReservationExpirationService.php`, `Console/Commands/ExpireReservations.php`, `routes/console.php`, serviço Docker `scheduler` | — | `ReservationTest.php`, `Console/ScheduleRegistrationTest.php` |
 | REQ-RES-003 | TTL em config | `config/opim.php` | — | `ReservationTest.php` |
 | REQ-RES-004 | ReservationSeeder | `database/seeders/ReservationSeeder.php` | — | `ReservationTest.php` |
 | REQ-RES-005 | Pré-reserva (pre-hold) | `PreReservationService.php`, `Broker/ReservationController.php` | `BrokerUnitsDialog.tsx` | `PreReservationTest.php` |
 | REQ-RES-006 | Confirmar pre-hold | `PreReservationService.php`, `Broker/ReservationController.php` | `BrokerReservationDialog.tsx` | `PreReservationTest.php` |
 | REQ-RES-007 | Liberar pre-hold | `PreReservationService.php`, `Broker/ReservationController.php` | `BrokerReservationDialog.tsx` | `PreReservationTest.php` |
-| REQ-RES-008 | Expirar pre-holds | `ExpirePreReservations.php`, `routes/console.php` | — | `PreReservationTest.php` |
+| REQ-RES-008 | Expirar pre-holds | `ExpirePreReservations.php`, `routes/console.php`, serviço Docker `scheduler` | — | `PreReservationTest.php`, `Console/ScheduleRegistrationTest.php` |
 | REQ-RES-009 | Polling + toast FE | — | `lib/reservation-polling.ts`, `BrokerUnitsDialog.tsx` | `reservation-polling.test.ts` |
 
 ---

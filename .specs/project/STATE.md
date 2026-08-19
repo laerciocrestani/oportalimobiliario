@@ -33,8 +33,8 @@
 ## Sessão atual
 
 - **Fase:** pós-MVP
-- **Última etapa concluída:** `reservation-timeline` Fase D (GOV + contrato assinado + `sold`)
-- **Próxima etapa:** pós-MVP restante (deploy `diadimoveis.com.br`, `builder-team`)
+- **Última etapa concluída:** scheduler Docker (`schedule:work`) para expirar reservas/pré-reservas e checar janela de sinal
+- **Próxima etapa:** deploy `diadimoveis.com.br` (REQ-PUB-005 / REQ-SUB-012) — exige DNS + SSL, fora do repo
 - **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md` (wizard done)
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 

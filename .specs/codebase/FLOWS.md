@@ -77,6 +77,7 @@ sequenceDiagram
 - Expiração confirmadas: `ReservationExpirationService.php`, `ExpireReservations.php`
 - Expiração pré-holds: `PreReservationService.php`, `ExpirePreReservations.php`
 - TTL: `config/opim.php` → `pre_reservation_ttl_minutes` (10), `reservation_ttl_hours` (48)
+- Scheduler: serviço Docker `scheduler` (`php artisan schedule:work`)
 - FE polling: `frontend/src/lib/reservation-polling.ts`, `BrokerUnitsDialog.tsx`
 
 ### 2.2 Cancelamento manual

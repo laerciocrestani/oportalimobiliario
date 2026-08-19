@@ -8,9 +8,10 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('opim:expire-reservations')->hourly();
-Schedule::command('opim:expire-pre-reservations')->everyMinute();
-Schedule::command('opim:check-deposit-windows')->hourly();
+Schedule::command('opim:expire-reservations')->hourly()->withoutOverlapping();
+Schedule::command('opim:expire-pre-reservations')->everyMinute()->withoutOverlapping();
+Schedule::command('opim:check-deposit-windows')->hourly()->withoutOverlapping();
 Schedule::command('opim:fetch-incc')
     ->dailyAt('08:05')
-    ->timezone('America/Sao_Paulo');
+    ->timezone('America/Sao_Paulo')
+    ->withoutOverlapping();

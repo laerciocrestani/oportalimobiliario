@@ -17,6 +17,8 @@ docker compose up -d --build
 docker compose exec backend php artisan migrate
 ```
 
+O Compose sobe também `queue` (`queue:work`) e `scheduler` (`schedule:work`) — pré-reserva, sinal e reservas expiradas rodam sozinhos no ambiente local. Em produção: o mesmo `schedule:work` como processo, ou cron `* * * * * php artisan schedule:run`.
+
 ### URLs
 
 | Portal | URL |

@@ -44,6 +44,7 @@
 | subdomain-portals | done | done | done | done |
 | building-wizard | done | done | done | done |
 | builder-contracts | done | done | done | done |
+| builder-team | done | inline | inline | done |
 
 ## Próximos passos (pós-MVP v1)
 
@@ -54,5 +55,5 @@
 - ~~**`reservation-timeline` Fase C:**~~ sinal (comprovante + aprovação + alerta 48h)
 - ~~**`reservation-timeline` Fase D:**~~ GOV, upload do contrato assinado, `sold`
 - Deploy domínio `diadimoveis.com.br` (REQ-SUB-012)
-- ~~Policies Spatie granulares por permission~~ → feature `builder-team` (em andamento)
-- `schedule:work` ou cron em produção para expiração de reservations
+- ~~Policies Spatie granulares por permission~~ → feature `builder-team` **done**
+- ~~`schedule:work` ou cron em produção para expiração de reservations~~ **done** (serviço Docker `scheduler`; produção: mesmo processo ou cron `schedule:run`)

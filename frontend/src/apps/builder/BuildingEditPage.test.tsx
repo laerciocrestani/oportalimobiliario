@@ -20,6 +20,7 @@ describe('BuildingEditPage', () => {
   it('renders edit form and gallery with back link', async () => {
     vi.spyOn(api.builderApi, 'getBuilding').mockResolvedValue({
       id: 1,
+      slug: 'residencial-aurora',
       name: 'Residencial Aurora',
       description: 'Descrição',
       city: 'São Paulo',
@@ -29,6 +30,7 @@ describe('BuildingEditPage', () => {
       seo_description: null,
     })
     vi.spyOn(api.builderApi, 'listBuildingMedia').mockResolvedValue([])
+    vi.spyOn(api.builderApi, 'listAmenities').mockResolvedValue([])
 
     render(
       <MemoryRouter initialEntries={['/buildings/1/edit']}>

@@ -16,9 +16,12 @@ import {
 import { BuildingWizardUnitsStep } from '@/apps/builder/components/BuildingWizardUnitsStep'
 import { gridsFromBuilding, unitGridIsValid, unitGridPayload, type TowerUnitGrid } from '@/apps/builder/lib/unit-grid'
 import {
-  emptyBuildingDefaults,
-  type BuildingDefaultsForm,
-} from '@/apps/builder/lib/unit-spec'
+  defaultsFromBuilding,
+  defaultsUpdatePayload,
+  identityFromBuilding,
+  identityUpdatePayload,
+} from '@/apps/builder/lib/building-form'
+import { emptyBuildingDefaults, type BuildingDefaultsForm } from '@/apps/builder/lib/unit-spec'
 import { Button } from '@/components/ui/button'
 import { ApiRequestError, builderApi, type Amenity, type Building } from '@/lib/api'
 
@@ -26,38 +29,9 @@ type WizardLocationState = {
   step?: number
 }
 
-function identityFromBuilding(building: Building): BuildingIdentityForm {
-  return {
-    name: building.name,
-    zip: building.zip ?? '',
-    street: building.street ?? '',
-    number: building.number ?? '',
-    complement: building.complement ?? '',
-    neighborhood: building.neighborhood ?? '',
-    city: building.city ?? '',
-    state: building.state ?? '',
-  }
-}
-
-function defaultsFromBuilding(building: Building): BuildingDefaultsForm {
-  return {
-    ceiling_type: building.ceiling_type ?? '',
-    opening_type: building.opening_type ?? '',
-    flooring_type: building.flooring_type ?? '',
-    solar_position: building.solar_position ?? '',
-    sun_period: building.sun_period ?? '',
-    amenity_ids: (building.amenities ?? []).map((amenity) => amenity.id),
-  }
-}
-
 function defaultsPayload(defaults: BuildingDefaultsForm) {
   return {
-    ceiling_type: defaults.ceiling_type || null,
-    opening_type: defaults.opening_type || null,
-    flooring_type: defaults.flooring_type || null,
-    solar_position: defaults.solar_position || null,
-    sun_period: defaults.sun_period || null,
-    amenity_ids: defaults.amenity_ids,
+    ...defaultsUpdatePayload(defaults),
     published: false,
     wizard_step: 3,
   }
@@ -65,14 +39,7 @@ function defaultsPayload(defaults: BuildingDefaultsForm) {
 
 function identityPayload(form: BuildingIdentityForm) {
   return {
-    name: form.name,
-    zip: form.zip || null,
-    street: form.street || null,
-    number: form.number || null,
-    complement: form.complement || null,
-    neighborhood: form.neighborhood || null,
-    city: form.city || null,
-    state: form.state || null,
+    ...identityUpdatePayload(form),
     published: false,
     wizard_step: 1,
   }

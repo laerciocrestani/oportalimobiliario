@@ -11,6 +11,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     builderApi: {
       ...actual.builderApi,
       createUnit: vi.fn(),
+      listAmenities: vi.fn().mockResolvedValue([]),
     },
   }
 })
@@ -38,8 +39,9 @@ describe('UnitCreateDialog', () => {
     expect(screen.getByLabelText('Código')).toBeInTheDocument()
     expect(screen.getByLabelText('Torre')).toBeInTheDocument()
     expect(screen.getByLabelText('Andar')).toBeInTheDocument()
-    expect(screen.getByLabelText('Área (m²)')).toBeInTheDocument()
-    expect(screen.getByLabelText('Preço')).toBeInTheDocument()
+    expect(screen.getByLabelText('Área privativa (m²)')).toBeInTheDocument()
+    expect(screen.getByLabelText('Preço-base (R$)')).toBeInTheDocument()
+    expect(screen.getByLabelText('Competência INCC')).toBeInTheDocument()
     expect(screen.getByLabelText('Status')).toBeInTheDocument()
   })
 
@@ -64,18 +66,18 @@ describe('UnitCreateDialog', () => {
     await user.type(screen.getByLabelText('Código'), '501')
     await user.selectOptions(screen.getByLabelText('Torre'), '1')
     await user.type(screen.getByLabelText('Andar'), '5')
-    await user.type(screen.getByLabelText('Área (m²)'), '72')
-    await user.type(screen.getByLabelText('Preço'), '500000')
+    await user.type(screen.getByLabelText('Área privativa (m²)'), '72')
+    await user.type(screen.getByLabelText('Preço-base (R$)'), '500000')
     await user.click(screen.getByRole('button', { name: 'Criar unidade' }))
 
-    expect(builderApi.createUnit).toHaveBeenCalledWith(10, {
+    expect(builderApi.createUnit).toHaveBeenCalledWith(10, expect.objectContaining({
       code: '501',
       tower_id: 1,
       floor: 5,
       area_m2: '72',
-      price: '500000',
+      price_base: '500000',
       status: 'available',
-    })
+    }))
     expect(onCreated).toHaveBeenCalledWith(created)
   })
 

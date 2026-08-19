@@ -1,5 +1,23 @@
 import { useEffect, useState } from 'react'
+import { defaultsFromBuilding } from '@/apps/builder/lib/building-form'
 import { formatPrice } from '@/apps/builder/lib/format-price'
+import {
+  CEILING_OPTIONS,
+  FLOORING_OPTIONS,
+  OPENING_OPTIONS,
+  PROPERTY_POSITION_OPTIONS,
+  SOLAR_OPTIONS,
+  SUN_PERIOD_OPTIONS,
+  emptyBuildingDefaults,
+  optionLabel,
+} from '@/apps/builder/lib/unit-spec'
+import {
+  emptyUnitSpecForm,
+  unitSpecFromUnit,
+  unitSpecPayload,
+  type UnitSpecForm,
+} from '@/apps/builder/lib/unit-spec-form'
+import { UnitSpecFields } from '@/apps/builder/components/UnitSpecFields'
 import {
   unitStatusColors,
   unitStatusLabels,
@@ -18,13 +36,14 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer'
-import { builderApi, type Tower, type Unit } from '@/lib/api'
+import { builderApi, type Amenity, type Building, type Tower, type Unit } from '@/lib/api'
 
 type UnitDetailDrawerProps = {
   unit: Unit | null
   buildingId: number
   buildingName: string
   towers: Tower[]
+  building?: Building | null
   open: boolean
   onOpenChange: (open: boolean) => void
   canManage: boolean
@@ -32,24 +51,27 @@ type UnitDetailDrawerProps = {
   onSaved: (unit: Unit) => void
 }
 
-type FormState = {
+type IdentityForm = {
   code: string
   tower_id: string
   floor: string
-  area_m2: string
-  price: string
   status: UnitStatus
 }
 
-function toFormState(unit: Unit): FormState {
+function toIdentity(unit: Unit): IdentityForm {
   return {
     code: unit.code,
     tower_id: String(unit.tower_id ?? unit.tower?.id ?? ''),
     floor: unit.floor != null ? String(unit.floor) : '',
-    area_m2: unit.area_m2 ?? '',
-    price: unit.price ?? '',
     status: unit.status as UnitStatus,
   }
+}
+
+function specLabel(
+  options: ReadonlyArray<{ value: string; label: string }>,
+  value: string | null | undefined,
+): string {
+  return optionLabel(options, value) ?? '—'
 }
 
 export function UnitDetailDrawer({
@@ -57,6 +79,7 @@ export function UnitDetailDrawer({
   buildingId,
   buildingName,
   towers,
+  building = null,
   open,
   onOpenChange,
   canManage,
@@ -65,19 +88,49 @@ export function UnitDetailDrawer({
 }: UnitDetailDrawerProps) {
   const canEdit = canManage || canUpdateStatus
   const statusOnly = !canManage && canUpdateStatus
+  const buildingAmenityIds = (building?.amenities ?? unit?.inherited_amenities ?? []).map((item) => item.id)
+  const defaults = building ? defaultsFromBuilding(building) : emptyBuildingDefaults()
 
   const [editing, setEditing] = useState(false)
-  const [form, setForm] = useState<FormState | null>(unit ? toFormState(unit) : null)
+  const [identity, setIdentity] = useState<IdentityForm | null>(unit ? toIdentity(unit) : null)
+  const [spec, setSpec] = useState<UnitSpecForm>(() => (unit ? unitSpecFromUnit(unit) : emptyUnitSpecForm()))
+  const [amenities, setAmenities] = useState<Amenity[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (open && unit) {
-      setForm(toFormState(unit))
+      setIdentity(toIdentity(unit))
+      setSpec(unitSpecFromUnit(unit))
       setEditing(false)
       setError(null)
     }
   }, [open, unit])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    let cancelled = false
+
+    builderApi
+      .listAmenities()
+      .then((items) => {
+        if (!cancelled) {
+          setAmenities(items)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAmenities([])
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   const status = unit?.status as UnitStatus | undefined
   const statusLabel = status ? (unitStatusLabels[status] ?? unit.status) : ''
@@ -85,22 +138,21 @@ export function UnitDetailDrawer({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!unit || !form) {
+    if (!unit || !identity) {
       return
     }
 
     setSaving(true)
     setError(null)
 
-    const payload: Partial<Unit> = statusOnly
-      ? { status: form.status }
+    const payload: Partial<Unit> & { amenity_ids?: number[] } = statusOnly
+      ? { status: identity.status }
       : {
-          code: form.code,
-          tower_id: Number(form.tower_id),
-          floor: form.floor ? Number(form.floor) : null,
-          area_m2: form.area_m2 || null,
-          price: form.price || null,
-          status: form.status,
+          code: identity.code,
+          tower_id: Number(identity.tower_id),
+          floor: identity.floor ? Number(identity.floor) : null,
+          status: identity.status,
+          ...unitSpecPayload(spec),
         }
 
     try {
@@ -115,37 +167,37 @@ export function UnitDetailDrawer({
   }
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange} direction="right">
-      <DrawerContent className="data-[vaul-drawer-direction=right]:sm:max-w-md">
+    <Drawer open={open} onOpenChange={onOpenChange} direction="right" handleOnly>
+      <DrawerContent className="data-[vaul-drawer-direction=right]:sm:max-w-lg">
         <DrawerHeader>
           <DrawerTitle>{unit?.code ?? 'Unidade'}</DrawerTitle>
           <DrawerDescription>{buildingName}</DrawerDescription>
         </DrawerHeader>
 
-        {unit && form ? (
+        {unit && identity ? (
           editing ? (
-            <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4 px-4">
+            <form onSubmit={handleSubmit} className="flex flex-1 flex-col gap-4 overflow-y-auto px-4">
               {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
               {!statusOnly ? (
                 <>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-2">
                     <Label htmlFor="unit-code">Código</Label>
                     <Input
                       id="unit-code"
-                      value={form.code}
-                      onChange={(e) => setForm({ ...form, code: e.target.value })}
+                      value={identity.code}
+                      onChange={(e) => setIdentity({ ...identity, code: e.target.value })}
                       required
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-2">
                     <Label htmlFor="unit-tower">Torre</Label>
                     <select
                       id="unit-tower"
                       className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                      value={form.tower_id}
-                      onChange={(e) => setForm({ ...form, tower_id: e.target.value })}
+                      value={identity.tower_id}
+                      onChange={(e) => setIdentity({ ...identity, tower_id: e.target.value })}
                       required
                     >
                       <option value="" disabled>
@@ -159,56 +211,41 @@ export function UnitDetailDrawer({
                     </select>
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-2">
                     <Label htmlFor="unit-floor">Andar</Label>
                     <Input
                       id="unit-floor"
                       type="number"
                       min={0}
-                      value={form.floor}
-                      onChange={(e) => setForm({ ...form, floor: e.target.value })}
+                      value={identity.floor}
+                      onChange={(e) => setIdentity({ ...identity, floor: e.target.value })}
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="unit-area">Área (m²)</Label>
-                    <Input
-                      id="unit-area"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={form.area_m2}
-                      onChange={(e) => setForm({ ...form, area_m2: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="unit-price">Preço</Label>
-                    <Input
-                      id="unit-price"
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={form.price}
-                      onChange={(e) => setForm({ ...form, price: e.target.value })}
-                    />
-                  </div>
+                  <UnitSpecFields
+                    idPrefix="unit-spec"
+                    spec={spec}
+                    amenities={amenities}
+                    buildingAmenityIds={buildingAmenityIds}
+                    defaults={defaults}
+                    onChange={setSpec}
+                  />
                 </>
               ) : null}
 
-              {(canManage || canUpdateStatus) ? (
-                <div className="space-y-2">
+              {canManage || canUpdateStatus ? (
+                <div className="flex flex-col gap-2">
                   <Label htmlFor="unit-status">Status</Label>
                   <select
                     id="unit-status"
                     className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                    value={form.status}
+                    value={identity.status}
                     onChange={(e) =>
-                      setForm({ ...form, status: e.target.value as UnitStatus })
+                      setIdentity({ ...identity, status: e.target.value as UnitStatus })
                     }
                   >
-                    {unitStatusLegend.map(({ status, label }) => (
-                      <option key={status} value={status}>
+                    {unitStatusLegend.map(({ status: item, label }) => (
+                      <option key={item} value={item}>
                         {label}
                       </option>
                     ))}
@@ -222,7 +259,8 @@ export function UnitDetailDrawer({
                   variant="outline"
                   onClick={() => {
                     setEditing(false)
-                    setForm(toFormState(unit))
+                    setIdentity(toIdentity(unit))
+                    setSpec(unitSpecFromUnit(unit))
                     setError(null)
                   }}
                 >
@@ -235,7 +273,7 @@ export function UnitDetailDrawer({
             </form>
           ) : (
             <>
-              <dl className="grid gap-4 px-4 text-sm">
+              <dl className="grid gap-4 overflow-y-auto px-4 text-sm">
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Torre</dt>
                   <dd className="font-medium">{unit.tower?.name ?? '—'}</dd>
@@ -245,12 +283,54 @@ export function UnitDetailDrawer({
                   <dd className="font-medium">{unit.floor ?? '—'}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Área</dt>
-                  <dd className="font-medium">{unit.area_m2 ? `${unit.area_m2} m²` : '—'}</dd>
+                  <dt className="text-muted-foreground">Área privativa</dt>
+                  <dd className="font-medium">
+                    {unit.private_area_m2 ?? unit.area_m2 ? `${unit.private_area_m2 ?? unit.area_m2} m²` : '—'}
+                  </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Preço</dt>
+                  <dt className="text-muted-foreground">Área total</dt>
+                  <dd className="font-medium">{unit.total_area_m2 ? `${unit.total_area_m2} m²` : '—'}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Preço (INCC-M)</dt>
                   <dd className="font-medium">{formatPrice(unit.price)}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Preço-base</dt>
+                  <dd className="font-medium">{formatPrice(unit.price_base ?? null)}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Competência</dt>
+                  <dd className="font-medium">{unit.price_competence?.slice(0, 10) || '—'}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Quartos</dt>
+                  <dd className="font-medium">{unit.bedrooms ?? '—'}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Posição</dt>
+                  <dd className="font-medium">{specLabel(PROPERTY_POSITION_OPTIONS, unit.property_position)}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Forro</dt>
+                  <dd className="font-medium">{specLabel(CEILING_OPTIONS, unit.ceiling_type)}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Aberturas</dt>
+                  <dd className="font-medium">{specLabel(OPENING_OPTIONS, unit.opening_type)}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Piso</dt>
+                  <dd className="font-medium">{specLabel(FLOORING_OPTIONS, unit.flooring_type)}</dd>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <dt className="text-muted-foreground">Sol</dt>
+                  <dd className="font-medium">
+                    {[specLabel(SOLAR_OPTIONS, unit.solar_position), specLabel(SUN_PERIOD_OPTIONS, unit.sun_period)]
+                      .filter((item) => item !== '—')
+                      .join(' · ') || '—'}
+                  </dd>
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <dt className="text-muted-foreground">Status</dt>

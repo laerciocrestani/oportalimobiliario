@@ -55,3 +55,7 @@ Ordem: backend (schema → serviços → API) antes do frontend que consome. 1 c
 ## Encerramento
 
 - [x] **T-20** Seeds demo (INCC, amenities, um building via estrutura) + TRACEABILITY + STATE.
+
+## Follow-up (pós-T-20)
+
+- [x] **T-21** Edição pós-wizard: endereço/defaults/adicionais no empreendimento; ficha INCC na unidade.

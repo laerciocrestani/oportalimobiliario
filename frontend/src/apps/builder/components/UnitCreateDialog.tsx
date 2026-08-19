@@ -1,4 +1,8 @@
 import { useEffect, useState } from 'react'
+import { UnitSpecFields } from '@/apps/builder/components/UnitSpecFields'
+import { defaultsFromBuilding } from '@/apps/builder/lib/building-form'
+import { emptyBuildingDefaults } from '@/apps/builder/lib/unit-spec'
+import { emptyUnitSpecForm, unitSpecPayload, type UnitSpecForm } from '@/apps/builder/lib/unit-spec-form'
 import {
   unitStatusLegend,
   type UnitStatus,
@@ -15,33 +19,30 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { builderApi, type Tower, type Unit } from '@/lib/api'
+import { builderApi, type Amenity, type Building, type Tower, type Unit } from '@/lib/api'
 
 type UnitCreateDialogProps = {
   buildingId: number
   towers: Tower[]
+  building?: Building | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onCreated: (unit: Unit) => void
   canManageBuildings?: boolean
 }
 
-type FormState = {
+type IdentityForm = {
   code: string
   tower_id: string
   floor: string
-  area_m2: string
-  price: string
   status: UnitStatus
 }
 
-function initialFormState(towers: Tower[]): FormState {
+function initialIdentity(towers: Tower[]): IdentityForm {
   return {
     code: '',
     tower_id: towers.length === 1 ? String(towers[0].id) : '',
     floor: '',
-    area_m2: '',
-    price: '',
     status: 'available',
   }
 }
@@ -49,22 +50,53 @@ function initialFormState(towers: Tower[]): FormState {
 export function UnitCreateDialog({
   buildingId,
   towers,
+  building = null,
   open,
   onOpenChange,
   onCreated,
   canManageBuildings = false,
 }: UnitCreateDialogProps) {
   const hasTowers = towers.length > 0
-  const [form, setForm] = useState<FormState>(() => initialFormState(towers))
+  const [identity, setIdentity] = useState<IdentityForm>(() => initialIdentity(towers))
+  const [spec, setSpec] = useState<UnitSpecForm>(() => emptyUnitSpecForm())
+  const [amenities, setAmenities] = useState<Amenity[]>([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const buildingAmenityIds = (building?.amenities ?? []).map((item) => item.id)
+  const defaults = building ? defaultsFromBuilding(building) : emptyBuildingDefaults()
 
   useEffect(() => {
     if (open) {
-      setForm(initialFormState(towers))
+      setIdentity(initialIdentity(towers))
+      setSpec(emptyUnitSpecForm())
       setError(null)
     }
   }, [open, towers])
+
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    let cancelled = false
+
+    builderApi
+      .listAmenities()
+      .then((items) => {
+        if (!cancelled) {
+          setAmenities(items)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAmenities([])
+        }
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [open])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -76,13 +108,12 @@ export function UnitCreateDialog({
     setSaving(true)
     setError(null)
 
-    const payload: Partial<Unit> = {
-      code: form.code,
-      tower_id: Number(form.tower_id),
-      floor: form.floor ? Number(form.floor) : null,
-      area_m2: form.area_m2 || null,
-      price: form.price || null,
-      status: form.status,
+    const payload: Partial<Unit> & { amenity_ids?: number[] } = {
+      code: identity.code,
+      tower_id: Number(identity.tower_id),
+      floor: identity.floor ? Number(identity.floor) : null,
+      status: identity.status,
+      ...unitSpecPayload(spec),
     }
 
     try {
@@ -103,7 +134,7 @@ export function UnitCreateDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Nova unidade</DialogTitle>
           <DialogDescription>Cadastre uma nova unidade no empreendimento.</DialogDescription>
@@ -120,24 +151,24 @@ export function UnitCreateDialog({
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="create-unit-code">Código</Label>
             <Input
               id="create-unit-code"
-              value={form.code}
-              onChange={(e) => setForm({ ...form, code: e.target.value })}
+              value={identity.code}
+              onChange={(e) => setIdentity({ ...identity, code: e.target.value })}
               required
               disabled={!hasTowers}
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="create-unit-tower">Torre</Label>
             <select
               id="create-unit-tower"
               className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
-              value={form.tower_id}
-              onChange={(e) => setForm({ ...form, tower_id: e.target.value })}
+              value={identity.tower_id}
+              onChange={(e) => setIdentity({ ...identity, tower_id: e.target.value })}
               required
               disabled={!hasTowers}
             >
@@ -152,52 +183,36 @@ export function UnitCreateDialog({
             </select>
           </div>
 
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="create-unit-floor">Andar</Label>
             <Input
               id="create-unit-floor"
               type="number"
               min={0}
-              value={form.floor}
-              onChange={(e) => setForm({ ...form, floor: e.target.value })}
+              value={identity.floor}
+              onChange={(e) => setIdentity({ ...identity, floor: e.target.value })}
               disabled={!hasTowers}
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="create-unit-area">Área (m²)</Label>
-            <Input
-              id="create-unit-area"
-              type="number"
-              min={0}
-              step="0.01"
-              value={form.area_m2}
-              onChange={(e) => setForm({ ...form, area_m2: e.target.value })}
-              disabled={!hasTowers}
-            />
-          </div>
+          <UnitSpecFields
+            idPrefix="create-unit-spec"
+            spec={spec}
+            amenities={amenities}
+            buildingAmenityIds={buildingAmenityIds}
+            defaults={defaults}
+            disabled={!hasTowers}
+            onChange={setSpec}
+          />
 
-          <div className="space-y-2">
-            <Label htmlFor="create-unit-price">Preço</Label>
-            <Input
-              id="create-unit-price"
-              type="number"
-              min={0}
-              step="0.01"
-              value={form.price}
-              onChange={(e) => setForm({ ...form, price: e.target.value })}
-              disabled={!hasTowers}
-            />
-          </div>
-
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <Label htmlFor="create-unit-status">Status</Label>
             <select
               id="create-unit-status"
               className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
-              value={form.status}
+              value={identity.status}
               onChange={(e) =>
-                setForm({ ...form, status: e.target.value as UnitStatus })
+                setIdentity({ ...identity, status: e.target.value as UnitStatus })
               }
               disabled={!hasTowers}
             >

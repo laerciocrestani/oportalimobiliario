@@ -202,6 +202,7 @@ export function BuildingDetailPage() {
               unit={selectedUnit}
               buildingId={building.id}
               buildingName={building.name}
+              building={building}
               towers={building.towers ?? []}
               open={selectedUnit !== null}
               onOpenChange={(open) => {
@@ -217,6 +218,7 @@ export function BuildingDetailPage() {
             {canManageUnits ? (
               <UnitCreateDialog
                 buildingId={building.id}
+                building={building}
                 towers={building.towers ?? []}
                 open={unitCreateOpen}
                 onOpenChange={setUnitCreateOpen}

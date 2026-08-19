@@ -242,7 +242,8 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 
 | REQ | Descrição | BE | FE | Testes |
 |-----|-----------|----|----|--------|
-| REQ-WIZ-002 | Step 1 nome + endereço / ViaCEP | `BuildingController.php`, `CepController.php`, `ViaCepClient.php` | `BuildingWizardPage.tsx` | `BuildingTest.php`, `CepLookupTest.php`, `BuildingWizardPage.test.tsx` |
+| REQ-WIZ-001 | Wizard de criação em 4 steps; edição posterior nas telas atuais | `BuildingController.php`, `UnitController.php` | `BuildingWizardPage.tsx`, `BuildingEditForm.tsx`, `UnitDetailDrawer.tsx`, `UnitCreateDialog.tsx` | `BuildingWizardPage.test.tsx`, `BuildingEditForm.test.tsx`, `UnitDetailDrawer.test.tsx`, `UnitCreateDialog.test.tsx` |
+| REQ-WIZ-002 | Step 1 nome + endereço / ViaCEP | `BuildingController.php`, `CepController.php`, `ViaCepClient.php` | `BuildingWizardPage.tsx`, `BuildingWizardIdentityStep.tsx`, `BuildingEditForm.tsx` | `BuildingTest.php`, `CepLookupTest.php`, `BuildingWizardPage.test.tsx`, `BuildingEditForm.test.tsx` |
 | REQ-WIZ-003 | Persistência por step (rascunho) | `buildings.wizard_step` | `/buildings/new`, `/buildings/:id/wizard` | `BuildingWizardPage.test.tsx` |
 | REQ-WIZ-004 | Step 2 torres + andares + prédio CSS | `BuildingStructureController.php`, `BuildingStructureService.php`, `Floor.php` | `BuildingWizardTowersStep.tsx`, `BuildingMassing.tsx` | `BuildingStructureTest.php`, `BuildingWizardPage.test.tsx`, `BuildingMassing.test.tsx` |
 | REQ-WIZ-005 | Step 3 planta típica + códigos `101…` | `BuildingUnitGridController.php`, `BuildingUnitGridService.php` | `BuildingWizardUnitsStep.tsx`, `lib/unit-grid.ts` | `BuildingUnitGridTest.php`, `BuildingWizardPage.test.tsx` |

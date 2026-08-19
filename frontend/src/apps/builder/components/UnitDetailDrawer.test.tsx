@@ -11,6 +11,7 @@ vi.mock('@/lib/api', async (importOriginal) => {
     builderApi: {
       ...actual.builderApi,
       updateUnit: vi.fn(),
+      listAmenities: vi.fn().mockResolvedValue([]),
     },
   }
 })
@@ -61,6 +62,7 @@ describe('UnitDetailDrawer', () => {
 
     expect(screen.getByLabelText('Código')).toHaveValue('1201')
     expect(screen.getByLabelText('Torre')).toHaveValue('1')
+    expect(screen.getByLabelText('Preço-base (R$)')).toHaveValue('')
   })
 
   it('saves unit changes when user can manage units', async () => {
@@ -79,7 +81,10 @@ describe('UnitDetailDrawer', () => {
     await user.type(screen.getByLabelText('Código'), '1202')
     await user.click(screen.getByRole('button', { name: 'Salvar' }))
 
-    expect(builderApi.updateUnit).toHaveBeenCalledWith(10, 1, expect.objectContaining({ code: '1202' }))
+    expect(builderApi.updateUnit).toHaveBeenCalledWith(10, 1, expect.objectContaining({
+      code: '1202',
+      price_base: null,
+    }))
     expect(onSaved).toHaveBeenCalledWith(updated)
   })
 

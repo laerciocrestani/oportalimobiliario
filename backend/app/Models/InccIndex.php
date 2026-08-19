@@ -26,7 +26,7 @@ class InccIndex extends Model
     protected function casts(): array
     {
         return [
-            'competence' => 'date',
+            'competence' => 'date:Y-m-d',
             'value' => 'decimal:6',
             'source' => InccIndexSource::class,
             'fetched_at' => 'datetime',

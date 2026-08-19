@@ -33,8 +33,8 @@
 ## Sessão atual
 
 - **Fase:** building-wizard
-- **Última etapa concluída:** T-02 job `opim:fetch-incc` (08:05, insert-only)
-- **Próxima etapa:** T-03 CRUD admin INCC + `GET hint`
+- **Última etapa concluída:** T-03 CRUD admin INCC + hint BCB
+- **Próxima etapa:** T-12 OpenAPI completo (restante) → T-18 UI admin
 - **Discovery:** `docs/discovery/resumo-wizard-empreendimentos.md`
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 

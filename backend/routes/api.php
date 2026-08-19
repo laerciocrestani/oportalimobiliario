@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Admin\AmenityController as AdminAmenityController;
+use App\Http\Controllers\Api\Admin\InccIndexController as AdminInccIndexController;
 use App\Http\Controllers\Api\Admin\TenantController as AdminTenantController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\Broker\BrokerInviteController as BrokerBrokerInviteController;
@@ -176,6 +177,10 @@ Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'admin'])->prefix('admi
     Route::get('tenants/{tenant}/users', [AdminTenantController::class, 'users']);
     Route::post('tenants/{tenant}/impersonate', [AdminTenantController::class, 'impersonate']);
     Route::apiResource('tenants', AdminTenantController::class)->except(['destroy']);
+    Route::get('incc-indices/hint', [AdminInccIndexController::class, 'hint']);
+    Route::get('incc-indices', [AdminInccIndexController::class, 'index']);
+    Route::post('incc-indices', [AdminInccIndexController::class, 'store']);
+    Route::patch('incc-indices/{inccIndex}', [AdminInccIndexController::class, 'update']);
     Route::get('amenities', [AdminAmenityController::class, 'index']);
     Route::post('amenities', [AdminAmenityController::class, 'store']);
     Route::patch('amenities/{amenity}', [AdminAmenityController::class, 'update']);

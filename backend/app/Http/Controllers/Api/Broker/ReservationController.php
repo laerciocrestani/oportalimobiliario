@@ -88,6 +88,7 @@ class ReservationController extends Controller
         return response()->json($reservation->load('unit'), 201);
     }
 
+    /** Legacy alias of POST /broker/reservations/{reservation}/proposal. */
     public function confirm(Request $request, Reservation $reservation): JsonResponse
     {
         if ($reservation->broker_id !== $request->user()->id) {

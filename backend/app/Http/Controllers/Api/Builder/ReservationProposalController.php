@@ -35,10 +35,6 @@ class ReservationProposalController extends Controller
             $data['decision_note'] ?? null,
         );
 
-        if (! $updated->exists) {
-            return response()->json(['message' => 'Proposal rejected. Reservation cancelled.']);
-        }
-
         return response()->json($this->formatReservation($updated));
     }
 

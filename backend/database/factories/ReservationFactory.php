@@ -49,7 +49,7 @@ class ReservationFactory extends Factory
         return $this->state(fn () => [
             'client_id' => null,
             'status' => \App\Enums\ReservationStatus::ProposalPending,
-            'expires_at' => now()->addMinutes(10),
+            'expires_at' => null,
         ]);
     }
 

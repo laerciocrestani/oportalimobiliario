@@ -47,9 +47,11 @@ it('submits proposal from pre-hold', function () {
     $this->postJson("/api/broker/reservations/{$reservation->id}/proposal", validProposalPayload())
         ->assertCreated()
         ->assertJsonPath('status', ReservationStatus::ProposalPending->value)
-        ->assertJsonPath('proposal.client_name', 'Maria Silva');
+        ->assertJsonPath('proposal.client_name', 'Maria Silva')
+        ->assertJsonPath('expires_at', null);
 
     expect($unit->fresh()->status)->toBe(UnitStatus::PreReserved);
+    expect($reservation->fresh()->expires_at)->toBeNull();
     expect(ReservationProposal::query()->count())->toBe(1);
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::ProposalSubmitted)->exists())->toBeTrue();
 });
@@ -111,10 +113,62 @@ it('rejects proposal and frees unit', function () {
     $this->patchJson("/api/builder/reservations/{$reservation->id}/proposal/decision", [
         'decision' => ProposalDecision::Rejected->value,
         'decision_note' => 'Perfil fora da política.',
+    ])
+        ->assertOk()
+        ->assertJsonPath('status', ReservationStatus::Cancelled->value);
+
+    expect($reservation->fresh()->status)->toBe(ReservationStatus::Cancelled);
+    expect($unit->fresh()->status)->toBe(UnitStatus::Available);
+
+    Sanctum::actingAs($builder);
+
+    $this->getJson("/api/builder/reservations/{$reservation->id}/timeline")
+        ->assertOk()
+        ->assertJsonPath('current_stage', 'cancelled')
+        ->assertJsonPath('steps.3.status', 'failed')
+        ->assertJsonPath('steps.4.status', 'skipped');
+});
+
+it('allows a new pre-hold after proposal rejection', function () {
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create();
+    $broker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+
+    UnitAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'unit_id' => $unit->id,
+    ]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = Reservation::factory()->proposalPending()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    ReservationProposal::factory()->create([
+        'reservation_id' => $reservation->id,
+        'submitted_by' => $broker->id,
+    ]);
+
+    Sanctum::actingAs($builder);
+
+    $this->patchJson("/api/builder/reservations/{$reservation->id}/proposal/decision", [
+        'decision' => ProposalDecision::Rejected->value,
     ])->assertOk();
 
-    expect(Reservation::query()->find($reservation->id))->toBeNull();
-    expect($unit->fresh()->status)->toBe(UnitStatus::Available);
+    Sanctum::actingAs($broker);
+
+    $this->postJson('/api/broker/reservations/pre-hold', ['unit_id' => $unit->id])
+        ->assertCreated()
+        ->assertJsonPath('status', ReservationStatus::PreHold->value);
+
+    expect(Reservation::query()->count())->toBe(2);
 });
 
 it('returns proposal to broker for revision', function () {

@@ -123,4 +123,36 @@ describe('BrokerReservationDialog', () => {
       expect(onReserved).toHaveBeenCalled()
     })
   })
+
+  it('does not release pre-hold when closed from the timeline', async () => {
+    const user = userEvent.setup()
+    const onOpenChange = vi.fn()
+
+    vi.mocked(brokerApi.listClients).mockResolvedValue([])
+    vi.mocked(brokerApi.releasePreHold).mockResolvedValue(undefined)
+
+    render(
+      <BrokerReservationDialog
+        open
+        onOpenChange={onOpenChange}
+        unit={unit}
+        reservationId={55}
+        expiresAt={null}
+        releaseHoldOnClose={false}
+        onReserved={() => {}}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(brokerApi.listClients).toHaveBeenCalled()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Fechar' }))
+
+    await waitFor(() => {
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+    })
+
+    expect(brokerApi.releasePreHold).not.toHaveBeenCalled()
+  })
 })

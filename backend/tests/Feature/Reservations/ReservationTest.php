@@ -183,6 +183,10 @@ it('cancels reservation for owning broker and frees unit', function () {
     expect($reservation->timelineEvents()->where('type', ReservationTimelineEventType::Cancelled)->first())
         ->not->toBeNull()
         ->payload->toMatchArray(['reason' => 'Cliente desistiu da compra.']);
+
+    $this->postJson('/api/broker/reservations/pre-hold', ['unit_id' => $unit->id])
+        ->assertCreated()
+        ->assertJsonPath('status', ReservationStatus::PreHold->value);
 });
 
 it('requires a reason to cancel a reservation', function () {

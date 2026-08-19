@@ -176,6 +176,6 @@ class Reservation extends Model
 
     public function isExpired(): bool
     {
-        return $this->expires_at->isPast();
+        return $this->expires_at !== null && $this->expires_at->isPast();
     }
 }

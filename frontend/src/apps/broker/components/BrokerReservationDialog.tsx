@@ -21,6 +21,7 @@ type BrokerReservationDialogProps = {
   reservationId: number | null
   expiresAt: string | null
   onReserved: () => void
+  releaseHoldOnClose?: boolean
 }
 
 const EMPTY_FORM: ReservationProposalInput = {
@@ -58,6 +59,7 @@ export function BrokerReservationDialog({
   reservationId,
   expiresAt,
   onReserved,
+  releaseHoldOnClose = true,
 }: BrokerReservationDialogProps) {
   const [clients, setClients] = useState<BrokerClient[]>([])
   const [selectedClientId, setSelectedClientId] = useState('')
@@ -142,7 +144,7 @@ export function BrokerReservationDialog({
   }
 
   async function handleClose() {
-    if (reservationId && !submitting) {
+    if (releaseHoldOnClose && reservationId && !submitting) {
       await releaseHoldIfNeeded()
     }
 

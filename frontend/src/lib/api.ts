@@ -967,11 +967,6 @@ export const brokerApi = {
       method: 'POST',
       body: JSON.stringify({ unit_id: unitId }),
     }),
-  confirmReservation: (reservationId: number, data: ReservationProposalInput) =>
-    apiFetch<Reservation>(`/broker/reservations/${reservationId}/confirm`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }),
   submitReservationProposal: (reservationId: number, data: ReservationProposalInput) =>
     apiFetch<Reservation & { proposal?: ReservationProposal }>(
       `/broker/reservations/${reservationId}/proposal`,

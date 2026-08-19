@@ -1676,10 +1676,10 @@ paths:
           description: Unit not available
   /api/broker/reservations/{reservation}/confirm:
     patch:
-      summary: Confirm pre-hold with client
+      summary: Submit proposal (legacy alias of POST /proposal)
       description: |
-        Current v2 behavior — confirms reservation directly.
-        Planned deprecation: will be replaced by POST /proposal (reservation-timeline Fase B).
+        Alias of POST /api/broker/reservations/{reservation}/proposal.
+        Prefer the POST endpoint. Body is the proposal snapshot (not client_id).
       security:
         - bearerAuth: []
       parameters:
@@ -1693,21 +1693,12 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              required:
-                - client_id
-              properties:
-                client_id:
-                  type: integer
-                observations:
-                  type: string
-                  maxLength: 2000
-                  nullable: true
+              $ref: '#/components/schemas/ReservationProposalInput'
       responses:
         '200':
-          description: Reservation confirmed
+          description: Proposal submitted (same effect as POST /proposal)
         '422':
-          description: Pre-hold expired or unit unavailable
+          description: Pre-hold expired, invalid stage, or validation error
   /api/broker/reservations/{reservation}/pre-hold:
     delete:
       summary: Release pre-hold without confirming

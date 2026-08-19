@@ -65,6 +65,7 @@ class ReservationProposalService
 
             $reservation->update([
                 'status' => ReservationStatus::ProposalPending,
+                'expires_at' => null,
             ]);
 
             $this->timelineService->record(
@@ -164,10 +165,12 @@ class ReservationProposalService
             ['proposal_id' => $proposal->id, 'note' => $proposal->decision_note],
         );
 
-        $reservation->update(['status' => ReservationStatus::Cancelled]);
-        $reservation->delete();
+        $reservation->update([
+            'status' => ReservationStatus::Cancelled,
+            'expires_at' => null,
+        ]);
 
-        return $reservation;
+        return $reservation->fresh(['unit', 'proposals']);
     }
 
     private function returnToBroker(User $builder, Reservation $reservation, ReservationProposal $proposal): Reservation

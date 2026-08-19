@@ -189,7 +189,8 @@ export function ReservationTimelineSheet({
             onOpenChange={setProposalOpen}
             unit={proposalUnit}
             reservationId={reservationId}
-            expiresAt={timeline?.expires_at ?? null}
+            expiresAt={timeline?.current_stage === 'pre_hold' ? (timeline.expires_at ?? null) : null}
+            releaseHoldOnClose={false}
             onReserved={() => void handleRefresh()}
           />
           <BrokerDepositProofDialog

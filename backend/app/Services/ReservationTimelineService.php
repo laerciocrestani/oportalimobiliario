@@ -283,6 +283,10 @@ class ReservationTimelineService
             return 'sold';
         }
 
+        if ($reservation->isCancelled()) {
+            return 'cancelled';
+        }
+
         if ($reservation->isProposalPending()) {
             return 'proposal_pending';
         }
@@ -415,6 +419,10 @@ class ReservationTimelineService
 
         if ($index === $currentIndex) {
             return 'current';
+        }
+
+        if ($reservation->isCancelled()) {
+            return 'skipped';
         }
 
         if ($stepEvents->isEmpty() && $reservation->isDepositPending() && $stepKey === 'deposit_window') {

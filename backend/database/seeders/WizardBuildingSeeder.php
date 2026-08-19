@@ -70,7 +70,7 @@ class WizardBuildingSeeder extends Seeder
     {
         $building->update([
             'name' => self::NAME,
-            'zip' => '01310-100',
+            'zip' => '01310100',
             'street' => 'Avenida Paulista',
             'number' => '1578',
             'complement' => 'Térreo',

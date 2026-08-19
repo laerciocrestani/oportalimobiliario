@@ -34,7 +34,7 @@ it('creates one published building through structure and unit-grid services', fu
         ->and($building->published)->toBeTrue()
         ->and($building->wizard_completed_at)->not->toBeNull()
         ->and($building->wizard_step)->toBe(4)
-        ->and($building->zip)->toBe('01310-100')
+        ->and($building->zip)->toBe('01310100')
         ->and($building->street)->toBe('Avenida Paulista')
         ->and($building->ceiling_type)->toBe(CeilingType::Plaster)
         ->and($building->towers)->toHaveCount(1)

@@ -75,7 +75,7 @@ Slug `residencial-bosque`, tenant Alpha, **publicado**. Não passa por `TowerSee
 
 | Campo | Valor demo |
 |-------|------------|
-| Endereço | Av. Paulista, 1578 — Bela Vista, São Paulo/SP, CEP 01310-100 |
+| Endereço | Av. Paulista, 1578 — Bela Vista, São Paulo/SP, CEP `01310100` |
 | Defaults | forro gesso, esquadria alumínio, piso porcelanato, solar norte, sol manhã |
 | Adicionais do prédio | piscina, academia, água quente |
 | Estrutura | Torre A, 3 andares (`floors.kind`: 1–2 residencial, 3 comercial) |

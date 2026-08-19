@@ -83,8 +83,8 @@ Impersonate: `POST /api/admin/tenants/{tenant}/impersonate`.
 
 | Usuário | Permissions |
 |---------|-------------|
-| `construtora@alpha.demo` | todas (10) |
-| `comercial@alpha.demo` | `buildings.view`, `invites.send` |
-| `supervisor@alpha.demo` | `buildings.view`, `units.update_status`, `reservations.cancel` |
+| `construtora@alpha.demo` | todas (10, inclui `audit.view`) |
+| `comercial@alpha.demo` | `buildings.view`, `invites.send` (sem `audit.view`) |
+| `supervisor@alpha.demo` | `buildings.view`, `units.update_status`, `reservations.cancel` (sem `audit.view`) |
 
 Use estes perfis para testar 403 sem adivinhar permissões.

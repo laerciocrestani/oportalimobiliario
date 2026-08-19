@@ -79,6 +79,8 @@ Shells que consomem:
 
 Badges dinâmicos (ex.: reservas pendentes) injetados nos shells, não no `dashboard-nav.tsx`.
 
+Item **Atividade** (`/activity`) existe nos três portais autenticados. No builder o item é visível para qualquer usuário logado (próprio log); o seletor de membro exige `audit.view`.
+
 ## Cliente HTTP
 
 `frontend/src/lib/api.ts` — **único ponto** de chamadas API:

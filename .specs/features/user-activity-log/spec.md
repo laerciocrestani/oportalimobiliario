@@ -1,6 +1,6 @@
 ---
 branch: feature/user-activity-log
-status: in_progress
+status: done
 depends_on: auth, tenancy, builder-team, reservation-timeline, admin-tenants
 source: docs/discovery/resumo-log-atividade-usuario.md
 ---

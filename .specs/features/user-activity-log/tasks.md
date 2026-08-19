@@ -1,6 +1,6 @@
 ---
 feature: user-activity-log
-status: in_progress
+status: done
 ---
 
 # Tasks — user-activity-log
@@ -100,7 +100,7 @@ Ordem: backend (schema → logger → auth → APIs → instrumentação) antes 
 
 ## Encerramento
 
-- [ ] **T-16** TRACEABILITY, FRONTEND, PERMISSIONS, SEEDS, GLOSSARY, STATE. `construtora@alpha.demo` recebe `audit.view` via `all()`. Documentar que `comercial`/`supervisor` não têm a permissão.
+- [x] **T-16** TRACEABILITY, FRONTEND, PERMISSIONS, SEEDS, GLOSSARY, STATE. `construtora@alpha.demo` recebe `audit.view` via `all()`. Documentar que `comercial`/`supervisor` não têm a permissão.
   - Req: `REQ-LOG-013`
   - Depends on: T-11 … T-15
 

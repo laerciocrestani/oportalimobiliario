@@ -2,7 +2,7 @@
 
 **Spec**: `.specs/features/user-activity-log/spec.md`  
 **Context**: `.specs/features/user-activity-log/context.md`  
-**Status**: Draft
+**Status**: Done
 
 ---
 

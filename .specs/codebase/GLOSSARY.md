@@ -25,6 +25,8 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | role construtora | `builder` |
 | role corretor | `broker` |
 | profile público | `public` |
+| atividade (log da pessoa) | `user_activity_events` / `UserActivityAction` |
+| auditar equipe | `audit.view` |
 
 ## Columns
 

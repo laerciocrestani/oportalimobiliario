@@ -32,10 +32,10 @@
 
 ## Sessão atual
 
-- **Fase:** `user-activity-log` (T-01…T-15 done)
+- **Fase:** `user-activity-log` (T-01…T-16 done)
 - **Branch:** `feature/user-activity-log`
-- **Última etapa concluída:** T-14/T-15 — ActivityPage corretor (tenant opcional) e admin (filtros + CSV)
-- **Próxima etapa:** T-16 — TRACEABILITY, FRONTEND, PERMISSIONS, SEEDS, GLOSSARY, STATE
+- **Última etapa concluída:** T-16 — índices de docs (TRACEABILITY, FRONTEND, PERMISSIONS, SEEDS, GLOSSARY)
+- **Próxima etapa:** review / PR da branch `feature/user-activity-log`
 - **Discovery:** `docs/discovery/resumo-log-atividade-usuario.md` (premissas aceitas em `context.md`)
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 - **Nota T-07:** assinatura GOV reusa `reservation.contract.uploaded` (catálogo v1 não tem action própria); jobs de expiração não geram log

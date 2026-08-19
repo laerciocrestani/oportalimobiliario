@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Builder;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\UserActivityCatalog;
 use App\Support\BuilderPermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,10 @@ use Illuminate\Validation\Rule;
  */
 class TeamMemberController extends Controller
 {
+    public function __construct(
+        private readonly UserActivityCatalog $activityCatalog,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', User::class);
@@ -51,7 +56,10 @@ class TeamMemberController extends Controller
 
         BuilderPermissions::assign($member, $data['permissions']);
 
-        return response()->json($this->formatMember($member->fresh()), 201);
+        $fresh = $member->fresh();
+        $this->activityCatalog->recordTeamMemberCreated($request->user(), $fresh, $data['permissions']);
+
+        return response()->json($this->formatMember($fresh), 201);
     }
 
     public function update(Request $request, User $teamMember): JsonResponse
@@ -79,6 +87,20 @@ class TeamMemberController extends Controller
             $teamMember->update($updates);
         }
 
+        $changed = array_filter([
+            'name' => $data['name'] ?? null,
+            'permissions' => $data['permissions'] ?? null,
+            'password' => isset($data['password']) ? true : null,
+        ], fn ($value) => $value !== null);
+
+        if ($changed !== []) {
+            $this->activityCatalog->recordTeamMemberUpdated(
+                $request->user(),
+                $teamMember->fresh(),
+                collect($changed)->except('password')->all(),
+            );
+        }
+
         return response()->json($this->formatMember($teamMember->fresh()));
     }
 
@@ -91,6 +113,7 @@ class TeamMemberController extends Controller
             return response()->json(['message' => 'Cannot remove the last team manager.'], 422);
         }
 
+        $this->activityCatalog->recordTeamMemberDeleted($request->user(), $teamMember);
         $teamMember->delete();
 
         return response()->json(null, 204);

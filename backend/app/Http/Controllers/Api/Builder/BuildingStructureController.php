@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Builder;
 use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Services\BuildingStructureService;
+use App\Services\UserActivityCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -13,6 +14,10 @@ use Illuminate\Http\Request;
  */
 class BuildingStructureController extends Controller
 {
+    public function __construct(
+        private readonly UserActivityCatalog $activityCatalog,
+    ) {}
+
     public function update(Request $request, Building $building, BuildingStructureService $structure): JsonResponse
     {
         $this->authorize('update', $building);
@@ -24,6 +29,11 @@ class BuildingStructureController extends Controller
         ]);
 
         $building = $structure->replace($building, $data['towers']);
+        $this->activityCatalog->recordBuildingStructureReplaced(
+            $request->user(),
+            $building,
+            count($data['towers']),
+        );
 
         return response()->json($building);
     }

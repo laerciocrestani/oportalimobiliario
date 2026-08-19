@@ -54,7 +54,7 @@ Ordem: backend (schema → logger → auth → APIs → instrumentação) antes 
   - Tests: feature
   - Depends on: T-01
 
-- [ ] **T-08** Construtora: CRUD empreendimento/torre/unidade; status de unidade; convites e acesso de corretores; decisões de reserva (proposta/sinal/contrato/cancelar); CRUD equipe.
+- [x] **T-08** Construtora: CRUD empreendimento/torre/unidade; status de unidade; convites e acesso de corretores; decisões de reserva (proposta/sinal/contrato/cancelar); CRUD equipe.
   - Req: `REQ-LOG-003`
   - Gate: testes builder existentes + asserts de log
   - Tests: feature

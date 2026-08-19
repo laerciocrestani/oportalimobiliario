@@ -32,13 +32,14 @@
 
 ## Sessão atual
 
-- **Fase:** `user-activity-log` (T-01…T-07, T-11 done)
+- **Fase:** `user-activity-log` (T-01…T-08, T-11 done)
 - **Branch:** `feature/user-activity-log`
-- **Última etapa concluída:** T-07 — catálogo do corretor (`UserActivityCatalog` + hook na timeline)
-- **Próxima etapa:** T-08 — instrumentar mutações da construtora
+- **Última etapa concluída:** T-08 — catálogo da construtora (empreendimento, equipe, convites, acesso e decisões de reserva)
+- **Próxima etapa:** T-09 — instrumentar mutações do admin (tenants + impersonate)
 - **Discovery:** `docs/discovery/resumo-log-atividade-usuario.md` (premissas aceitas em `context.md`)
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 - **Nota T-07:** assinatura GOV reusa `reservation.contract.uploaded` (catálogo v1 não tem action própria); jobs de expiração não geram log
+- **Nota T-08:** wizard de estrutura/planta gera um `building.updated` (não N eventos por unidade); mídia e templates ficam fora do catálogo v1
 
 ## Blockers
 

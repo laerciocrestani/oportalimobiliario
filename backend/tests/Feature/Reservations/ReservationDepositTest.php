@@ -110,6 +110,7 @@ it('approves deposit proof and moves to contract data pending', function () {
 
     expect($reservation->fresh()->status)->toBe(ReservationStatus::ContractDataPending);
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::DepositProofApproved)->exists())->toBeTrue();
+    assertUserActivity($builder, UserActivityAction::ReservationDepositProofApproved, $unit->code);
 });
 
 it('marks overdue deposit windows without cancelling reservation', function () {

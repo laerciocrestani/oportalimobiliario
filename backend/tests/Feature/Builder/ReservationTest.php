@@ -6,6 +6,7 @@
  * @see REQ-BLD-RES-003
  */
 use App\Enums\UnitStatus;
+use App\Enums\UserActivityAction;
 use App\Models\BrokerClient;
 use App\Models\Building;
 use App\Models\Reservation;
@@ -131,6 +132,8 @@ it('allows builder to reply on reservation thread', function () {
         ->assertOk()
         ->assertJsonCount(1)
         ->assertJsonPath('0.author.name', $builder->name);
+
+    assertUserActivity($builder, UserActivityAction::ReservationMessageSent, 'Reserva confirmada internamente.');
 });
 
 it('rejects builder messages for another tenant reservation', function () {

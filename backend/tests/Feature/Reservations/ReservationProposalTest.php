@@ -89,6 +89,7 @@ it('accepts proposal and opens deposit window', function () {
     expect($reservation->fresh()->client_id)->not->toBeNull();
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::DepositWindowOpened)->exists())->toBeTrue();
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::ProposalAccepted)->exists())->toBeTrue();
+    assertUserActivity($builder, UserActivityAction::ReservationProposalAccepted, $unit->code);
 });
 
 it('rejects proposal and frees unit', function () {

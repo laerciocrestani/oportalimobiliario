@@ -13,6 +13,7 @@ use App\Models\Building;
 use App\Models\Tower;
 use App\Models\Unit;
 use App\Services\AmenityAssignmentService;
+use App\Services\UserActivityCatalog;
 use App\Support\AmenityPresentation;
 use App\Support\BuildingCoverImage;
 use App\Support\BuildingSlug;
@@ -34,6 +35,10 @@ use Illuminate\Validation\ValidationException;
  */
 class BuildingController extends Controller
 {
+    public function __construct(
+        private readonly UserActivityCatalog $activityCatalog,
+    ) {}
+
     /**
      * @return array<string, mixed>
      */
@@ -175,6 +180,8 @@ class BuildingController extends Controller
         $fresh = AmenityPresentation::decorateBuilding($building->fresh(['amenities']) ?? $building);
         $fresh->setAttribute('units_summary', UnitsSummary::empty());
 
+        $this->activityCatalog->recordBuildingCreated($request->user(), $fresh);
+
         return response()->json($fresh, 201);
     }
 
@@ -217,10 +224,26 @@ class BuildingController extends Controller
             $data['wizard_step'] = $data['wizard_step'] ?? 4;
         }
 
+        $wasPublished = (bool) $building->published;
+        $oldValues = $building->only(array_keys($data));
+
         $building->update($data);
 
         if ($amenityIds !== null) {
             $amenities->syncBuilding($building, $amenityIds);
+        }
+
+        $building->refresh();
+        $actor = $request->user();
+
+        if (! $wasPublished && $building->published) {
+            $this->activityCatalog->recordBuildingPublished($actor, $building);
+        }
+
+        $tracked = collect($data)->except(['wizard_step', 'wizard_completed_at', 'published']);
+
+        if ($tracked->isNotEmpty() || ($wasPublished && ! $building->published)) {
+            $this->activityCatalog->recordBuildingUpdated($actor, $building, $oldValues, $data);
         }
 
         return response()->json(
@@ -244,10 +267,11 @@ class BuildingController extends Controller
         }
     }
 
-    public function destroy(Building $building): JsonResponse
+    public function destroy(Request $request, Building $building): JsonResponse
     {
         $this->authorize('delete', $building);
 
+        $this->activityCatalog->recordBuildingDeleted($request->user(), $building);
         $building->delete();
 
         return response()->json(null, 204);

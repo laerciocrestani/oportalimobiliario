@@ -6,6 +6,7 @@ use App\Enums\BrokerInviteChannel;
 use App\Http\Controllers\Controller;
 use App\Models\BrokerInvite;
 use App\Services\BrokerInviteService;
+use App\Services\UserActivityCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -21,7 +22,10 @@ use Illuminate\Validation\ValidationException;
  */
 class BrokerInviteController extends Controller
 {
-    public function __construct(private BrokerInviteService $brokerInviteService) {}
+    public function __construct(
+        private BrokerInviteService $brokerInviteService,
+        private readonly UserActivityCatalog $activityCatalog,
+    ) {}
 
     public function index(): JsonResponse
     {
@@ -86,6 +90,8 @@ class BrokerInviteController extends Controller
 
         $this->brokerInviteService->dispatch($invite);
 
+        $this->activityCatalog->recordBrokerInviteCreated($request->user(), $invite->fresh());
+
         return response()->json($this->formatInvite($invite->fresh()), 201);
     }
 
@@ -98,11 +104,12 @@ class BrokerInviteController extends Controller
         return response()->json($this->formatInvite($invite));
     }
 
-    public function revoke(BrokerInvite $invite): JsonResponse
+    public function revoke(Request $request, BrokerInvite $invite): JsonResponse
     {
         $this->authorize('revoke', $invite);
 
         $invite = $this->brokerInviteService->revoke($invite);
+        $this->activityCatalog->recordBrokerInviteRevoked($request->user(), $invite);
 
         return response()->json($this->formatInvite($invite));
     }
@@ -116,11 +123,12 @@ class BrokerInviteController extends Controller
         return response()->json($this->formatInvite($invite));
     }
 
-    public function destroy(BrokerInvite $invite): JsonResponse
+    public function destroy(Request $request, BrokerInvite $invite): JsonResponse
     {
         $this->authorize('revoke', $invite);
 
         $invite = $this->brokerInviteService->revoke($invite);
+        $this->activityCatalog->recordBrokerInviteRevoked($request->user(), $invite);
 
         return response()->json($this->formatInvite($invite));
     }

@@ -15,6 +15,7 @@ use App\Models\Tower;
 use App\Models\Unit;
 use App\Services\AmenityAssignmentService;
 use App\Services\UnitFloorBackfill;
+use App\Services\UserActivityCatalog;
 use App\Support\AmenityPresentation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,6 +30,10 @@ use Illuminate\Validation\Rule;
  */
 class UnitController extends Controller
 {
+    public function __construct(
+        private readonly UserActivityCatalog $activityCatalog,
+    ) {}
+
     public function index(Building $building): JsonResponse
     {
         $this->authorize('view', $building);
@@ -80,6 +85,8 @@ class UnitController extends Controller
             $amenities->syncUnitExtras($unit, $amenityIds);
         }
 
+        $this->activityCatalog->recordUnitCreated($request->user(), $unit);
+
         return response()->json($this->presentUnit($unit, $building), 201);
     }
 
@@ -124,6 +131,9 @@ class UnitController extends Controller
             $this->authorize('update', $unit);
         }
 
+        $oldStatus = $unit->status;
+        $oldValues = $unit->only(array_keys($data));
+
         if ($data !== []) {
             $unit->update($this->syncLegacyPriceAndArea($data));
             app(UnitFloorBackfill::class)->attachFloor($unit->fresh());
@@ -133,14 +143,28 @@ class UnitController extends Controller
             $amenities->syncUnitExtras($unit, $amenityIds);
         }
 
+        $unit->refresh();
+        $actor = $request->user();
+
+        if (array_key_exists('status', $data) && $oldStatus !== $unit->status) {
+            $this->activityCatalog->recordUnitStatusChanged($actor, $unit, $oldStatus, $unit->status);
+        }
+
+        $nonStatus = collect($data)->except('status');
+
+        if ($nonStatus->isNotEmpty() || $amenityIds !== null) {
+            $this->activityCatalog->recordUnitUpdated($actor, $unit, $oldValues, $data);
+        }
+
         return response()->json($this->presentUnit($unit, $building));
     }
 
-    public function destroy(Building $building, Unit $unit): JsonResponse
+    public function destroy(Request $request, Building $building, Unit $unit): JsonResponse
     {
         $this->ensureUnitBelongsToBuilding($building, $unit);
         $this->authorize('delete', $unit);
 
+        $this->activityCatalog->recordUnitDeleted($request->user(), $unit);
         $unit->delete();
 
         return response()->json(null, 204);

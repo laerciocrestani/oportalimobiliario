@@ -42,6 +42,7 @@ export function BuilderDashboardShell({ title, children, actions }: BuilderDashb
           return permissions.includes('access.manage')
         }
 
+        // /activity is visible to every authenticated builder (own log).
         return true
       })
       .map((item) =>

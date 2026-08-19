@@ -78,7 +78,7 @@ Ordem: backend (schema → logger → auth → APIs → instrumentação) antes 
 
 ## Frontend
 
-- [ ] **T-12** `audit.view` no catálogo FE + item **Atividade** na nav dos três portais; builder mostra item para todos (próprio log).
+- [x] **T-12** `audit.view` no catálogo FE + item **Atividade** na nav dos três portais; builder mostra item para todos (próprio log).
   - Req: `REQ-LOG-009`, `REQ-LOG-013`
   - Gate: `pnpm test` `dashboard-nav` / `BuilderDashboardShell`
   - Tests: unit FE

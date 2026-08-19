@@ -32,10 +32,10 @@
 
 ## Sessão atual
 
-- **Fase:** `user-activity-log` (T-01…T-11 done)
+- **Fase:** `user-activity-log` (T-01…T-12 done)
 - **Branch:** `feature/user-activity-log`
-- **Última etapa concluída:** T-10 — purge de 5 anos (`opim:purge-user-activity`) + schedule diário 03:00
-- **Próxima etapa:** T-12 — menu Atividade e `audit.view` no frontend dos três portais
+- **Última etapa concluída:** T-12 — item **Atividade** na nav dos três portais + `audit.view` no catálogo FE
+- **Próxima etapa:** T-13 — ActivityPage da construtora
 - **Discovery:** `docs/discovery/resumo-log-atividade-usuario.md` (premissas aceitas em `context.md`)
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 - **Nota T-07:** assinatura GOV reusa `reservation.contract.uploaded` (catálogo v1 não tem action própria); jobs de expiração não geram log

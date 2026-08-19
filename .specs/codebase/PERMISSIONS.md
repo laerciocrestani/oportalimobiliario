@@ -75,6 +75,7 @@ Impersonate: `POST /api/admin/tenants/{tenant}/impersonate`.
 - Nav item **Reservas** (builder): visível apenas com `reservations.cancel`
 - Nav item **Contratos**: visível apenas com `contracts.manage` (CRUD de modelos; emitir PDF na reserva usa `reservations.cancel`)
 - Nav item **Equipe**: visível apenas com `team.manage`
+- Nav item **Atividade** (`/activity`): visível a todo builder autenticado (próprio log); seletor de equipe só com `audit.view`
 
 ---
 

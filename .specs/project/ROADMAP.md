@@ -45,6 +45,7 @@
 | building-wizard | done | done | done | done |
 | builder-contracts | done | done | done | done |
 | builder-team | done | inline | inline | done |
+| user-activity-log | in_progress | in_progress | in_progress | T-01…T-03 done |
 
 ## Próximos passos (pós-MVP v1)
 
@@ -54,7 +55,7 @@
 - ~~**`reservation-timeline` Fase B:**~~ proposta (form corretor + decisão gestor); `PATCH confirm` alias de `POST /proposal`; TTL 48h após aceite; recusa soft
 - ~~**`reservation-timeline` Fase C:**~~ sinal (comprovante + aprovação + alerta 48h)
 - ~~**`reservation-timeline` Fase D:**~~ GOV, upload do contrato assinado, `sold`
-- **`user-activity-log`:** log append-only de atividade por pessoa (discovery em `docs/discovery/resumo-log-atividade-usuario.md`; spec/tasks pendentes)
+- **`user-activity-log`:** spec/design/tasks em `.specs/features/user-activity-log/`; execute na branch `feature/user-activity-log`
 - ~~Policies Spatie granulares por permission~~ → feature `builder-team` **done**
 - ~~`schedule:work` ou cron em produção para expiração de reservations~~ **done** (serviço Docker `scheduler`; produção: mesmo processo ou cron `schedule:run`)
 - Deploy `diadimoveis.com.br` (REQ-SUB-012) — **adiado**

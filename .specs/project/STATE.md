@@ -32,10 +32,11 @@
 
 ## Sessão atual
 
-- **Fase:** pós-MVP
-- **Última etapa concluída:** scheduler Docker (`schedule:work`) para expirar reservas/pré-reservas e checar janela de sinal
-- **Próxima etapa:** `user-activity-log` — discovery pronta, ainda sem spec/tasks
-- **Discovery:** `docs/discovery/resumo-log-atividade-usuario.md` (próxima feature); wizard done
+- **Fase:** `user-activity-log` (T-01…T-03 done)
+- **Branch:** `feature/user-activity-log`
+- **Última etapa concluída:** T-03 — impersonate start/stop nos dois logs
+- **Próxima etapa:** T-04 — `GET /api/builder/activity`
+- **Discovery:** `docs/discovery/resumo-log-atividade-usuario.md` (premissas aceitas em `context.md`)
 - **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
 
 ## Blockers

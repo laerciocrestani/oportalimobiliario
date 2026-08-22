@@ -246,7 +246,7 @@ it('prevents race condition when two brokers pre-hold simultaneously', function 
     expect(Reservation::query()->count())->toBe(1);
 });
 
-it('does not list pre-hold reservations in broker index', function () {
+it('does not list pre-hold reservations without a client in broker index', function () {
     $tenant = Tenant::factory()->create();
     $broker = User::factory()->broker()->create();
     $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
@@ -264,4 +264,91 @@ it('does not list pre-hold reservations in broker index', function () {
     $this->getJson('/api/broker/reservations')
         ->assertOk()
         ->assertJsonCount(0);
+});
+
+it('attaches client to pre-hold without submitting a proposal', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $client = BrokerClient::factory()->for($broker, 'broker')->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+
+    UnitAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'unit_id' => $unit->id,
+    ]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = Reservation::factory()->preHold()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+
+    $this->patchJson("/api/broker/reservations/{$reservation->id}/pre-hold", [
+        'client_id' => $client->id,
+        'observations' => 'Cliente visitou a unidade.',
+    ])
+        ->assertOk()
+        ->assertJsonPath('status', ReservationStatus::PreHold->value)
+        ->assertJsonPath('client_id', $client->id)
+        ->assertJsonPath('expires_at', null);
+
+    expect($unit->fresh()->status)->toBe(UnitStatus::PreReserved);
+    expect($reservation->fresh()->messages()->count())->toBe(1);
+    assertUserActivity($broker, UserActivityAction::ReservationPreHoldConfirmed, $client->name);
+
+    $this->getJson('/api/broker/reservations')
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.id', $reservation->id)
+        ->assertJsonPath('0.client.name', $client->name);
+});
+
+it('rejects attaching a client to another broker pre-hold', function () {
+    $tenant = Tenant::factory()->create();
+    $brokerA = User::factory()->broker()->create();
+    $brokerB = User::factory()->broker()->create();
+    $client = BrokerClient::factory()->for($brokerB, 'broker')->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+
+    $reservation = Reservation::factory()->preHold()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $brokerA->id,
+    ]);
+
+    linkBrokerToTenant($brokerB, $tenant);
+
+    Sanctum::actingAs($brokerB);
+
+    $this->patchJson("/api/broker/reservations/{$reservation->id}/pre-hold", [
+        'client_id' => $client->id,
+    ])->assertForbidden();
+});
+
+it('rejects attaching a client to an expired pre-hold', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $client = BrokerClient::factory()->for($broker, 'broker')->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+
+    $reservation = Reservation::factory()->preHold()->expired()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    Sanctum::actingAs($broker);
+
+    $this->patchJson("/api/broker/reservations/{$reservation->id}/pre-hold", [
+        'client_id' => $client->id,
+    ])
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'Sua pré-reserva expirou. A unidade está disponível novamente.');
 });

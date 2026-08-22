@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { brokerApi, type BrokerClient, type ReservationProposalInput, type Unit } from '@/lib/api'
+import { brokerApi, type BrokerClient, type ReservationProposalInput, type ReservationTimelineClient, type Unit } from '@/lib/api'
 
 type BrokerReservationDialogProps = {
   open: boolean
@@ -22,6 +22,7 @@ type BrokerReservationDialogProps = {
   expiresAt: string | null
   onReserved: () => void
   releaseHoldOnClose?: boolean
+  client?: BrokerClient | ReservationTimelineClient | null
 }
 
 const EMPTY_FORM: ReservationProposalInput = {
@@ -60,6 +61,7 @@ export function BrokerReservationDialog({
   expiresAt,
   onReserved,
   releaseHoldOnClose = true,
+  client = null,
 }: BrokerReservationDialogProps) {
   const [clients, setClients] = useState<BrokerClient[]>([])
   const [selectedClientId, setSelectedClientId] = useState('')
@@ -75,11 +77,21 @@ export function BrokerReservationDialog({
       return
     }
 
+    if (client) {
+      setForm((current) => ({
+        ...current,
+        client_name: client.name,
+        client_email: client.email ?? '',
+        client_phone: client.phone,
+      }))
+      return
+    }
+
     void brokerApi
       .listClients()
       .then(setClients)
       .catch(() => setError('Não foi possível carregar os clientes.'))
-  }, [open])
+  }, [client, open])
 
   useEffect(() => {
     if (!open || !expiresAt) {
@@ -212,7 +224,7 @@ export function BrokerReservationDialog({
             <DialogTitle>Enviar proposta</DialogTitle>
             <DialogDescription>
               {unit
-                ? `Unidade ${unit.code} — preencha os dados do cliente e as condições de pagamento.`
+                ? `Unidade ${unit.code} — complete os dados da proposta para envio à construtora.`
                 : 'Preencha a proposta para envio à construtora.'}
             </DialogDescription>
           </DialogHeader>
@@ -230,33 +242,45 @@ export function BrokerReservationDialog({
             </p>
           ) : null}
 
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="proposal-client">Cliente cadastrado</Label>
-              <select
-                id="proposal-client"
-                className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-                value={selectedClientId}
-                onChange={(e) => handleClientSelect(e.target.value)}
-                disabled={expired}
-              >
-                <option value="">Preencher manualmente</option>
-                {clients.map((client) => (
-                  <option key={client.id} value={String(client.id)}>
-                    {client.name} · {client.phone}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="flex flex-col gap-4">
+            {client ? (
+              <p className="text-sm text-muted-foreground">
+                Cliente da pré-reserva:{' '}
+                <span className="font-medium text-foreground">
+                  {client.name}
+                  {client.phone ? ` · ${client.phone}` : ''}
+                </span>
+              </p>
+            ) : (
+              <>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="proposal-client">Cliente cadastrado</Label>
+                  <select
+                    id="proposal-client"
+                    className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                    value={selectedClientId}
+                    onChange={(e) => handleClientSelect(e.target.value)}
+                    disabled={expired}
+                  >
+                    <option value="">Preencher manualmente</option>
+                    {clients.map((item) => (
+                      <option key={item.id} value={String(item.id)}>
+                        {item.name} · {item.phone}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              disabled={expired}
-              onClick={() => setNewClientOpen(true)}
-            >
-              Novo cliente
-            </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={expired}
+                  onClick={() => setNewClientOpen(true)}
+                >
+                  Novo cliente
+                </Button>
+              </>
+            )}
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">

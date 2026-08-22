@@ -21,11 +21,15 @@ class ReservationContractValidateController extends Controller
     {
         $this->authorize('validateContract', $reservation);
 
-        $request->validate([
-            'gov_signed' => ['required', 'accepted'],
+        $data = $request->validate([
+            'note' => ['nullable', 'string', 'max:2000'],
         ]);
 
-        $updated = $this->completionService->validate($request->user(), $reservation);
+        $updated = $this->completionService->validate(
+            $request->user(),
+            $reservation,
+            $data['note'] ?? null,
+        );
 
         return response()->json([
             'status' => $updated->status->value,

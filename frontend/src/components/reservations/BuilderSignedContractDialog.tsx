@@ -13,21 +13,21 @@ import {
   ReservationAttachmentField,
   type ReservationFileItem,
 } from '@/components/reservations/ReservationAttachmentField'
-import { brokerApi } from '@/lib/api'
+import { builderApi } from '@/lib/api'
 
-type BrokerSignedContractDialogProps = {
+type BuilderSignedContractDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   reservationId: number
   onSubmitted: () => void
 }
 
-export function BrokerSignedContractDialog({
+export function BuilderSignedContractDialog({
   open,
   onOpenChange,
   reservationId,
   onSubmitted,
-}: BrokerSignedContractDialogProps) {
+}: BuilderSignedContractDialogProps) {
   const [files, setFiles] = useState<ReservationFileItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -54,12 +54,12 @@ export function BrokerSignedContractDialog({
     )
 
     try {
-      await brokerApi.uploadSignedContract(reservationId, fileItem.file)
+      await builderApi.uploadBuilderSignedContract(reservationId, fileItem.file)
       setFiles([])
       onOpenChange(false)
       onSubmitted()
     } catch {
-      setError('Não foi possível enviar o contrato assinado pelo comprador. Confirme o PDF e a assinatura GOV.')
+      setError('Não foi possível enviar o contrato assinado pela construtora.')
       setFiles((current) =>
         current.map((item) =>
           item.id === fileItem.id
@@ -76,9 +76,9 @@ export function BrokerSignedContractDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Enviar contrato assinado pelo comprador</DialogTitle>
+          <DialogTitle>Enviar contrato assinado pela construtora</DialogTitle>
           <DialogDescription>
-            Anexe o PDF do contrato assinado pelo comprador no GOV (até 10MB).
+            Anexe o PDF do contrato já assinado pela construtora (até 10MB).
           </DialogDescription>
         </DialogHeader>
 

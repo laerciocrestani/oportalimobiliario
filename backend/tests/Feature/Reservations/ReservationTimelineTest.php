@@ -379,7 +379,7 @@ it('keeps deposit proof on timeline after moving to contract data', function () 
         ->assertJsonPath('current_deposit_proof.original_name', 'pix.pdf');
 });
 
-it('hides issued contract pdf from broker timeline attachments', function () {
+it('includes issued contract pdf on broker timeline attachments', function () {
     $tenant = Tenant::factory()->create();
     $broker = User::factory()->broker()->create();
     $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);

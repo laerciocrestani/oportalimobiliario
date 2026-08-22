@@ -1608,12 +1608,11 @@ paths:
           description: Forbidden
         '422':
           description: Invalid stage, inactive template, or missing required values
-  /api/builder/reservations/{reservation}/contract/validate:
-    patch:
-      summary: Validate signed contract and mark unit sold (builder)
+  /api/builder/reservations/{reservation}/contract/signed:
+    post:
+      summary: Upload builder-signed contract PDF
       description: |
-        Builder confirms own GOV signature (manual v1) and marks the unit sold.
-        Requires `gov_signed: true` and a signed PDF uploaded by the broker.
+        Builder uploads the contract PDF signed by the construtora after the buyer-signed PDF exists.
       security:
         - bearerAuth: []
       parameters:
@@ -1625,20 +1624,53 @@ paths:
       requestBody:
         required: true
         content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: Builder-signed contract uploaded
+        '403':
+          description: Forbidden
+        '422':
+          description: Invalid stage, missing buyer-signed PDF, or invalid file
+  /api/builder/reservations/{reservation}/contract/validate:
+    patch:
+      summary: Confirm sale after both signed contracts (builder)
+      description: |
+        Builder confirms the unit is sold after buyer and builder signed PDFs exist.
+        Optional `note`. Marks the unit sold.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
           application/json:
             schema:
               type: object
-              required: [gov_signed]
               properties:
-                gov_signed:
-                  type: boolean
+                note:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
       responses:
         '200':
           description: Contract validated, unit sold
         '403':
           description: Forbidden
         '422':
-          description: Invalid stage or missing GOV confirmation
+          description: Invalid stage or missing builder-signed PDF
   /api/broker/activity:
     get:
       summary: List broker own activity
@@ -1825,6 +1857,41 @@ paths:
         '422':
           description: Pre-hold expired, invalid stage, or validation error
   /api/broker/reservations/{reservation}/pre-hold:
+    patch:
+      summary: Attach client to a pre-hold (simple pre-reservation form)
+      description: |
+        Confirms the pre-reservation by linking a broker client and optional
+        observations (first dialogue message). Unit stays `pre_reserved`;
+        status stays `pre_hold`. Does not submit a proposal.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - client_id
+              properties:
+                client_id:
+                  type: integer
+                observations:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '200':
+          description: Client attached; pre-hold remains active
+        '403':
+          description: Not the owner or client does not belong to the broker
+        '422':
+          description: Not a pre-hold, expired, or unit no longer available
     delete:
       summary: Release pre-hold without confirming
       security:
@@ -2159,8 +2226,8 @@ paths:
           description: Invalid stage or already registered
   /api/broker/reservations/{reservation}/contract/signed:
     post:
-      summary: Upload GOV-signed contract (broker)
-      description: Broker uploads the contract PDF signed via gov.br after registering GOV.
+      summary: Upload buyer-signed contract (broker)
+      description: Broker uploads the contract PDF signed by the buyer after registering GOV.
       security:
         - bearerAuth: []
       parameters:

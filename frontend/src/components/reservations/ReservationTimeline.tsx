@@ -1,5 +1,11 @@
+import { DownloadIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ReservationAttachmentPreview } from '@/components/reservations/ReservationAttachmentPreview'
+import {
+  downloadReservationAttachment,
+  latestAttachmentByKind,
+  latestContractPdf,
+} from '@/components/reservations/download-reservation-attachment'
 import {
   reservationStepGreenBgClass,
   reservationStepGreenClass,
@@ -19,16 +25,18 @@ const ACTION_LABELS: Record<string, string> = {
   approve_deposit_proof: 'Validar comprovante',
   submit_contract_data: 'Enviar dados do contrato',
   issue_contract: 'Emitir contrato',
-  upload_signed_contract: 'Enviar contrato assinado',
+  upload_signed_contract: 'Enviar contrato assinado pelo comprador',
+  upload_builder_signed_contract: 'Enviar contrato assinado pela construtora',
   mark_signed_gov: 'Registrar assinatura GOV',
-  validate_contract: 'Validar e concluir venda',
+  validate_contract: 'Unidade vendida',
 }
 
 const ATTACHMENT_KIND_LABELS: Record<string, string> = {
   deposit_proof: 'Comprovante de pagamento',
   contract_documentation: 'Documentação do cliente',
   contract_pdf: 'Contrato',
-  contract_signed: 'Contrato assinado',
+  contract_signed: 'Contrato assinado pelo comprador',
+  contract_signed_builder: 'Contrato assinado pela construtora',
 }
 
 const ATTACHMENT_KIND_ORDER = [
@@ -36,6 +44,7 @@ const ATTACHMENT_KIND_ORDER = [
   'contract_documentation',
   'contract_pdf',
   'contract_signed',
+  'contract_signed_builder',
 ] as const
 
 function formatDateTime(value: string | null): string | null {
@@ -112,6 +121,27 @@ function StepMarker({
   )
 }
 
+function currentStepContractPdf(
+  stepKey: string,
+  issued: ReservationAttachment | null,
+  buyerSigned: ReservationAttachment | null,
+  builderSigned: ReservationAttachment | null,
+): ReservationAttachment | null {
+  if (stepKey === 'contract_issue' || stepKey === 'contract_sign_gov') {
+    return issued
+  }
+
+  if (stepKey === 'contract_builder_sign') {
+    return buyerSigned
+  }
+
+  if (stepKey === 'contract_validate') {
+    return builderSigned
+  }
+
+  return null
+}
+
 function isPendingStep(status: ReservationTimelineStepStatus): boolean {
   return status === 'upcoming' || status === 'skipped'
 }
@@ -146,6 +176,10 @@ type ReservationTimelineProps = {
 }
 
 export function ReservationTimeline({ timeline, onAction }: ReservationTimelineProps) {
+  const contractPdf = latestContractPdf(timeline.attachments)
+  const buyerSignedPdf = latestAttachmentByKind(timeline.attachments, 'contract_signed')
+  const builderSignedPdf = latestAttachmentByKind(timeline.attachments, 'contract_signed_builder')
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg border bg-muted/20 p-3 text-sm">
@@ -187,6 +221,15 @@ export function ReservationTimeline({ timeline, onAction }: ReservationTimelineP
       <ol className="flex flex-col">
         {timeline.steps.map((step, index) => {
           const isLast = index === timeline.steps.length - 1
+          const stepPdf =
+            step.status === 'current'
+              ? currentStepContractPdf(
+                  step.key,
+                  contractPdf,
+                  buyerSignedPdf,
+                  builderSignedPdf,
+                )
+              : null
 
           return (
             <li
@@ -222,6 +265,21 @@ export function ReservationTimeline({ timeline, onAction }: ReservationTimelineP
                   <p className="text-xs text-muted-foreground">
                     Vence em {formatDateTime(step.due_at)}
                   </p>
+                ) : null}
+
+                {stepPdf ? (
+                    <div className="flex flex-col gap-2">
+                      <ReservationAttachmentPreview attachment={stepPdf} />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void downloadReservationAttachment(stepPdf)}
+                      >
+                        <DownloadIcon data-icon="inline-start" />
+                        Baixar PDF
+                      </Button>
+                    </div>
                 ) : null}
 
                 {step.status === 'current' && step.actions.length > 0 ? (

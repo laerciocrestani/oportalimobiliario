@@ -65,6 +65,24 @@ class UserActivityCatalog
         );
     }
 
+    public function recordPreHoldConfirmed(User $actor, Reservation $reservation): void
+    {
+        $reservation->loadMissing('client');
+        $client = $reservation->client;
+        $clientBit = $client !== null
+            ? " para o cliente {$client->name}"
+            : '';
+
+        $this->logger->record(
+            action: UserActivityAction::ReservationPreHoldConfirmed,
+            message: "Confirmou a pré-reserva da unidade {$this->unitLabel($reservation)}{$clientBit}.",
+            actor: $actor,
+            tenantId: $reservation->tenant_id,
+            resourceType: 'reservation',
+            resourceId: $reservation->id,
+        );
+    }
+
     public function recordPreHoldCancelled(User $actor, Reservation $reservation): void
     {
         $this->logger->record(
@@ -496,6 +514,7 @@ class UserActivityCatalog
             ReservationTimelineEventType::ContractIssued => UserActivityAction::ReservationContractIssued,
             ReservationTimelineEventType::ContractSignedGov => UserActivityAction::ReservationContractUploaded,
             ReservationTimelineEventType::ContractUploaded => UserActivityAction::ReservationContractUploaded,
+            ReservationTimelineEventType::ContractBuilderSigned => UserActivityAction::ReservationContractBuilderSigned,
             ReservationTimelineEventType::ContractValidated => UserActivityAction::ReservationContractValidated,
             ReservationTimelineEventType::Sold => UserActivityAction::ReservationSold,
             ReservationTimelineEventType::Cancelled => UserActivityAction::ReservationCancelled,
@@ -531,7 +550,11 @@ class UserActivityCatalog
             ReservationTimelineEventType::ContractIssued => "Emitiu o contrato da unidade {$unit}.",
             ReservationTimelineEventType::ContractSignedGov => "Registrou assinatura GOV na reserva da unidade {$unit}.",
             ReservationTimelineEventType::ContractUploaded => $this->attachmentMessage(
-                "Enviou o contrato assinado da unidade {$unit}",
+                "Enviou o contrato assinado pelo comprador da unidade {$unit}",
+                $payload['attachment_id'] ?? null,
+            ),
+            ReservationTimelineEventType::ContractBuilderSigned => $this->attachmentMessage(
+                "Enviou o contrato assinado pela construtora da unidade {$unit}",
                 $payload['attachment_id'] ?? null,
             ),
             ReservationTimelineEventType::ContractValidated => "Validou o contrato assinado da unidade {$unit}.",

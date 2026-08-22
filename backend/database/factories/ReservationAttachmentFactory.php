@@ -57,4 +57,12 @@ class ReservationAttachmentFactory extends Factory
             'original_name' => 'contrato-assinado.pdf',
         ]);
     }
+
+    public function contractSignedBuilder(): static
+    {
+        return $this->state(fn () => [
+            'kind' => ReservationAttachmentKind::ContractSignedBuilder,
+            'original_name' => 'contrato-assinado-construtora.pdf',
+        ]);
+    }
 }

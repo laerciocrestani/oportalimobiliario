@@ -58,8 +58,8 @@ O corretor inicia sempre com pré-reserva, troca informações com a construtora
 - `REQ-RTL-018`: Corretor envia dados do cliente + fotos da documentação (`contract_documentation` attachments); corretor **não** vê contrato completo
 - `REQ-RTL-019`: Gestor emite contrato PDF (`contract_issued`) via botão emitir/aprovar após conferência dos documentos
 - `REQ-RTL-020`: PDF enviado ao corretor; registro manual de assinatura GOV (cliente + corretor) — sem integração gov.br na v1
-- `REQ-RTL-021`: Corretor envia contrato assinado (`contract_signed` attachment) → `stage` = `contract_uploaded`
-- `REQ-RTL-022`: Gestor valida contrato assinado, assina GOV (registro manual), marca unidade → `sold` → `stage` = `sold`
+- `REQ-RTL-021`: Corretor envia contrato assinado pelo comprador (`contract_signed` attachment) → `stage` = `contract_uploaded`
+- `REQ-RTL-022`: Gestor envia contrato assinado pela construtora (`contract_signed_builder`) → `stage` = `contract_builder_signed`; em seguida confirma a venda (nota opcional) → unidade `sold` → `stage` = `sold`
 - `REQ-RTL-023`: Timeline exibe todas as etapas de contrato com anexos vinculados
 
 ### API e UI
@@ -92,7 +92,7 @@ Registradas em [design.md § Decisões pendentes](./design.md#decisões-pendente
 
 | # | Tema | Decisão v1 |
 |---|------|------------|
-| D-01 | Cancelamento após `reserved` | Gestor pode cancelar até `contract_uploaded`; corretor só cancela em `pre_hold` (hard delete) e `proposal_returned`. Recusa de proposta = `cancelled` sem apagar o histórico. |
+| D-01 | Cancelamento após `reserved` | Gestor pode cancelar até `sold` (exclusive); corretor só cancela em `pre_hold` (hard delete) e `proposal_returned`. Recusa de proposta = `cancelled` sem apagar o histórico. |
 | D-02 | Assinatura GOV | Registro manual + upload (sem API gov.br) — Fase D |
 | D-03 | Geração PDF contrato | Template automático do tenant (`builder-contracts`); reemissão até existir assinado |
 | D-04 | Expiração do sinal | Alerta apenas (`opim:check-deposit-windows`); não cancela |

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { FileTextIcon, ImageIcon } from 'lucide-react'
+import { DownloadIcon, FileTextIcon, ImageIcon } from 'lucide-react'
 import {
   Attachment,
+  AttachmentAction,
+  AttachmentActions,
   AttachmentContent,
   AttachmentDescription,
   AttachmentMedia,
@@ -14,11 +16,16 @@ import {
   DialogBody,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
 import { fetchAuthenticatedBlob, type ReservationAttachment } from '@/lib/api'
+import {
+  blobForPreview,
+  downloadReservationAttachment,
+} from '@/components/reservations/download-reservation-attachment'
 
 type ReservationAttachmentPreviewProps = {
   attachment: ReservationAttachment
@@ -33,11 +40,16 @@ function formatBytes(sizeBytes: number): string {
   return `${Math.max(1, Math.round(sizeBytes / 1024))} KB`
 }
 
+function isPdfAttachment(attachment: ReservationAttachment): boolean {
+  return attachment.mime_type === 'application/pdf' || attachment.kind === 'contract_pdf'
+}
+
 export function ReservationAttachmentPreview({
   attachment,
   className,
 }: ReservationAttachmentPreviewProps) {
   const isImage = attachment.mime_type.startsWith('image/')
+  const isPdf = isPdfAttachment(attachment)
 
   return (
     <Dialog>
@@ -56,15 +68,45 @@ export function ReservationAttachmentPreview({
             <AttachmentTrigger aria-label={`Abrir ${attachment.original_name}`} />
           }
         />
+        {isPdf ? (
+          <AttachmentActions>
+            <AttachmentAction
+              aria-label={`Baixar ${attachment.original_name}`}
+              onClick={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                void downloadReservationAttachment(attachment)
+              }}
+            >
+              <DownloadIcon />
+            </AttachmentAction>
+          </AttachmentActions>
+        ) : null}
       </Attachment>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>{attachment.original_name}</DialogTitle>
-          <DialogDescription>Visualização do anexo enviado na reserva.</DialogDescription>
+          <DialogDescription>
+            {isPdf
+              ? 'Visualize o contrato e baixe o PDF para enviar ao cliente.'
+              : 'Visualização do anexo enviado na reserva.'}
+          </DialogDescription>
         </DialogHeader>
         <DialogBody>
           <AttachmentPreviewBody attachment={attachment} />
         </DialogBody>
+        {isPdf ? (
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => void downloadReservationAttachment(attachment)}
+            >
+              <DownloadIcon data-icon="inline-start" />
+              Baixar PDF
+            </Button>
+          </DialogFooter>
+        ) : null}
       </DialogContent>
     </Dialog>
   )
@@ -74,15 +116,23 @@ function AttachmentPreviewBody({ attachment }: { attachment: ReservationAttachme
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const isPdf = isPdfAttachment(attachment)
 
   useEffect(() => {
+    let objectUrl: string | null = null
     let cancelled = false
 
     void fetchAuthenticatedBlob(attachment.file_url)
       .then((blob) => {
-        if (!cancelled) {
-          setPreviewUrl(URL.createObjectURL(blob))
+        const url = URL.createObjectURL(blobForPreview(blob, attachment.mime_type))
+
+        if (cancelled) {
+          URL.revokeObjectURL(url)
+          return
         }
+
+        objectUrl = url
+        setPreviewUrl(url)
       })
       .catch(() => {
         if (!cancelled) {
@@ -97,8 +147,11 @@ function AttachmentPreviewBody({ attachment }: { attachment: ReservationAttachme
 
     return () => {
       cancelled = true
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl)
+      }
     }
-  }, [attachment.file_url])
+  }, [attachment.file_url, attachment.mime_type])
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">Carregando arquivo...</p>
@@ -122,18 +175,29 @@ function AttachmentPreviewBody({ attachment }: { attachment: ReservationAttachme
     )
   }
 
+  if (isPdf) {
+    return (
+      <iframe
+        title={attachment.original_name}
+        src={previewUrl}
+        className="h-[70vh] w-full rounded-lg border bg-muted"
+      />
+    )
+  }
+
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
         Pré-visualização indisponível para este formato. Use o botão abaixo para abrir o arquivo.
       </p>
-      <a
-        href={previewUrl}
-        download={attachment.original_name}
-        className="inline-flex h-8 items-center justify-center rounded-lg border border-border bg-background px-2.5 text-sm font-medium hover:bg-muted"
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => void downloadReservationAttachment(attachment)}
       >
+        <DownloadIcon data-icon="inline-start" />
         Baixar arquivo
-      </a>
+      </Button>
     </div>
   )
 }

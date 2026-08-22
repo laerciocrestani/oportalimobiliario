@@ -99,22 +99,64 @@ class ReservationContractCompletionService
         });
     }
 
-    public function validate(User $builder, Reservation $reservation): Reservation
+    public function uploadBuilderSigned(User $builder, Reservation $reservation, UploadedFile $file): Reservation
+    {
+        if (! $reservation->canUploadBuilderSignedContract()) {
+            abort(422, 'Reservation is not open for builder signed contract upload.');
+        }
+
+        if ($this->timelineService->hasEventType($reservation, ReservationTimelineEventType::ContractBuilderSigned)) {
+            abort(422, 'O contrato assinado pela construtora já foi enviado.');
+        }
+
+        $buyerAttachment = $this->latestSignedContract($reservation);
+
+        if ($buyerAttachment === null) {
+            abort(422, 'Envie o contrato assinado pelo comprador antes da assinatura da construtora.');
+        }
+
+        $this->validateSignedPdf($file);
+
+        return DB::transaction(function () use ($builder, $reservation, $file) {
+            $path = $this->storeFile($reservation, $file);
+
+            $attachment = $reservation->attachments()->create([
+                'kind' => ReservationAttachmentKind::ContractSignedBuilder,
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => (string) $file->getMimeType(),
+                'size_bytes' => (int) $file->getSize(),
+                'uploaded_by' => $builder->id,
+            ]);
+
+            $reservation->update([
+                'status' => ReservationStatus::ContractBuilderSigned,
+            ]);
+
+            $this->timelineService->record(
+                $reservation,
+                ReservationTimelineEventType::ContractBuilderSigned,
+                $builder,
+                ['attachment_id' => $attachment->id],
+            );
+
+            return $reservation->fresh(['unit', 'attachments']);
+        });
+    }
+
+    public function validate(User $builder, Reservation $reservation, ?string $note = null): Reservation
     {
         if (! $reservation->canValidateContract()) {
-            abort(422, 'Reservation has no signed contract pending validation.');
+            abort(422, 'Reservation has no builder-signed contract pending confirmation.');
         }
 
-        $attachment = $reservation->attachments()
-            ->where('kind', ReservationAttachmentKind::ContractSigned)
-            ->latest('id')
-            ->first();
+        $attachment = $this->latestBuilderSignedContract($reservation);
 
         if ($attachment === null) {
-            abort(422, 'Signed contract attachment not found.');
+            abort(422, 'Builder signed contract attachment not found.');
         }
 
-        return DB::transaction(function () use ($builder, $reservation, $attachment) {
+        return DB::transaction(function () use ($builder, $reservation, $attachment, $note) {
             $unit = Unit::query()
                 ->withoutGlobalScope('tenant')
                 ->lockForUpdate()
@@ -137,7 +179,7 @@ class ReservationContractCompletionService
                 $builder,
                 [
                     'attachment_id' => $attachment->id,
-                    'builder_gov_signed' => true,
+                    'note' => $note,
                 ],
             );
             $this->timelineService->record(
@@ -155,6 +197,14 @@ class ReservationContractCompletionService
     {
         return $reservation->attachments()
             ->where('kind', ReservationAttachmentKind::ContractSigned)
+            ->latest('id')
+            ->first();
+    }
+
+    public function latestBuilderSignedContract(Reservation $reservation): ?ReservationAttachment
+    {
+        return $reservation->attachments()
+            ->where('kind', ReservationAttachmentKind::ContractSignedBuilder)
             ->latest('id')
             ->first();
     }

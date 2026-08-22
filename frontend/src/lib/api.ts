@@ -202,7 +202,7 @@ export type CepAddress = {
 
 export type UnitPreHold = {
   reservation_id: number
-  expires_at: string
+  expires_at: string | null
   held_by_me: boolean
 }
 
@@ -367,7 +367,7 @@ export type Reservation = {
   client_id: number | null
   broker_id: number
   status?: string
-  expires_at: string
+  expires_at: string | null
   created_at?: string
   unit?: Unit
   client?: BrokerClient
@@ -476,6 +476,7 @@ export type ReservationTimeline = {
   current_proposal: ReservationProposal | null
   current_deposit_proof: ReservationAttachment | null
   current_signed_contract: ReservationAttachment | null
+  current_builder_signed_contract: ReservationAttachment | null
   attachments: ReservationAttachment[]
   steps: ReservationTimelineStep[]
 }
@@ -946,12 +947,21 @@ export const builderApi = {
       `/builder/reservations/${reservationId}/deposit-proof/approve`,
       { method: 'PATCH' },
     ),
-  validateSignedContract: (reservationId: number) =>
+  uploadBuilderSignedContract: (reservationId: number, file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+
+    return apiUpload<{ status: string; attachment: ReservationAttachment }>(
+      `/builder/reservations/${reservationId}/contract/signed`,
+      formData,
+    )
+  },
+  validateSignedContract: (reservationId: number, note?: string) =>
     apiFetch<{ status: string; unit_status: string }>(
       `/builder/reservations/${reservationId}/contract/validate`,
       {
         method: 'PATCH',
-        body: JSON.stringify({ gov_signed: true }),
+        body: JSON.stringify({ note: note?.trim() || undefined }),
       },
     ),
   listContractVariables: () => apiFetch<ContractSystemVariable[]>('/builder/contract-variables'),
@@ -1038,6 +1048,14 @@ export const brokerApi = {
     apiFetch<Reservation>('/broker/reservations/pre-hold', {
       method: 'POST',
       body: JSON.stringify({ unit_id: unitId }),
+    }),
+  attachPreHoldClient: (reservationId: number, clientId: number, observations?: string) =>
+    apiFetch<Reservation>(`/broker/reservations/${reservationId}/pre-hold`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        client_id: clientId,
+        observations: observations?.trim() || undefined,
+      }),
     }),
   submitReservationProposal: (reservationId: number, data: ReservationProposalInput) =>
     apiFetch<Reservation & { proposal?: ReservationProposal }>(

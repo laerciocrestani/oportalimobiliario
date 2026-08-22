@@ -97,7 +97,7 @@ it('rejects duplicate GOV registration', function () {
     $this->postJson("/api/broker/reservations/{$reservation->id}/contract/gov")->assertUnprocessable();
 });
 
-it('uploads signed contract after GOV registration', function () {
+it('uploads buyer-signed contract after GOV registration', function () {
     Storage::fake('local');
 
     $tenant = Tenant::factory()->create();
@@ -147,7 +147,7 @@ it('rejects signed upload before GOV registration', function () {
     ])->assertUnprocessable();
 });
 
-it('validates signed contract, records builder GOV and marks unit sold', function () {
+it('uploads builder-signed contract after the buyer PDF', function () {
     Storage::fake('local');
 
     $tenant = Tenant::factory()->create();
@@ -164,13 +164,138 @@ it('validates signed contract, records builder GOV and marks unit sold', functio
     Sanctum::actingAs($broker);
     $this->postJson("/api/broker/reservations/{$reservation->id}/contract/gov")->assertOk();
     $this->post("/api/broker/reservations/{$reservation->id}/contract/signed", [
-        'file' => UploadedFile::fake()->create('contrato-assinado.pdf', 120, 'application/pdf'),
+        'file' => UploadedFile::fake()->create('contrato-comprador.pdf', 120, 'application/pdf'),
     ])->assertCreated();
 
     Sanctum::actingAs($builder);
 
+    $this->getJson("/api/builder/reservations/{$reservation->id}/timeline")
+        ->assertOk()
+        ->assertJsonPath('current_stage', 'contract_uploaded')
+        ->assertJsonPath('steps.10.key', 'contract_builder_sign')
+        ->assertJsonPath('steps.10.status', 'current')
+        ->assertJsonPath('steps.10.actions', ['upload_builder_signed_contract']);
+
+    $this->post("/api/builder/reservations/{$reservation->id}/contract/signed", [
+        'file' => UploadedFile::fake()->create('contrato-construtora.pdf', 120, 'application/pdf'),
+    ])
+        ->assertCreated()
+        ->assertJsonPath('status', ReservationStatus::ContractBuilderSigned->value)
+        ->assertJsonPath('attachment.original_name', 'contrato-construtora.pdf');
+
+    expect($reservation->fresh()->status)->toBe(ReservationStatus::ContractBuilderSigned);
+    expect($unit->fresh()->status)->toBe(UnitStatus::Reserved);
+    expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::ContractBuilderSigned)->exists())->toBeTrue();
+
+    $this->getJson("/api/builder/reservations/{$reservation->id}/timeline")
+        ->assertOk()
+        ->assertJsonPath('current_stage', 'contract_builder_signed')
+        ->assertJsonPath('steps.11.key', 'contract_validate')
+        ->assertJsonPath('steps.11.status', 'current')
+        ->assertJsonPath('steps.11.actions', ['validate_contract']);
+});
+
+it('rejects builder-signed upload before the buyer PDF', function () {
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create();
+    $broker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+
+    $reservation = createContractIssuedReservation($tenant, $broker, $unit);
+
+    Sanctum::actingAs($builder);
+
+    $this->post("/api/builder/reservations/{$reservation->id}/contract/signed", [
+        'file' => UploadedFile::fake()->create('contrato-construtora.pdf', 120, 'application/pdf'),
+    ])->assertUnprocessable();
+});
+
+it('rejects duplicate builder-signed upload', function () {
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create();
+    $broker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = createContractIssuedReservation($tenant, $broker, $unit);
+
+    Sanctum::actingAs($broker);
+    $this->postJson("/api/broker/reservations/{$reservation->id}/contract/gov")->assertOk();
+    $this->post("/api/broker/reservations/{$reservation->id}/contract/signed", [
+        'file' => UploadedFile::fake()->create('contrato-comprador.pdf', 120, 'application/pdf'),
+    ])->assertCreated();
+
+    Sanctum::actingAs($builder);
+    $this->post("/api/builder/reservations/{$reservation->id}/contract/signed", [
+        'file' => UploadedFile::fake()->create('contrato-construtora.pdf', 120, 'application/pdf'),
+    ])->assertCreated();
+    $this->post("/api/builder/reservations/{$reservation->id}/contract/signed", [
+        'file' => UploadedFile::fake()->create('contrato-construtora-2.pdf', 120, 'application/pdf'),
+    ])->assertUnprocessable();
+});
+
+it('rejects validating the sale before the builder-signed PDF', function () {
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create();
+    $broker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = createContractIssuedReservation($tenant, $broker, $unit);
+
+    Sanctum::actingAs($broker);
+    $this->postJson("/api/broker/reservations/{$reservation->id}/contract/gov")->assertOk();
+    $this->post("/api/broker/reservations/{$reservation->id}/contract/signed", [
+        'file' => UploadedFile::fake()->create('contrato-comprador.pdf', 120, 'application/pdf'),
+    ])->assertCreated();
+
+    Sanctum::actingAs($builder);
+
+    $this->patchJson("/api/builder/reservations/{$reservation->id}/contract/validate")
+        ->assertUnprocessable();
+});
+
+it('confirms the sale after both signed contracts and marks the unit sold', function () {
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create();
+    $broker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = createContractIssuedReservation($tenant, $broker, $unit);
+
+    Sanctum::actingAs($broker);
+    $this->postJson("/api/broker/reservations/{$reservation->id}/contract/gov")->assertOk();
+    $this->post("/api/broker/reservations/{$reservation->id}/contract/signed", [
+        'file' => UploadedFile::fake()->create('contrato-comprador.pdf', 120, 'application/pdf'),
+    ])->assertCreated();
+
+    Sanctum::actingAs($builder);
+    $this->post("/api/builder/reservations/{$reservation->id}/contract/signed", [
+        'file' => UploadedFile::fake()->create('contrato-construtora.pdf', 120, 'application/pdf'),
+    ])->assertCreated();
+
     $this->patchJson("/api/builder/reservations/{$reservation->id}/contract/validate", [
-        'gov_signed' => true,
+        'note' => 'Documentos conferidos.',
     ])
         ->assertOk()
         ->assertJsonPath('status', ReservationStatus::Sold->value)
@@ -185,8 +310,8 @@ it('validates signed contract, records builder GOV and marks unit sold', functio
         ->assertOk()
         ->assertJsonPath('current_stage', 'sold')
         ->assertJsonPath('unit.status', UnitStatus::Sold->value)
-        ->assertJsonPath('steps.11.status', 'current')
-        ->assertJsonPath('steps.11.key', 'sold');
+        ->assertJsonPath('steps.12.status', 'current')
+        ->assertJsonPath('steps.12.key', 'sold');
 });
 
 it('forbids builder without permission from validating contract', function () {
@@ -203,9 +328,8 @@ it('forbids builder without permission from validating contract', function () {
 
     Sanctum::actingAs($builder);
 
-    $this->patchJson("/api/builder/reservations/{$reservation->id}/contract/validate", [
-        'gov_signed' => true,
-    ])->assertForbidden();
+    $this->patchJson("/api/builder/reservations/{$reservation->id}/contract/validate")
+        ->assertForbidden();
 });
 
 it('rejects validation from another tenant', function () {
@@ -225,9 +349,29 @@ it('rejects validation from another tenant', function () {
 
     Sanctum::actingAs($builder);
 
-    $this->patchJson("/api/builder/reservations/{$reservation->id}/contract/validate", [
-        'gov_signed' => true,
-    ])->assertNotFound();
+    $this->patchJson("/api/builder/reservations/{$reservation->id}/contract/validate")
+        ->assertNotFound();
+});
+
+it('forbids builder without permission from uploading builder-signed contract', function () {
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->for($tenant)->create();
+    $broker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+
+    $reservation = Reservation::factory()->contractUploaded()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    Sanctum::actingAs($builder);
+
+    $this->post("/api/builder/reservations/{$reservation->id}/contract/signed", [
+        'file' => UploadedFile::fake()->create('contrato-construtora.pdf', 120, 'application/pdf'),
+    ])->assertForbidden();
 });
 
 it('rejects cancelling a sold reservation', function () {

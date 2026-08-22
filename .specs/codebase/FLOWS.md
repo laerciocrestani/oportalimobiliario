@@ -161,8 +161,9 @@ flowchart TD
         S9[contract_issued]
         S10[contract_signed_gov]
         S11[contract_uploaded]
-        S12[contract_validated]
-        S13[sold]
+        S12[contract_builder_signed]
+        S13[contract_validated]
+        S14[sold]
     end
 
     S1 --> S2 --> S3 --> S4
@@ -171,7 +172,7 @@ flowchart TD
     S4 -->|devolvida| S4c --> S2
     S5 --> S6 --> S7
     S5 -->|sem sinal| S7alert
-    S7 --> S8 --> S9 --> S10 --> S11 --> S12 --> S13
+    S7 --> S8 --> S9 --> S10 --> S11 --> S12 --> S13 --> S14
 ```
 
 ### 4.1 Sequência por ator
@@ -193,8 +194,9 @@ sequenceDiagram
     Brk->>API: POST contract-data (docs)
     Bld->>API: POST contract/issue (PDF)
     Brk->>API: POST contract/gov (registro manual)
-    Brk->>API: POST contract/signed (PDF)
-    Bld->>API: PATCH contract/validate (gov_signed)
+    Brk->>API: POST contract/signed (PDF comprador)
+    Bld->>API: POST contract/signed (PDF construtora)
+    Bld->>API: PATCH contract/validate (nota opcional)
     Note over API: unit sold
     CMD->>API: deposit_overdue alert (se 48h sem comprovante)
 ```

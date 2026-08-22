@@ -39,7 +39,8 @@ class ReservationTimelineService
         ['key' => 'contract_data', 'label' => 'Dados para contrato', 'event_types' => [ReservationTimelineEventType::ContractDataSubmitted]],
         ['key' => 'contract_issue', 'label' => 'Emissão do contrato', 'event_types' => [ReservationTimelineEventType::ContractIssued]],
         ['key' => 'contract_sign_gov', 'label' => 'Assinatura GOV', 'event_types' => [ReservationTimelineEventType::ContractSignedGov]],
-        ['key' => 'contract_upload', 'label' => 'Contrato assinado enviado', 'event_types' => [ReservationTimelineEventType::ContractUploaded]],
+        ['key' => 'contract_upload', 'label' => 'Contrato assinado pelo comprador', 'event_types' => [ReservationTimelineEventType::ContractUploaded]],
+        ['key' => 'contract_builder_sign', 'label' => 'Contrato assinado pela construtora', 'event_types' => [ReservationTimelineEventType::ContractBuilderSigned]],
         ['key' => 'contract_validate', 'label' => 'Validação final', 'event_types' => [ReservationTimelineEventType::ContractValidated]],
         ['key' => 'sold', 'label' => 'Unidade vendida', 'event_types' => [ReservationTimelineEventType::Sold]],
     ];
@@ -125,6 +126,10 @@ class ReservationTimelineService
             ->where('kind', ReservationAttachmentKind::ContractSigned)
             ->sortByDesc('id')
             ->first();
+        $currentBuilderSignedContract = $reservation->attachments
+            ->where('kind', ReservationAttachmentKind::ContractSignedBuilder)
+            ->sortByDesc('id')
+            ->first();
 
         $depositOverdue = $events->contains(
             fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::DepositOverdue,
@@ -149,6 +154,7 @@ class ReservationTimelineService
             'current_proposal' => $currentProposal?->toApiArray(),
             'current_deposit_proof' => $currentDepositProof?->toApiArray($attachmentPrefix),
             'current_signed_contract' => $currentSignedContract?->toApiArray($attachmentPrefix),
+            'current_builder_signed_contract' => $currentBuilderSignedContract?->toApiArray($attachmentPrefix),
             'attachments' => $visibleAttachments,
             'steps' => $steps,
         ];
@@ -258,9 +264,14 @@ class ReservationTimelineService
             return 'sold';
         }
 
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractBuilderSigned)
+            || $reservation->isContractBuilderSigned()) {
+            return 'contract_validate';
+        }
+
         if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractUploaded)
             || $reservation->isContractUploaded()) {
-            return 'contract_validate';
+            return 'contract_builder_sign';
         }
 
         if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractSignedGov)) {
@@ -318,6 +329,10 @@ class ReservationTimelineService
 
         if ($reservation->isProposalReturned()) {
             return 'proposal_returned';
+        }
+
+        if ($reservation->isContractBuilderSigned()) {
+            return 'contract_builder_signed';
         }
 
         if ($reservation->isContractUploaded()) {
@@ -594,6 +609,7 @@ class ReservationTimelineService
             'contract_issue' => $isBroker ? [] : ['issue_contract'],
             'contract_sign_gov' => $isBroker ? ['mark_signed_gov'] : ['issue_contract'],
             'contract_upload' => $isBroker ? ['upload_signed_contract'] : [],
+            'contract_builder_sign' => $isBroker ? [] : ['upload_builder_signed_contract'],
             'contract_validate' => $isBroker ? [] : ['validate_contract'],
             default => [],
         };
@@ -718,6 +734,7 @@ class ReservationTimelineService
             'proposal_decision',
             'deposit_proof',
             'contract_issue',
+            'contract_builder_sign',
             'contract_validate' => 'builder',
             default => null,
         };

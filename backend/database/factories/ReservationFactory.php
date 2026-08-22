@@ -84,4 +84,12 @@ class ReservationFactory extends Factory
             'expires_at' => null,
         ]);
     }
+
+    public function contractBuilderSigned(): static
+    {
+        return $this->state(fn () => [
+            'status' => \App\Enums\ReservationStatus::ContractBuilderSigned,
+            'expires_at' => null,
+        ]);
+    }
 }

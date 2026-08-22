@@ -3,6 +3,7 @@ import {
   CalendarClockIcon,
   ClipboardListIcon,
   ClockIcon,
+  FilePenLineIcon,
   FilePlusIcon,
   FileTextIcon,
   FileUpIcon,
@@ -26,6 +27,7 @@ export const RESERVATION_STEP_KEYS = [
   'contract_issue',
   'contract_sign_gov',
   'contract_upload',
+  'contract_builder_sign',
   'contract_validate',
   'sold',
 ] as const
@@ -43,6 +45,7 @@ export const RESERVATION_STEP_ICONS: Record<ReservationStepKey, LucideIcon> = {
   contract_issue: FilePlusIcon,
   contract_sign_gov: PenLineIcon,
   contract_upload: FileUpIcon,
+  contract_builder_sign: FilePenLineIcon,
   contract_validate: ShieldCheckIcon,
   sold: KeyRoundIcon,
 }

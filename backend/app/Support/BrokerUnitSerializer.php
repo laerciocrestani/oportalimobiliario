@@ -48,8 +48,10 @@ class BrokerUnitSerializer
                     'id' => $reservation->id,
                     'unit_id' => $reservation->unit_id,
                     'broker_id' => $reservation->broker_id,
+                    'client_id' => $reservation->client_id,
                     'status' => $reservation->status->value,
                     'expires_at' => $reservation->expires_at?->toIso8601String(),
+                    'client' => $reservation->client,
                 ];
             }
 

@@ -4,7 +4,7 @@ import { Building2Icon } from 'lucide-react'
 
 describe('reservationStepIcon', () => {
   it('maps every timeline process to a lucide icon', () => {
-    expect(RESERVATION_STEP_KEYS).toHaveLength(12)
+    expect(RESERVATION_STEP_KEYS).toHaveLength(13)
 
     for (const key of RESERVATION_STEP_KEYS) {
       expect(RESERVATION_STEP_ICONS[key]).toBeDefined()

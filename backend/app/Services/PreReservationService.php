@@ -56,6 +56,61 @@ class PreReservationService
         return $reservation;
     }
 
+    public function attachClient(
+        User $broker,
+        Reservation $reservation,
+        BrokerClient $client,
+        ?string $observations = null,
+    ): Reservation {
+        if ($reservation->broker_id !== $broker->id) {
+            abort(403, 'Forbidden.');
+        }
+
+        if ($reservation->status !== ReservationStatus::PreHold) {
+            abort(422, 'Reservation is not a pre-hold.');
+        }
+
+        if ($reservation->isExpired()) {
+            abort(422, 'Sua pré-reserva expirou. A unidade está disponível novamente.');
+        }
+
+        $observationsText = trim((string) $observations);
+
+        $reservation = DB::transaction(function () use ($reservation, $client, $observationsText) {
+            $locked = Unit::query()
+                ->withoutGlobalScope('tenant')
+                ->lockForUpdate()
+                ->findOrFail($reservation->unit_id);
+
+            if ($locked->status !== UnitStatus::PreReserved) {
+                abort(422, 'Unidade não está mais disponível.');
+            }
+
+            $reservation->update([
+                'client_id' => $client->id,
+                'expires_at' => null,
+            ]);
+
+            if ($observationsText !== '') {
+                $reservation->messages()->create([
+                    'user_id' => $reservation->broker_id,
+                    'body' => $observationsText,
+                ]);
+            }
+
+            return $reservation->fresh(['unit', 'client']);
+        });
+
+        $this->activityCatalog->recordPreHoldConfirmed($broker, $reservation);
+
+        if ($observationsText !== '') {
+            $this->timelineService->recordDialogue($reservation, $broker);
+            $this->activityCatalog->recordMessageSent($broker, $reservation, $observationsText);
+        }
+
+        return $reservation;
+    }
+
     public function releasePreHold(User $broker, Reservation $reservation): void
     {
         if ($reservation->broker_id !== $broker->id) {

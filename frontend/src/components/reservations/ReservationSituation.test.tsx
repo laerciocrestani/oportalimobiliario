@@ -42,10 +42,10 @@ describe('ReservationSituation', () => {
     expect(group.children[0].firstElementChild).not.toHaveClass('situation-active-glow')
     expect(group.children[2].firstElementChild).toHaveClass('bg-muted', 'text-muted-foreground', 'text-[11px]')
     expect(group.children[2].firstElementChild).not.toHaveClass('bg-emerald-500')
-    expect(screen.getByRole('progressbar', { name: 'Progresso 5 de 12' })).toHaveClass(
+    expect(screen.getByRole('progressbar', { name: 'Progresso 5 de 13' })).toHaveClass(
       '[&_[data-slot=progress-indicator]]:bg-emerald-400',
     )
-    expect(screen.queryByText('5/12')).not.toBeInTheDocument()
+    expect(screen.queryByText('5/13')).not.toBeInTheDocument()
     expect(screen.queryByText('42%')).not.toBeInTheDocument()
     expect(screen.getByText('Decisão do gestor')).toBeInTheDocument()
     expect(screen.getByText('Aguardando sinal (48h)')).toBeInTheDocument()

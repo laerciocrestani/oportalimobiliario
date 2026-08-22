@@ -17,10 +17,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'unit_id',
     'broker_id',
     'client_id',
-            'status',
-            'expires_at',
-            'contract_template_id',
-            'contract_values',
+    'status',
+    'expires_at',
+    'contract_template_id',
+    'contract_values',
 ])]
 class Reservation extends Model
 {
@@ -45,17 +45,26 @@ class Reservation extends Model
     /** @param Builder<Reservation> $query */
     public function scopeListed(Builder $query): Builder
     {
-        return $query->whereIn('status', [
-            ReservationStatus::ProposalPending,
-            ReservationStatus::ProposalReturned,
-            ReservationStatus::Confirmed,
-            ReservationStatus::DepositPending,
-            ReservationStatus::DepositProofPending,
-            ReservationStatus::ContractDataPending,
-            ReservationStatus::ContractIssued,
-            ReservationStatus::ContractUploaded,
-            ReservationStatus::Sold,
-        ]);
+        return $query->where(function (Builder $listed): void {
+            $listed
+                ->whereIn('status', [
+                    ReservationStatus::ProposalPending,
+                    ReservationStatus::ProposalReturned,
+                    ReservationStatus::Confirmed,
+                    ReservationStatus::DepositPending,
+                    ReservationStatus::DepositProofPending,
+                    ReservationStatus::ContractDataPending,
+                    ReservationStatus::ContractIssued,
+                    ReservationStatus::ContractUploaded,
+                    ReservationStatus::ContractBuilderSigned,
+                    ReservationStatus::Sold,
+                ])
+                ->orWhere(function (Builder $preHoldWithClient): void {
+                    $preHoldWithClient
+                        ->where('status', ReservationStatus::PreHold)
+                        ->whereNotNull('client_id');
+                });
+        });
     }
 
     public function isPreHold(): bool
@@ -106,6 +115,11 @@ class Reservation extends Model
         return $this->status === ReservationStatus::ContractUploaded;
     }
 
+    public function isContractBuilderSigned(): bool
+    {
+        return $this->status === ReservationStatus::ContractBuilderSigned;
+    }
+
     public function isSold(): bool
     {
         return $this->status === ReservationStatus::Sold;
@@ -125,6 +139,7 @@ class Reservation extends Model
             ReservationStatus::ContractDataPending,
             ReservationStatus::ContractIssued,
             ReservationStatus::ContractUploaded,
+            ReservationStatus::ContractBuilderSigned,
         ], true);
     }
 
@@ -148,9 +163,14 @@ class Reservation extends Model
         return $this->isContractIssued();
     }
 
-    public function canValidateContract(): bool
+    public function canUploadBuilderSignedContract(): bool
     {
         return $this->isContractUploaded();
+    }
+
+    public function canValidateContract(): bool
+    {
+        return $this->isContractBuilderSigned();
     }
 
     public function contractTemplate(): BelongsTo

@@ -20,6 +20,7 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | modelo de contrato | `contract_template` |
 | preço congelado | `frozen_price_brl` |
 | contrato assinado | `contract_signed` |
+| contrato assinado pela construtora | `contract_signed_builder` |
 | convite corretor | `broker_invite` |
 | acesso unidade | `unit_access` |
 | role construtora | `builder` |
@@ -67,6 +68,7 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | aguardando_dados_contrato | `contract_data_pending` |
 | contrato_emitido | `contract_issued` |
 | contrato_enviado | `contract_uploaded` |
+| contrato_assinado_construtora | `contract_builder_signed` |
 
 ## Dev hostnames (unchanged — PT)
 

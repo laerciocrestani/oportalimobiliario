@@ -5,6 +5,8 @@ import { BrokerDepositProofDialog } from '@/components/reservations/BrokerDeposi
 import { BrokerGovSignatureDialog } from '@/components/reservations/BrokerGovSignatureDialog'
 import { BrokerSignedContractDialog } from '@/components/reservations/BrokerSignedContractDialog'
 import { BuilderContractValidatePanel } from '@/components/reservations/BuilderContractValidatePanel'
+import { BuilderMarkSoldDialog } from '@/components/reservations/BuilderMarkSoldDialog'
+import { BuilderSignedContractDialog } from '@/components/reservations/BuilderSignedContractDialog'
 import { BuilderDepositProofApprovalPanel } from '@/components/reservations/BuilderDepositProofApprovalPanel'
 import { BuilderProposalDecisionPanel } from '@/components/reservations/BuilderProposalDecisionPanel'
 import { BuilderIssueContractDialog } from '@/components/reservations/BuilderIssueContractDialog'
@@ -44,6 +46,8 @@ export function ReservationTimelineSheet({
   const [issueContractOpen, setIssueContractOpen] = useState(false)
   const [govSignatureOpen, setGovSignatureOpen] = useState(false)
   const [signedContractOpen, setSignedContractOpen] = useState(false)
+  const [builderSignedContractOpen, setBuilderSignedContractOpen] = useState(false)
+  const [markSoldOpen, setMarkSoldOpen] = useState(false)
 
   async function loadTimeline() {
     if (reservationId === null) {
@@ -119,6 +123,16 @@ export function ReservationTimelineSheet({
 
     if (action === 'upload_signed_contract') {
       setSignedContractOpen(true)
+      return
+    }
+
+    if (action === 'upload_builder_signed_contract') {
+      setBuilderSignedContractOpen(true)
+      return
+    }
+
+    if (action === 'validate_contract') {
+      setMarkSoldOpen(true)
     }
   }
 
@@ -186,9 +200,23 @@ export function ReservationTimelineSheet({
                 timeline.current_signed_contract &&
                 timeline.current_stage === 'contract_uploaded' ? (
                   <BuilderContractValidatePanel
-                    reservationId={timeline.reservation_id}
+                    title="Contrato assinado pelo comprador"
+                    description="Baixe o PDF, assine pela construtora e envie o arquivo assinado."
                     attachment={timeline.current_signed_contract}
-                    onValidated={() => void handleRefresh()}
+                    actionLabel="Enviar contrato assinado pela construtora"
+                    onAction={() => setBuilderSignedContractOpen(true)}
+                  />
+                ) : null}
+
+                {profile === 'builder' &&
+                timeline.current_builder_signed_contract &&
+                timeline.current_stage === 'contract_builder_signed' ? (
+                  <BuilderContractValidatePanel
+                    title="Contrato assinado pela construtora"
+                    description="Confira o PDF e confirme a venda da unidade."
+                    attachment={timeline.current_builder_signed_contract}
+                    actionLabel="Unidade vendida"
+                    onAction={() => setMarkSoldOpen(true)}
                   />
                 ) : null}
 
@@ -216,6 +244,7 @@ export function ReservationTimelineSheet({
             reservationId={reservationId}
             expiresAt={timeline?.current_stage === 'pre_hold' ? (timeline.expires_at ?? null) : null}
             releaseHoldOnClose={false}
+            client={timeline?.client ?? null}
             onReserved={() => void handleRefresh()}
           />
           <BrokerDepositProofDialog
@@ -248,12 +277,26 @@ export function ReservationTimelineSheet({
       ) : null}
 
       {profile === 'builder' && reservationId !== null ? (
-        <BuilderIssueContractDialog
-          open={issueContractOpen}
-          onOpenChange={setIssueContractOpen}
-          reservationId={reservationId}
-          onIssued={() => void handleRefresh()}
-        />
+        <>
+          <BuilderIssueContractDialog
+            open={issueContractOpen}
+            onOpenChange={setIssueContractOpen}
+            reservationId={reservationId}
+            onIssued={() => void handleRefresh()}
+          />
+          <BuilderSignedContractDialog
+            open={builderSignedContractOpen}
+            onOpenChange={setBuilderSignedContractOpen}
+            reservationId={reservationId}
+            onSubmitted={() => void handleRefresh()}
+          />
+          <BuilderMarkSoldDialog
+            open={markSoldOpen}
+            onOpenChange={setMarkSoldOpen}
+            reservationId={reservationId}
+            onSubmitted={() => void handleRefresh()}
+          />
+        </>
       ) : null}
     </>
   )

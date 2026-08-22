@@ -13,6 +13,7 @@ const sampleTimeline: ReservationTimelineData = {
   current_proposal: null,
   current_deposit_proof: null,
   current_signed_contract: null,
+  current_builder_signed_contract: null,
   attachments: [],
   steps: [
     {
@@ -113,12 +114,24 @@ describe('ReservationTimeline', () => {
     expect(screen.getByRole('button', { name: 'Enviar dados do contrato' })).toBeInTheDocument()
   })
 
-  it('renders GOV signature action for the current step', () => {
+  it('shows the issued contract PDF and download on the GOV signature step', () => {
     render(
       <ReservationTimeline
         timeline={{
           ...sampleTimeline,
           current_stage: 'contract_issued',
+          attachments: [
+            {
+              id: 11,
+              kind: 'contract_pdf',
+              original_name: 'contrato.pdf',
+              mime_type: 'application/pdf',
+              size_bytes: 4096,
+              uploaded_by: 1,
+              created_at: '2026-08-19T12:00:00+00:00',
+              file_url: '/broker/reservations/1/attachments/11/file',
+            },
+          ],
           steps: [
             {
               key: 'contract_sign_gov',
@@ -134,7 +147,50 @@ describe('ReservationTimeline', () => {
       />,
     )
 
+    expect(screen.getAllByText('contrato.pdf').length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Baixar contrato.pdf' }).length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Registrar assinatura GOV' })).toBeInTheDocument()
+  })
+
+  it('shows the buyer-signed PDF on the builder signature step', () => {
+    render(
+      <ReservationTimeline
+        timeline={{
+          ...sampleTimeline,
+          current_stage: 'contract_uploaded',
+          attachments: [
+            {
+              id: 12,
+              kind: 'contract_signed',
+              original_name: 'contrato-comprador.pdf',
+              mime_type: 'application/pdf',
+              size_bytes: 2048,
+              uploaded_by: 2,
+              created_at: '2026-08-21T12:00:00+00:00',
+              file_url: '/builder/reservations/1/attachments/12/file',
+            },
+          ],
+          steps: [
+            {
+              key: 'contract_builder_sign',
+              label: 'Contrato assinado pela construtora',
+              status: 'current',
+              occurred_at: null,
+              due_at: null,
+              actor: null,
+              actions: ['upload_builder_signed_contract'],
+            },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getAllByText('contrato-comprador.pdf').length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: 'Enviar contrato assinado pela construtora' }),
+    ).toBeInTheDocument()
   })
 
   it('labels issue_contract as Reemitir when a PDF already exists', () => {
@@ -171,6 +227,7 @@ describe('ReservationTimeline', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Reemitir contrato' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeInTheDocument()
   })
 
   it('renders upcoming steps with a disabled gray tone', () => {

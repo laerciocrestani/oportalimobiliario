@@ -30,6 +30,7 @@ enum UserActivityAction: string
     case ReservationContractDataSubmitted = 'reservation.contract_data.submitted';
     case ReservationContractIssued = 'reservation.contract.issued';
     case ReservationContractUploaded = 'reservation.contract.uploaded';
+    case ReservationContractBuilderSigned = 'reservation.contract.builder_signed';
     case ReservationContractValidated = 'reservation.contract.validated';
     case ReservationSold = 'reservation.sold';
 

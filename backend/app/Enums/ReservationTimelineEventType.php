@@ -18,6 +18,7 @@ enum ReservationTimelineEventType: string
     case ContractIssued = 'contract_issued';
     case ContractSignedGov = 'contract_signed_gov';
     case ContractUploaded = 'contract_uploaded';
+    case ContractBuilderSigned = 'contract_builder_signed';
     case ContractValidated = 'contract_validated';
     case Sold = 'sold';
     case Cancelled = 'cancelled';

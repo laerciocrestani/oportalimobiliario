@@ -1,22 +1,14 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { BuilderContractValidatePanel } from '@/components/reservations/BuilderContractValidatePanel'
 import type { ReservationAttachment } from '@/lib/api'
-
-vi.mock('@/lib/api', () => ({
-  builderApi: {
-    validateSignedContract: vi.fn(),
-  },
-}))
 
 vi.mock('@/components/reservations/ReservationAttachmentPreview', () => ({
   ReservationAttachmentPreview: ({ attachment }: { attachment: ReservationAttachment }) => (
     <p>{attachment.original_name}</p>
   ),
 }))
-
-import { builderApi } from '@/lib/api'
 
 const attachment: ReservationAttachment = {
   id: 9,
@@ -30,32 +22,24 @@ const attachment: ReservationAttachment = {
 }
 
 describe('BuilderContractValidatePanel', () => {
-  it('requires GOV confirmation before validating the sale', async () => {
+  it('shows the signed PDF and the next action', async () => {
     const user = userEvent.setup()
-    const onValidated = vi.fn()
-
-    vi.mocked(builderApi.validateSignedContract).mockResolvedValue({
-      status: 'sold',
-      unit_status: 'sold',
-    })
+    const onAction = vi.fn()
 
     render(
       <BuilderContractValidatePanel
-        reservationId={7}
+        title="Contrato assinado pelo comprador"
+        description="Baixe o PDF, assine pela construtora e envie o arquivo."
         attachment={attachment}
-        onValidated={onValidated}
+        actionLabel="Enviar contrato assinado pela construtora"
+        onAction={onAction}
       />,
     )
 
     expect(screen.getByText('contrato-assinado.pdf')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Validar e concluir venda' })).toBeDisabled()
-
-    await user.click(screen.getByRole('checkbox', { name: 'Assinatura GOV da construtora registrada' }))
-    await user.click(screen.getByRole('button', { name: 'Validar e concluir venda' }))
-
-    await waitFor(() => {
-      expect(builderApi.validateSignedContract).toHaveBeenCalledWith(7)
-      expect(onValidated).toHaveBeenCalled()
-    })
+    await user.click(
+      screen.getByRole('button', { name: 'Enviar contrato assinado pela construtora' }),
+    )
+    expect(onAction).toHaveBeenCalled()
   })
 })

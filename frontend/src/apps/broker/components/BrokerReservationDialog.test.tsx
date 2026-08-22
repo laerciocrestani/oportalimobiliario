@@ -26,6 +26,13 @@ const unit = {
   status: 'pre_reserved',
 }
 
+const attachedClient = {
+  id: 2,
+  name: 'Ana Silva',
+  phone: '(11) 88888-8888',
+  email: 'ana@example.com',
+}
+
 const validProposal = {
   client_name: 'Ana Silva',
   client_email: 'ana@example.com',
@@ -42,9 +49,7 @@ const validProposal = {
 }
 
 describe('BrokerReservationDialog', () => {
-  it('disables submit until required proposal fields are filled', async () => {
-    vi.mocked(brokerApi.listClients).mockResolvedValue([])
-
+  it('prefills the attached client and hides the client picker', async () => {
     render(
       <BrokerReservationDialog
         open
@@ -52,30 +57,35 @@ describe('BrokerReservationDialog', () => {
         unit={unit}
         reservationId={55}
         expiresAt="2099-01-01T12:00:00.000000Z"
+        client={attachedClient}
         onReserved={() => {}}
       />,
     )
 
     expect(screen.getByRole('button', { name: 'Enviar proposta' })).toBeDisabled()
+    expect(screen.queryByLabelText('Cliente cadastrado')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Novo cliente' })).not.toBeInTheDocument()
 
     await waitFor(() => {
-      expect(brokerApi.listClients).toHaveBeenCalled()
+      expect(screen.getByText(/Cliente da pré-reserva:/)).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Ana Silva')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('ana@example.com')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('(11) 88888-8888')).toBeInTheDocument()
     })
+
+    expect(brokerApi.listClients).not.toHaveBeenCalled()
   })
 
-  it('prefills client data from selection and submits proposal', async () => {
+  it('submits proposal using the attached client without selecting again', async () => {
     const user = userEvent.setup()
     const onReserved = vi.fn()
 
-    vi.mocked(brokerApi.listClients).mockResolvedValue([
-      { id: 2, name: 'Ana', phone: '(11) 88888-8888', email: 'ana@example.com' },
-    ])
     vi.mocked(brokerApi.submitReservationProposal).mockResolvedValue({
       id: 55,
       unit_id: 10,
-      client_id: null,
+      client_id: 2,
       broker_id: 1,
-      expires_at: '2099-01-01T12:00:00.000000Z',
+      expires_at: null,
       status: 'proposal_pending',
     })
 
@@ -86,15 +96,15 @@ describe('BrokerReservationDialog', () => {
         unit={unit}
         reservationId={55}
         expiresAt="2099-01-01T12:00:00.000000Z"
+        client={attachedClient}
         onReserved={onReserved}
       />,
     )
 
     await waitFor(() => {
-      expect(screen.getByRole('option', { name: 'Ana · (11) 88888-8888' })).toBeInTheDocument()
+      expect(screen.getByDisplayValue('Ana Silva')).toBeInTheDocument()
     })
 
-    await user.selectOptions(screen.getByLabelText('Cliente cadastrado'), '2')
     await user.type(screen.getByLabelText('CPF *'), validProposal.client_cpf)
     await user.type(screen.getByLabelText('Endereço *'), validProposal.address)
     await user.type(screen.getByLabelText('Cidade *'), validProposal.city)
@@ -107,9 +117,9 @@ describe('BrokerReservationDialog', () => {
 
     await waitFor(() => {
       expect(brokerApi.submitReservationProposal).toHaveBeenCalledWith(55, {
-        client_name: 'Ana',
-        client_email: 'ana@example.com',
-        client_phone: '(11) 88888-8888',
+        client_name: attachedClient.name,
+        client_email: attachedClient.email,
+        client_phone: attachedClient.phone,
         client_cpf: validProposal.client_cpf,
         address: validProposal.address,
         city: validProposal.city,
@@ -128,7 +138,6 @@ describe('BrokerReservationDialog', () => {
     const user = userEvent.setup()
     const onOpenChange = vi.fn()
 
-    vi.mocked(brokerApi.listClients).mockResolvedValue([])
     vi.mocked(brokerApi.releasePreHold).mockResolvedValue(undefined)
 
     render(
@@ -139,12 +148,13 @@ describe('BrokerReservationDialog', () => {
         reservationId={55}
         expiresAt={null}
         releaseHoldOnClose={false}
+        client={attachedClient}
         onReserved={() => {}}
       />,
     )
 
     await waitFor(() => {
-      expect(brokerApi.listClients).toHaveBeenCalled()
+      expect(screen.getByDisplayValue('Ana Silva')).toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: 'Fechar' }))

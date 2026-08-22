@@ -1,4 +1,5 @@
 import { unitStatusLabels } from '@/apps/builder/lib/unit-status'
+import { BrokerPreHoldDialog } from '@/apps/broker/components/BrokerPreHoldDialog'
 import { BrokerReservationDialog } from '@/apps/broker/components/BrokerReservationDialog'
 import { ReservationMessagesDialog } from '@/apps/builder/components/ReservationMessagesDialog'
 import { ReservationCancelDialog } from '@/components/reservations/ReservationCancelDialog'
@@ -113,7 +114,8 @@ export function BrokerUnitsDialog({
   const [selectedUnit, setSelectedUnit] = useState<Unit | null>(null)
   const [preHoldReservationId, setPreHoldReservationId] = useState<number | null>(null)
   const [preHoldExpiresAt, setPreHoldExpiresAt] = useState<string | null>(null)
-  const [reservationOpen, setReservationOpen] = useState(false)
+  const [preHoldFormOpen, setPreHoldFormOpen] = useState(false)
+  const [proposalOpen, setProposalOpen] = useState(false)
   const [messagesReservationId, setMessagesReservationId] = useState<number | null>(null)
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [cancellingUnitId, setCancellingUnitId] = useState<number | null>(null)
@@ -136,7 +138,7 @@ export function BrokerUnitsDialog({
   }, [building, open])
 
   useEffect(() => {
-    if (!open || !building || reservationOpen || cancelUnit !== null) {
+    if (!open || !building || preHoldFormOpen || proposalOpen || cancelUnit !== null) {
       return
     }
 
@@ -178,13 +180,20 @@ export function BrokerUnitsDialog({
       cancelled = true
       window.clearInterval(intervalId)
     }
-  }, [building, open, reservationOpen, cancelUnit])
+  }, [building, open, preHoldFormOpen, proposalOpen, cancelUnit])
 
-  function openReservationDialog(unit: Unit, reservationId: number, expiresAt: string) {
+  function openPreHoldForm(unit: Unit, reservationId: number, expiresAt: string | null) {
     setSelectedUnit(unit)
     setPreHoldReservationId(reservationId)
     setPreHoldExpiresAt(expiresAt)
-    setReservationOpen(true)
+    setPreHoldFormOpen(true)
+  }
+
+  function openProposalForm(unit: Unit, reservationId: number, expiresAt: string | null) {
+    setSelectedUnit(unit)
+    setPreHoldReservationId(reservationId)
+    setPreHoldExpiresAt(expiresAt)
+    setProposalOpen(true)
   }
 
   async function handlePreReserveClick(unit: Unit) {
@@ -193,7 +202,7 @@ export function BrokerUnitsDialog({
 
     try {
       const reservation = await brokerApi.createPreHold(unit.id)
-      openReservationDialog(unit, reservation.id, reservation.expires_at)
+      openPreHoldForm(unit, reservation.id, reservation.expires_at)
     } catch (err) {
       const message =
         err instanceof ApiRequestError && err.status === 422
@@ -209,13 +218,19 @@ export function BrokerUnitsDialog({
 
   function handleContinueReservation(unit: Unit) {
     const reservationId = unit.reservation?.id ?? unit.pre_hold?.reservation_id
-    const expiresAt = unit.reservation?.expires_at ?? unit.pre_hold?.expires_at
+    const expiresAt = unit.reservation?.expires_at ?? unit.pre_hold?.expires_at ?? null
+    const reservationStatus = unit.reservation?.status
 
-    if (!reservationId || !expiresAt) {
+    if (!reservationId) {
       return
     }
 
-    openReservationDialog(unit, reservationId, expiresAt)
+    if (reservationStatus === 'proposal_pending' || reservationStatus === 'proposal_returned') {
+      openProposalForm(unit, reservationId, expiresAt)
+      return
+    }
+
+    openPreHoldForm(unit, reservationId, expiresAt)
   }
 
   function handleOpenMessages(unit: Unit) {
@@ -256,7 +271,8 @@ export function BrokerUnitsDialog({
             setSelectedUnit(null)
             setPreHoldReservationId(null)
             setPreHoldExpiresAt(null)
-            setReservationOpen(false)
+            setPreHoldFormOpen(false)
+            setProposalOpen(false)
             setCancelUnit(null)
             setError(null)
           }
@@ -318,11 +334,11 @@ export function BrokerUnitsDialog({
         </DialogContent>
       </Dialog>
 
-      <BrokerReservationDialog
-        open={reservationOpen}
+      <BrokerPreHoldDialog
+        open={preHoldFormOpen}
         onOpenChange={(nextOpen) => {
           pollingPausedRef.current = nextOpen
-          setReservationOpen(nextOpen)
+          setPreHoldFormOpen(nextOpen)
           if (!nextOpen) {
             setPreHoldReservationId(null)
             setPreHoldExpiresAt(null)
@@ -332,7 +348,28 @@ export function BrokerUnitsDialog({
         reservationId={preHoldReservationId}
         expiresAt={preHoldExpiresAt}
         onReserved={() => {
-          setReservationOpen(false)
+          setPreHoldFormOpen(false)
+          onOpenChange(false)
+          onReserved()
+        }}
+      />
+
+      <BrokerReservationDialog
+        open={proposalOpen}
+        onOpenChange={(nextOpen) => {
+          pollingPausedRef.current = nextOpen
+          setProposalOpen(nextOpen)
+          if (!nextOpen) {
+            setPreHoldReservationId(null)
+            setPreHoldExpiresAt(null)
+          }
+        }}
+        unit={selectedUnit}
+        reservationId={preHoldReservationId}
+        expiresAt={preHoldExpiresAt}
+        client={selectedUnit?.reservation?.client ?? null}
+        onReserved={() => {
+          setProposalOpen(false)
           onOpenChange(false)
           onReserved()
         }}

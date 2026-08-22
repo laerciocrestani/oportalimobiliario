@@ -27,6 +27,10 @@ vi.mock('@/lib/api', () => ({
   },
 }))
 
+vi.mock('@/apps/broker/components/BrokerPreHoldDialog', () => ({
+  BrokerPreHoldDialog: () => null,
+}))
+
 vi.mock('@/apps/broker/components/BrokerReservationDialog', () => ({
   BrokerReservationDialog: () => null,
 }))
@@ -158,7 +162,7 @@ describe('BrokerUnitsDialog', () => {
     expect(screen.getByRole('button', { name: 'Remover reserva' })).toBeInTheDocument()
   })
 
-  it('creates pre-hold before opening reservation dialog', async () => {
+  it('creates pre-hold before opening the simple pre-reservation dialog', async () => {
     const user = userEvent.setup()
 
     vi.mocked(brokerApi.createPreHold).mockResolvedValue({

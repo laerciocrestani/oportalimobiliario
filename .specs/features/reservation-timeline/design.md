@@ -44,8 +44,9 @@ stateDiagram-v2
     deposit_pending --> deposit_proof_pending: POST deposit-proof
     deposit_proof_pending --> contract_data_pending: PATCH approve deposit
     contract_data_pending --> contract_issued: POST contract/issue
-    contract_issued --> contract_uploaded: POST contract/signed
-    contract_uploaded --> sold: PATCH contract/validate
+    contract_issued --> contract_uploaded: POST broker contract/signed
+    contract_uploaded --> contract_builder_signed: POST builder contract/signed
+    contract_builder_signed --> sold: PATCH contract/validate
 
     deposit_pending --> deposit_overdue: command alert only
     sold --> [*]
@@ -64,6 +65,7 @@ stateDiagram-v2
 | `contract_data_pending` | `reserved` | — |
 | `contract_issued` | `reserved` | — |
 | `contract_uploaded` | `reserved` | — |
+| `contract_builder_signed` | `reserved` | — |
 | `sold` | `sold` | — |
 | `cancelled` | `available` | — |
 | `expired` | `available` | — |
@@ -92,11 +94,12 @@ Ordem fixa exibida ao usuário. Steps sem evento ainda = `upcoming`; step do `cu
 | 7 | `contract_data` | Dados para contrato | `contract_data_submitted` |
 | 8 | `contract_issue` | Emissão do contrato | `contract_issued` |
 | 9 | `contract_sign_gov` | Assinatura GOV | `contract_signed_gov` (registro manual v1) |
-| 10 | `contract_upload` | Contrato assinado enviado | `contract_uploaded` |
-| 11 | `contract_validate` | Validação final | `contract_validated` |
-| 12 | `sold` | Unidade vendida | `sold` |
+| 10 | `contract_upload` | Contrato assinado pelo comprador | `contract_uploaded` |
+| 11 | `contract_builder_sign` | Contrato assinado pela construtora | `contract_builder_signed` |
+| 12 | `contract_validate` | Validação final | `contract_validated` |
+| 13 | `sold` | Unidade vendida | `sold` |
 
-**Regra de skip:** se `proposal_rejected`, steps 5–12 = `skipped`. Se `cancelled` em `pre_hold`, steps 3–12 = `skipped`.
+**Regra de skip:** se `proposal_rejected`, steps 5–13 = `skipped`. Se `cancelled` em `pre_hold`, steps 3–13 = `skipped`.
 
 ---
 
@@ -164,6 +167,7 @@ contract_data_submitted
 contract_issued
 contract_signed_gov
 contract_uploaded
+contract_builder_signed
 contract_validated
 sold
 cancelled
@@ -176,7 +180,7 @@ expired
 |-------|------|-----------|
 | `id` | PK | |
 | `reservation_id` | FK | |
-| `kind` | enum | `deposit_proof` \| `contract_documentation` \| `contract_pdf` \| `contract_signed` |
+| `kind` | enum | `deposit_proof` \| `contract_documentation` \| `contract_pdf` \| `contract_signed` \| `contract_signed_builder` |
 | `path` | string | Storage disk `local` |
 | `original_name` | string | |
 | `mime_type` | string | |
@@ -238,7 +242,8 @@ Padrão de upload: [`BuildingMediaController`](../../../backend/app/Http/Control
 | `deposit_proof_pending` | — | `approve_deposit_proof` |
 | `contract_data_pending` | `submit_contract_data` | — |
 | `contract_issued` | `mark_signed_gov`, `upload_signed_contract` | — |
-| `contract_uploaded` | — | `validate_contract` |
+| `contract_uploaded` | — | `upload_builder_signed_contract` |
+| `contract_builder_signed` | — | `validate_contract` |
 
 ---
 
@@ -316,11 +321,19 @@ Padrão de upload: [`BuildingMediaController`](../../../backend/app/Http/Control
 
 #### `POST /api/broker/reservations/{reservation}/contract/signed`
 
-`multipart/form-data`: `file` (PDF assinado GOV)
+`multipart/form-data`: `file` (PDF assinado pelo comprador)
 
 **201:** evento `contract_uploaded` + `stage: contract_uploaded`
 
+#### `POST /api/builder/reservations/{reservation}/contract/signed`
+
+`multipart/form-data`: `file` (PDF assinado pela construtora)
+
+**201:** evento `contract_builder_signed` + `stage: contract_builder_signed`
+
 #### `PATCH /api/builder/reservations/{reservation}/contract/validate`
+
+**Body:** `{ "note": "opcional" }`
 
 **200:** evento `contract_validated` + `sold` + `unit.status: sold`
 
@@ -370,7 +383,7 @@ Ver [spec.md § Decisões pendentes](./spec.md#decisões-pendentes).
 
 **Recomendações v1 (adotadas):**
 
-- **D-01:** Gestor pode cancelar até `contract_uploaded`; corretor só cancela em `pre_hold` e `proposal_returned`. Recusa de proposta mantém a reserva em `cancelled` (índice único só em reservas ativas).
+- **D-01:** Gestor pode cancelar até `sold` (exclusive); corretor só cancela em `pre_hold` e `proposal_returned`. Recusa de proposta mantém a reserva em `cancelled` (índice único só em reservas ativas).
 - **D-02:** Registro manual + upload (sem API gov.br)
 - **D-03:** Template do tenant + emissão PDF (`builder-contracts`); não é mais upload manual avulso
 - **D-04:** Alerta apenas na v1 (reunião); command `opim:check-deposit-windows`

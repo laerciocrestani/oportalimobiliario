@@ -24,6 +24,7 @@ use Illuminate\Support\Facades\DB;
 /**
  * @see REQ-RES-001
  * @see REQ-RES-005
+ * @see REQ-RES-006
  * @see REQ-BLD-RES-006
  */
 class ReservationController extends Controller
@@ -88,6 +89,36 @@ class ReservationController extends Controller
         $reservation = $this->preReservationService->createPreHold($broker, $unit, $access);
 
         return response()->json($reservation->load('unit'), 201);
+    }
+
+    public function updatePreHold(Request $request, Reservation $reservation): JsonResponse
+    {
+        if ($reservation->broker_id !== $request->user()->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        $data = $request->validate([
+            'client_id' => ['required', 'integer', 'exists:broker_clients,id'],
+            'observations' => ['nullable', 'string', 'max:2000'],
+        ]);
+
+        $client = BrokerClient::query()
+            ->where('id', $data['client_id'])
+            ->where('broker_id', $request->user()->id)
+            ->first();
+
+        if ($client === null) {
+            return response()->json(['message' => 'Client not found.'], 403);
+        }
+
+        $updated = $this->preReservationService->attachClient(
+            $request->user(),
+            $reservation,
+            $client,
+            $data['observations'] ?? null,
+        );
+
+        return response()->json($updated->load(['unit', 'client']));
     }
 
     /** Legacy alias of POST /broker/reservations/{reservation}/proposal. */

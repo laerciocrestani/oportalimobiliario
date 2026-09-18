@@ -34,8 +34,8 @@
 
 - **Fase:** `building-wizard-redesign` em execução
 - **Branch:** `feature/building-wizard-floor-stack`
-- **Última etapa concluída:** TR-09 — `MirrorPanel` + `GaragePanel` (clonar faixa preserva exceção; vaga com área+preço)
-- **Próxima etapa:** TR-10 — aposentar `BuildingMassing`; mover ficha completa + defaults para edição pós-criação
+- **Última etapa concluída:** TR-10 — aposentar `BuildingMassing` e `unit-grid`; ficha + defaults só na edição pós-criação
+- **Próxima etapa:** TR-11 — seeds demo (subsolo/garagem + lojas + clonagem) + TRACEABILITY
 - **Discovery:** `docs/discovery/resumo-redesenho-wizard-empreendimentos.md`
 - **Spec:** `.specs/features/building-wizard-redesign/`
 - **Nota Entrega 2:** aceite exige `signed_file`; emitir PDF não muda status; CRUD = `proposals.manage`, emitir/aceitar = `reservations.cancel`; aceite com arquivo usa `POST .../proposal/decision` (multipart), recusa/devolução permanece `PATCH` JSON

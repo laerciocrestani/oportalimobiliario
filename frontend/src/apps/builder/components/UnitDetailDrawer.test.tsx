@@ -63,6 +63,10 @@ describe('UnitDetailDrawer', () => {
     expect(screen.getByLabelText('Código')).toHaveValue('1201')
     expect(screen.getByLabelText('Torre')).toHaveValue('1')
     expect(screen.getByLabelText('Preço-base (R$)')).toHaveValue('')
+    expect(screen.getByLabelText('Suítes')).toBeInTheDocument()
+    expect(screen.getByLabelText('Lavabos')).toBeInTheDocument()
+    expect(screen.getByLabelText('Sacadas')).toBeInTheDocument()
+    expect(screen.getByLabelText('Posição do imóvel')).toBeInTheDocument()
   })
 
   it('saves unit changes when user can manage units', async () => {
@@ -79,11 +83,17 @@ describe('UnitDetailDrawer', () => {
     await user.click(screen.getByRole('button', { name: 'Editar' }))
     await user.clear(screen.getByLabelText('Código'))
     await user.type(screen.getByLabelText('Código'), '1202')
+    await user.type(screen.getByLabelText('Suítes'), '1')
+    await user.type(screen.getByLabelText('Lavabos'), '1')
+    await user.type(screen.getByLabelText('Sacadas'), '2')
     await user.click(screen.getByRole('button', { name: 'Salvar' }))
 
     expect(builderApi.updateUnit).toHaveBeenCalledWith(10, 1, expect.objectContaining({
       code: '1202',
       price_base: null,
+      suites: 1,
+      powder_rooms: 1,
+      balconies: 2,
     }))
     expect(onSaved).toHaveBeenCalledWith(updated)
   })

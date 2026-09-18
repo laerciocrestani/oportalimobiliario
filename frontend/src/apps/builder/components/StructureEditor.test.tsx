@@ -167,4 +167,18 @@ describe('StructureEditor', () => {
     expect(screen.getByLabelText('Preço-base S1-01')).toHaveValue('45000')
     expect(screen.getByRole('button', { name: /Subsolo 1/ })).toHaveTextContent('Exceção')
   })
+
+  it('selects another tower and floor in the stack', async () => {
+    const user = userEvent.setup()
+    render(<StructureEditorHarness />)
+
+    await user.clear(screen.getByLabelText('Torres'))
+    await user.type(screen.getByLabelText('Torres'), '2')
+    await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
+    await user.click(screen.getByRole('tab', { name: 'Torre B' }))
+    await user.click(screen.getByRole('button', { name: /Andar 2/ }))
+
+    expect(screen.getByRole('tab', { name: 'Torre B' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByDisplayValue('201')).toBeInTheDocument()
+  })
 })

@@ -43,7 +43,7 @@ describe('BuildingEditForm', () => {
     ])
   })
 
-  it('loads address and amenities and saves the wizard fields', async () => {
+  it('loads address, inheritance defaults and amenities and saves them', async () => {
     const user = userEvent.setup()
     const onSaved = vi.fn()
     const updated = { ...building, street: 'Rua Augusta' }
@@ -54,12 +54,15 @@ describe('BuildingEditForm', () => {
 
     expect(screen.getByLabelText('CEP')).toHaveValue('01310-100')
     expect(screen.getByLabelText('Logradouro')).toHaveValue('Avenida Paulista')
+    expect(screen.getByText('Padrão do empreendimento')).toBeInTheDocument()
 
     await waitFor(() => {
       expect(screen.getByLabelText('Piscina')).toBeChecked()
       expect(screen.getByLabelText('Closet')).not.toBeChecked()
     })
 
+    await user.click(screen.getByLabelText('Forro'))
+    await user.click(await screen.findByRole('option', { name: 'Gesso' }))
     await user.click(screen.getByLabelText('Closet'))
     await user.click(screen.getByRole('button', { name: 'Salvar dados' }))
 
@@ -68,6 +71,7 @@ describe('BuildingEditForm', () => {
       expect.objectContaining({
         zip: '01310100',
         street: 'Avenida Paulista',
+        ceiling_type: 'plaster',
         amenity_ids: [11, 12],
       }),
     )

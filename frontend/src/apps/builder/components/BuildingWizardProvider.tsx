@@ -31,10 +31,9 @@ import {
   type StackTower,
   type StackUnit,
 } from '@/apps/builder/lib/floor-stack'
-import { emptyBuildingDefaults } from '@/apps/builder/lib/unit-spec'
 import { resumeWizardUiStep, WIZARD_LAST_STEP } from '@/apps/builder/lib/wizard-steps'
 import { Button } from '@/components/ui/button'
-import { ApiRequestError, builderApi, type Amenity } from '@/lib/api'
+import { ApiRequestError, builderApi } from '@/lib/api'
 
 export { useBuildingWizard } from '@/apps/builder/components/building-wizard-context'
 
@@ -79,8 +78,6 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
   const [form, setForm] = useState<BuildingIdentityForm>(emptyIdentityForm)
   const [stackTowers, setStackTowers] = useState<StackTower[]>([])
   const [skeleton, setSkeletonState] = useState<SkeletonInput>(DEFAULT_SKELETON)
-  const [buildingDefaults, setBuildingDefaults] = useState(emptyBuildingDefaults)
-  const [amenities, setAmenities] = useState<Amenity[]>([])
   const [selectedTowerIndex, setSelectedTowerIndex] = useState(0)
   const [selectedFloor, setSelectedFloor] = useState<number | null>(null)
   const [mirror, setMirrorState] = useState<MirrorDraft>({ ...DEFAULT_MIRROR })
@@ -143,27 +140,6 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       cancelled = true
     }
   }, [buildingId, location.state])
-
-  useEffect(() => {
-    let cancelled = false
-
-    void builderApi
-      .listAmenities()
-      .then((items) => {
-        if (!cancelled) {
-          setAmenities(items)
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setAmenities([])
-        }
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   function goToStep(step: number) {
     setCurrentStep(step)
@@ -350,8 +326,6 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       form,
       stackTowers,
       skeleton,
-      buildingDefaults,
-      amenities,
       selectedTowerIndex,
       selectedFloor,
       mirror,
@@ -374,7 +348,6 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       updateStackUnit,
       setMirror,
       cloneMirror: cloneSelectedMirror,
-      setBuildingDefaults,
       setSelectedTowerIndex: setSelectedTowerIndexAndMirror,
       setSelectedFloor,
       setDescription,

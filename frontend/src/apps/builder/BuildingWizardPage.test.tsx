@@ -54,7 +54,6 @@ describe('BuildingWizardPage', () => {
       permissions: ['buildings.view', 'buildings.manage'],
     })
     vi.spyOn(api.builderApi, 'listBuildingMedia').mockResolvedValue([])
-    vi.spyOn(api.builderApi, 'listAmenities').mockResolvedValue([])
   })
 
   it('shows three wizard steps', async () => {
@@ -110,6 +109,9 @@ describe('BuildingWizardPage', () => {
     expect(await screen.findByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
     expect(screen.getByText('Continuar cadastro')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Gerar esqueleto' })).toBeInTheDocument()
+    expect(screen.queryByText('Padrão do empreendimento')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Suítes')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Lavabos')).not.toBeInTheDocument()
   })
 
   it('saves structure and opens the media step', async () => {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BuildingWizardDefaultsCard } from '@/apps/builder/components/BuildingWizardDefaultsCard'
+import { BuildingDefaultsCard } from '@/apps/builder/components/BuildingDefaultsCard'
 import {
   BuildingWizardIdentityStep,
   type BuildingIdentityForm,
@@ -161,7 +161,7 @@ export function BuildingEditForm({ building, onSaved }: BuildingEditFormProps) {
         />
       </div>
 
-      <BuildingWizardDefaultsCard defaults={defaults} amenities={amenities} onChange={setDefaults} />
+      <BuildingDefaultsCard defaults={defaults} amenities={amenities} onChange={setDefaults} />
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="building-slug">Slug (URL pública)</Label>

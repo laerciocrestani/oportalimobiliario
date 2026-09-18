@@ -25,7 +25,7 @@ Ordem: backend (schema → validação → API) antes do frontend. 1 commit atô
 
 ## Frontend — wizard e editor
 
-- [ ] **TR-06** Wizard 3 steps + `BuildingWizardProvider` (compound + `use()`) + persistência por step + “Continuar cadastro”.
+- [x] **TR-06** Wizard 3 steps + `BuildingWizardProvider` (compound + `use()`) + persistência por step + “Continuar cadastro”.
   - Gate: `pnpm test` `BuildingWizardPage.test.tsx` (navegação 3 steps, retomada).
 - [ ] **TR-07** `floor-stack.ts`: tipos, esqueleto, `unitCode` (0/negativos), `cloneMirror`/`markException`/`resetFloor`, `payload`. Testes unitários.
   - Gate: `pnpm test` `floor-stack.test.ts` (clonagem faixa acima/abaixo, preserve exceção, códigos térreo/subsolo).

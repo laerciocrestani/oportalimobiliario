@@ -19,12 +19,15 @@ export function emptyTowerDraft(index: number): TowerDraft {
   }
 }
 
-type BuildingWizardTowersStepProps = {
+type TowerDraftFieldsProps = {
   towers: TowerDraft[]
   selectedTowerIndex: number
-  selectedFloor: number | null
   onChange: (towers: TowerDraft[]) => void
   onSelectTower: (index: number) => void
+}
+
+type BuildingWizardTowersStepProps = TowerDraftFieldsProps & {
+  selectedFloor: number | null
   onSelectFloor: (towerIndex: number, floor: number) => void
 }
 
@@ -36,6 +39,79 @@ function clampFloors(value: number): number {
   return Math.min(80, value)
 }
 
+export function TowerDraftFields({
+  towers,
+  selectedTowerIndex,
+  onChange,
+  onSelectTower,
+}: TowerDraftFieldsProps) {
+  function updateTower(index: number, patch: Partial<TowerDraft>) {
+    onChange(towers.map((tower, current) => (current === index ? { ...tower, ...patch } : tower)))
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {towers.map((tower, index) => (
+        <Card
+          key={tower.key}
+          size="sm"
+          className={index === selectedTowerIndex ? 'ring-2 ring-primary/40' : undefined}
+        >
+          <CardHeader>
+            <CardTitle>
+              <button type="button" className="text-left" onClick={() => onSelectTower(index)}>
+                {tower.name.trim() || `Torre ${index + 1}`}
+              </button>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-[1fr_7rem_auto] sm:items-end">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={`wizard-tower-name-${tower.key}`}>Nome da torre</Label>
+              <Input
+                id={`wizard-tower-name-${tower.key}`}
+                value={tower.name}
+                onFocus={() => onSelectTower(index)}
+                onChange={(e) => updateTower(index, { name: e.target.value })}
+                required
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor={`wizard-tower-floors-${tower.key}`}>Andares</Label>
+              <Input
+                id={`wizard-tower-floors-${tower.key}`}
+                type="number"
+                min={1}
+                max={80}
+                value={tower.floorsCount}
+                onFocus={() => onSelectTower(index)}
+                onChange={(e) => updateTower(index, { floorsCount: clampFloors(Number(e.target.value)) })}
+                required
+              />
+            </div>
+            {towers.length > 1 ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  const next = towers.filter((_, current) => current !== index)
+                  onChange(next)
+                  onSelectTower(Math.min(index, next.length - 1))
+                }}
+              >
+                Remover
+              </Button>
+            ) : null}
+          </CardContent>
+        </Card>
+      ))}
+
+      <Button type="button" variant="outline" onClick={() => onChange([...towers, emptyTowerDraft(towers.length)])}>
+        Adicionar torre
+      </Button>
+    </div>
+  )
+}
+
 export function BuildingWizardTowersStep({
   towers,
   selectedTowerIndex,
@@ -44,72 +120,14 @@ export function BuildingWizardTowersStep({
   onSelectTower,
   onSelectFloor,
 }: BuildingWizardTowersStepProps) {
-  function updateTower(index: number, patch: Partial<TowerDraft>) {
-    onChange(towers.map((tower, current) => (current === index ? { ...tower, ...patch } : tower)))
-  }
-
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)]">
-      <div className="space-y-4">
-        {towers.map((tower, index) => (
-          <Card
-            key={tower.key}
-            size="sm"
-            className={index === selectedTowerIndex ? 'ring-2 ring-primary/40' : undefined}
-          >
-            <CardHeader>
-              <CardTitle>
-                <button type="button" className="text-left" onClick={() => onSelectTower(index)}>
-                  {tower.name.trim() || `Torre ${index + 1}`}
-                </button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-[1fr_7rem_auto] sm:items-end">
-              <div className="space-y-2">
-                <Label htmlFor={`wizard-tower-name-${tower.key}`}>Nome da torre</Label>
-                <Input
-                  id={`wizard-tower-name-${tower.key}`}
-                  value={tower.name}
-                  onFocus={() => onSelectTower(index)}
-                  onChange={(e) => updateTower(index, { name: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor={`wizard-tower-floors-${tower.key}`}>Andares</Label>
-                <Input
-                  id={`wizard-tower-floors-${tower.key}`}
-                  type="number"
-                  min={1}
-                  max={80}
-                  value={tower.floorsCount}
-                  onFocus={() => onSelectTower(index)}
-                  onChange={(e) => updateTower(index, { floorsCount: clampFloors(Number(e.target.value)) })}
-                  required
-                />
-              </div>
-              {towers.length > 1 ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    const next = towers.filter((_, current) => current !== index)
-                    onChange(next)
-                    onSelectTower(Math.min(index, next.length - 1))
-                  }}
-                >
-                  Remover
-                </Button>
-              ) : null}
-            </CardContent>
-          </Card>
-        ))}
-
-        <Button type="button" variant="outline" onClick={() => onChange([...towers, emptyTowerDraft(towers.length)])}>
-          Adicionar torre
-        </Button>
-      </div>
-
+      <TowerDraftFields
+        towers={towers}
+        selectedTowerIndex={selectedTowerIndex}
+        onChange={onChange}
+        onSelectTower={onSelectTower}
+      />
       <BuildingMassing
         towers={towers.map((tower) => ({ name: tower.name, floorsCount: tower.floorsCount }))}
         selectedTowerIndex={selectedTowerIndex}

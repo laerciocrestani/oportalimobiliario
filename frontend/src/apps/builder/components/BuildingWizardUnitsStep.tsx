@@ -63,7 +63,7 @@ export function BuildingWizardUnitsStep({
   if (grids.length === 0 || !grid) {
     return (
       <p className="text-sm text-muted-foreground">
-        Salve as torres no passo 2 para gerar as unidades de cada torre.
+        Defina as torres acima; as unidades aparecem depois de gerar a estrutura.
       </p>
     )
   }

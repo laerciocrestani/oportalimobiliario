@@ -200,7 +200,7 @@ paths:
                 wizard_step:
                   type: integer
                   minimum: 1
-                  maximum: 4
+                  maximum: 3
                 ceiling_type:
                   type: string
                   nullable: true
@@ -338,7 +338,7 @@ paths:
                 wizard_step:
                   type: integer
                   minimum: 1
-                  maximum: 4
+                  maximum: 3
                 zip:
                   type: string
                   nullable: true

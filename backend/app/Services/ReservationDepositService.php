@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Enums\ReservationAttachmentKind;
 use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
+use App\Enums\UnitStatus;
 use App\Models\Reservation;
 use App\Models\ReservationAttachment;
+use App\Models\Unit;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +39,7 @@ class ReservationDepositService
         $this->validateDepositProofFile($file);
 
         return DB::transaction(function () use ($broker, $reservation, $file) {
+            $fromClientHold = $reservation->hasClientHold();
             $path = $this->storeFile($reservation, $file);
 
             $attachment = $reservation->attachments()->create([
@@ -48,8 +51,20 @@ class ReservationDepositService
                 'uploaded_by' => $broker->id,
             ]);
 
+            if ($fromClientHold) {
+                $unit = Unit::query()
+                    ->withoutGlobalScope('tenant')
+                    ->lockForUpdate()
+                    ->findOrFail($reservation->unit_id);
+
+                if ($unit->status === UnitStatus::PreReserved) {
+                    $unit->update(['status' => UnitStatus::Reserved]);
+                }
+            }
+
             $reservation->update([
                 'status' => ReservationStatus::DepositProofPending,
+                'expires_at' => $fromClientHold ? null : $reservation->expires_at,
             ]);
 
             $this->timelineService->record(

@@ -33,14 +33,20 @@ use App\Http\Controllers\Api\Builder\BuildingUnitGridController;
 use App\Http\Controllers\Api\Builder\CepController;
 use App\Http\Controllers\Api\Builder\ContractIssueController;
 use App\Http\Controllers\Api\Builder\ContractTemplateController;
+use App\Http\Controllers\Api\Builder\ProposalIssueController;
+use App\Http\Controllers\Api\Builder\ProposalTemplateController;
 use App\Http\Controllers\Api\Builder\ReservationAttachmentController as BuilderReservationAttachmentController;
 use App\Http\Controllers\Api\Builder\ReservationContractSignedController as BuilderReservationContractSignedController;
 use App\Http\Controllers\Api\Builder\ReservationContractValidateController as BuilderReservationContractValidateController;
 use App\Http\Controllers\Api\Builder\ReservationController as BuilderReservationController;
 use App\Http\Controllers\Api\Builder\ReservationDepositController as BuilderReservationDepositController;
+use App\Http\Controllers\Api\Builder\ReservationHoldController as BuilderReservationHoldController;
+use App\Http\Controllers\Api\Builder\ReservationKanbanController as BuilderReservationKanbanController;
+use App\Http\Controllers\Api\Broker\ReservationKanbanController as BrokerReservationKanbanController;
 use App\Http\Controllers\Api\Builder\ReservationMessageController as BuilderReservationMessageController;
 use App\Http\Controllers\Api\Builder\ReservationProposalController as BuilderReservationProposalController;
 use App\Http\Controllers\Api\Builder\ReservationTimelineController as BuilderReservationTimelineController;
+use App\Http\Controllers\Api\Builder\ReservationWitnessController as BuilderReservationWitnessController;
 use App\Http\Controllers\Api\Builder\TeamMemberController;
 use App\Http\Controllers\Api\Builder\TenantBrokerInviteLinkController;
 use App\Http\Controllers\Api\Builder\TowerController;
@@ -141,16 +147,32 @@ Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permiss
         ->parameters(['contract-templates' => 'contractTemplate'])
         ->except(['show']);
 
+    Route::get('/proposal-variables', [ProposalTemplateController::class, 'variables']);
+    Route::apiResource('proposal-templates', ProposalTemplateController::class)
+        ->parameters(['proposal-templates' => 'proposalTemplate'])
+        ->except(['show']);
+
     Route::get('/reservations', [BuilderReservationController::class, 'index']);
     Route::get('/reservations/pending-replies-count', [BuilderReservationController::class, 'pendingRepliesCount']);
+    Route::get('/reservations/pending-actions-count', [BuilderReservationController::class, 'pendingActionsCount']);
     Route::delete('/reservations/{reservation}', [BuilderReservationController::class, 'destroy']);
     Route::get('/reservations/{reservation}/timeline', [BuilderReservationTimelineController::class, 'show']);
-    Route::patch('/reservations/{reservation}/proposal/decision', [BuilderReservationProposalController::class, 'decide']);
+    Route::match(['patch', 'post'], '/reservations/{reservation}/proposal/decision', [BuilderReservationProposalController::class, 'decide']);
+    Route::get('/reservations/{reservation}/proposal/templates', [ProposalIssueController::class, 'templates']);
+    Route::get('/reservations/{reservation}/proposal/preview', [ProposalIssueController::class, 'preview']);
+    Route::post('/reservations/{reservation}/proposal/issue', [ProposalIssueController::class, 'store']);
     Route::patch('/reservations/{reservation}/deposit-proof/approve', [BuilderReservationDepositController::class, 'approve']);
+    Route::patch('/reservations/{reservation}/hold/extend', [BuilderReservationHoldController::class, 'extend']);
+    Route::post('/reservations/{reservation}/hold/drop', [BuilderReservationHoldController::class, 'drop']);
+    Route::patch('/reservations/{reservation}/kanban', [BuilderReservationKanbanController::class, 'update']);
     Route::get('/reservations/{reservation}/contract/templates', [ContractIssueController::class, 'templates']);
     Route::get('/reservations/{reservation}/contract/preview', [ContractIssueController::class, 'preview']);
     Route::post('/reservations/{reservation}/contract/issue', [ContractIssueController::class, 'store']);
     Route::post('/reservations/{reservation}/contract/signed', [BuilderReservationContractSignedController::class, 'store']);
+    Route::get('/reservations/{reservation}/contract/witness-candidates', [BuilderReservationWitnessController::class, 'candidates']);
+    Route::put('/reservations/{reservation}/contract/witnesses', [BuilderReservationWitnessController::class, 'store']);
+    Route::post('/reservations/{reservation}/contract/witnesses/{slot}/sign', [BuilderReservationWitnessController::class, 'sign'])
+        ->whereNumber('slot');
     Route::patch('/reservations/{reservation}/contract/validate', [BuilderReservationContractValidateController::class, 'update']);
     Route::get('/reservations/{reservation}/attachments/{attachment}/file', [BuilderReservationAttachmentController::class, 'file']);
     Route::get('/reservations/{reservation}/messages', [BuilderReservationMessageController::class, 'index']);
@@ -169,11 +191,13 @@ Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('bro
         Route::get('/buildings/{building}/media/{media}/file', [BrokerBuildingMediaController::class, 'file']);
         Route::get('/reservations', [ReservationController::class, 'index']);
         Route::get('/reservations/pending-replies-count', [ReservationController::class, 'pendingRepliesCount']);
+        Route::get('/reservations/pending-actions-count', [ReservationController::class, 'pendingActionsCount']);
         Route::post('/reservations/pre-hold', [ReservationController::class, 'preHold']);
         Route::patch('/reservations/{reservation}/pre-hold', [ReservationController::class, 'updatePreHold']);
         Route::post('/reservations', [ReservationController::class, 'store']);
         Route::patch('/reservations/{reservation}/confirm', [ReservationController::class, 'confirm']);
         Route::post('/reservations/{reservation}/proposal', [BrokerReservationProposalController::class, 'store']);
+        Route::post('/reservations/{reservation}/proposal/signed', [BrokerReservationProposalController::class, 'returnSigned']);
         Route::post('/reservations/{reservation}/deposit-proof', [BrokerReservationDepositController::class, 'store']);
         Route::post('/reservations/{reservation}/contract-data', [BrokerReservationContractDataController::class, 'store']);
         Route::post('/reservations/{reservation}/contract/gov', [BrokerReservationContractSignedController::class, 'gov']);
@@ -182,6 +206,7 @@ Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('bro
         Route::delete('/reservations/{reservation}/pre-hold', [ReservationController::class, 'releasePreHold']);
         Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy']);
         Route::get('/reservations/{reservation}/timeline', [BrokerReservationTimelineController::class, 'show']);
+        Route::patch('/reservations/{reservation}/kanban', [BrokerReservationKanbanController::class, 'update']);
         Route::get('/reservations/{reservation}/messages', [BrokerReservationMessageController::class, 'index']);
         Route::post('/reservations/{reservation}/messages', [BrokerReservationMessageController::class, 'store']);
     });

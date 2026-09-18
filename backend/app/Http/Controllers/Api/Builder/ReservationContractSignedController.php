@@ -23,12 +23,16 @@ class ReservationContractSignedController extends Controller
 
         $validated = $request->validate([
             'file' => ['required', 'file'],
+            'witness_1_user_id' => ['required', 'integer', 'exists:users,id'],
+            'witness_2_user_id' => ['required', 'integer', 'exists:users,id', 'different:witness_1_user_id'],
         ]);
 
         $updated = $this->completionService->uploadBuilderSigned(
             $request->user(),
             $reservation,
             $validated['file'],
+            (int) $validated['witness_1_user_id'],
+            (int) $validated['witness_2_user_id'],
         );
 
         $attachment = $this->completionService->latestBuilderSignedContract($updated);

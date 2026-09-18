@@ -13,9 +13,15 @@ const reservation: BuilderReservationListItem = {
   needs_reply: true,
   needs_proposal_decision: true,
   needs_deposit_proof_approval: false,
+  needs_witness_signature: false,
+  needs_sold_validation: false,
+  needs_action: true,
+  pending_action: 'proposal_decision',
   deposit_overdue: false,
+  kanban_column: 'proposal_review',
+  allowed_kanban_moves: ['cancelled', 'proposal_formalization'],
   situation: {
-    previous: { key: 'proposal_submitted', label: 'Proposta enviada', occurred_at: null },
+    previous: { key: 'proposal_submitted', label: 'Proposta', occurred_at: null },
     current: {
       key: 'proposal_decision',
       label: 'Decisão do gestor',
@@ -58,5 +64,50 @@ describe('ReservationActionsMenu', () => {
     })
     expect(screen.getByRole('menuitem', { name: 'Responder · nova' })).toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Cancelar' })).toBeInTheDocument()
+  })
+
+  it('hides cancel and labels the conversation as view-only when cancelled', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <ReservationActionsMenu
+        reservation={{ ...reservation, status: 'cancelled', needs_reply: false, needs_proposal_decision: false }}
+        cancelling={false}
+        onTimeline={() => {}}
+        onMessages={() => {}}
+        onCancel={() => {}}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Ações — João Silva' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: 'Ver conversa' })).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('menuitem', { name: 'Cancelar' })).not.toBeInTheDocument()
+  })
+
+  it('hides conversation and cancel when the viewer cannot manage the reservation', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <ReservationActionsMenu
+        reservation={{ ...reservation, pending_action: 'witness_signature', needs_witness_signature: true }}
+        cancelling={false}
+        canCancel={false}
+        canMessage={false}
+        onTimeline={() => {}}
+        onMessages={() => {}}
+        onCancel={() => {}}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Ações — João Silva' }))
+
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: 'Andamento · testemunha' })).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('menuitem', { name: 'Responder · nova' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Cancelar' })).not.toBeInTheDocument()
   })
 })

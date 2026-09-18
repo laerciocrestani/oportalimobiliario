@@ -22,16 +22,24 @@ const ACTION_LABELS: Record<string, string> = {
   open_dialogue: 'Abrir diálogo',
   submit_proposal: 'Enviar proposta',
   submit_deposit_proof: 'Anexar comprovante',
+  return_signed_proposal: 'Devolver proposta assinada',
+  extend_hold: 'Estender prazo (+48h)',
+  drop_hold: 'Encerrar pré-reserva',
   approve_deposit_proof: 'Validar comprovante',
   submit_contract_data: 'Enviar dados do contrato',
   issue_contract: 'Emitir contrato',
   upload_signed_contract: 'Enviar contrato assinado pelo comprador',
   upload_builder_signed_contract: 'Enviar contrato assinado pela construtora',
+  sign_as_witness: 'Registrar assinatura da testemunha',
   mark_signed_gov: 'Registrar assinatura GOV',
   validate_contract: 'Unidade vendida',
 }
 
 const ATTACHMENT_KIND_LABELS: Record<string, string> = {
+  proposal: 'Anexos da proposta',
+  proposal_pdf: 'Proposta gerada',
+  proposal_signed_builder: 'Proposta assinada pela construtora',
+  proposal_signed_both: 'Proposta assinada por ambas as partes',
   deposit_proof: 'Comprovante de pagamento',
   contract_documentation: 'Documentação do cliente',
   contract_pdf: 'Contrato',
@@ -40,6 +48,10 @@ const ATTACHMENT_KIND_LABELS: Record<string, string> = {
 }
 
 const ATTACHMENT_KIND_ORDER = [
+  'proposal',
+  'proposal_pdf',
+  'proposal_signed_builder',
+  'proposal_signed_both',
   'deposit_proof',
   'contract_documentation',
   'contract_pdf',
@@ -135,7 +147,7 @@ function currentStepContractPdf(
     return buyerSigned
   }
 
-  if (stepKey === 'contract_validate') {
+  if (stepKey === 'contract_witness_1' || stepKey === 'contract_witness_2' || stepKey === 'contract_validate') {
     return builderSigned
   }
 
@@ -289,7 +301,13 @@ export function ReservationTimeline({ timeline, onAction }: ReservationTimelineP
                         key={action}
                         type="button"
                         size="sm"
-                        variant={action === 'open_dialogue' ? 'outline' : 'default'}
+                        variant={
+                          action === 'open_dialogue'
+                            ? 'outline'
+                            : action === 'drop_hold'
+                              ? 'destructive'
+                              : 'default'
+                        }
                         onClick={() => onAction?.(action)}
                       >
                         {action === 'issue_contract' &&

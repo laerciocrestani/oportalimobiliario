@@ -5,14 +5,9 @@ import { BrokerReservationDialog } from '@/apps/broker/components/BrokerReservat
 
 vi.mock('@/lib/api', () => ({
   brokerApi: {
-    listClients: vi.fn(),
     submitReservationProposal: vi.fn(),
     releasePreHold: vi.fn(),
   },
-}))
-
-vi.mock('@/apps/broker/components/BrokerNewClientDialog', () => ({
-  BrokerNewClientDialog: () => null,
 }))
 
 import { brokerApi } from '@/lib/api'
@@ -35,17 +30,8 @@ const attachedClient = {
 
 const validProposal = {
   client_name: 'Ana Silva',
-  client_email: 'ana@example.com',
   client_phone: '(11) 88888-8888',
-  client_cpf: '12345678901',
-  address: 'Rua A, 100',
-  city: 'São Paulo',
-  state: 'SP',
-  zip: '01000-000',
-  marital_status: 'solteira',
-  nationality: 'brasileira',
-  land_value: 50000,
-  payment_terms: 'Pix R$ 10.000 + 24x',
+  payment_terms: 'Entrada de R$ 50.000 + 24x de R$ 5.000',
 }
 
 describe('BrokerReservationDialog', () => {
@@ -65,15 +51,15 @@ describe('BrokerReservationDialog', () => {
     expect(screen.getByRole('button', { name: 'Enviar proposta' })).toBeDisabled()
     expect(screen.queryByLabelText('Cliente cadastrado')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Novo cliente' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Nome do cliente *')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Telefone *')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('E-mail *')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('CPF *')).not.toBeInTheDocument()
 
     await waitFor(() => {
-      expect(screen.getByText(/Cliente da pré-reserva:/)).toBeInTheDocument()
-      expect(screen.getByDisplayValue('Ana Silva')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('ana@example.com')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('(11) 88888-8888')).toBeInTheDocument()
+      expect(screen.getByText('Ana Silva')).toBeInTheDocument()
+      expect(screen.getByText('(11) 88888-8888')).toBeInTheDocument()
     })
-
-    expect(brokerApi.listClients).not.toHaveBeenCalled()
   })
 
   it('submits proposal using the attached client without selecting again', async () => {
@@ -102,34 +88,27 @@ describe('BrokerReservationDialog', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Ana Silva')).toBeInTheDocument()
+      expect(screen.getByText('Ana Silva')).toBeInTheDocument()
     })
 
-    await user.type(screen.getByLabelText('CPF *'), validProposal.client_cpf)
-    await user.type(screen.getByLabelText('Endereço *'), validProposal.address)
-    await user.type(screen.getByLabelText('Cidade *'), validProposal.city)
-    await user.type(screen.getByLabelText('UF *'), validProposal.state)
-    await user.type(screen.getByLabelText('CEP *'), validProposal.zip)
-    await user.type(screen.getByLabelText('Estado civil *'), validProposal.marital_status)
-    await user.type(screen.getByLabelText('Valor do terreno *'), String(validProposal.land_value))
-    await user.type(screen.getByLabelText('Condições de pagamento *'), validProposal.payment_terms)
+    await user.type(screen.getByLabelText('Proposta *'), validProposal.payment_terms)
+
+    expect(screen.getByRole('button', { name: 'Enviar proposta' })).toBeDisabled()
+
+    const file = new File(['proposta'], 'proposta.pdf', { type: 'application/pdf' })
+    await user.upload(document.querySelector('input[type="file"]') as HTMLInputElement, file)
     await user.click(screen.getByRole('button', { name: 'Enviar proposta' }))
 
     await waitFor(() => {
-      expect(brokerApi.submitReservationProposal).toHaveBeenCalledWith(55, {
-        client_name: attachedClient.name,
-        client_email: attachedClient.email,
-        client_phone: attachedClient.phone,
-        client_cpf: validProposal.client_cpf,
-        address: validProposal.address,
-        city: validProposal.city,
-        state: validProposal.state,
-        zip: validProposal.zip,
-        marital_status: validProposal.marital_status,
-        nationality: 'brasileira',
-        land_value: validProposal.land_value,
-        payment_terms: validProposal.payment_terms,
-      })
+      expect(brokerApi.submitReservationProposal).toHaveBeenCalledWith(
+        55,
+        {
+          client_name: attachedClient.name,
+          client_phone: attachedClient.phone,
+          payment_terms: validProposal.payment_terms,
+        },
+        [file],
+      )
       expect(onReserved).toHaveBeenCalled()
     })
   })
@@ -154,7 +133,7 @@ describe('BrokerReservationDialog', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByDisplayValue('Ana Silva')).toBeInTheDocument()
+      expect(screen.getByText('Ana Silva')).toBeInTheDocument()
     })
 
     await user.click(screen.getByRole('button', { name: 'Fechar' }))
@@ -164,5 +143,53 @@ describe('BrokerReservationDialog', () => {
     })
 
     expect(brokerApi.releasePreHold).not.toHaveBeenCalled()
+  })
+
+  it('shows a returned proposal alert that opens the dialogue', async () => {
+    const user = userEvent.setup()
+    const onOpenDialogue = vi.fn()
+
+    render(
+      <BrokerReservationDialog
+        open
+        onOpenChange={() => {}}
+        unit={unit}
+        reservationId={55}
+        expiresAt={null}
+        releaseHoldOnClose={false}
+        client={attachedClient}
+        proposal={{
+          id: 8,
+          version: 1,
+          client_name: attachedClient.name,
+          client_phone: attachedClient.phone,
+          payment_terms: 'Entrada de R$ 20.000',
+          decision: 'returned',
+          decision_note: 'Ajustar condições de pagamento.',
+          submitted_by: 2,
+          decided_by: 3,
+          decided_at: '2026-08-22T12:00:00.000Z',
+          created_at: '2026-08-22T11:00:00.000Z',
+          client_email: '',
+          client_cpf: '',
+          address: '',
+          city: '',
+          state: '',
+          zip: '',
+          marital_status: '',
+          nationality: '',
+          land_value: 0,
+        }}
+        onOpenDialogue={onOpenDialogue}
+        onReserved={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('Proposta devolvida')).toBeInTheDocument()
+    expect(screen.getByText('Ajustar condições de pagamento.')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Abrir diálogo' }))
+
+    expect(onOpenDialogue).toHaveBeenCalledOnce()
   })
 })

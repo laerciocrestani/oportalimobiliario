@@ -1356,6 +1356,98 @@ paths:
           description: Forbidden
         '404':
           description: Not found in tenant
+  /api/builder/proposal-variables:
+    get:
+      summary: List closed-catalog proposal template variables
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: System variable legend (slug, label, group) — same catalog as contracts
+        '403':
+          description: Missing proposals.manage permission
+  /api/builder/proposal-templates:
+    get:
+      summary: List proposal templates (builder)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Templates for the current tenant
+        '403':
+          description: Missing proposals.manage permission
+    post:
+      summary: Create proposal template
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, body_markdown]
+              properties:
+                name:
+                  type: string
+                body_markdown:
+                  type: string
+                custom_variables:
+                  type: array
+                  items:
+                    type: object
+                    required: [slug, label]
+                    properties:
+                      slug:
+                        type: string
+                      label:
+                        type: string
+                is_active:
+                  type: boolean
+      responses:
+        '201':
+          description: Created
+        '403':
+          description: Missing proposals.manage permission
+        '422':
+          description: Validation error
+  /api/builder/proposal-templates/{proposalTemplate}:
+    patch:
+      summary: Update proposal template
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: proposalTemplate
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Updated
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found in tenant
+        '422':
+          description: Validation error
+    delete:
+      summary: Delete proposal template
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: proposalTemplate
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          description: Forbidden
+        '404':
+          description: Not found in tenant
   /api/builder/reservations:
     get:
       summary: List reservations (builder)
@@ -1371,7 +1463,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/ReservationListItem'
         '403':
-          description: Missing reservations.cancel permission
+          description: Forbidden (not a reservation manager and not an assigned witness)
   /api/builder/reservations/pending-replies-count:
     get:
       summary: Count reservations awaiting builder reply
@@ -1381,7 +1473,23 @@ paths:
         '200':
           description: Pending reply count
         '403':
-          description: Missing reservations.cancel permission
+          description: Forbidden (not a reservation manager and not an assigned witness)
+  /api/builder/reservations/pending-actions-count:
+    get:
+      summary: Count reservations with a pending in-app action for the current builder
+      description: |
+        Unique reservation count for the viewer (reply, proposal decision, deposit proof,
+        builder contract sign, witness signature, sold validation). `witness_scope` is true
+        when the user is assigned as a witness on any reservation of the tenant.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pending action count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationPendingActionCount'
   /api/builder/reservations/{reservation}/messages:
     get:
       summary: List reservation messages (builder)
@@ -1457,6 +1565,111 @@ paths:
           description: Missing reservations.cancel permission
         '422':
           description: Validation error
+  /api/builder/reservations/{reservation}/hold/extend:
+    patch:
+      summary: Extend the 48h pre-reservation hold
+      description: |
+        Adds hours to the current `expires_at` of a pre-reservation with a client
+        (default 48). Does not promote the unit to reserved.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hours:
+                  type: integer
+                  minimum: 1
+                  maximum: 168
+                  default: 48
+      responses:
+        '200':
+          description: Hold extended
+        '403':
+          description: Missing reservations.cancel permission
+        '422':
+          description: Not a client pre-hold or invalid hours
+  /api/builder/reservations/{reservation}/hold/drop:
+    post:
+      summary: Drop a pre-reservation hold immediately
+      description: |
+        Cancels a pre-reservation with a client before the 48h window ends.
+        Unit returns to available.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  maxLength: 2000
+      responses:
+        '204':
+          description: Hold dropped
+        '403':
+          description: Missing reservations.cancel permission
+        '422':
+          description: Not a client pre-hold
+  /api/builder/reservations/{reservation}/kanban:
+    patch:
+      summary: Move a reservation on the Kanban board
+      description: |
+        Validates the target column against current status and attachments.
+        Mutating transitions call the same services as the dedicated endpoints
+        (`cancel` / `drop hold` / `sold`). Moves that need extra payload return
+        422 `action_required` so the UI can open the progress dialog.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationKanbanMove'
+      responses:
+        '200':
+          description: Column unchanged or transition applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationListItem'
+        '204':
+          description: Pre-hold without client released (deleted)
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Missing reservations.cancel permission
+        '404':
+          description: Reservation not in tenant
+        '422':
+          description: Invalid transition or action required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationKanbanError'
   /api/builder/reservations/{reservation}/timeline:
     get:
       summary: Get reservation timeline (builder)
@@ -1482,7 +1695,9 @@ paths:
   /api/builder/reservations/{reservation}/proposal/decision:
     patch:
       summary: Decide on reservation proposal (builder)
-      description: Accept, reject, or return the pending proposal to the broker.
+      description: |
+        Accept, reject, or return the pending proposal. Accept requires multipart
+        `signed_file` (PDF signed by the builder). Reject/return remain JSON and require `decision_note`.
       security:
         - bearerAuth: []
       parameters:
@@ -1507,13 +1722,141 @@ paths:
                   type: string
                   maxLength: 2000
                   nullable: true
+                  description: Required when decision is rejected or returned.
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - decision
+                - signed_file
+              properties:
+                decision:
+                  type: string
+                  enum: [accepted]
+                decision_note:
+                  type: string
+                signed_file:
+                  type: string
+                  format: binary
+                  description: PDF signed by the builder. Required when decision is accepted.
       responses:
         '200':
           description: Decision recorded
         '403':
           description: Forbidden
         '422':
-          description: Invalid stage or validation error
+          description: Invalid stage, missing signed PDF on accept, or validation error
+    post:
+      summary: Accept proposal with builder-signed PDF (multipart)
+      description: Same handler as PATCH decision. Use POST multipart for `signed_file` on accept.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [decision, signed_file]
+              properties:
+                decision:
+                  type: string
+                  enum: [accepted]
+                signed_file:
+                  type: string
+                  format: binary
+                decision_note:
+                  type: string
+      responses:
+        '200':
+          description: Proposal accepted
+        '403':
+          description: Forbidden
+        '422':
+          description: Missing signed PDF or invalid stage
+  /api/builder/reservations/{reservation}/proposal/templates:
+    get:
+      summary: List active proposal templates for issue dialog
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Active templates (id, name)
+        '403':
+          description: Forbidden
+        '422':
+          description: Reservation is not awaiting proposal decision
+  /api/builder/reservations/{reservation}/proposal/preview:
+    get:
+      summary: Preview system values for a proposal template
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: template_id
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Preview payload (system_values, custom_variables, required_custom_slugs)
+        '403':
+          description: Forbidden
+        '404':
+          description: Template not in tenant
+        '422':
+          description: Inactive template or invalid stage
+  /api/builder/reservations/{reservation}/proposal/issue:
+    post:
+      summary: Generate proposal PDF from template
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [proposal_template_id, values]
+              properties:
+                proposal_template_id:
+                  type: integer
+                values:
+                  type: object
+                  additionalProperties:
+                    type: string
+                final_price_brl:
+                  type: number
+      responses:
+        '201':
+          description: PDF generated (attachment kind proposal_pdf)
+        '403':
+          description: Forbidden
+        '422':
+          description: Invalid stage, inactive template, or missing required values
   /api/builder/reservations/{reservation}/deposit-proof/approve:
     patch:
       summary: Approve deposit proof (builder)
@@ -1629,23 +1972,106 @@ paths:
               type: object
               required:
                 - file
+                - witness_1_user_id
+                - witness_2_user_id
               properties:
                 file:
                   type: string
                   format: binary
+                witness_1_user_id:
+                  type: integer
+                witness_2_user_id:
+                  type: integer
       responses:
         '201':
-          description: Builder-signed contract uploaded
+          description: Builder-signed contract uploaded and witnesses assigned
         '403':
           description: Forbidden
         '422':
-          description: Invalid stage, missing buyer-signed PDF, or invalid file
+          description: Invalid stage, missing buyer-signed PDF, invalid file, or invalid witnesses
+  /api/builder/reservations/{reservation}/contract/witness-candidates:
+    get:
+      summary: List builder team members eligible as witnesses
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Team members of the same tenant
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReservationWitnessCandidate'
+        '403':
+          description: Forbidden
+  /api/builder/reservations/{reservation}/contract/witnesses:
+    put:
+      summary: Assign two witnesses to the reservation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [witness_1_user_id, witness_2_user_id]
+              properties:
+                witness_1_user_id:
+                  type: integer
+                witness_2_user_id:
+                  type: integer
+      responses:
+        '200':
+          description: Witnesses assigned
+        '403':
+          description: Forbidden
+        '422':
+          description: Invalid users, same person twice, or contract not ready
+  /api/builder/reservations/{reservation}/contract/witnesses/{slot}/sign:
+    post:
+      summary: Register the assigned witness signature for slot 1 or 2
+      description: Sequential — slot 2 only after slot 1. In-app record only (no gov.br / e-mail).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: slot
+          in: path
+          required: true
+          schema:
+            type: integer
+            enum: [1, 2]
+      responses:
+        '200':
+          description: Witness signature recorded
+        '403':
+          description: Not the assigned witness for this reservation
+        '422':
+          description: Out of sequential order or already signed
   /api/builder/reservations/{reservation}/contract/validate:
     patch:
-      summary: Confirm sale after both signed contracts (builder)
+      summary: Confirm sale after all contract signatures (builder)
       description: |
-        Builder confirms the unit is sold after buyer and builder signed PDFs exist.
-        Optional `note`. Marks the unit sold.
+        Manager confirms the unit is sold only after buyer PDF, builder PDF, and both
+        witness signatures exist. Optional `note`. Marks the unit sold. 422 if any signature is missing.
       security:
         - bearerAuth: []
       parameters:
@@ -1670,7 +2096,7 @@ paths:
         '403':
           description: Forbidden
         '422':
-          description: Invalid stage or missing builder-signed PDF
+          description: Invalid stage or missing buyer, builder, or witness signatures
   /api/broker/activity:
     get:
       summary: List broker own activity
@@ -1836,7 +2262,7 @@ paths:
       summary: Submit proposal (legacy alias of POST /proposal)
       description: |
         Alias of POST /api/broker/reservations/{reservation}/proposal.
-        Prefer the POST endpoint. Body is the proposal snapshot (not client_id).
+        Prefer the POST endpoint. Multipart body with proposal fields and files[].
       security:
         - bearerAuth: []
       parameters:
@@ -1848,9 +2274,9 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ReservationProposalInput'
+              $ref: '#/components/schemas/ReservationProposalSubmit'
       responses:
         '200':
           description: Proposal submitted (same effect as POST /proposal)
@@ -1862,7 +2288,8 @@ paths:
       description: |
         Confirms the pre-reservation by linking a broker client and optional
         observations (first dialogue message). Unit stays `pre_reserved`;
-        status stays `pre_hold`. Does not submit a proposal.
+        status stays `pre_hold`. Starts a 48h hold window (`expires_at`).
+        Does not submit a proposal.
       security:
         - bearerAuth: []
       parameters:
@@ -1887,7 +2314,7 @@ paths:
                   maxLength: 2000
       responses:
         '200':
-          description: Client attached; pre-hold remains active
+          description: Client attached; 48h hold window starts
         '403':
           description: Not the owner or client does not belong to the broker
         '422':
@@ -1952,6 +2379,20 @@ paths:
       responses:
         '200':
           description: Pending reply count
+  /api/broker/reservations/pending-actions-count:
+    get:
+      summary: Count reservations with a pending in-app action for the current broker
+      description: |
+        Unique reservation count (reply, return signed proposal, upload contract, contract data, etc.).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Pending action count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationPendingActionCount'
   /api/broker/reservations/{reservation}/messages:
     get:
       summary: List reservation messages (broker)
@@ -2027,6 +2468,45 @@ paths:
           description: Not the reservation owner
         '422':
           description: Validation error
+  /api/broker/reservations/{reservation}/kanban:
+    patch:
+      summary: Move own reservation on the Kanban board
+      description: |
+        Same validation as the builder endpoint. The broker only moves reservations
+        they own. Payload-heavy transitions return 422 `action_required`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationKanbanMove'
+      responses:
+        '200':
+          description: Column unchanged or transition applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationListItem'
+        '204':
+          description: Pre-hold without client released (deleted)
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Not the reservation owner
+        '422':
+          description: Invalid transition or action required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationKanbanError'
   /api/broker/reservations/{reservation}/timeline:
     get:
       summary: Get reservation timeline (broker)
@@ -2053,7 +2533,9 @@ paths:
     post:
       summary: Submit reservation proposal (broker)
       description: |
-        Sends client data snapshot and payment terms to the manager for approval.
+        Sends client name, phone, commercial proposal terms and one or more
+        attachments for the manager to review before accepting, returning or rejecting.
+        Remaining client data is collected later in contract-data.
         Replaces the legacy meaning of PATCH confirm (Fase B).
       security:
         - bearerAuth: []
@@ -2066,9 +2548,9 @@ paths:
       requestBody:
         required: true
         content:
-          application/json:
+          multipart/form-data:
             schema:
-              $ref: '#/components/schemas/ReservationProposalInput'
+              $ref: '#/components/schemas/ReservationProposalSubmit'
       responses:
         '201':
           description: Proposal submitted
@@ -2076,6 +2558,42 @@ paths:
           description: Not the reservation owner
         '422':
           description: Invalid stage or validation error
+  /api/broker/reservations/{reservation}/proposal/signed:
+    post:
+      summary: Return proposal signed by both parties (broker)
+      description: |
+        Single submission after the builder accepted with a signed PDF.
+        Requires `signed_file` (PDF). Optional `deposit_proof` when there is a deposit.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - signed_file
+              properties:
+                signed_file:
+                  type: string
+                  format: binary
+                deposit_proof:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Signed proposal stored; deposit proof processed when sent
+        '403':
+          description: Not the reservation owner
+        '422':
+          description: Missing signed PDF or reservation not awaiting formalization
   /api/broker/reservations/{reservation}/deposit-proof:
     post:
       summary: Upload deposit proof (broker)
@@ -3216,8 +3734,42 @@ components:
           type: boolean
         needs_deposit_proof_approval:
           type: boolean
+        needs_witness_signature:
+          type: boolean
+        needs_sold_validation:
+          type: boolean
+        needs_action:
+          type: boolean
+        pending_action:
+          type: string
+          nullable: true
+          description: Highest-priority pending in-app action for the current viewer.
+          example: witness_signature
         deposit_overdue:
           type: boolean
+        kanban_column:
+          type: string
+          enum:
+            - pre_reservation
+            - proposal_review
+            - proposal_formalization
+            - docs_deposit
+            - contract
+            - sold
+            - cancelled
+          example: proposal_review
+        allowed_kanban_moves:
+          type: array
+          items:
+            type: string
+            enum:
+              - pre_reservation
+              - proposal_review
+              - proposal_formalization
+              - docs_deposit
+              - contract
+              - sold
+              - cancelled
         situation:
           $ref: '#/components/schemas/ReservationSituation'
         client:
@@ -3229,6 +3781,38 @@ components:
         unit:
           type: object
           nullable: true
+    ReservationKanbanMove:
+      type: object
+      required:
+        - column
+      properties:
+        column:
+          type: string
+          enum:
+            - pre_reservation
+            - proposal_review
+            - proposal_formalization
+            - docs_deposit
+            - contract
+            - sold
+            - cancelled
+        reason:
+          type: string
+          maxLength: 2000
+          description: Required when moving to `cancelled` (except silent action_required).
+    ReservationKanbanError:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum: [action_required, invalid_transition]
+        action:
+          type: string
+          nullable: true
+          description: Timeline action to open when `code` is `action_required`.
+          example: submit_proposal
     ReservationTimelineStep:
       type: object
       properties:
@@ -3298,6 +3882,14 @@ components:
           nullable: true
           allOf:
             - $ref: '#/components/schemas/ReservationAttachment'
+        current_builder_signed_contract:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/ReservationAttachment'
+        witnesses:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReservationWitness'
         attachments:
           type: array
           items:
@@ -3306,6 +3898,40 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ReservationTimelineStep'
+    ReservationPendingActionCount:
+      type: object
+      properties:
+        count:
+          type: integer
+        witness_scope:
+          type: boolean
+    ReservationWitness:
+      type: object
+      properties:
+        slot:
+          type: integer
+          enum: [1, 2]
+        signed_at:
+          type: string
+          format: date-time
+          nullable: true
+        is_current_user:
+          type: boolean
+        user:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+    ReservationWitnessCandidate:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
     ReservationAttachment:
       type: object
       properties:
@@ -3313,7 +3939,7 @@ components:
           type: integer
         kind:
           type: string
-          enum: [deposit_proof, contract_documentation, contract_pdf, contract_signed]
+          enum: [proposal, deposit_proof, contract_documentation, contract_pdf, contract_signed, contract_signed_builder]
         original_name:
           type: string
         mime_type:
@@ -3332,23 +3958,18 @@ components:
       type: object
       required:
         - client_name
-        - client_email
         - client_phone
-        - client_cpf
-        - address
-        - city
-        - state
-        - zip
-        - marital_status
-        - nationality
-        - land_value
         - payment_terms
       properties:
         client_name:
           type: string
-        client_email:
-          type: string
         client_phone:
+          type: string
+        payment_terms:
+          type: string
+          maxLength: 2000
+          description: Commercial proposal (down payment, installments, etc.)
+        client_email:
           type: string
         client_cpf:
           type: string
@@ -3367,9 +3988,21 @@ components:
         land_value:
           type: number
           format: double
-        payment_terms:
-          type: string
-          maxLength: 2000
+    ReservationProposalSubmit:
+      allOf:
+        - $ref: '#/components/schemas/ReservationProposalInput'
+        - type: object
+          required:
+            - files
+          properties:
+            files:
+              type: array
+              minItems: 1
+              maxItems: 10
+              items:
+                type: string
+                format: binary
+              description: Proposal attachments (JPEG, PNG, WebP or PDF, max 10MB each)
     ReservationProposal:
       allOf:
         - $ref: '#/components/schemas/ReservationProposalInput'
@@ -3399,6 +4032,10 @@ components:
               type: string
               format: date-time
               nullable: true
+            attachments:
+              type: array
+              items:
+                $ref: '#/components/schemas/ReservationAttachment'
     UserActivityEvent:
       type: object
       properties:

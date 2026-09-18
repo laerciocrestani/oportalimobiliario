@@ -4,21 +4,25 @@ import { builderApi, brokerApi } from '@/lib/api'
 
 export function useReservationNavBadge(profile: 'builder' | 'broker', enabled: boolean) {
   const [count, setCount] = useState(0)
+  const [witnessScope, setWitnessScope] = useState(false)
 
   const refresh = useCallback(async () => {
     if (!enabled) {
       setCount(0)
+      setWitnessScope(false)
       return
     }
 
     try {
       const result =
         profile === 'builder'
-          ? await builderApi.pendingRepliesCount()
-          : await brokerApi.pendingRepliesCount()
+          ? await builderApi.pendingActionsCount()
+          : await brokerApi.pendingActionsCount()
       setCount(result.count)
+      setWitnessScope(result.witness_scope)
     } catch {
       setCount(0)
+      setWitnessScope(false)
     }
   }, [enabled, profile])
 
@@ -38,5 +42,5 @@ export function useReservationNavBadge(profile: 'builder' | 'broker', enabled: b
     }
   }, [refresh])
 
-  return { count, refresh }
+  return { count, witnessScope, refresh }
 }

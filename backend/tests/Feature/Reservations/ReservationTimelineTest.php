@@ -275,7 +275,7 @@ it('includes timeline situation on builder reservation list', function () {
 
     $response = $this->getJson('/api/builder/reservations')
         ->assertOk()
-        ->assertJsonPath('0.situation.previous.label', 'Proposta enviada')
+        ->assertJsonPath('0.situation.previous.label', 'Proposta')
         ->assertJsonPath('0.situation.current.key', 'proposal_decision')
         ->assertJsonPath('0.situation.current.label', 'Decisão do gestor')
         ->assertJsonPath('0.situation.current.waiting_on', 'builder')
@@ -449,4 +449,105 @@ it('includes issued contract pdf on builder timeline attachments', function () {
         ->assertOk()
         ->assertJsonPath('attachments.0.kind', ReservationAttachmentKind::ContractPdf->value)
         ->assertJsonPath('attachments.0.original_name', 'contrato.pdf');
+});
+
+it('keeps cancelled timeline read-only with dialogue and attachments', function () {
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create();
+    $broker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+
+    $reservation = Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+        'status' => ReservationStatus::Cancelled,
+    ]);
+
+    ReservationTimelineEvent::factory()->create([
+        'reservation_id' => $reservation->id,
+        'type' => ReservationTimelineEventType::ProposalSubmitted,
+        'actor_id' => $broker->id,
+    ]);
+    ReservationTimelineEvent::factory()->create([
+        'reservation_id' => $reservation->id,
+        'type' => ReservationTimelineEventType::ProposalAccepted,
+        'actor_id' => $builder->id,
+    ]);
+    ReservationTimelineEvent::factory()->create([
+        'reservation_id' => $reservation->id,
+        'type' => ReservationTimelineEventType::DepositWindowOpened,
+    ]);
+    ReservationTimelineEvent::factory()->create([
+        'reservation_id' => $reservation->id,
+        'type' => ReservationTimelineEventType::Cancelled,
+        'actor_id' => $builder->id,
+        'payload' => ['reason' => 'Cliente desistiu.'],
+    ]);
+    ReservationAttachment::factory()->create([
+        'reservation_id' => $reservation->id,
+        'kind' => ReservationAttachmentKind::DepositProof,
+        'uploaded_by' => $broker->id,
+        'original_name' => 'pix.pdf',
+    ]);
+
+    Sanctum::actingAs($builder);
+
+    $response = $this->getJson("/api/builder/reservations/{$reservation->id}/timeline")
+        ->assertOk()
+        ->assertJsonPath('current_stage', 'cancelled')
+        ->assertJsonPath('attachments.0.original_name', 'pix.pdf');
+
+    $current = collect($response->json('steps'))->firstWhere('status', 'failed');
+
+    expect($current)->not->toBeNull()
+        ->and($current['key'])->toBe('deposit_window')
+        ->and($current['actions'])->toBe(['open_dialogue']);
+
+    $mutating = collect($response->json('steps'))
+        ->pluck('actions')
+        ->flatten()
+        ->reject(fn (string $action) => $action === 'open_dialogue');
+
+    expect($mutating)->toBeEmpty();
+});
+
+it('exposes deposit and hold actions on a client pre-hold timeline', function () {
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create();
+    $broker = User::factory()->broker()->create();
+    $client = BrokerClient::factory()->for($broker, 'broker')->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+
+    $reservation = Reservation::factory()->preHold()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+        'client_id' => $client->id,
+        'expires_at' => now()->addHours(48),
+    ]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    Sanctum::actingAs($broker);
+
+    $brokerActions = $this->getJson("/api/broker/reservations/{$reservation->id}/timeline")
+        ->assertOk()
+        ->json('steps.1.actions');
+
+    expect($brokerActions)->toContain('open_dialogue')
+        ->and($brokerActions)->toContain('submit_deposit_proof');
+
+    Sanctum::actingAs($builder);
+
+    $builderActions = $this->getJson("/api/builder/reservations/{$reservation->id}/timeline")
+        ->assertOk()
+        ->json('steps.1.actions');
+
+    expect($builderActions)->toContain('extend_hold')
+        ->and($builderActions)->toContain('drop_hold');
 });

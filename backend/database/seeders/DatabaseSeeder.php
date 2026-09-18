@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             BuildingAccessSeeder::class,
             ReservationSeeder::class,
             ContractTemplateSeeder::class,
+            ProposalTemplateSeeder::class,
         ]);
     }
 }

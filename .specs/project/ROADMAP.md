@@ -46,6 +46,7 @@
 | builder-contracts | done | done | done | done |
 | builder-team | done | inline | inline | done |
 | user-activity-log | done | done | done | done |
+| reservation-progress-flex | done | done | done | Entregas 1–4 |
 
 ## Próximos passos (pós-MVP v1)
 

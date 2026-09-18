@@ -65,7 +65,7 @@ describe('ReservationSituation', () => {
         situation={{
           previous: {
             key: 'proposal_submitted',
-            label: 'Proposta enviada',
+            label: 'Proposta',
             occurred_at: '2026-07-10T18:00:00.000Z',
           },
           current: {
@@ -116,7 +116,7 @@ describe('ReservationSituation', () => {
         situation={{
           previous: {
             key: 'proposal_submitted',
-            label: 'Proposta enviada',
+            label: 'Proposta',
             occurred_at: '2026-07-10T18:00:00.000Z',
           },
           current: {

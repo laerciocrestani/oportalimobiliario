@@ -5,6 +5,7 @@
  * @see REQ-BLD-RES-002
  * @see REQ-BLD-RES-003
  */
+use App\Enums\ReservationStatus;
 use App\Enums\UnitStatus;
 use App\Enums\UserActivityAction;
 use App\Models\BrokerClient;
@@ -172,4 +173,38 @@ it('requires a reason when builder cancels a reservation', function () {
     $this->deleteJson("/api/builder/reservations/{$reservation->id}")
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['reason']);
+});
+
+it('keeps cancelled reservations in the builder listing as read-only', function () {
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create();
+    $broker = User::factory()->broker()->create();
+    $client = BrokerClient::factory()->for($broker, 'broker')->create(['name' => 'João Silva']);
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+    $reservation = Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+        'client_id' => $client->id,
+    ]);
+
+    Sanctum::actingAs($builder);
+
+    $this->deleteJson("/api/builder/reservations/{$reservation->id}", [
+        'reason' => 'Cliente desistiu.',
+    ])->assertNoContent();
+
+    $this->getJson('/api/builder/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.id', $reservation->id)
+        ->assertJsonPath('0.status', ReservationStatus::Cancelled->value)
+        ->assertJsonPath('0.needs_reply', false)
+        ->assertJsonPath('0.situation.current.status', 'failed')
+        ->assertJsonPath('0.situation.current.waiting_on', null);
+
+    $this->postJson("/api/builder/reservations/{$reservation->id}/messages", [
+        'body' => 'Tentativa após cancelar.',
+    ])->assertForbidden();
 });

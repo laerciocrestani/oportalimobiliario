@@ -26,6 +26,8 @@ class BuilderPermissions
 
     public const MANAGE_CONTRACTS = 'contracts.manage';
 
+    public const MANAGE_PROPOSALS = 'proposals.manage';
+
     public const VIEW_AUDIT = 'audit.view';
 
     /**
@@ -43,6 +45,7 @@ class BuilderPermissions
             self::CANCEL_RESERVATIONS,
             self::MANAGE_TEAM,
             self::MANAGE_CONTRACTS,
+            self::MANAGE_PROPOSALS,
             self::VIEW_AUDIT,
         ];
     }
@@ -62,6 +65,7 @@ class BuilderPermissions
             self::CANCEL_RESERVATIONS => 'Cancelar reservas',
             self::MANAGE_TEAM => 'Gerenciar equipe',
             self::MANAGE_CONTRACTS => 'Gerenciar contratos',
+            self::MANAGE_PROPOSALS => 'Gerenciar propostas',
             self::VIEW_AUDIT => 'Auditar atividade da equipe',
         ];
     }

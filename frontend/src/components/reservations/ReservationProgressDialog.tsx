@@ -5,23 +5,33 @@ import { BrokerDepositProofDialog } from '@/components/reservations/BrokerDeposi
 import { BrokerGovSignatureDialog } from '@/components/reservations/BrokerGovSignatureDialog'
 import { BrokerSignedContractDialog } from '@/components/reservations/BrokerSignedContractDialog'
 import { BuilderContractValidatePanel } from '@/components/reservations/BuilderContractValidatePanel'
+import { BuilderDropHoldDialog } from '@/components/reservations/BuilderDropHoldDialog'
+import { BuilderExtendHoldDialog } from '@/components/reservations/BuilderExtendHoldDialog'
 import { BuilderMarkSoldDialog } from '@/components/reservations/BuilderMarkSoldDialog'
 import { BuilderSignedContractDialog } from '@/components/reservations/BuilderSignedContractDialog'
+import { BuilderWitnessSignDialog } from '@/components/reservations/BuilderWitnessSignDialog'
 import { BuilderDepositProofApprovalPanel } from '@/components/reservations/BuilderDepositProofApprovalPanel'
 import { BuilderProposalDecisionPanel } from '@/components/reservations/BuilderProposalDecisionPanel'
+import { BrokerReturnSignedProposalDialog } from '@/components/reservations/BrokerReturnSignedProposalDialog'
 import { BuilderIssueContractDialog } from '@/components/reservations/BuilderIssueContractDialog'
+import {
+  isReturnedOrRejectedProposal,
+  ProposalDecisionAlert,
+} from '@/components/reservations/ProposalDecisionAlert'
 import { ReservationMessagesDialog } from '@/apps/builder/components/ReservationMessagesDialog'
 import { ReservationTimeline } from '@/components/reservations/ReservationTimeline'
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { builderApi, brokerApi, type ReservationTimeline as ReservationTimelineData, type Unit } from '@/lib/api'
+import { notifyReservationBadgeRefresh } from '@/lib/reservation-badge-events'
 
-type ReservationTimelineSheetProps = {
+type ReservationProgressDialogProps = {
   profile: 'broker' | 'builder'
   reservationId: number | null
   open: boolean
@@ -29,13 +39,13 @@ type ReservationTimelineSheetProps = {
   onTimelineRefresh?: () => void
 }
 
-export function ReservationTimelineSheet({
+export function ReservationProgressDialog({
   profile,
   reservationId,
   open,
   onOpenChange,
   onTimelineRefresh,
-}: ReservationTimelineSheetProps) {
+}: ReservationProgressDialogProps) {
   const [timeline, setTimeline] = useState<ReservationTimelineData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -47,7 +57,11 @@ export function ReservationTimelineSheet({
   const [govSignatureOpen, setGovSignatureOpen] = useState(false)
   const [signedContractOpen, setSignedContractOpen] = useState(false)
   const [builderSignedContractOpen, setBuilderSignedContractOpen] = useState(false)
+  const [witnessSignOpen, setWitnessSignOpen] = useState(false)
   const [markSoldOpen, setMarkSoldOpen] = useState(false)
+  const [extendHoldOpen, setExtendHoldOpen] = useState(false)
+  const [dropHoldOpen, setDropHoldOpen] = useState(false)
+  const [returnSignedProposalOpen, setReturnSignedProposalOpen] = useState(false)
 
   async function loadTimeline() {
     if (reservationId === null) {
@@ -106,6 +120,11 @@ export function ReservationTimelineSheet({
       return
     }
 
+    if (action === 'return_signed_proposal') {
+      setReturnSignedProposalOpen(true)
+      return
+    }
+
     if (action === 'submit_contract_data') {
       setContractDataOpen(true)
       return
@@ -131,13 +150,29 @@ export function ReservationTimelineSheet({
       return
     }
 
+    if (action === 'sign_as_witness') {
+      setWitnessSignOpen(true)
+      return
+    }
+
     if (action === 'validate_contract') {
       setMarkSoldOpen(true)
+      return
+    }
+
+    if (action === 'extend_hold') {
+      setExtendHoldOpen(true)
+      return
+    }
+
+    if (action === 'drop_hold') {
+      setDropHoldOpen(true)
     }
   }
 
   async function handleRefresh() {
     onTimelineRefresh?.()
+    notifyReservationBadgeRefresh()
 
     try {
       await loadTimeline()
@@ -145,6 +180,9 @@ export function ReservationTimelineSheet({
       setError('Não foi possível atualizar o andamento da reserva.')
     }
   }
+
+  const currentStep = timeline?.steps.find((step) => step.status === 'current')
+  const currentWitnessSlot = currentStep?.key === 'contract_witness_2' ? 2 : 1
 
   const proposalUnit: Unit | null = timeline?.unit
     ? {
@@ -159,16 +197,16 @@ export function ReservationTimelineSheet({
 
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>Andamento da reserva</SheetTitle>
-            <SheetDescription>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-5xl sm:max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Andamento da reserva</DialogTitle>
+            <DialogDescription>
               Acompanhe cada etapa do processo, da pré-reserva até a venda.
-            </SheetDescription>
-          </SheetHeader>
+            </DialogDescription>
+          </DialogHeader>
 
-          <div className="space-y-6 px-4 pb-6">
+          <DialogBody className="flex flex-col gap-6">
             {loading ? (
               <p className="text-sm text-muted-foreground">Carregando andamento...</p>
             ) : error ? (
@@ -182,8 +220,18 @@ export function ReservationTimelineSheet({
                   <BuilderProposalDecisionPanel
                     reservationId={timeline.reservation_id}
                     proposal={timeline.current_proposal}
+                    attachments={timeline.attachments}
                     onDecided={() => void handleRefresh()}
                   />
+                ) : null}
+
+                {isReturnedOrRejectedProposal(timeline.current_proposal) ? (
+                  <div className="rounded-lg border p-4">
+                    <ProposalDecisionAlert
+                      proposal={timeline.current_proposal}
+                      onOpenDialogue={() => setMessagesOpen(true)}
+                    />
+                  </div>
                 ) : null}
 
                 {profile === 'builder' &&
@@ -210,22 +258,34 @@ export function ReservationTimelineSheet({
 
                 {profile === 'builder' &&
                 timeline.current_builder_signed_contract &&
-                timeline.current_stage === 'contract_builder_signed' ? (
+                currentStep?.actions.includes('validate_contract') ? (
                   <BuilderContractValidatePanel
                     title="Contrato assinado pela construtora"
-                    description="Confira o PDF e confirme a venda da unidade."
+                    description="Confira o PDF e as assinaturas das testemunhas e confirme a venda da unidade."
                     attachment={timeline.current_builder_signed_contract}
                     actionLabel="Unidade vendida"
                     onAction={() => setMarkSoldOpen(true)}
                   />
                 ) : null}
 
+                {profile === 'builder' &&
+                currentStep?.actions.includes('sign_as_witness') &&
+                timeline.current_builder_signed_contract ? (
+                  <BuilderContractValidatePanel
+                    title={`Assinatura da testemunha ${currentWitnessSlot}`}
+                    description="Registre no sistema que você testemunhou este contrato."
+                    attachment={timeline.current_builder_signed_contract}
+                    actionLabel="Registrar assinatura"
+                    onAction={() => setWitnessSignOpen(true)}
+                  />
+                ) : null}
+
                 <ReservationTimeline timeline={timeline} onAction={handleAction} />
               </>
             ) : null}
-          </div>
-        </SheetContent>
-      </Sheet>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
 
       <ReservationMessagesDialog
         profile={profile}
@@ -233,6 +293,7 @@ export function ReservationTimelineSheet({
         open={messagesOpen}
         onOpenChange={setMessagesOpen}
         onMessageSent={() => void handleRefresh()}
+        readOnly={timeline?.current_stage === 'cancelled'}
       />
 
       {profile === 'broker' && reservationId !== null ? (
@@ -245,11 +306,19 @@ export function ReservationTimelineSheet({
             expiresAt={timeline?.current_stage === 'pre_hold' ? (timeline.expires_at ?? null) : null}
             releaseHoldOnClose={false}
             client={timeline?.client ?? null}
+            proposal={timeline?.current_proposal ?? null}
+            onOpenDialogue={() => setMessagesOpen(true)}
             onReserved={() => void handleRefresh()}
           />
           <BrokerDepositProofDialog
             open={depositProofOpen}
             onOpenChange={setDepositProofOpen}
+            reservationId={reservationId}
+            onSubmitted={() => void handleRefresh()}
+          />
+          <BrokerReturnSignedProposalDialog
+            open={returnSignedProposalOpen}
+            onOpenChange={setReturnSignedProposalOpen}
             reservationId={reservationId}
             onSubmitted={() => void handleRefresh()}
           />
@@ -290,9 +359,28 @@ export function ReservationTimelineSheet({
             reservationId={reservationId}
             onSubmitted={() => void handleRefresh()}
           />
+          <BuilderWitnessSignDialog
+            open={witnessSignOpen}
+            onOpenChange={setWitnessSignOpen}
+            reservationId={reservationId}
+            slot={currentWitnessSlot}
+            onSubmitted={() => void handleRefresh()}
+          />
           <BuilderMarkSoldDialog
             open={markSoldOpen}
             onOpenChange={setMarkSoldOpen}
+            reservationId={reservationId}
+            onSubmitted={() => void handleRefresh()}
+          />
+          <BuilderExtendHoldDialog
+            open={extendHoldOpen}
+            onOpenChange={setExtendHoldOpen}
+            reservationId={reservationId}
+            onSubmitted={() => void handleRefresh()}
+          />
+          <BuilderDropHoldDialog
+            open={dropHoldOpen}
+            onOpenChange={setDropHoldOpen}
             reservationId={reservationId}
             onSubmitted={() => void handleRefresh()}
           />

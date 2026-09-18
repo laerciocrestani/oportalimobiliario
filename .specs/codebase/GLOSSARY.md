@@ -11,9 +11,15 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | unidade | `unit` |
 | reserva | `reservation` |
 | pré-reserva | `pre_hold` / `pre_reservation` |
+| prazo da pré-reserva | `hold` (`expires_at`, `extend_hold`, `drop_hold`) |
 | proposta | `proposal` |
 | sinal | `deposit` |
 | comprovante | `deposit_proof` |
+| anexo da proposta | `proposal` (attachment kind) |
+| PDF gerado da proposta | `proposal_pdf` |
+| proposta assinada pela construtora | `proposal_signed_builder` |
+| proposta assinada por ambas as partes | `proposal_signed_both` |
+| modelo de proposta | `proposal_template` |
 | condições de pagamento | `payment_terms` |
 | valor do terreno | `land_value` |
 | emissão de contrato | `contract_issue` |
@@ -21,6 +27,18 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | preço congelado | `frozen_price_brl` |
 | contrato assinado | `contract_signed` |
 | contrato assinado pela construtora | `contract_signed_builder` |
+| testemunha da reserva | `reservation_witness` / `reservation_witnesses` |
+| testemunha 1 / 2 | `slot` 1 / 2 |
+| registrar assinatura da testemunha | `sign_as_witness` |
+| ação pendente (in-app) | `pending_action` / `pending-actions-count` |
+| coluna do Kanban | `kanban_column` / `allowed_kanban_moves` |
+| Pré-reserva/Diálogo | `pre_reservation` |
+| Proposta em análise | `proposal_review` |
+| Proposta aceita/Formalização | `proposal_formalization` |
+| Documentação & Sinal | `docs_deposit` |
+| Contrato (assinaturas) | `contract` |
+| Vendida (coluna Kanban) | `sold` |
+| Cancelada (coluna Kanban) | `cancelled` |
 | convite corretor | `broker_invite` |
 | acesso unidade | `unit_access` |
 | role construtora | `builder` |
@@ -69,6 +87,7 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | contrato_emitido | `contract_issued` |
 | contrato_enviado | `contract_uploaded` |
 | contrato_assinado_construtora | `contract_builder_signed` |
+| testemunha_1 / testemunha_2 | `contract_witness_1` / `contract_witness_2` |
 
 ## Dev hostnames (unchanged — PT)
 

@@ -9,15 +9,22 @@ export const WAITING_LABEL: Record<ReservationWaitingOn, string> = {
 export function ReservationWaitingStatus({
   waitingOn,
   profile,
+  reservationStatus,
+  needsAction,
 }: {
   waitingOn: ReservationWaitingOn | null
   profile: 'builder' | 'broker'
+  reservationStatus?: string
+  needsAction?: boolean
 }) {
-  if (!waitingOn) {
+  if (reservationStatus === 'cancelled') {
+    return <Badge variant="destructive">Cancelada</Badge>
+  }
+  if (!waitingOn && !needsAction) {
     return <span className="text-muted-foreground">—</span>
   }
 
-  const waitingOnYou = waitingOn === profile
+  const waitingOnYou = needsAction ?? waitingOn === profile
 
   return (
     <Badge variant={waitingOnYou ? 'warning' : 'secondary'}>
@@ -25,7 +32,7 @@ export function ReservationWaitingStatus({
         <span className="absolute inline-flex size-full animate-ping rounded-full bg-current opacity-75" />
         <span className="relative inline-flex size-2 rounded-full bg-current" />
       </span>
-      {waitingOnYou ? 'Aguardando você' : WAITING_LABEL[waitingOn]}
+      {waitingOnYou ? 'Aguardando você' : waitingOn ? WAITING_LABEL[waitingOn] : 'Ação pendente'}
     </Badge>
   )
 }

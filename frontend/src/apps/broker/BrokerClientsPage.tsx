@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { WhatsAppPhoneInput } from '@/components/whatsapp-phone-input'
 import { brokerApi, type BrokerClient } from '@/lib/api'
 
 export function BrokerClientsPage() {
@@ -65,10 +66,10 @@ export function BrokerClientsPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="client-phone">Telefone *</Label>
-                <Input
+                <WhatsAppPhoneInput
                   id="client-phone"
                   value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  onChange={setPhone}
                   required
                 />
               </div>

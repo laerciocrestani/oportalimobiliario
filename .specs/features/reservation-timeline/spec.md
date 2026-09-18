@@ -31,19 +31,18 @@ O corretor inicia sempre com pré-reserva, troca informações com a construtora
 
 ### Fase 2 — Proposta
 
-- `REQ-RTL-005`: Após diálogo, corretor envia **proposta** com formulário:
-  - `client_name`, `client_email`, `client_phone`, `client_cpf`
-  - `address`, `city`, `state`, `zip`
-  - `marital_status`, `nationality`
-  - `land_value` (valor do terreno)
-  - `payment_terms` (observações de pagamento, ex: "pix 10 mil + terreno + 24x 5 mil")
+- `REQ-RTL-005`: Após diálogo, corretor envia **proposta** com:
+  - `client_name`, `client_phone` (somente leitura; já definidos na pré-reserva)
+  - `payment_terms` (textarea único: entrada, parcelamento e demais condições)
+  - um ou mais anexos (`kind: proposal`; JPEG/PNG/WebP/PDF) para o gestor conferir antes de aceitar, devolver ou recusar
+  - Nome/telefone editáveis na área de clientes ou em **Dados para contrato** (`REQ-RTL-018`)
 - `REQ-RTL-006`: Proposta é snapshot — dados independentes do cadastro `broker_clients` no momento do envio
 - `REQ-RTL-007`: Envio da proposta muda `stage` para `proposal_pending`; unidade permanece `pre_reserved`
-- `REQ-RTL-008`: Gestor decide proposta: `accepted` | `rejected` | `returned` + `decision_note` opcional
+- `REQ-RTL-008`: Gestor decide proposta: `accepted` | `rejected` | `returned`. `decision_note` é obrigatória para recusa e devolução
 - `REQ-RTL-009`: **Aceita** → `stage` = `deposit_pending`, unidade → `reserved`, TTL 48h inicia para sinal
-- `REQ-RTL-010`: **Recusada** → `stage` = `cancelled`, unidade → `available`, timeline encerra
-- `REQ-RTL-011`: **Devolvida** → `stage` = `proposal_returned`, corretor pode reenviar proposta corrigida
-- `REQ-RTL-012`: Timeline exibe etapas **Proposta enviada** e **Decisão do gestor** com status e nota
+- `REQ-RTL-010`: **Recusada** → `stage` = `cancelled`, unidade → `available`, timeline encerra; o motivo entra no diálogo como `Proposta recusada: {nota}`
+- `REQ-RTL-011`: **Devolvida** → `stage` = `proposal_returned`, o motivo entra no diálogo como `Proposta devolvida: {nota}`; corretor pode reenviar proposta corrigida
+- `REQ-RTL-012`: Timeline exibe etapas **Proposta** e **Decisão do gestor**; após devolução/recusa, a proposta mostra alerta com o motivo e ícone para abrir o diálogo
 
 ### Fase 3 — Sinal (depósito)
 
@@ -73,7 +72,7 @@ O corretor inicia sempre com pré-reserva, troca informações com a construtora
 ### Auditoria
 
 - `REQ-RTL-029`: Toda transição de stage grava evento em `reservation_timeline_events` (append-only)
-- `REQ-RTL-030`: Após `reserved`, cancelamentos usam soft `cancelled` + evento (preserva histórico; não hard delete)
+- `REQ-RTL-030`: Cancelamentos usam soft `cancelled` + evento (preserva histórico e anexos; não hard delete). A reserva permanece na listagem como **Cancelada**, sem novas alterações — só consulta de diálogo e anexos. Hard delete permanece apenas na pré-reserva sem cliente (dialog/TTL).
 
 ## Alinhamento com implementação atual
 

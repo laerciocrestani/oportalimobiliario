@@ -86,16 +86,42 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 
 ---
 
+## reservation-progress-flex
+
+> Spec: `.specs/features/reservation-progress-flex/spec.md` · Branch: `feature/reservation-progress-flex` · Status: **Entrega 4 done**
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-RPF-001 | Pré-hold sem cliente 10 min | `PreReservationService.php` | — | `PreReservationTest.php` |
+| REQ-RPF-002 | Cliente inicia hold 48h | `PreReservationService::attachClient` | dialog prazo | `PreReservationTest.php` |
+| REQ-RPF-003 | 48h sem avanço → cancel + `expired` | `ReservationHoldService::expireStalled` | — | `PreReservationTest.php` |
+| REQ-RPF-004 | Sinal na pré-reserva → `reserved` | `ReservationDepositService.php` | `BrokerDepositProofDialog.tsx` | `ReservationHoldTest.php` |
+| REQ-RPF-005 | Proposta segura (TTL nulo) | `ReservationProposalService::submit` | — | `ReservationProposalTest.php` |
+| REQ-RPF-006 | Gestor estende prazo | `ReservationHoldController::extend` | `BuilderExtendHoldDialog.tsx` | `ReservationHoldTest.php`, `BuilderExtendHoldDialog.test.tsx` |
+| REQ-RPF-007 | Gestor força queda | `ReservationHoldController::drop` | `BuilderDropHoldDialog.tsx` | `ReservationHoldTest.php`, `BuilderDropHoldDialog.test.tsx` |
+| REQ-RPF-008 | Aceite sem TTL de sinal | `ReservationProposalService::accept` | — | `ReservationProposalTest.php` |
+| REQ-RPF-009 | Actions na timeline | `ReservationTimelineService.php` | `ReservationTimeline.tsx`, `ReservationProgressDialog.tsx` | `ReservationTimelineTest.php`, `ReservationTimeline.test.tsx` |
+| REQ-RPF-010 | CRUD templates de proposta (`proposals.manage`) | `BuilderPermissions.php`, `ProposalTemplate.php`, `ProposalTemplatePolicy.php`, `Builder/ProposalTemplateController.php` | `apps/builder/ProposalsPage.tsx`, `config/dashboard-nav.tsx`, `lib/builder-permissions.ts` | `ProposalTemplateTest.php`, `ProposalsPage.test.tsx`, `TeamTest.php` |
+| REQ-RPF-011 | PDF da proposta + aceite com upload assinado | `ProposalIssueService.php`, `ProposalIssueController.php`, `ReservationProposalService::accept` | `BuilderProposalDecisionPanel.tsx` | `ProposalIssueTest.php`, `BuilderProposalDecisionPanel.test.tsx` |
+| REQ-RPF-012 | Devolução única (PDF ambas + sinal opcional) | `ReservationProposalService::returnSigned` | `BrokerReturnSignedProposalDialog.tsx`, `ReservationProgressDialog.tsx` | `ProposalFormalizationTest.php`, `BrokerReturnSignedProposalDialog.test.tsx` |
+| REQ-RPF-013 | Contrato sequencial + invariante de `sold` | `ReservationContractCompletionService.php`, `Builder/ReservationWitnessController.php`, `ReservationTimelineService.php` | `BuilderSignedContractDialog.tsx`, `BuilderWitnessSignDialog.tsx`, `BuilderMarkSoldDialog.tsx`, `ReservationProgressDialog.tsx` | `ReservationWitnessTest.php`, `ReservationContractCompletionTest.php`, `BuilderSignedContractDialog.test.tsx`, `BuilderWitnessSignDialog.test.tsx`, `BuilderMarkSoldDialog.test.tsx` |
+| REQ-RPF-014 | Testemunhas = equipe do tenant, por reserva | `ReservationWitness.php`, `reservation_witnesses` | `BuilderSignedContractDialog.tsx` | `ReservationWitnessTest.php` |
+| REQ-RPF-015 | Badge de ação pendente no card e no menu | `ReservationPendingReplyService.php` (`pending-actions-count`) | `ReservationPendingActionBadge.tsx`, `ReservationsPage.tsx`, `BrokerReservationsPage.tsx`, `BuilderDashboardShell.tsx`, `BrokerDashboardShell.tsx`, `use-reservation-nav-badge.ts` | `ReservationPendingActionTest.php`, `ReservationPendingActionBadge.test.tsx`, `ReservationsPage.test.tsx`, `BrokerReservationsPage.test.tsx` |
+| REQ-RPF-016 | Kanban 7 colunas; drag validado; dialog central | `ReservationKanbanService.php`, `ReservationKanbanColumn.php`, `Builder/ReservationKanbanController.php`, `Broker/ReservationKanbanController.php` | `ReservationKanbanBoard.tsx`, `ReservationProgressDialog.tsx`, `ReservationsPage.tsx`, `BrokerReservationsPage.tsx` | `ReservationKanbanTest.php`, `ReservationKanbanBoard.test.tsx`, `ReservationProgressDialog.test.tsx`, `ReservationsPage.test.tsx`, `BrokerReservationsPage.test.tsx` |
+| REQ-RPF-017 | Gestor vê todas; corretor só as suas | `Builder/ReservationController.php` (tenant + gestor), `Broker/ReservationController.php` (`broker_id`) | `ReservationsPage.tsx`, `BrokerReservationsPage.tsx` | `ReservationKanbanTest.php`, `Builder/ReservationTest.php`, `ReservationTest.php` |
+
+---
+
 ## reservation-timeline
 
 > Spec: `.specs/features/reservation-timeline/spec.md` · Design: `design.md` · Status: **Fases A–D implementadas**
 
 | REQ | Descrição | BE | FE | Testes |
 |-----|-----------|----|----|--------|
-| REQ-RTL-001..004 | Pré-reserva + diálogo no timeline | `ReservationTimelineService.php`, controllers timeline | `ReservationTimeline.tsx`, `ReservationTimelineSheet.tsx` | `ReservationTimelineTest.php`, `ReservationTimeline.test.tsx` |
+| REQ-RTL-001..004 | Pré-reserva + diálogo no timeline | `ReservationTimelineService.php`, controllers timeline | `ReservationTimeline.tsx`, `ReservationProgressDialog.tsx` | `ReservationTimelineTest.php`, `ReservationTimeline.test.tsx` |
 | REQ-RTL-024..028 | GET timeline API + UI | `Broker/ReservationTimelineController.php`, `Builder/ReservationTimelineController.php` | `BrokerReservationsPage.tsx`, `ReservationsPage.tsx`, `ReservationSituation.tsx`, `ReservationWaitingStatus.tsx`, `reservation-step-greens.ts` | `ReservationTimelineTest.php`, `ReservationSituation.test.tsx`, `ReservationWaitingStatus.test.tsx` |
 | REQ-RTL-029 | Eventos append-only | `ReservationTimelineEvent.php`, hooks em services | — | `ReservationTimelineTest.php` |
-| REQ-RTL-005..012 | Proposta + decisão gestor | `ReservationProposalService.php`, controllers proposal, unique ativo `reservations_active_unit_unique` | `BrokerReservationDialog.tsx` (timeline), `BuilderProposalDecisionPanel.tsx` | `ReservationProposalTest.php` |
+| REQ-RTL-005..012 | Proposta + anexos + decisão gestor | `ReservationProposalService.php`, controllers proposal, unique ativo `reservations_active_unit_unique` | `BrokerReservationDialog.tsx` (timeline), `BuilderProposalDecisionPanel.tsx`, `ProposalDecisionAlert.tsx` | `ReservationProposalTest.php`, `ProposalDecisionAlert.test.tsx`, `BuilderProposalDecisionPanel.test.tsx` |
 | REQ-RTL-013..017 | Sinal + comprovante + alerta 48h | `ReservationDepositService.php`, `ReservationAttachment.php`, `CheckDepositWindows.php`, controllers deposit | `BrokerDepositProofDialog.tsx`, `BuilderDepositProofApprovalPanel.tsx`, `ReservationAttachmentField.tsx` | `ReservationDepositTest.php` |
 | REQ-RTL-018..023 | Contrato + venda + anexos no andamento | `ReservationContractDataService.php`, `ReservationContractCompletionService.php`, `Broker/ReservationContractSignedController.php`, `Builder/ReservationContractSignedController.php`, `Builder/ReservationContractValidateController.php` | `BrokerContractDataDialog.tsx`, `BrokerGovSignatureDialog.tsx`, `BrokerSignedContractDialog.tsx`, `BuilderSignedContractDialog.tsx`, `BuilderMarkSoldDialog.tsx`, `BuilderContractValidatePanel.tsx`, `ReservationTimeline.tsx` | `ReservationContractDataTest.php`, `ReservationContractCompletionTest.php`, `BrokerGovSignatureDialog.test.tsx`, `BrokerSignedContractDialog.test.tsx`, `BuilderSignedContractDialog.test.tsx`, `BuilderMarkSoldDialog.test.tsx`, `BuilderContractValidatePanel.test.tsx` |
 
@@ -116,7 +142,7 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 | REQ-CTR-005 | Variáveis do sistema | `Support/ContractSystemVariables.php`, `GET /contract-variables` | `ContractsPage.tsx` | `ContractVariableTest.php` |
 | REQ-CTR-006 | Custom + placeholder desconhecido obrigatório na emissão | `ContractVariableResolver.php` | `BuilderIssueContractDialog.tsx` | `ContractVariableTest.php`, `ContractIssueTest.php` |
 | REQ-CTR-007 | Inativo some da lista de emitir | `ContractIssueService.php` | dialog de emissão | `ContractIssueTest.php` |
-| REQ-CTR-008 | Emitir PDF + evento + status | `ContractIssueService.php`, `ContractPdfRenderer.php`, `Builder/ContractIssueController.php` | `BuilderIssueContractDialog.tsx`, `ReservationTimelineSheet.tsx` | `ContractIssueTest.php`, `ContractPdfRendererTest.php`, `BuilderIssueContractDialog.test.tsx` |
+| REQ-CTR-008 | Emitir PDF + evento + status | `ContractIssueService.php`, `ContractPdfRenderer.php`, `Builder/ContractIssueController.php` | `BuilderIssueContractDialog.tsx`, `ReservationProgressDialog.tsx` | `ContractIssueTest.php`, `ContractPdfRendererTest.php`, `BuilderIssueContractDialog.test.tsx` |
 | REQ-CTR-009 | Reemitir até assinado (substitui PDF) | `ContractIssueService.php` | label **Reemitir contrato** | `ContractIssueTest.php`, `ReservationTimeline.test.tsx` |
 | REQ-CTR-010 | `units.frozen_price_brl` na emissão | migration `add_contract_issue_columns`, `ContractIssueService.php` | campo valor final no dialog | `ContractIssueTest.php` |
 | REQ-CTR-011 | Corretor vê/baixa PDF | `ReservationTimelineService` (attachment visível) | `ReservationTimeline.tsx`, `ReservationAttachmentPreview.tsx` | `ReservationTimelineTest.php` |
@@ -131,11 +157,11 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 |-----|-----------|----|----|--------|
 | REQ-BLD-RES-001 | Nav Reservas builder | — | `config/dashboard-nav.tsx`, `BuilderDashboardShell.tsx` | `ReservationsPage.test.tsx` |
 | REQ-BLD-RES-002 | Listagem builder | `Builder/ReservationController.php` | `apps/builder/ReservationsPage.tsx` | `tests/Feature/Builder/ReservationTest.php` |
-| REQ-BLD-RES-003 | Cancelar + mensagens | `Builder/ReservationController.php`, `ReservationCancellationService.php`, `Builder/ReservationMessageController.php` | `ReservationCancelDialog.tsx`, `ReservationMessagesDialog.tsx`, `ReservationChatButton.tsx` | `Builder/ReservationTest.php`, `AuthorizationTest.php`, `ReservationCancelDialog.test.tsx`, `ReservationMessagesDialog.test.tsx`, `ReservationChatButton.test.tsx` |
+| REQ-BLD-RES-003 | Cancelar + mensagens | `Builder/ReservationController.php`, `ReservationCancellationService.php`, `Builder/ReservationMessageController.php` | `ReservationCancelDialog.tsx`, `ReservationMessagesDialog.tsx`, `ReservationChatButton.tsx`, `ReservationActionsMenu.tsx` | `Builder/ReservationTest.php`, `AuthorizationTest.php`, `ReservationCancelDialog.test.tsx`, `ReservationMessagesDialog.test.tsx`, `ReservationChatButton.test.tsx`, `ReservationActionsMenu.test.tsx` |
 | REQ-BLD-RES-004 | observations na criação | `Broker/ReservationController.php` | `BrokerReservationDialog.tsx` | `ReservationTest.php` |
 | REQ-BLD-RES-005 | Thread broker | `Broker/ReservationMessageController.php` | `BrokerReservationsPage.tsx` | `Builder/ReservationTest.php` |
 | REQ-BLD-RES-006 | Listagem broker | `Broker/ReservationController.php` | `BrokerReservationsPage.tsx` | `ReservationTest.php` |
-| REQ-BLD-RES-007 | Badge pending-replies | `pendingRepliesCount` endpoints | `BuilderDashboardShell.tsx`, `BrokerDashboardShell.tsx` | `BrokerReservationsPage.test.tsx` |
+| REQ-BLD-RES-007 | Badge pending-actions (inclui reply) | `pendingActionsCount` / `pendingRepliesCount` | `BuilderDashboardShell.tsx`, `BrokerDashboardShell.tsx`, `ReservationPendingActionBadge.tsx` | `ReservationPendingActionTest.php`, `BrokerReservationsPage.test.tsx` |
 
 ---
 
@@ -164,8 +190,8 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 | REQ-BRK-DASH-001 | Nav corretor | — | `dashboard-nav.tsx`, `BrokerDashboardShell.tsx` | — |
 | REQ-BRK-DASH-002 | Overview KPIs mock | — | `BrokerOverviewPage.tsx` | — |
 | REQ-BRK-DASH-003 | Cards + dialogs | `Broker/UnitController.php` | `BrokerBuildingsPage.tsx`, `BrokerUnitsDialog.tsx` | — |
-| REQ-BRK-CLI-001 | CRUD clientes | `Broker/ClientController.php` | `BrokerClientsPage.tsx`, `BrokerNewClientDialog.tsx` | `tests/Feature/Broker/ClientTest.php` |
-| REQ-BRK-CLI-002 | Cliente inline na reserva | — | `BrokerReservationDialog.tsx` | `BrokerNewClientDialog.test.tsx` |
+| REQ-BRK-CLI-001 | CRUD clientes | `Broker/ClientController.php` | `BrokerClientsPage.tsx`, `BrokerNewClientDialog.tsx`, `whatsapp-phone-input.tsx` | `tests/Feature/Broker/ClientTest.php`, `BrokerClientsPage.test.tsx`, `whatsapp-phone-input.test.tsx` |
+| REQ-BRK-CLI-002 | Cliente inline na reserva | — | `BrokerReservationDialog.tsx`, `whatsapp-phone-input.tsx` | `BrokerNewClientDialog.test.tsx`, `BrokerReservationDialog.test.tsx` |
 | REQ-BRK-RES-001 | Reserva com client_id | `Broker/ReservationController.php` | `BrokerReservationDialog.tsx` | `ReservationTest.php` |
 | REQ-BRK-RES-002 | Acesso via BuildingAccess ou UnitAccess | `BrokerUnitAccessService.php` | — | `BuildingAccessTest.php` |
 | REQ-BRK-RES-003 | Cancelamento pelo corretor | `Broker/ReservationController.php`, `ReservationCancellationService.php` | `ReservationCancelDialog.tsx`, `BrokerUnitsDialog.tsx`, `BrokerReservationsPage.tsx` | `ReservationTest.php`, `ReservationCancelDialog.test.tsx`, `BrokerUnitsDialog.test.tsx` |

@@ -20,21 +20,45 @@ vi.mock('@/apps/builder/components/ReservationMessagesDialog', () => ({
 }))
 
 vi.mock('@/lib/api', () => ({
+  ApiRequestError: class ApiRequestError extends Error {
+    status: number
+    code?: string
+    constructor(message: string, status: number, _errors?: unknown, code?: string) {
+      super(message)
+      this.status = status
+      this.code = code
+    }
+  },
   brokerApi: {
     listReservations,
+    moveReservationKanban: vi.fn(),
     cancelReservation: vi.fn(),
   },
 }))
 
+vi.mock('@/components/reservations/ReservationProgressDialog', () => ({
+  ReservationProgressDialog: () => null,
+}))
+
 describe('BrokerReservationsPage', () => {
-  it('renders broker reservation table without corretor column', async () => {
+  it('renders the broker kanban without listing other brokers', async () => {
     listReservations.mockResolvedValue([
       {
         id: 1,
+        status: 'deposit_pending',
         created_at: '2026-06-12T10:00:00.000000Z',
         expires_at: '2026-06-14T10:00:00.000000Z',
         messages_count: 1,
         needs_reply: true,
+        needs_proposal_decision: false,
+        needs_deposit_proof_approval: false,
+        needs_witness_signature: false,
+        needs_sold_validation: false,
+        needs_action: true,
+        pending_action: 'submit_deposit_proof',
+        deposit_overdue: false,
+        kanban_column: 'docs_deposit',
+        allowed_kanban_moves: ['cancelled'],
         situation: {
           previous: {
             key: 'proposal_decision',
@@ -67,15 +91,11 @@ describe('BrokerReservationsPage', () => {
     render(<BrokerReservationsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText('Cliente')).toBeInTheDocument()
-      expect(screen.getByText('Empreendimento')).toBeInTheDocument()
-      expect(screen.getByText('Situação')).toBeInTheDocument()
-      expect(screen.getByText('Status')).toBeInTheDocument()
-      expect(screen.queryByText('Corretor')).not.toBeInTheDocument()
-      expect(screen.queryByRole('columnheader', { name: 'Data' })).not.toBeInTheDocument()
-      expect(screen.getByText('Maria Souza')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Conversar — Maria Souza · nova' })).toBeInTheDocument()
-      expect(screen.getByText('Aguardando sinal (48h)')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Documentação & Sinal' })).toBeInTheDocument()
+      expect(screen.queryByText('Corretor Demo')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Maria Souza' })).toBeInTheDocument()
+      expect(screen.getByText(/Torre Central · 501/)).toBeInTheDocument()
+      expect(screen.getByText('Anexar comprovante')).toBeInTheDocument()
       expect(screen.getByText('Aguardando você')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Ações — Maria Souza' })).toBeInTheDocument()
     })

@@ -20,6 +20,7 @@ use App\Models\UnitAccess;
 use App\Models\User;
 use App\Models\UserActivityEvent;
 use App\Services\PreReservationService;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
 it('creates pre-hold for available unit', function () {
@@ -96,7 +97,9 @@ it('submits proposal from pre-hold via legacy confirm endpoint', function () {
 
     Sanctum::actingAs($broker);
 
-    $this->patchJson("/api/broker/reservations/{$reservation->id}/confirm", validProposalPayload())
+    Storage::fake('local');
+
+    $this->patch("/api/broker/reservations/{$reservation->id}/confirm", validProposalRequest())
         ->assertOk()
         ->assertJsonPath('status', ReservationStatus::ProposalPending->value);
 
@@ -140,7 +143,9 @@ it('rejects confirm when pre-hold expired', function () {
 
     Sanctum::actingAs($broker);
 
-    $this->patchJson("/api/broker/reservations/{$reservation->id}/confirm", validProposalPayload())
+    Storage::fake('local');
+
+    $this->patch("/api/broker/reservations/{$reservation->id}/confirm", validProposalRequest())
         ->assertUnprocessable()
         ->assertJsonPath('message', 'Sua pré-reserva expirou. A unidade está disponível novamente.');
 });
@@ -294,8 +299,11 @@ it('attaches client to pre-hold without submitting a proposal', function () {
     ])
         ->assertOk()
         ->assertJsonPath('status', ReservationStatus::PreHold->value)
-        ->assertJsonPath('client_id', $client->id)
-        ->assertJsonPath('expires_at', null);
+        ->assertJsonPath('client_id', $client->id);
+
+    expect($reservation->fresh()->expires_at)->not->toBeNull()
+        ->and($reservation->fresh()->expires_at->greaterThan(now()->addHours(47)))->toBeTrue()
+        ->and($reservation->fresh()->expires_at->lessThan(now()->addHours(49)))->toBeTrue();
 
     expect($unit->fresh()->status)->toBe(UnitStatus::PreReserved);
     expect($reservation->fresh()->messages()->count())->toBe(1);
@@ -351,4 +359,28 @@ it('rejects attaching a client to an expired pre-hold', function () {
     ])
         ->assertUnprocessable()
         ->assertJsonPath('message', 'Sua pré-reserva expirou. A unidade está disponível novamente.');
+});
+
+it('soft-expires stalled pre-reservations with a client', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $client = BrokerClient::factory()->for($broker, 'broker')->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+
+    $reservation = Reservation::factory()->preHold()->expired()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+        'client_id' => $client->id,
+    ]);
+
+    $count = app(PreReservationService::class)->expireDuePreHolds();
+
+    expect($count)->toBe(1);
+    expect($reservation->fresh()->status)->toBe(ReservationStatus::Cancelled);
+    expect($unit->fresh()->status)->toBe(UnitStatus::Available);
+    expect(\App\Models\ReservationTimelineEvent::query()
+        ->where('reservation_id', $reservation->id)
+        ->where('type', \App\Enums\ReservationTimelineEventType::Expired)
+        ->exists())->toBeTrue();
 });

@@ -31,8 +31,9 @@ Definidas em `frontend/src/App.tsx`.
 | `/buildings/:id/edit` | `BuildingEditPage` | `builderApi.updateBuilding` |
 | `/team` | `TeamPage` | `builderApi.*` team |
 | `/invites` | `InvitesPage` | `builderApi.*` invites |
-| `/reservations` | `ReservationsPage` | `builderApi.getReservations` |
+| `/reservations` | `ReservationsPage` | `builderApi.listReservations` / `pendingActionsCount` / `moveReservationKanban` |
 | `/contracts` | `ContractsPage` | `builderApi.listContractTemplates` / `issueContract` |
+| `/proposals` | `ProposalsPage` | `builderApi.listProposalTemplates` / `createProposalTemplate` |
 | `/activity` | `ActivityPage` | `builderApi.listActivity` / `listActivityMembers` |
 | `/auth/impersonate` | `ImpersonatePage` | `authApi.exchangeImpersonation` |
 
@@ -44,7 +45,7 @@ Definidas em `frontend/src/App.tsx`.
 | `/` | `BrokerOverviewPage` | — |
 | `/buildings` | `BrokerBuildingsPage` | `brokerApi.getUnits` |
 | `/clients` | `BrokerClientsPage` | `brokerApi.getClients` |
-| `/reservations` | `BrokerReservationsPage` | `brokerApi.getReservations` |
+| `/reservations` | `BrokerReservationsPage` | `brokerApi.listReservations` / `pendingActionsCount` / `moveReservationKanban` |
 | `/invite/:token` | `InviteAcceptPage` | `brokerApi.acceptInvite` |
 | `/activity` | `ActivityPage` | `brokerApi.listActivity` |
 
@@ -77,7 +78,7 @@ Shells que consomem:
 - `apps/broker/components/BrokerDashboardShell.tsx`
 - `components/layout/DashboardShell.tsx` (admin)
 
-Badges dinâmicos (ex.: reservas pendentes) injetados nos shells, não no `dashboard-nav.tsx`.
+Badges dinâmicos (`pending-actions-count`, inclui reply) injetados nos shells via `use-reservation-nav-badge.ts`, não no `dashboard-nav.tsx`. No card do Kanban: `ReservationPendingActionBadge` (`pending_action`). Andamento abre em dialog central (`ReservationProgressDialog`). Board: `ReservationKanbanBoard` (7 colunas; drag chama `PATCH .../kanban`).
 
 Item **Atividade** (`/activity`) existe nos três portais autenticados. No builder o item é visível para qualquer usuário logado (próprio log); o seletor de membro exige `audit.view`.
 

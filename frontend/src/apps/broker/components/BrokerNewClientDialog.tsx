@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { WhatsAppPhoneInput } from '@/components/whatsapp-phone-input'
 import { brokerApi, type BrokerClient } from '@/lib/api'
 
 type BrokerNewClientDialogProps = {
@@ -87,10 +88,10 @@ export function BrokerNewClientDialog({
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="new-client-phone">Telefone *</Label>
-            <Input
+            <WhatsAppPhoneInput
               id="new-client-phone"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={setPhone}
               required
             />
           </div>

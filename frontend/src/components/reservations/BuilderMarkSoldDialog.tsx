@@ -60,8 +60,8 @@ export function BuilderMarkSoldDialog({
         <DialogHeader>
           <DialogTitle>Unidade vendida</DialogTitle>
           <DialogDescription>
-            Confirme que o contrato está assinado pelo comprador e pela construtora. A unidade será
-            marcada como vendida.
+            Confirme que o contrato está assinado pelo comprador, pela construtora e pelas duas
+            testemunhas. A unidade será marcada como vendida.
           </DialogDescription>
         </DialogHeader>
 

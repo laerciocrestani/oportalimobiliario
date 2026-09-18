@@ -12,7 +12,9 @@ export const RESERVATION_STEP_GREEN_CLASSES = [
   'bg-emerald-800 text-white',
   'bg-emerald-900 text-white',
   'bg-emerald-950 text-white',
+  'bg-[oklch(22%_0.07_172.552)] text-white',
   'bg-[oklch(18%_0.07_172.552)] text-white',
+  'bg-[oklch(14%_0.08_172.552)] text-white',
   'bg-[oklch(12%_0.08_172.552)] text-white',
 ] as const
 
@@ -52,7 +54,9 @@ export function reservationStepProgressFillClass(stepKey: string): string {
       '[&_[data-slot=progress-indicator]]:bg-emerald-800',
       '[&_[data-slot=progress-indicator]]:bg-emerald-900',
       '[&_[data-slot=progress-indicator]]:bg-emerald-950',
+      '[&_[data-slot=progress-indicator]]:bg-[oklch(22%_0.07_172.552)]',
       '[&_[data-slot=progress-indicator]]:bg-[oklch(18%_0.07_172.552)]',
+      '[&_[data-slot=progress-indicator]]:bg-[oklch(14%_0.08_172.552)]',
       '[&_[data-slot=progress-indicator]]:bg-[oklch(12%_0.08_172.552)]',
     ] as const
   )[reservationStepProgressIndex(stepKey)]

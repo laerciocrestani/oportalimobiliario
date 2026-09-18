@@ -14,6 +14,7 @@ const sampleTimeline: ReservationTimelineData = {
   current_deposit_proof: null,
   current_signed_contract: null,
   current_builder_signed_contract: null,
+  witnesses: [],
   attachments: [],
   steps: [
     {
@@ -83,6 +84,32 @@ describe('ReservationTimeline', () => {
     expect(screen.getByText('Anexos da reserva')).toBeInTheDocument()
     expect(screen.getByText('Comprovante de pagamento')).toBeInTheDocument()
     expect(screen.getByText('pix.pdf')).toBeInTheDocument()
+  })
+
+  it('lists proposal attachments in the historic group', () => {
+    render(
+      <ReservationTimeline
+        timeline={{
+          ...sampleTimeline,
+          current_stage: 'proposal_pending',
+          attachments: [
+            {
+              id: 4,
+              kind: 'proposal',
+              original_name: 'simulacao.pdf',
+              mime_type: 'application/pdf',
+              size_bytes: 1024,
+              uploaded_by: 2,
+              created_at: '2026-07-10T19:10:00+00:00',
+              file_url: '/builder/reservations/1/attachments/4/file',
+            },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Anexos da proposta')).toBeInTheDocument()
+    expect(screen.getByText('simulacao.pdf')).toBeInTheDocument()
   })
 
   it('renders contract data action for the current step', () => {
@@ -193,6 +220,34 @@ describe('ReservationTimeline', () => {
     ).toBeInTheDocument()
   })
 
+  it('shows the witness signature action on the current witness step', () => {
+    const onAction = vi.fn()
+
+    render(
+      <ReservationTimeline
+        timeline={{
+          ...sampleTimeline,
+          current_stage: 'contract_builder_signed',
+          steps: [
+            {
+              key: 'contract_witness_1',
+              label: 'Assinatura da testemunha 1',
+              status: 'current',
+              occurred_at: null,
+              due_at: null,
+              actor: null,
+              actions: ['sign_as_witness'],
+            },
+          ],
+        }}
+        onAction={onAction}
+      />,
+    )
+
+    expect(screen.getByText('Assinatura da testemunha 1')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Registrar assinatura da testemunha' })).toBeInTheDocument()
+  })
+
   it('labels issue_contract as Reemitir when a PDF already exists', () => {
     render(
       <ReservationTimeline
@@ -239,7 +294,7 @@ describe('ReservationTimeline', () => {
             ...sampleTimeline.steps,
             {
               key: 'proposal_submitted',
-              label: 'Proposta enviada',
+              label: 'Proposta',
               status: 'upcoming',
               occurred_at: null,
               due_at: null,
@@ -251,11 +306,35 @@ describe('ReservationTimeline', () => {
       />,
     )
 
-    const label = screen.getByText('Proposta enviada')
+    const label = screen.getByText('Proposta')
     expect(label).toHaveClass('text-muted-foreground')
     expect(label.closest('li')?.querySelector('.rounded-full')).toHaveClass(
       'bg-muted',
       'text-muted-foreground',
     )
+  })
+
+  it('labels hold actions for the builder on a current pre-reservation', () => {
+    const onAction = vi.fn()
+
+    render(
+      <ReservationTimeline
+        timeline={{
+          ...sampleTimeline,
+          client: { id: 3, name: 'Maria', phone: '11999999999', email: null },
+          steps: [
+            sampleTimeline.steps[0],
+            {
+              ...sampleTimeline.steps[1],
+              actions: ['open_dialogue', 'extend_hold', 'drop_hold'],
+            },
+          ],
+        }}
+        onAction={onAction}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Estender prazo (+48h)' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Encerrar pré-reserva' })).toBeInTheDocument()
   })
 })

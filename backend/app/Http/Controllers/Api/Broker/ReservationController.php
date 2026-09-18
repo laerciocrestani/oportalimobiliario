@@ -47,7 +47,7 @@ class ReservationController extends Controller
             ->withoutGlobalScope('tenant')
             ->listed()
             ->where('broker_id', $broker->id)
-            ->with(['client', 'unit.building', 'timelineEvents', 'messages', 'proposals'])
+            ->with(['client', 'unit.building', 'timelineEvents', 'messages.user', 'proposals', 'attachments', 'witnesses'])
             ->withCount('messages')
             ->orderByDesc('created_at')
             ->get()
@@ -59,8 +59,15 @@ class ReservationController extends Controller
     public function pendingRepliesCount(Request $request): JsonResponse
     {
         return response()->json([
-            'count' => $this->reservationPendingReplyService->countForBroker($request->user()),
+            'count' => $this->reservationPendingReplyService->pendingActionCountForBroker($request->user()),
         ]);
+    }
+
+    public function pendingActionsCount(Request $request): JsonResponse
+    {
+        return response()->json(
+            $this->reservationPendingReplyService->pendingActionPayloadForBroker($request->user()),
+        );
     }
 
     public function preHold(Request $request): JsonResponse
@@ -129,10 +136,12 @@ class ReservationController extends Controller
         }
 
         $data = $request->validate(ReservationProposalRules::submit());
+        $files = $data['files'];
+        unset($data['files']);
 
-        $updated = $this->proposalService->submit($request->user(), $reservation, $data);
+        $updated = $this->proposalService->submit($request->user(), $reservation, $data, $files);
 
-        return response()->json($updated->load(['unit', 'proposals']));
+        return response()->json($updated->load(['unit', 'proposals', 'attachments']));
     }
 
     public function releasePreHold(Request $request, Reservation $reservation): JsonResponse
@@ -229,7 +238,7 @@ class ReservationController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
-        if ($reservation->isPreHold()) {
+        if ($reservation->isPreHold() && $reservation->client_id === null) {
             $this->preReservationService->releasePreHold($request->user(), $reservation);
 
             return response()->json(null, 204);

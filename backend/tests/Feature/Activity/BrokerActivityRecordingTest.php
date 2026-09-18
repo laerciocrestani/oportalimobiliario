@@ -163,14 +163,17 @@ it('records proposal submission with client PII', function () {
 
     Sanctum::actingAs($broker);
 
-    $this->postJson("/api/broker/reservations/{$reservation->id}/proposal", validProposalPayload())
+    Storage::fake('local');
+
+    $this->post("/api/broker/reservations/{$reservation->id}/proposal", validProposalRequest())
         ->assertCreated();
 
     $event = assertUserActivity($broker, UserActivityAction::ReservationProposalSubmitted, 'Maria Silva', $reservation->id);
 
     expect($event->message)->toContain('12345678901')
         ->and($event->message)->toContain('11999999999')
-        ->and($event->message)->toContain('D-404');
+        ->and($event->message)->toContain('D-404')
+        ->and($event->message)->toContain('proposta.pdf');
 });
 
 it('records every reservation message, not only the first dialogue', function () {

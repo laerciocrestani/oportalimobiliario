@@ -7,6 +7,7 @@ use App\Models\Reservation;
 use App\Services\ReservationCancellationService;
 use App\Services\ReservationPendingReplyService;
 use App\Support\ReservationCancelRules;
+use App\Support\BuilderPermissions;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -27,10 +28,18 @@ class ReservationController extends Controller
         $this->authorize('viewAny', Reservation::class);
 
         $user = request()->user();
+        $this->authorize('viewAny', Reservation::class);
 
         $reservations = Reservation::query()
             ->listed()
-            ->with(['client', 'broker', 'unit.building', 'timelineEvents', 'messages', 'proposals'])
+            ->when(
+                ! $user->can(BuilderPermissions::CANCEL_RESERVATIONS),
+                fn ($query) => $query->whereHas(
+                    'witnesses',
+                    fn ($witnesses) => $witnesses->where('user_id', $user->id),
+                ),
+            )
+            ->with(['client', 'broker', 'unit.building', 'timelineEvents', 'messages.user', 'proposals', 'attachments', 'witnesses'])
             ->withCount('messages')
             ->orderByDesc('created_at')
             ->get()
@@ -44,8 +53,17 @@ class ReservationController extends Controller
         $this->authorize('viewAny', Reservation::class);
 
         return response()->json([
-            'count' => $this->reservationPendingReplyService->countForBuilder(),
+            'count' => $this->reservationPendingReplyService->pendingActionCountForBuilder(request()->user()),
         ]);
+    }
+
+    public function pendingActionsCount(): JsonResponse
+    {
+        $user = request()->user();
+
+        return response()->json(
+            $this->reservationPendingReplyService->pendingActionPayloadForBuilder($user),
+        );
     }
 
     public function destroy(Request $request, Reservation $reservation): JsonResponse

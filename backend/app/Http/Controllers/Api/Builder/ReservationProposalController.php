@@ -25,14 +25,33 @@ class ReservationProposalController extends Controller
 
         $data = $request->validate([
             'decision' => ['required', Rule::enum(ProposalDecision::class)],
-            'decision_note' => ['nullable', 'string', 'max:2000'],
+            'decision_note' => [
+                Rule::requiredIf(in_array($request->input('decision'), [
+                    ProposalDecision::Rejected->value,
+                    ProposalDecision::Returned->value,
+                ], true)),
+                'nullable',
+                'string',
+                'max:2000',
+            ],
+            'signed_file' => [
+                Rule::requiredIf($request->input('decision') === ProposalDecision::Accepted->value),
+                'nullable',
+                'file',
+            ],
         ]);
+
+        $decision = ProposalDecision::from($data['decision']);
+        $note = isset($data['decision_note']) && is_string($data['decision_note'])
+            ? trim($data['decision_note'])
+            : null;
 
         $updated = $this->proposalService->decide(
             $request->user(),
             $reservation,
-            ProposalDecision::from($data['decision']),
-            $data['decision_note'] ?? null,
+            $decision,
+            $note === '' ? null : $note,
+            $data['signed_file'] ?? null,
         );
 
         return response()->json($this->formatReservation($updated));

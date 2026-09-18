@@ -41,6 +41,10 @@ class ReservationMessageController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
+        if ($reservation->isReadOnly()) {
+            abort(422, 'Reservation cannot be modified.');
+        }
+
         $data = $request->validate([
             'body' => ['required', 'string', 'max:2000'],
         ]);

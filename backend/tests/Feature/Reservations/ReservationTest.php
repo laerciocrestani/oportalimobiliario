@@ -188,6 +188,14 @@ it('cancels reservation for owning broker and frees unit', function () {
 
     assertUserActivity($broker, UserActivityAction::ReservationCancelled, 'Cliente desistiu da compra.');
 
+    $this->getJson('/api/broker/reservations')
+        ->assertOk()
+        ->assertJsonFragment(['id' => $reservation->id, 'status' => ReservationStatus::Cancelled->value]);
+
+    $this->postJson("/api/broker/reservations/{$reservation->id}/messages", [
+        'body' => 'Tentativa após cancelar.',
+    ])->assertUnprocessable();
+
     $this->postJson('/api/broker/reservations/pre-hold', ['unit_id' => $unit->id])
         ->assertCreated()
         ->assertJsonPath('status', ReservationStatus::PreHold->value);

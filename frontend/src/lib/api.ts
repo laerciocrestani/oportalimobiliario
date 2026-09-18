@@ -87,6 +87,19 @@ export type ContractIssueResult = {
   }
 }
 
+export type ProposalTemplate = ContractTemplate
+
+export type ProposalIssuePreview = ContractIssuePreview
+
+export type ProposalIssueResult = {
+  attachment: {
+    id: number
+    kind: string
+    original_name: string
+    file_url: string
+  }
+}
+
 export type LoginResponse = {
   token: string
   user: AuthUser
@@ -403,6 +416,15 @@ export type ReservationSituation = {
   next: ReservationSituationStep | null
 }
 
+export type ReservationKanbanColumn =
+  | 'pre_reservation'
+  | 'proposal_review'
+  | 'proposal_formalization'
+  | 'docs_deposit'
+  | 'contract'
+  | 'sold'
+  | 'cancelled'
+
 export type BuilderReservationListItem = {
   id: number
   status: string
@@ -412,7 +434,13 @@ export type BuilderReservationListItem = {
   needs_reply: boolean
   needs_proposal_decision: boolean
   needs_deposit_proof_approval: boolean
+  needs_witness_signature: boolean
+  needs_sold_validation: boolean
+  needs_action: boolean
+  pending_action: string | null
   deposit_overdue: boolean
+  kanban_column: ReservationKanbanColumn
+  allowed_kanban_moves: ReservationKanbanColumn[]
   situation: ReservationSituation
   client: Pick<BrokerClient, 'id' | 'name'> | null
   broker: Pick<LinkedBroker, 'id' | 'name'> | null
@@ -423,8 +451,25 @@ export type BuilderReservationListItem = {
   } | null
 }
 
+export type ReservationPendingActionCount = {
+  count: number
+  witness_scope: boolean
+}
+
 export type ReservationPendingRepliesCount = {
   count: number
+}
+
+export type ReservationWitness = {
+  slot: number
+  signed_at: string | null
+  is_current_user: boolean
+  user: { id: number; name: string } | null
+}
+
+export type ReservationWitnessCandidate = {
+  id: number
+  name: string
 }
 
 export type ReservationTimelineStepStatus =
@@ -477,6 +522,7 @@ export type ReservationTimeline = {
   current_deposit_proof: ReservationAttachment | null
   current_signed_contract: ReservationAttachment | null
   current_builder_signed_contract: ReservationAttachment | null
+  witnesses: ReservationWitness[]
   attachments: ReservationAttachment[]
   steps: ReservationTimelineStep[]
 }
@@ -503,16 +549,7 @@ export type ReservationContractDataInput = {
 
 export type ReservationProposalInput = {
   client_name: string
-  client_email: string
   client_phone: string
-  client_cpf: string
-  address: string
-  city: string
-  state: string
-  zip: string
-  marital_status: string
-  nationality: string
-  land_value: number
   payment_terms: string
 }
 
@@ -525,13 +562,23 @@ export type ReservationProposal = ReservationProposalInput & {
   decided_by: number | null
   decided_at: string | null
   created_at: string | null
+  attachments?: ReservationAttachment[]
+  client_email: string
+  client_cpf: string
   client_rg?: string | null
+  address: string
+  city: string
+  state: string
+  zip: string
+  marital_status: string
+  nationality: string
   spouse_name?: string | null
   spouse_phone?: string | null
   spouse_email?: string | null
   spouse_cpf?: string | null
   spouse_rg?: string | null
   spouse_nationality?: string | null
+  land_value: number
 }
 
 export type ProposalDecision = 'accepted' | 'rejected' | 'returned'
@@ -599,11 +646,23 @@ export class ApiRequestError extends Error {
 
   errors?: Record<string, string[]>
 
-  constructor(message: string, status: number, errors?: Record<string, string[]>) {
+  code?: string
+
+  action?: string
+
+  constructor(
+    message: string,
+    status: number,
+    errors?: Record<string, string[]>,
+    code?: string,
+    action?: string,
+  ) {
     super(message)
     this.name = 'ApiRequestError'
     this.status = status
     this.errors = errors
+    this.code = code
+    this.action = action
   }
 }
 
@@ -632,13 +691,15 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as
-      | { message?: string; errors?: Record<string, string[]> }
+      | { message?: string; errors?: Record<string, string[]>; code?: string; action?: string }
       | null
 
     throw new ApiRequestError(
       body?.message ?? `API error: ${response.status}`,
       response.status,
       body?.errors,
+      body?.code,
+      body?.action,
     )
   }
 
@@ -911,8 +972,19 @@ export const builderApi = {
   deleteTeamMember: (id: number) =>
     apiFetch<void>(`/builder/team/${id}`, { method: 'DELETE' }),
   listReservations: () => apiFetch<BuilderReservationListItem[]>('/builder/reservations'),
+  moveReservationKanban: (
+    reservationId: number,
+    column: ReservationKanbanColumn,
+    reason?: string,
+  ) =>
+    apiFetch<BuilderReservationListItem>(`/builder/reservations/${reservationId}/kanban`, {
+      method: 'PATCH',
+      body: JSON.stringify({ column, reason: reason?.trim() || undefined }),
+    }),
   pendingRepliesCount: () =>
     apiFetch<ReservationPendingRepliesCount>('/builder/reservations/pending-replies-count'),
+  pendingActionsCount: () =>
+    apiFetch<ReservationPendingActionCount>('/builder/reservations/pending-actions-count'),
   cancelReservation: (reservationId: number, reason: string) =>
     apiFetch<void>(`/builder/reservations/${reservationId}`, {
       method: 'DELETE',
@@ -942,20 +1014,79 @@ export const builderApi = {
         }),
       },
     ),
+  acceptReservationProposal: (
+    reservationId: number,
+    signedFile: File,
+    decisionNote?: string,
+  ) => {
+    const formData = new FormData()
+    formData.append('decision', 'accepted')
+    formData.append('signed_file', signedFile)
+    if (decisionNote?.trim()) {
+      formData.append('decision_note', decisionNote.trim())
+    }
+
+    return apiUpload<{ status: string; proposal: ReservationProposal }>(
+      `/builder/reservations/${reservationId}/proposal/decision`,
+      formData,
+    )
+  },
   approveDepositProof: (reservationId: number) =>
     apiFetch<{ status: string }>(
       `/builder/reservations/${reservationId}/deposit-proof/approve`,
       { method: 'PATCH' },
     ),
-  uploadBuilderSignedContract: (reservationId: number, file: File) => {
+  extendReservationHold: (reservationId: number, hours = 48) =>
+    apiFetch<{ status: string; expires_at: string | null }>(
+      `/builder/reservations/${reservationId}/hold/extend`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ hours }),
+      },
+    ),
+  dropReservationHold: (reservationId: number, reason?: string) =>
+    apiFetch<void>(`/builder/reservations/${reservationId}/hold/drop`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: reason?.trim() || undefined }),
+    }),
+  uploadBuilderSignedContract: (
+    reservationId: number,
+    file: File,
+    witnesses: { witness1UserId: number; witness2UserId: number },
+  ) => {
     const formData = new FormData()
     formData.append('file', file)
+    formData.append('witness_1_user_id', String(witnesses.witness1UserId))
+    formData.append('witness_2_user_id', String(witnesses.witness2UserId))
 
     return apiUpload<{ status: string; attachment: ReservationAttachment }>(
       `/builder/reservations/${reservationId}/contract/signed`,
       formData,
     )
   },
+  listWitnessCandidates: (reservationId: number) =>
+    apiFetch<ReservationWitnessCandidate[]>(
+      `/builder/reservations/${reservationId}/contract/witness-candidates`,
+    ),
+  assignReservationWitnesses: (
+    reservationId: number,
+    witnesses: { witness1UserId: number; witness2UserId: number },
+  ) =>
+    apiFetch<{ status: string; witnesses: ReservationWitness[] }>(
+      `/builder/reservations/${reservationId}/contract/witnesses`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          witness_1_user_id: witnesses.witness1UserId,
+          witness_2_user_id: witnesses.witness2UserId,
+        }),
+      },
+    ),
+  signAsWitness: (reservationId: number, slot: number) =>
+    apiFetch<{ status: string; witnesses: ReservationWitness[] }>(
+      `/builder/reservations/${reservationId}/contract/witnesses/${slot}/sign`,
+      { method: 'POST' },
+    ),
   validateSignedContract: (reservationId: number, note?: string) =>
     apiFetch<{ status: string; unit_status: string }>(
       `/builder/reservations/${reservationId}/contract/validate`,
@@ -1011,6 +1142,53 @@ export const builderApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  listProposalVariables: () => apiFetch<ContractSystemVariable[]>('/builder/proposal-variables'),
+  listProposalTemplates: () => apiFetch<ProposalTemplate[]>('/builder/proposal-templates'),
+  createProposalTemplate: (data: {
+    name: string
+    body_markdown: string
+    custom_variables?: ContractCustomVariable[]
+    is_active?: boolean
+  }) =>
+    apiFetch<ProposalTemplate>('/builder/proposal-templates', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateProposalTemplate: (
+    id: number,
+    data: Partial<{
+      name: string
+      body_markdown: string
+      custom_variables: ContractCustomVariable[]
+      is_active: boolean
+    }>,
+  ) =>
+    apiFetch<ProposalTemplate>(`/builder/proposal-templates/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  deleteProposalTemplate: (id: number) =>
+    apiFetch<void>(`/builder/proposal-templates/${id}`, { method: 'DELETE' }),
+  listIssueProposalTemplates: (reservationId: number) =>
+    apiFetch<Array<{ id: number; name: string }>>(
+      `/builder/reservations/${reservationId}/proposal/templates`,
+    ),
+  previewProposalIssue: (reservationId: number, templateId: number) =>
+    apiFetch<ProposalIssuePreview>(
+      `/builder/reservations/${reservationId}/proposal/preview?template_id=${templateId}`,
+    ),
+  issueProposal: (
+    reservationId: number,
+    data: {
+      proposal_template_id: number
+      values: Record<string, string>
+      final_price_brl?: number
+    },
+  ) =>
+    apiFetch<ProposalIssueResult>(`/builder/reservations/${reservationId}/proposal/issue`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   listActivity: (params: ActivityListParams) =>
     apiFetch<Paginated<UserActivityEvent>>(
       `/builder/activity${toQueryString({
@@ -1027,8 +1205,19 @@ export const brokerApi = {
   getProfile: () => apiFetch<BrokerProfile>('/broker/profile'),
   listUnits: () => apiFetch<Unit[]>('/broker/units'),
   listReservations: () => apiFetch<BuilderReservationListItem[]>('/broker/reservations'),
+  moveReservationKanban: (
+    reservationId: number,
+    column: ReservationKanbanColumn,
+    reason?: string,
+  ) =>
+    apiFetch<BuilderReservationListItem>(`/broker/reservations/${reservationId}/kanban`, {
+      method: 'PATCH',
+      body: JSON.stringify({ column, reason: reason?.trim() || undefined }),
+    }),
   pendingRepliesCount: () =>
     apiFetch<ReservationPendingRepliesCount>('/broker/reservations/pending-replies-count'),
+  pendingActionsCount: () =>
+    apiFetch<ReservationPendingActionCount>('/broker/reservations/pending-actions-count'),
   listClients: () => apiFetch<BrokerClient[]>('/broker/clients'),
   createClient: (data: { name: string; phone: string; email?: string }) =>
     apiFetch<BrokerClient>('/broker/clients', {
@@ -1057,14 +1246,34 @@ export const brokerApi = {
         observations: observations?.trim() || undefined,
       }),
     }),
-  submitReservationProposal: (reservationId: number, data: ReservationProposalInput) =>
-    apiFetch<Reservation & { proposal?: ReservationProposal }>(
+  submitReservationProposal: (reservationId: number, data: ReservationProposalInput, files: File[]) => {
+    const formData = new FormData()
+
+    formData.append('client_name', data.client_name)
+    formData.append('client_phone', data.client_phone)
+    formData.append('payment_terms', data.payment_terms)
+
+    for (const file of files) {
+      formData.append('files[]', file)
+    }
+
+    return apiUpload<Reservation & { proposal?: ReservationProposal }>(
       `/broker/reservations/${reservationId}/proposal`,
-      {
-        method: 'POST',
-        body: JSON.stringify(data),
-      },
-    ),
+      formData,
+    )
+  },
+  returnSignedProposal: (reservationId: number, signedFile: File, depositProof?: File) => {
+    const formData = new FormData()
+    formData.append('signed_file', signedFile)
+    if (depositProof) {
+      formData.append('deposit_proof', depositProof)
+    }
+
+    return apiUpload<Reservation & { proposal?: ReservationProposal }>(
+      `/broker/reservations/${reservationId}/proposal/signed`,
+      formData,
+    )
+  },
   uploadDepositProof: (reservationId: number, file: File) => {
     const formData = new FormData()
     formData.append('file', file)

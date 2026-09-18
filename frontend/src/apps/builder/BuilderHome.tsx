@@ -36,6 +36,18 @@ export function BuilderHome() {
           </Card>
         ) : null}
 
+        {can('proposals.manage') ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Propostas</CardTitle>
+              <CardDescription>Cadastre modelos e emita o PDF da proposta nas reservas.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button render={<Link to="/proposals" />}>Ver propostas</Button>
+            </CardContent>
+          </Card>
+        ) : null}
+
         {can('invites.send') || can('access.manage') ? (
           <Card>
             <CardHeader>

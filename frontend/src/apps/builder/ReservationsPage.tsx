@@ -1,19 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { BuilderDashboardShell } from '@/apps/builder/components/BuilderDashboardShell'
 import { ReservationMessagesDialog } from '@/apps/builder/components/ReservationMessagesDialog'
 import { useBuilderPermissions } from '@/apps/builder/hooks/use-builder-permissions'
-import { ReservationChatButton } from '@/components/reservations/ReservationChatButton'
-import { ReservationActionsMenu } from '@/components/reservations/ReservationActionsMenu'
 import { ReservationCancelDialog } from '@/components/reservations/ReservationCancelDialog'
-import { ReservationWaitingStatus } from '@/components/reservations/ReservationWaitingStatus'
-import { ReservationSituation } from '@/components/reservations/ReservationSituation'
-import { ReservationTimelineSheet } from '@/components/reservations/ReservationTimelineSheet'
+import { ReservationKanbanBoard } from '@/components/reservations/ReservationKanbanBoard'
+import { ReservationProgressDialog } from '@/components/reservations/ReservationProgressDialog'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { builderApi, type BuilderReservationListItem } from '@/lib/api'
+import {
+  ApiRequestError,
+  builderApi,
+  type BuilderReservationListItem,
+  type ReservationKanbanColumn,
+} from '@/lib/api'
 import { notifyReservationBadgeRefresh } from '@/lib/reservation-badge-events'
 
 export function ReservationsPage() {
-  const { permissions } = useBuilderPermissions()
+  const { permissions, loading: permissionsLoading } = useBuilderPermissions()
   const [reservations, setReservations] = useState<BuilderReservationListItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -23,28 +26,71 @@ export function ReservationsPage() {
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [timelineReservationId, setTimelineReservationId] = useState<number | null>(null)
   const [timelineOpen, setTimelineOpen] = useState(false)
+  const loadRequestId = useRef(0)
 
   const canManage = permissions.includes('reservations.cancel')
+  const [witnessAccess, setWitnessAccess] = useState(false)
+  const canAccess = canManage || witnessAccess
 
   async function load() {
-    if (!canManage) {
-      setLoading(false)
-      return
-    }
+    const requestId = ++loadRequestId.current
 
     try {
       setError(null)
-      setReservations(await builderApi.listReservations())
+
+      if (canManage) {
+        setWitnessAccess(false)
+        const items = await builderApi.listReservations()
+
+        if (requestId !== loadRequestId.current) {
+          return
+        }
+
+        setReservations(items)
+        return
+      }
+
+      const payload = await builderApi.pendingActionsCount()
+
+      if (requestId !== loadRequestId.current) {
+        return
+      }
+
+      setWitnessAccess(payload.witness_scope)
+
+      if (!payload.witness_scope) {
+        setReservations([])
+        return
+      }
+
+      const items = await builderApi.listReservations()
+
+      if (requestId !== loadRequestId.current) {
+        return
+      }
+
+      setReservations(items)
     } catch {
+      if (requestId !== loadRequestId.current) {
+        return
+      }
+
       setError('Não foi possível carregar as reservas.')
     } finally {
-      setLoading(false)
+      if (requestId === loadRequestId.current) {
+        setLoading(false)
+      }
     }
   }
 
   useEffect(() => {
+    if (permissionsLoading) {
+      return
+    }
+
+    setLoading(true)
     void load()
-  }, [canManage])
+  }, [canManage, permissionsLoading])
 
   async function handleCancel(reason: string) {
     const reservation = cancelTarget
@@ -55,8 +101,8 @@ export function ReservationsPage() {
     try {
       setError(null)
       setCancellingId(reservation.id)
-      await builderApi.cancelReservation(reservation.id, reason)
-      setReservations((current) => current.filter((item) => item.id !== reservation.id))
+      await builderApi.moveReservationKanban(reservation.id, 'cancelled', reason)
+      await load()
       notifyReservationBadgeRefresh()
     } catch {
       throw new Error('cancel_failed')
@@ -75,11 +121,40 @@ export function ReservationsPage() {
     setMessagesOpen(true)
   }
 
+  async function handleMove(reservation: BuilderReservationListItem, column: ReservationKanbanColumn) {
+    if (column === 'cancelled') {
+      setCancelTarget(reservation)
+      return
+    }
+
+    try {
+      setError(null)
+      await builderApi.moveReservationKanban(reservation.id, column)
+      await load()
+      notifyReservationBadgeRefresh()
+    } catch (caught) {
+      if (caught instanceof ApiRequestError && caught.code === 'action_required') {
+        handleOpenTimeline(reservation.id)
+        return
+      }
+
+      toast.error(caught instanceof Error ? caught.message : 'Não foi possível mover a reserva.')
+    }
+  }
+
   function handleMessageSent() {
     void load()
   }
 
-  if (!canManage) {
+  if (permissionsLoading || (loading && !canAccess)) {
+    return (
+      <BuilderDashboardShell title="Reservas">
+        <p className="text-sm text-muted-foreground">Carregando reservas...</p>
+      </BuilderDashboardShell>
+    )
+  }
+
+  if (!canAccess) {
     return (
       <BuilderDashboardShell title="Reservas">
         <p className="text-sm text-muted-foreground">
@@ -90,98 +165,32 @@ export function ReservationsPage() {
   }
 
   return (
-    <BuilderDashboardShell title="Reservas">
-      <div className="space-y-6">
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+    <BuilderDashboardShell title="Reservas" fill>
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
+        {error ? <p className="shrink-0 text-sm text-destructive">{error}</p> : null}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Reservas ativas</CardTitle>
+        <Card className="min-h-0 flex-1">
+          <CardHeader className="shrink-0">
+            <CardTitle>Reservas</CardTitle>
             <CardDescription>
-              Reservas feitas por corretores nas unidades dos seus empreendimentos.
+              Arraste o card para a coluna correspondente. Movimentos inválidos são bloqueados.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {loading ? (
               <p className="text-sm text-muted-foreground">Carregando reservas...</p>
-            ) : reservations.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhuma reserva no momento.</p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border">
-                <table className="w-full text-sm">
-                  <thead className="border-b bg-muted/40 text-left">
-                    <tr>
-                      <th className="px-4 py-3 font-medium">Cliente</th>
-                      <th className="px-4 py-3 font-medium">Empreendimento</th>
-                      <th className="px-4 py-3 font-medium">Situação</th>
-                      <th className="px-4 py-3 font-medium">Status</th>
-                      <th className="px-4 py-3 font-medium">Corretor</th>
-                      <th className="px-4 py-3 font-medium">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reservations.map((reservation) => (
-                      <tr key={reservation.id} className="border-b last:border-b-0">
-                        <td className="px-4 py-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span>{reservation.client?.name ?? '—'}</span>
-                            {reservation.needs_proposal_decision ? (
-                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
-                                Proposta pendente
-                              </span>
-                            ) : null}
-                            {reservation.needs_deposit_proof_approval ? (
-                              <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-900">
-                                Comprovante pendente
-                              </span>
-                            ) : null}
-                            {reservation.deposit_overdue ? (
-                              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-900">
-                                Sinal vencido
-                              </span>
-                            ) : null}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          {reservation.unit?.building?.name ?? '—'}
-                          {reservation.unit?.code ? ` · ${reservation.unit.code}` : ''}
-                        </td>
-                        <td className="px-2 py-2">
-                          <ReservationSituation
-                            situation={reservation.situation}
-                            onOpenTimeline={() => handleOpenTimeline(reservation.id)}
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <ReservationWaitingStatus
-                            profile="builder"
-                            waitingOn={reservation.situation.current.waiting_on}
-                          />
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-1">
-                            <span className="min-w-0 truncate">{reservation.broker?.name ?? '—'}</span>
-                            <ReservationChatButton
-                              label={reservation.broker?.name ?? reservation.client?.name ?? `reserva ${reservation.id}`}
-                              needsReply={reservation.needs_reply}
-                              onClick={() => handleOpenMessages(reservation.id)}
-                            />
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <ReservationActionsMenu
-                            reservation={reservation}
-                            cancelling={cancellingId === reservation.id}
-                            onTimeline={() => handleOpenTimeline(reservation.id)}
-                            onMessages={() => handleOpenMessages(reservation.id)}
-                            onCancel={() => setCancelTarget(reservation)}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ReservationKanbanBoard
+                profile="builder"
+                reservations={reservations}
+                cancellingId={cancellingId}
+                canCancel={canManage}
+                canMessage={canManage}
+                onOpen={handleOpenTimeline}
+                onMessages={handleOpenMessages}
+                onCancel={setCancelTarget}
+                onMove={handleMove}
+              />
             )}
           </CardContent>
         </Card>
@@ -198,7 +207,7 @@ export function ReservationsPage() {
         onConfirm={handleCancel}
       />
 
-      <ReservationTimelineSheet
+      <ReservationProgressDialog
         profile="builder"
         reservationId={timelineReservationId}
         open={timelineOpen}
@@ -212,6 +221,7 @@ export function ReservationsPage() {
         open={messagesOpen}
         onOpenChange={setMessagesOpen}
         onMessageSent={handleMessageSent}
+        readOnly={reservations.find((item) => item.id === messagesReservationId)?.status === 'cancelled'}
       />
     </BuilderDashboardShell>
   )

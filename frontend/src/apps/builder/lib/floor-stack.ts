@@ -1,4 +1,4 @@
-import type { BuildingStructurePayload, BuildingUnitGridPayload, FloorKind } from '@/lib/api'
+import type { Building, BuildingStructurePayload, BuildingUnitGridPayload, FloorKind, Unit } from '@/lib/api'
 
 /** @see REQ-WZR-002 @see REQ-WZR-004 @see REQ-WZR-005 @see REQ-WZR-006 */
 
@@ -44,6 +44,14 @@ export type StackTower = {
 }
 
 export const DEFAULT_UNITS_PER_FLOOR = 4
+
+export const DEFAULT_SKELETON: SkeletonInput = {
+  towerCount: 1,
+  floorsAbove: 1,
+  basementCount: 0,
+  unitsPerFloor: DEFAULT_UNITS_PER_FLOOR,
+  spotsPerBasement: DEFAULT_UNITS_PER_FLOOR,
+}
 
 export function unitCode(floorNumber: number, position: number): string {
   if (floorNumber < 0) {
@@ -145,6 +153,156 @@ export function resetFloor(tower: StackTower, floorNumber: number): StackTower {
       }
     }),
   }
+}
+
+export function updateFloorUnit(
+  tower: StackTower,
+  floorNumber: number,
+  unitKey: string,
+  patch: Partial<StackUnit>,
+): StackTower {
+  return markException(
+    {
+      ...tower,
+      floors: tower.floors.map((item) =>
+        item.number !== floorNumber
+          ? item
+          : {
+              ...item,
+              units: item.units.map((unit) => (unit.key === unitKey ? { ...unit, ...patch } : unit)),
+            },
+      ),
+    },
+    floorNumber,
+  )
+}
+
+export function floorLabel(number: number): string {
+  if (number > 0) {
+    return `Andar ${number}`
+  }
+
+  if (number === 0) {
+    return 'Térreo'
+  }
+
+  return `Subsolo ${Math.abs(number)}`
+}
+
+export function floorKindLabel(kind: FloorKind): string {
+  if (kind === 'garage') {
+    return 'Garagem'
+  }
+
+  if (kind === 'commercial') {
+    return 'Comercial'
+  }
+
+  return 'Residencial'
+}
+
+export function floorsTopToBottom(floors: StackFloor[]): StackFloor[] {
+  return floors.toSorted((left, right) => right.number - left.number)
+}
+
+export function isFloorStackValid(towers: StackTower[]): boolean {
+  return (
+    towers.length > 0 &&
+    towers.every(
+      (tower) =>
+        tower.name.trim() !== '' &&
+        tower.floors.every(
+          (floor) => floor.units.length >= 1 && floor.units.every((unit) => unit.code.trim() !== ''),
+        ),
+    )
+  )
+}
+
+export function applySavedTowerIds(stack: StackTower[], saved: Building): StackTower[] {
+  const savedTowers = saved.towers ?? []
+
+  return stack.map((tower, index) => {
+    const match = savedTowers.find((item) => item.name === tower.name) ?? savedTowers[index]
+
+    if (!match) {
+      return tower
+    }
+
+    return {
+      ...tower,
+      id: match.id,
+      key: String(match.id),
+    }
+  })
+}
+
+export function stacksFromBuilding(building: Building): StackTower[] {
+  return (building.towers ?? [])
+    .filter((tower) => tower.id > 0)
+    .map((tower, index) => {
+      const towerUnits = [
+        ...(tower.units ?? []),
+        ...((building.units ?? []).filter((unit) => unit.tower_id === tower.id)),
+      ]
+      const uniqueUnits = [...new Map(towerUnits.map((unit) => [unit.id ?? unit.code, unit])).values()]
+      const metas = tower.floors?.length
+        ? tower.floors
+        : Array.from({ length: Math.max(1, tower.floors_count ?? 1) }, (_, floorIndex) => ({
+            number: floorIndex + 1,
+            kind: 'residential' as const,
+            customized: false,
+          }))
+
+      return {
+        key: String(tower.id ?? `tower-${index}`),
+        id: tower.id,
+        name: tower.name,
+        referenceFloor: tower.reference_floor ?? null,
+        floors: metas.map((meta) => {
+          const existing = uniqueUnits
+            .filter((unit) => unit.floor === meta.number)
+            .toSorted((left, right) => left.code.localeCompare(right.code, undefined, { numeric: true }))
+
+          return {
+            number: meta.number,
+            kind: meta.kind,
+            customized: meta.customized ?? false,
+            units:
+              existing.length > 0
+                ? existing.map((unit, unitIndex) => unitFromApi(unit, meta.number, unitIndex))
+                : [emptyUnit(meta.number, 1)],
+          }
+        }),
+      }
+    })
+}
+
+function unitFromApi(unit: Unit, floorNumber: number, index: number): StackUnit {
+  return {
+    key: String(unit.id ?? `u-${floorNumber}-${index + 1}`),
+    code: unit.code,
+    areaM2: displayNumber(unit.private_area_m2 ?? unit.area_m2),
+    bedrooms: unit.bedrooms != null ? String(unit.bedrooms) : '',
+    bathrooms: unit.bathrooms != null ? String(unit.bathrooms) : '',
+    priceBase: displayNumber(unit.price_base ?? unit.price),
+    priceCompetence: displayCompetence(unit.price_competence),
+  }
+}
+
+function displayNumber(value: string | number | null | undefined): string {
+  if (value == null || value === '') {
+    return ''
+  }
+
+  return String(value)
+}
+
+function displayCompetence(value: string | null | undefined): string {
+  if (!value) {
+    return ''
+  }
+
+  return value.slice(0, 7)
 }
 
 export function structurePayload(towers: StackTower[]): BuildingStructurePayload {

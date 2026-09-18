@@ -29,7 +29,7 @@ Ordem: backend (schema → validação → API) antes do frontend. 1 commit atô
   - Gate: `pnpm test` `BuildingWizardPage.test.tsx` (navegação 3 steps, retomada).
 - [x] **TR-07** `floor-stack.ts`: tipos, esqueleto, `unitCode` (0/negativos), `cloneMirror`/`markException`/`resetFloor`, `payload`. Testes unitários.
   - Gate: `pnpm test` `floor-stack.test.ts` (clonagem faixa acima/abaixo, preserve exceção, códigos térreo/subsolo).
-- [ ] **TR-08** `StructureEditor` (Skeleton + TowerTabs + FloorStack + FloorRow + UnitEditor) + Vitest de interação.
+- [x] **TR-08** `StructureEditor` (Skeleton + TowerTabs + FloorStack + FloorRow + UnitEditor) + Vitest de interação.
   - Gate: `pnpm test` `StructureEditor.test.tsx` (gera esqueleto, edita andar, marca exceção).
 - [ ] **TR-09** `MirrorPanel` (espelho + faixa + direção + clonar) e `GaragePanel` (vagas área+preço) + Vitest.
   - Gate: `pnpm test` (clonar preserva exceção; vaga com área+preço).

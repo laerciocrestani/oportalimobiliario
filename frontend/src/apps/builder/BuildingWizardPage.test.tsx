@@ -109,7 +109,7 @@ describe('BuildingWizardPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
     expect(screen.getByText('Continuar cadastro')).toBeInTheDocument()
-    expect(screen.getByLabelText('Nome da torre')).toHaveValue('Torre A')
+    expect(screen.getByRole('button', { name: 'Gerar esqueleto' })).toBeInTheDocument()
   })
 
   it('saves structure and opens the media step', async () => {
@@ -118,50 +118,47 @@ describe('BuildingWizardPage', () => {
       id: 1,
       name: 'Torre A',
       sort_order: 0,
-      floors_count: 2,
-      floors: [
-        { id: 1, tower_id: 1, number: 1, kind: 'residential' as const },
-        { id: 2, tower_id: 1, number: 2, kind: 'residential' as const },
-      ],
-    }
-    const towerB = {
-      id: 2,
-      name: 'Torre B',
-      sort_order: 1,
       floors_count: 1,
-      floors: [{ id: 3, tower_id: 2, number: 1, kind: 'residential' as const }],
+      reference_floor: 1,
+      floors: [
+        { id: 10, tower_id: 1, number: 0, kind: 'commercial' as const, customized: false },
+        { id: 11, tower_id: 1, number: 1, kind: 'residential' as const, customized: false },
+      ],
     }
 
     vi.spyOn(api.builderApi, 'getBuilding').mockResolvedValue(
       draftBuilding({
         wizard_step: 1,
-        towers: [towerA],
+        towers: [],
       }),
     )
     vi.spyOn(api.builderApi, 'replaceBuildingStructure').mockResolvedValue(
       draftBuilding({
         wizard_step: 2,
-        towers: [towerA, towerB],
+        towers: [towerA],
       }),
     )
-    vi.spyOn(api.builderApi, 'updateBuilding').mockResolvedValue(
-      draftBuilding({ wizard_step: 2, towers: [towerA, towerB] }),
-    )
     vi.spyOn(api.builderApi, 'replaceBuildingUnitGrid').mockResolvedValue(
-      draftBuilding({ wizard_step: 3, towers: [towerA, towerB] }),
+      draftBuilding({ wizard_step: 3, towers: [towerA] }),
     )
 
     renderWizard('/buildings/10/wizard')
 
     await screen.findByRole('heading', { name: 'Estrutura' })
-    await user.click(screen.getByRole('button', { name: 'Adicionar torre' }))
+    await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
 
     await waitFor(() => {
       expect(api.builderApi.replaceBuildingStructure).toHaveBeenCalledWith(10, {
         towers: [
-          { name: 'Torre A', floors_count: 2 },
-          { name: 'Torre B', floors_count: 1 },
+          {
+            name: 'Torre A',
+            reference_floor: 1,
+            floors: [
+              { number: 0, kind: 'commercial' },
+              { number: 1, kind: 'residential' },
+            ],
+          },
         ],
       })
       expect(api.builderApi.replaceBuildingUnitGrid).toHaveBeenCalled()
@@ -169,50 +166,24 @@ describe('BuildingWizardPage', () => {
     })
   })
 
-  it('replicates typical area to 101 and 201', async () => {
-    const user = userEvent.setup()
-    const towerA = {
-      id: 1,
-      name: 'Torre A',
-      sort_order: 0,
-      floors_count: 2,
-      floors: [
-        { id: 1, tower_id: 1, number: 1, kind: 'residential' as const },
-        { id: 2, tower_id: 1, number: 2, kind: 'residential' as const },
-      ],
-    }
-
-    vi.spyOn(api.builderApi, 'getBuilding').mockResolvedValue(
-      draftBuilding({
-        wizard_step: 2,
-        towers: [towerA],
-      }),
-    )
-
-    renderWizard('/buildings/10/wizard')
-
-    expect(await screen.findByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
-    await user.type(screen.getByLabelText('Área da posição 1 (m²)'), '72')
-
-    expect(screen.getByLabelText('Área da unidade 101 (m²)')).toHaveValue('72')
-    await user.click(screen.getByRole('button', { name: 'Torre A, andar 2' }))
-    expect(screen.getByLabelText('Área da unidade 201 (m²)')).toHaveValue('72')
-  })
-
-  it('saves the unit grid of the selected tower', async () => {
+  it('saves the unit grid of the generated tower', async () => {
     const user = userEvent.setup()
     const towerA = {
       id: 1,
       name: 'Torre A',
       sort_order: 0,
       floors_count: 1,
-      floors: [{ id: 1, tower_id: 1, number: 1, kind: 'residential' as const }],
+      reference_floor: 1,
+      floors: [
+        { id: 10, tower_id: 1, number: 0, kind: 'commercial' as const, customized: false },
+        { id: 11, tower_id: 1, number: 1, kind: 'residential' as const, customized: false },
+      ],
     }
 
     vi.spyOn(api.builderApi, 'getBuilding').mockResolvedValue(
       draftBuilding({
         wizard_step: 2,
-        towers: [towerA],
+        towers: [],
       }),
     )
     vi.spyOn(api.builderApi, 'replaceBuildingStructure').mockResolvedValue(
@@ -221,25 +192,14 @@ describe('BuildingWizardPage', () => {
     vi.spyOn(api.builderApi, 'replaceBuildingUnitGrid').mockResolvedValue(
       draftBuilding({ wizard_step: 3, towers: [towerA] }),
     )
-    vi.spyOn(api.builderApi, 'updateBuilding').mockResolvedValue(
-      draftBuilding({ wizard_step: 2, towers: [towerA] }),
-    )
 
     renderWizard('/buildings/10/wizard')
 
     expect(await screen.findByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
-    await user.click(screen.getAllByRole('button', { name: 'Remover' })[0])
+    await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
 
     await waitFor(() => {
-      expect(api.builderApi.updateBuilding).toHaveBeenCalledWith(
-        10,
-        expect.objectContaining({
-          published: false,
-          wizard_step: 2,
-          amenity_ids: [],
-        }),
-      )
       expect(api.builderApi.replaceBuildingUnitGrid).toHaveBeenCalledWith(
         10,
         expect.objectContaining({
@@ -248,13 +208,17 @@ describe('BuildingWizardPage', () => {
               id: 1,
               floors: [
                 expect.objectContaining({
+                  number: 0,
+                  kind: 'commercial',
+                  units: expect.arrayContaining([expect.objectContaining({ code: 'L01' })]),
+                }),
+                expect.objectContaining({
                   number: 1,
                   kind: 'residential',
-                  units: [
-                    expect.objectContaining({ code: '101', area_m2: null, bedrooms: null }),
-                    expect.objectContaining({ code: '102', area_m2: null }),
-                    expect.objectContaining({ code: '103', area_m2: null }),
-                  ],
+                  units: expect.arrayContaining([
+                    expect.objectContaining({ code: '101' }),
+                    expect.objectContaining({ code: '102' }),
+                  ]),
                 }),
               ],
             }),
@@ -262,66 +226,6 @@ describe('BuildingWizardPage', () => {
         }),
       )
       expect(screen.getByRole('heading', { name: 'Mídia' })).toBeInTheDocument()
-    })
-  })
-
-  it('saves building defaults, amenities and the selected unit spec sheet', async () => {
-    const user = userEvent.setup()
-    const towerA = {
-      id: 1,
-      name: 'Torre A',
-      sort_order: 0,
-      floors_count: 1,
-      floors: [{ id: 1, tower_id: 1, number: 1, kind: 'residential' as const }],
-    }
-    const piscina = { id: 11, slug: 'piscina', name: 'Piscina', active: true }
-    const closet = { id: 12, slug: 'closet', name: 'Closet', active: true }
-
-    vi.spyOn(api.builderApi, 'listAmenities').mockResolvedValue([piscina, closet])
-    vi.spyOn(api.builderApi, 'getBuilding').mockResolvedValue(
-      draftBuilding({
-        wizard_step: 2,
-        ceiling_type: 'plaster',
-        towers: [towerA],
-      }),
-    )
-    vi.spyOn(api.builderApi, 'replaceBuildingStructure').mockResolvedValue(
-      draftBuilding({ wizard_step: 2, towers: [towerA], amenities: [piscina] }),
-    )
-    vi.spyOn(api.builderApi, 'updateBuilding').mockResolvedValue(
-      draftBuilding({ wizard_step: 2, towers: [towerA], amenities: [piscina] }),
-    )
-    vi.spyOn(api.builderApi, 'replaceBuildingUnitGrid').mockResolvedValue(
-      draftBuilding({ wizard_step: 3, towers: [towerA] }),
-    )
-
-    renderWizard('/buildings/10/wizard')
-
-    expect(await screen.findByRole('heading', { name: 'Padrão do empreendimento' })).toBeInTheDocument()
-    expect(await screen.findByRole('checkbox', { name: 'Piscina' })).toBeInTheDocument()
-    await user.click(screen.getByRole('checkbox', { name: 'Piscina' }))
-    await user.type(screen.getByLabelText('Quartos'), '2')
-    expect(screen.getByText(/Herdar do empreendimento \(Gesso\)/)).toBeInTheDocument()
-    await user.click(screen.getByRole('checkbox', { name: 'Extra: Closet' }))
-    await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
-
-    await waitFor(() => {
-      expect(api.builderApi.updateBuilding).toHaveBeenCalledWith(
-        10,
-        expect.objectContaining({
-          ceiling_type: 'plaster',
-          amenity_ids: [11],
-        }),
-      )
-      const gridPayload = vi.mocked(api.builderApi.replaceBuildingUnitGrid).mock.calls[0][1]
-      expect(gridPayload.towers[0].floors[0].units[0]).toEqual(
-        expect.objectContaining({
-          code: '101',
-          bedrooms: 2,
-          amenity_ids: [12],
-          ceiling_type: null,
-        }),
-      )
     })
   })
 

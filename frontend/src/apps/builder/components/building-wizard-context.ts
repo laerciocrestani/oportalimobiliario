@@ -1,15 +1,14 @@
 import { createContext, use, type FormEvent } from 'react'
 import type { BuildingIdentityForm } from '@/apps/builder/components/BuildingWizardIdentityStep'
-import type { TowerDraft } from '@/apps/builder/components/BuildingWizardTowersStep'
 import type { BuildingDefaultsForm } from '@/apps/builder/lib/unit-spec'
-import type { TowerUnitGrid } from '@/apps/builder/lib/unit-grid'
+import type { SkeletonInput, StackTower, StackUnit } from '@/apps/builder/lib/floor-stack'
 import type { Amenity } from '@/lib/api'
 
 export type WizardState = {
   buildingId?: string
   form: BuildingIdentityForm
-  towers: TowerDraft[]
-  unitGrids: TowerUnitGrid[]
+  stackTowers: StackTower[]
+  skeleton: SkeletonInput
   buildingDefaults: BuildingDefaultsForm
   amenities: Amenity[]
   selectedTowerIndex: number
@@ -29,8 +28,9 @@ export type WizardState = {
 
 export type WizardActions = {
   setForm: (form: BuildingIdentityForm) => void
-  setTowers: (towers: TowerDraft[]) => void
-  setUnitGrids: (grids: TowerUnitGrid[]) => void
+  setSkeleton: (patch: Partial<SkeletonInput>) => void
+  generateSkeleton: () => void
+  updateStackUnit: (unitKey: string, patch: Partial<StackUnit>) => void
   setBuildingDefaults: (defaults: BuildingDefaultsForm) => void
   setSelectedTowerIndex: (index: number) => void
   setSelectedFloor: (floor: number | null) => void

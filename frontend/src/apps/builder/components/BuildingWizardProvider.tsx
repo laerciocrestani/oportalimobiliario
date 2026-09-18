@@ -11,33 +11,42 @@ import {
   type BuildingWizardContextValue,
 } from '@/apps/builder/components/building-wizard-context'
 import { BuildingWizardSteps } from '@/apps/builder/components/BuildingWizardSteps'
-import {
-  emptyTowerDraft,
-  type TowerDraft,
-} from '@/apps/builder/components/BuildingWizardTowersStep'
 import { WizardPublishStep } from '@/apps/builder/components/WizardPublishStep'
 import { WizardStructureStep } from '@/apps/builder/components/WizardStructureStep'
+import { identityFromBuilding, identityUpdatePayload } from '@/apps/builder/lib/building-form'
 import {
-  defaultsFromBuilding,
-  defaultsUpdatePayload,
-  identityFromBuilding,
-  identityUpdatePayload,
-} from '@/apps/builder/lib/building-form'
-import { emptyBuildingDefaults, type BuildingDefaultsForm } from '@/apps/builder/lib/unit-spec'
-import {
-  gridsFromBuilding,
-  unitGridIsValid,
+  applySavedTowerIds,
+  buildSkeleton,
+  DEFAULT_SKELETON,
+  isFloorStackValid,
+  stacksFromBuilding,
+  structurePayload,
   unitGridPayload,
-  type TowerUnitGrid,
-} from '@/apps/builder/lib/unit-grid'
+  updateFloorUnit,
+  type SkeletonInput,
+  type StackTower,
+  type StackUnit,
+} from '@/apps/builder/lib/floor-stack'
+import { emptyBuildingDefaults } from '@/apps/builder/lib/unit-spec'
 import { resumeWizardUiStep, WIZARD_LAST_STEP } from '@/apps/builder/lib/wizard-steps'
 import { Button } from '@/components/ui/button'
-import { ApiRequestError, builderApi, type Amenity, type Building } from '@/lib/api'
+import { ApiRequestError, builderApi, type Amenity } from '@/lib/api'
 
 export { useBuildingWizard } from '@/apps/builder/components/building-wizard-context'
 
 type WizardLocationState = {
   step?: number
+}
+
+type ProviderProps = {
+  buildingId?: string
+  children: ReactNode
+}
+
+function preferredFloorNumber(towers: StackTower[]): number | null {
+  const floors = towers[0]?.floors ?? []
+
+  return floors.find((floor) => floor.number === 1)?.number ?? floors[0]?.number ?? null
 }
 
 function identityPayload(form: BuildingIdentityForm) {
@@ -46,33 +55,6 @@ function identityPayload(form: BuildingIdentityForm) {
     published: false,
     wizard_step: 1,
   }
-}
-
-function defaultsPayload(defaults: BuildingDefaultsForm) {
-  return {
-    ...defaultsUpdatePayload(defaults),
-    published: false,
-    wizard_step: 2,
-  }
-}
-
-export function towersFromBuilding(building: Building): TowerDraft[] {
-  if (!building.towers?.length) {
-    return [emptyTowerDraft(0)]
-  }
-
-  return building.towers.map((tower, index) => ({
-    key: String(tower.id ?? `tower-${index}`),
-    id: tower.id,
-    name: tower.name,
-    floorsCount: tower.floors_count ?? tower.floors?.length ?? 1,
-  }))
-}
-
-export function mergeUnitGrids(previous: TowerUnitGrid[], saved: Building): TowerUnitGrid[] {
-  const generated = gridsFromBuilding(saved)
-
-  return generated.map((grid) => previous.find((item) => item.towerId === grid.towerId) ?? grid)
 }
 
 function stepErrorMessage(step: number) {
@@ -87,18 +69,13 @@ function stepErrorMessage(step: number) {
   return 'Não foi possível salvar a mídia e o descritivo.'
 }
 
-type ProviderProps = {
-  buildingId?: string
-  children: ReactNode
-}
-
 export function BuildingWizardProvider({ buildingId, children }: ProviderProps) {
   const location = useLocation()
   const navigate = useNavigate()
   const [form, setForm] = useState<BuildingIdentityForm>(emptyIdentityForm)
-  const [towers, setTowers] = useState<TowerDraft[]>(() => [emptyTowerDraft(0)])
-  const [unitGrids, setUnitGrids] = useState<TowerUnitGrid[]>([])
-  const [buildingDefaults, setBuildingDefaults] = useState<BuildingDefaultsForm>(emptyBuildingDefaults)
+  const [stackTowers, setStackTowers] = useState<StackTower[]>([])
+  const [skeleton, setSkeletonState] = useState<SkeletonInput>(DEFAULT_SKELETON)
+  const [buildingDefaults, setBuildingDefaults] = useState(emptyBuildingDefaults)
   const [amenities, setAmenities] = useState<Amenity[]>([])
   const [selectedTowerIndex, setSelectedTowerIndex] = useState(0)
   const [selectedFloor, setSelectedFloor] = useState<number | null>(null)
@@ -132,12 +109,11 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
           return
         }
 
+        const nextTowers = stacksFromBuilding(building)
         setForm(identityFromBuilding(building))
-        setTowers(towersFromBuilding(building))
-        setUnitGrids(gridsFromBuilding(building))
-        setBuildingDefaults(defaultsFromBuilding(building))
+        setStackTowers(nextTowers)
         setSelectedTowerIndex(0)
-        setSelectedFloor(1)
+        setSelectedFloor(preferredFloorNumber(nextTowers))
         setDescription(building.description ?? '')
         setIsDraft(!building.published)
 
@@ -188,6 +164,27 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
     setMaxReachable((current) => Math.max(current, step))
   }
 
+  function setSkeleton(patch: Partial<SkeletonInput>) {
+    setSkeletonState((current) => ({ ...current, ...patch }))
+  }
+
+  function generateSkeleton() {
+    const next = buildSkeleton(skeleton)
+    setStackTowers(next)
+    setSelectedTowerIndex(0)
+    setSelectedFloor(preferredFloorNumber(next))
+  }
+
+  function updateStackUnit(unitKey: string, patch: Partial<StackUnit>) {
+    setStackTowers((current) =>
+      current.map((tower, index) =>
+        index === selectedTowerIndex && selectedFloor != null
+          ? updateFloorUnit(tower, selectedFloor, unitKey, patch)
+          : tower,
+      ),
+    )
+  }
+
   async function lookupCep() {
     if (form.zip.length !== 8) {
       return
@@ -236,23 +233,12 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       return
     }
 
-    const saved = await builderApi.replaceBuildingStructure(Number(buildingId), {
-      towers: towers.map((tower) => ({
-        name: tower.name.trim(),
-        floors_count: tower.floorsCount,
-      })),
-    })
-
-    const nextTowers = towersFromBuilding(saved)
-    const nextGrids = mergeUnitGrids(unitGrids, saved)
-
-    setTowers(nextTowers)
-    setUnitGrids(nextGrids)
+    const saved = await builderApi.replaceBuildingStructure(Number(buildingId), structurePayload(stackTowers))
+    const nextTowers = applySavedTowerIds(stackTowers, saved)
+    setStackTowers(nextTowers)
     setSelectedTowerIndex(0)
-    setSelectedFloor(nextGrids[0]?.floors[0]?.number ?? 1)
-
-    await builderApi.updateBuilding(Number(buildingId), defaultsPayload(buildingDefaults))
-    await builderApi.replaceBuildingUnitGrid(Number(buildingId), unitGridPayload(nextGrids))
+    setSelectedFloor(preferredFloorNumber(nextTowers))
+    await builderApi.replaceBuildingUnitGrid(Number(buildingId), unitGridPayload(nextTowers))
     goToStep(3)
   }
 
@@ -330,16 +316,15 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
     currentStep === 1
       ? form.name.trim() !== ''
       : currentStep === 2
-        ? towers.every((tower) => tower.name.trim() !== '' && tower.floorsCount >= 1) &&
-          (unitGrids.length === 0 || unitGridIsValid(unitGrids))
+        ? isFloorStackValid(stackTowers)
         : Boolean(buildingId)
 
   const value: BuildingWizardContextValue = {
     state: {
       buildingId,
       form,
-      towers,
-      unitGrids,
+      stackTowers,
+      skeleton,
       buildingDefaults,
       amenities,
       selectedTowerIndex,
@@ -358,11 +343,9 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
     },
     actions: {
       setForm,
-      setTowers: (next) => {
-        setTowers(next)
-        setSelectedTowerIndex((current) => Math.min(current, next.length - 1))
-      },
-      setUnitGrids,
+      setSkeleton,
+      generateSkeleton,
+      updateStackUnit,
       setBuildingDefaults,
       setSelectedTowerIndex,
       setSelectedFloor,

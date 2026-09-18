@@ -311,6 +311,7 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 | REQ-WZR-004 | Andar-espelho + clonagem por faixa | `towers.reference_floor` | `cloneMirror` | `floor-stack.test.ts` |
 | REQ-WZR-005 | Exceções preservadas na reclonagem | `floors.customized` | `markException`/`resetFloor` | `floor-stack.test.ts` |
 | REQ-WZR-006 | Vaga = unit em andar `garage` | `BuildingUnitGridService.php` | esqueleto + `unitGridPayload` | `BuildingUnitGridTest.php`, `floor-stack.test.ts` |
+| REQ-WZR-008 | Editor visual em pilha | — | `StructureEditor.tsx`, `WizardStructureStep.tsx` | `StructureEditor.test.tsx`, `BuildingWizardPage.test.tsx` |
 
 ---
 

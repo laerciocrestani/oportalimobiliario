@@ -34,8 +34,8 @@
 
 - **Fase:** `building-wizard-redesign` em execução
 - **Branch:** `feature/building-wizard-floor-stack`
-- **Última etapa concluída:** TR-07 — `floor-stack.ts` (esqueleto, códigos 0/negativos, cloneMirror/exceção, payload). PRs #14 (wizard TR-01–06) e #15 (kanban) já na `main`; branches antigas removidas.
-- **Próxima etapa:** TR-08 — `StructureEditor` (Skeleton + TowerTabs + FloorStack + FloorRow + UnitEditor)
+- **Última etapa concluída:** TR-08 — `StructureEditor` (esqueleto guiado, tabs, pilha de andares, UnitEditor, exceção ao editar)
+- **Próxima etapa:** TR-09 — `MirrorPanel` + `GaragePanel`
 - **Discovery:** `docs/discovery/resumo-redesenho-wizard-empreendimentos.md`
 - **Spec:** `.specs/features/building-wizard-redesign/`
 - **Nota Entrega 2:** aceite exige `signed_file`; emitir PDF não muda status; CRUD = `proposals.manage`, emitir/aceitar = `reservations.cancel`; aceite com arquivo usa `POST .../proposal/decision` (multipart), recusa/devolução permanece `PATCH` JSON

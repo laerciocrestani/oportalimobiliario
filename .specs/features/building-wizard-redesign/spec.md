@@ -1,5 +1,5 @@
 ---
-branch: feature/building-wizard-redesign
+branch: feature/building-wizard-floor-stack
 status: in_progress
 depends_on: building-wizard, buildings, tenancy, auth
 source: docs/discovery/resumo-redesenho-wizard-empreendimentos.md

@@ -302,6 +302,18 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 
 ---
 
+## building-wizard-redesign
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-WZR-002 | Andar 0/negativos + códigos `101`/`L01`/`S1-01` | `UnitCode.php`, `floors.number` signed | `lib/floor-stack.ts` | `BuildingUnitGridTest.php`, `floor-stack.test.ts` |
+| REQ-WZR-003 | `FloorKind::Garage` | `FloorKind.php` | `FloorKind` em `api.ts` | `BuildingStructureTest.php`, `floor-stack.test.ts` |
+| REQ-WZR-004 | Andar-espelho + clonagem por faixa | `towers.reference_floor` | `cloneMirror` | `floor-stack.test.ts` |
+| REQ-WZR-005 | Exceções preservadas na reclonagem | `floors.customized` | `markException`/`resetFloor` | `floor-stack.test.ts` |
+| REQ-WZR-006 | Vaga = unit em andar `garage` | `BuildingUnitGridService.php` | esqueleto + `unitGridPayload` | `BuildingUnitGridTest.php`, `floor-stack.test.ts` |
+
+---
+
 ## user-activity-log
 
 | REQ | Descrição | BE | FE | Testes |

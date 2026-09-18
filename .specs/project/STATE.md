@@ -35,8 +35,8 @@
 - **Fase:** `building-wizard-redesign` em execução
 - **Branch:** `feature/building-wizard-redesign` (criada a partir da `main`)
 - **WIP preservado:** stash `WIP: feature/kanban-ajustes reservation progress` na branch `feature/kanban-ajustes`
-- **Última etapa concluída:** TR-02 — `PUT .../structure` aceita 0/negativo/`garage` e persiste `reference_floor`
-- **Próxima etapa:** TR-03 — `PUT .../unit-grid` com vagas, `customized` e códigos `101`/`L01`/`S1-01`
+- **Última etapa concluída:** TR-03 — `PUT .../unit-grid` com vagas, `customized` e códigos `101`/`L01`/`S1-01`
+- **Próxima etapa:** TR-04 — publish exige `price_base` em unidades/vagas `available`; serializar `floor.kind`/`customized`
 - **Discovery:** `docs/discovery/resumo-redesenho-wizard-empreendimentos.md`
 - **Spec:** `.specs/features/building-wizard-redesign/`
 - **Nota Entrega 2:** aceite exige `signed_file`; emitir PDF não muda status; CRUD = `proposals.manage`, emitir/aceitar = `reservations.cancel`; aceite com arquivo usa `POST .../proposal/decision` (multipart), recusa/devolução permanece `PATCH` JSON

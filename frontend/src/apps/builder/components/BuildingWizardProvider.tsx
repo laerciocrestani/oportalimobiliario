@@ -17,12 +17,16 @@ import { identityFromBuilding, identityUpdatePayload } from '@/apps/builder/lib/
 import {
   applySavedTowerIds,
   buildSkeleton,
+  cloneMirror,
+  DEFAULT_MIRROR,
   DEFAULT_SKELETON,
   isFloorStackValid,
+  mirrorDraftFromTower,
   stacksFromBuilding,
   structurePayload,
   unitGridPayload,
   updateFloorUnit,
+  type MirrorDraft,
   type SkeletonInput,
   type StackTower,
   type StackUnit,
@@ -79,6 +83,7 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
   const [amenities, setAmenities] = useState<Amenity[]>([])
   const [selectedTowerIndex, setSelectedTowerIndex] = useState(0)
   const [selectedFloor, setSelectedFloor] = useState<number | null>(null)
+  const [mirror, setMirrorState] = useState<MirrorDraft>({ ...DEFAULT_MIRROR })
   const [description, setDescription] = useState('')
   const [isDraft, setIsDraft] = useState(true)
   const [generatingDescription, setGeneratingDescription] = useState(false)
@@ -114,6 +119,7 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
         setStackTowers(nextTowers)
         setSelectedTowerIndex(0)
         setSelectedFloor(preferredFloorNumber(nextTowers))
+        setMirrorState(mirrorDraftFromTower(nextTowers[0]))
         setDescription(building.description ?? '')
         setIsDraft(!building.published)
 
@@ -173,6 +179,24 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
     setStackTowers(next)
     setSelectedTowerIndex(0)
     setSelectedFloor(preferredFloorNumber(next))
+    setMirrorState(mirrorDraftFromTower(next[0]))
+  }
+
+  function setSelectedTowerIndexAndMirror(index: number) {
+    setSelectedTowerIndex(index)
+    setMirrorState(mirrorDraftFromTower(stackTowers[index]))
+  }
+
+  function setMirror(patch: Partial<MirrorDraft>) {
+    setMirrorState((current) => ({ ...current, ...patch }))
+  }
+
+  function cloneSelectedMirror() {
+    setStackTowers((current) =>
+      current.map((tower, index) =>
+        index === selectedTowerIndex ? cloneMirror(tower, mirror.referenceNumber, mirror) : tower,
+      ),
+    )
   }
 
   function updateStackUnit(unitKey: string, patch: Partial<StackUnit>) {
@@ -238,6 +262,7 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
     setStackTowers(nextTowers)
     setSelectedTowerIndex(0)
     setSelectedFloor(preferredFloorNumber(nextTowers))
+    setMirrorState(mirrorDraftFromTower(nextTowers[0]))
     await builderApi.replaceBuildingUnitGrid(Number(buildingId), unitGridPayload(nextTowers))
     goToStep(3)
   }
@@ -329,6 +354,7 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       amenities,
       selectedTowerIndex,
       selectedFloor,
+      mirror,
       description,
       isDraft,
       generatingDescription,
@@ -346,8 +372,10 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       setSkeleton,
       generateSkeleton,
       updateStackUnit,
+      setMirror,
+      cloneMirror: cloneSelectedMirror,
       setBuildingDefaults,
-      setSelectedTowerIndex,
+      setSelectedTowerIndex: setSelectedTowerIndexAndMirror,
       setSelectedFloor,
       setDescription,
       setIsDraft,

@@ -3,6 +3,7 @@ import {
   buildSkeleton,
   cloneMirror,
   markException,
+  mirrorDraftFromTower,
   resetFloor,
   structurePayload,
   unitCode,
@@ -68,6 +69,28 @@ describe('floor-stack', () => {
     expect(floor(tower, 1).units.map((unit) => unit.code)).toEqual(['101', '102'])
     expect(floor(tower, 0).units.map((unit) => unit.code)).toEqual(['L01', 'L02'])
     expect(floor(tower, -1).units.map((unit) => unit.code)).toEqual(['S1-01', 'S1-02', 'S1-03'])
+  })
+
+  it('defaults the clone range to the remaining floors of the same kind', () => {
+    const [tower] = buildSkeleton({
+      towerCount: 1,
+      floorsAbove: 3,
+      basementCount: 2,
+      unitsPerFloor: 1,
+    })
+
+    expect(mirrorDraftFromTower(tower)).toEqual({
+      referenceNumber: 1,
+      direction: 'up',
+      from: 2,
+      to: 3,
+    })
+    expect(mirrorDraftFromTower({ ...tower, referenceFloor: -1 })).toEqual({
+      referenceNumber: -1,
+      direction: 'down',
+      from: -2,
+      to: -2,
+    })
   })
 
   it('clones the mirror floor to a range above without touching other kinds', () => {

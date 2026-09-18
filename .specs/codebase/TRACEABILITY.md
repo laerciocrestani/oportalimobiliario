@@ -308,9 +308,9 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 |-----|-----------|----|----|--------|
 | REQ-WZR-002 | Andar 0/negativos + códigos `101`/`L01`/`S1-01` | `UnitCode.php`, `floors.number` signed | `lib/floor-stack.ts` | `BuildingUnitGridTest.php`, `floor-stack.test.ts` |
 | REQ-WZR-003 | `FloorKind::Garage` | `FloorKind.php` | `FloorKind` em `api.ts` | `BuildingStructureTest.php`, `floor-stack.test.ts` |
-| REQ-WZR-004 | Andar-espelho + clonagem por faixa | `towers.reference_floor` | `cloneMirror` | `floor-stack.test.ts` |
-| REQ-WZR-005 | Exceções preservadas na reclonagem | `floors.customized` | `markException`/`resetFloor` | `floor-stack.test.ts` |
-| REQ-WZR-006 | Vaga = unit em andar `garage` | `BuildingUnitGridService.php` | esqueleto + `unitGridPayload` | `BuildingUnitGridTest.php`, `floor-stack.test.ts` |
+| REQ-WZR-004 | Andar-espelho + clonagem por faixa | `towers.reference_floor` | `cloneMirror`, `StructureEditor.tsx` (`MirrorPanel`) | `floor-stack.test.ts`, `StructureEditor.test.tsx` |
+| REQ-WZR-005 | Exceções preservadas na reclonagem | `floors.customized` | `markException`/`resetFloor`, `MirrorPanel` | `floor-stack.test.ts`, `StructureEditor.test.tsx` |
+| REQ-WZR-006 | Vaga = unit em andar `garage` | `BuildingUnitGridService.php` | esqueleto + `unitGridPayload`, `GaragePanel` | `BuildingUnitGridTest.php`, `floor-stack.test.ts`, `StructureEditor.test.tsx` |
 | REQ-WZR-008 | Editor visual em pilha | — | `StructureEditor.tsx`, `WizardStructureStep.tsx` | `StructureEditor.test.tsx`, `BuildingWizardPage.test.tsx` |
 
 ---

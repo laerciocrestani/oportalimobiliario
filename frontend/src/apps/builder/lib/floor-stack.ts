@@ -10,6 +10,10 @@ export type CloneRange = {
   to: number
 }
 
+export type MirrorDraft = CloneRange & {
+  referenceNumber: number
+}
+
 export type SkeletonInput = {
   towerCount: number
   floorsAbove: number
@@ -92,6 +96,37 @@ export function buildSkeleton(input: SkeletonInput): StackTower[] {
       floors,
     }
   })
+}
+
+export const DEFAULT_MIRROR: MirrorDraft = {
+  referenceNumber: 1,
+  direction: 'up',
+  from: 2,
+  to: 2,
+}
+
+export function mirrorDraftFromTower(tower: StackTower | null | undefined): MirrorDraft {
+  if (!tower || tower.floors.length === 0) {
+    return { ...DEFAULT_MIRROR }
+  }
+
+  const referenceNumber =
+    tower.referenceFloor ??
+    tower.floors.find((item) => item.kind === 'residential')?.number ??
+    tower.floors[0].number
+  const kind = tower.floors.find((item) => item.number === referenceNumber)?.kind
+  const others = tower.floors.filter((item) => item.kind === kind && item.number !== referenceNumber)
+  const above = others.filter((item) => item.number > referenceNumber)
+  const below = others.filter((item) => item.number < referenceNumber)
+  const targets = above.length > 0 ? above : below
+  const numbers = targets.map((item) => item.number)
+
+  return {
+    referenceNumber,
+    direction: above.length > 0 ? 'up' : 'down',
+    from: numbers.length > 0 ? Math.min(...numbers) : referenceNumber,
+    to: numbers.length > 0 ? Math.max(...numbers) : referenceNumber,
+  }
 }
 
 export function cloneMirror(tower: StackTower, referenceNumber: number, range: CloneRange): StackTower {

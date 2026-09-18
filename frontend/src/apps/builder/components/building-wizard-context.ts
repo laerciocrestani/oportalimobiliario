@@ -1,7 +1,7 @@
 import { createContext, use, type FormEvent } from 'react'
 import type { BuildingIdentityForm } from '@/apps/builder/components/BuildingWizardIdentityStep'
 import type { BuildingDefaultsForm } from '@/apps/builder/lib/unit-spec'
-import type { SkeletonInput, StackTower, StackUnit } from '@/apps/builder/lib/floor-stack'
+import type { MirrorDraft, SkeletonInput, StackTower, StackUnit } from '@/apps/builder/lib/floor-stack'
 import type { Amenity } from '@/lib/api'
 
 export type WizardState = {
@@ -13,6 +13,7 @@ export type WizardState = {
   amenities: Amenity[]
   selectedTowerIndex: number
   selectedFloor: number | null
+  mirror: MirrorDraft
   description: string
   isDraft: boolean
   generatingDescription: boolean
@@ -31,6 +32,8 @@ export type WizardActions = {
   setSkeleton: (patch: Partial<SkeletonInput>) => void
   generateSkeleton: () => void
   updateStackUnit: (unitKey: string, patch: Partial<StackUnit>) => void
+  setMirror: (patch: Partial<MirrorDraft>) => void
+  cloneMirror: () => void
   setBuildingDefaults: (defaults: BuildingDefaultsForm) => void
   setSelectedTowerIndex: (index: number) => void
   setSelectedFloor: (floor: number | null) => void

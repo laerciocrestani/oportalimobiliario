@@ -12,7 +12,7 @@ export function WizardStructureStep() {
       <div>
         <h2 className="text-base font-semibold">Estrutura</h2>
         <p className="text-sm text-muted-foreground">
-          Gere o esqueleto e ajuste os andares na pilha. Edições manuais viram exceção.
+          Gere o esqueleto, clone o andar-espelho e ajuste as exceções. Vagas ficam nos subsolos.
         </p>
       </div>
 
@@ -22,6 +22,7 @@ export function WizardStructureStep() {
           selectedTowerIndex: state.selectedTowerIndex,
           selectedFloorNumber: state.selectedFloor,
           skeleton: state.skeleton,
+          mirror: state.mirror,
         }}
         actions={{
           setSkeleton: actions.setSkeleton,
@@ -29,14 +30,18 @@ export function WizardStructureStep() {
           selectTower: actions.setSelectedTowerIndex,
           selectFloor: actions.setSelectedFloor,
           updateUnit: actions.updateStackUnit,
+          setMirror: actions.setMirror,
+          cloneMirror: actions.cloneMirror,
         }}
         meta={{ selectedTower, selectedFloor }}
       >
         <StructureEditor.Skeleton />
         <StructureEditor.TowerTabs />
+        <StructureEditor.MirrorPanel />
         <div className="grid gap-6 lg:grid-cols-[minmax(0,18rem)_1fr]">
           <StructureEditor.FloorStack />
           <StructureEditor.UnitEditor />
+          <StructureEditor.GaragePanel />
         </div>
       </StructureEditor.Provider>
     </>

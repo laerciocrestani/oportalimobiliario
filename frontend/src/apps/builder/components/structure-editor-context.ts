@@ -1,11 +1,12 @@
 import { createContext, use } from 'react'
-import type { SkeletonInput, StackFloor, StackTower, StackUnit } from '@/apps/builder/lib/floor-stack'
+import type { MirrorDraft, SkeletonInput, StackFloor, StackTower, StackUnit } from '@/apps/builder/lib/floor-stack'
 
 export type StructureEditorState = {
   towers: StackTower[]
   selectedTowerIndex: number
   selectedFloorNumber: number | null
   skeleton: SkeletonInput
+  mirror: MirrorDraft
 }
 
 export type StructureEditorActions = {
@@ -14,6 +15,8 @@ export type StructureEditorActions = {
   selectTower: (index: number) => void
   selectFloor: (number: number) => void
   updateUnit: (unitKey: string, patch: Partial<StackUnit>) => void
+  setMirror: (patch: Partial<MirrorDraft>) => void
+  cloneMirror: () => void
 }
 
 export type StructureEditorMeta = {

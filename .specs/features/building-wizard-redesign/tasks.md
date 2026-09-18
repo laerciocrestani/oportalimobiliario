@@ -31,7 +31,7 @@ Ordem: backend (schema → validação → API) antes do frontend. 1 commit atô
   - Gate: `pnpm test` `floor-stack.test.ts` (clonagem faixa acima/abaixo, preserve exceção, códigos térreo/subsolo).
 - [x] **TR-08** `StructureEditor` (Skeleton + TowerTabs + FloorStack + FloorRow + UnitEditor) + Vitest de interação.
   - Gate: `pnpm test` `StructureEditor.test.tsx` (gera esqueleto, edita andar, marca exceção).
-- [ ] **TR-09** `MirrorPanel` (espelho + faixa + direção + clonar) e `GaragePanel` (vagas área+preço) + Vitest.
+- [x] **TR-09** `MirrorPanel` (espelho + faixa + direção + clonar) e `GaragePanel` (vagas área+preço) + Vitest.
   - Gate: `pnpm test` (clonar preserva exceção; vaga com área+preço).
 - [ ] **TR-10** Aposentar `BuildingMassing`; migrar `BuildingMassing.test.tsx` para `FloorStack`. Mover ficha completa + defaults de herança para a edição pós-criação (telas de detalhe).
   - Gate: `pnpm test` sem referências mortas; edição pós-criação cobre os campos removidos do wizard.

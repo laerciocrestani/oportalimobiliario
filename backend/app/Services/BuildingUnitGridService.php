@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Enums\FloorKind;
 use App\Models\Building;
+use App\Models\Floor;
 use App\Models\Tower;
 use App\Support\AmenityPresentation;
+use App\Support\UnitCode;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -15,6 +17,8 @@ use Illuminate\Validation\ValidationException;
  * @see REQ-WIZ-007
  * @see REQ-WIZ-008
  * @see REQ-WIZ-009
+ * @see REQ-WZR-006
+ * @see REQ-WZR-007
  */
 class BuildingUnitGridService
 {
@@ -32,6 +36,7 @@ class BuildingUnitGridService
         DB::transaction(function () use ($building, $towers): void {
             $building->load(['towers.floors', 'amenities']);
 
+            $towers = $this->fillUnitCodes($towers);
             $this->assertCompleteGrid($building, $towers);
 
             $building->units()->delete();
@@ -43,9 +48,17 @@ class BuildingUnitGridService
                     continue;
                 }
 
+                if (array_key_exists('reference_floor', $towerData)) {
+                    $tower->update([
+                        'reference_floor' => $towerData['reference_floor'],
+                    ]);
+                }
+
                 foreach ($towerData['floors'] as $floorData) {
                     $number = (int) $floorData['number'];
-                    $floor = $tower->floors->firstWhere('number', $number);
+                    $floor = $tower->floors->first(
+                        fn (Floor $candidate): bool => (int) $candidate->number === $number,
+                    );
 
                     if ($floor === null) {
                         continue;
@@ -55,6 +68,7 @@ class BuildingUnitGridService
                         'kind' => $floorData['kind'] instanceof FloorKind
                             ? $floorData['kind']
                             : FloorKind::from($floorData['kind']),
+                        'customized' => (bool) ($floorData['customized'] ?? false),
                     ]);
 
                     foreach ($floorData['units'] as $unitData) {
@@ -146,7 +160,7 @@ class BuildingUnitGridService
     {
         $seenTowerIds = [];
 
-        foreach ($towers as $towerData) {
+        foreach ($towers as $towerIndex => $towerData) {
             $towerId = (int) $towerData['id'];
 
             if (in_array($towerId, $seenTowerIds, true)) {
@@ -192,6 +206,10 @@ class BuildingUnitGridService
                     'towers' => 'Unit codes must be unique within a tower.',
                 ]);
             }
+
+            foreach ($towerData['floors'] as $floorIndex => $floorData) {
+                $this->assertFloorKind((int) $floorData['number'], $floorData['kind'], $towerIndex, $floorIndex);
+            }
         }
 
         $missingTowers = $building->towers->pluck('id')->diff($seenTowerIds);
@@ -199,6 +217,57 @@ class BuildingUnitGridService
         if ($missingTowers->isNotEmpty()) {
             throw ValidationException::withMessages([
                 'towers' => 'Unit grid must include every tower of the building.',
+            ]);
+        }
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $towers
+     * @return list<array<string, mixed>>
+     */
+    private function fillUnitCodes(array $towers): array
+    {
+        foreach ($towers as $towerIndex => $towerData) {
+            foreach ($towerData['floors'] as $floorIndex => $floorData) {
+                $number = (int) $floorData['number'];
+
+                foreach ($floorData['units'] as $unitIndex => $unitData) {
+                    $expected = UnitCode::fromFloorPosition($number, $unitIndex + 1);
+                    $code = trim((string) ($unitData['code'] ?? ''));
+
+                    if ($code === '') {
+                        $towers[$towerIndex]['floors'][$floorIndex]['units'][$unitIndex]['code'] = $expected;
+
+                        continue;
+                    }
+
+                    if ($code !== $expected) {
+                        throw ValidationException::withMessages([
+                            "towers.{$towerIndex}.floors.{$floorIndex}.units.{$unitIndex}.code" => "Unit code must be {$expected}.",
+                        ]);
+                    }
+                }
+            }
+        }
+
+        return $towers;
+    }
+
+    private function assertFloorKind(int $number, mixed $kind, int $towerIndex, int $floorIndex): void
+    {
+        $floorKind = $kind instanceof FloorKind
+            ? $kind
+            : FloorKind::from((string) $kind);
+
+        if ($floorKind === FloorKind::Garage && $number >= 0) {
+            throw ValidationException::withMessages([
+                "towers.{$towerIndex}.floors.{$floorIndex}.kind" => 'Garage floors must have a negative number.',
+            ]);
+        }
+
+        if ($number < 0 && $floorKind !== FloorKind::Garage) {
+            throw ValidationException::withMessages([
+                "towers.{$towerIndex}.floors.{$floorIndex}.kind" => 'Negative floors must be garage.',
             ]);
         }
     }

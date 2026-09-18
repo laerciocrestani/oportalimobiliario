@@ -24,6 +24,8 @@ use Illuminate\Validation\Rule;
  * @see REQ-WIZ-007
  * @see REQ-WIZ-008
  * @see REQ-WIZ-009
+ * @see REQ-WZR-006
+ * @see REQ-WZR-007
  */
 class BuildingUnitGridController extends Controller
 {
@@ -39,10 +41,12 @@ class BuildingUnitGridController extends Controller
             'towers' => ['required', 'array', 'min:1'],
             'towers.*.id' => ['required', 'integer'],
             'towers.*.floors' => ['required', 'array', 'min:1'],
-            'towers.*.floors.*.number' => ['required', 'integer', 'min:1'],
+            'towers.*.floors.*.number' => ['required', 'integer', 'min:-20', 'max:80'],
             'towers.*.floors.*.kind' => ['required', Rule::enum(FloorKind::class)],
+            'towers.*.floors.*.customized' => ['sometimes', 'boolean'],
+            'towers.*.reference_floor' => ['nullable', 'integer', 'min:-20', 'max:80'],
             'towers.*.floors.*.units' => ['required', 'array', 'min:1'],
-            'towers.*.floors.*.units.*.code' => ['required', 'string', 'max:50'],
+            'towers.*.floors.*.units.*.code' => ['nullable', 'string', 'max:50'],
             'towers.*.floors.*.units.*.area_m2' => ['nullable', 'numeric', 'min:0'],
             'towers.*.floors.*.units.*.private_area_m2' => ['nullable', 'numeric', 'min:0'],
             'towers.*.floors.*.units.*.total_area_m2' => ['nullable', 'numeric', 'min:0'],

@@ -265,6 +265,7 @@ it('rejects publishing when an available unit has no price', function () {
     Unit::factory()->for($tenant)->for($building)->create([
         'status' => UnitStatus::Available,
         'price' => null,
+        'price_base' => null,
     ]);
 
     Sanctum::actingAs($user);

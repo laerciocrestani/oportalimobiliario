@@ -32,12 +32,12 @@
 
 ## Sessão atual
 
-- **Fase:** `reservation-progress-column-modal` concluída neste branch
-- **Branch:** `feature/kanban-ajustes`
-- **Última etapa concluída:** Kanban + dialog 60/40 por coluna, chat embutido, countdown da pré-reserva e polish visual
-- **Próxima etapa:** PR / review
-- **Discovery:** `docs/discovery/resumo-modal-andamento-por-coluna.md`
-- **Spec:** `.specs/features/reservation-progress-column-modal/spec.md`
+- **Fase:** `building-wizard-redesign` em execução
+- **Branch:** `main`
+- **Última etapa concluída:** TR-06 — wizard 3 steps (`Identidade` / `Estrutura` / `Mídia`) + `BuildingWizardProvider` + persistência 1–3 + “Continuar cadastro”; Kanban + dialog 60/40 (PR #15) já na `main`
+- **Próxima etapa:** TR-07 — `floor-stack.ts` (tipos, esqueleto, códigos 0/negativos, cloneMirror/exceção, payload)
+- **Discovery:** `docs/discovery/resumo-redesenho-wizard-empreendimentos.md`
+- **Spec:** `.specs/features/building-wizard-redesign/`
 - **Nota Entrega 2:** aceite exige `signed_file`; emitir PDF não muda status; CRUD = `proposals.manage`, emitir/aceitar = `reservations.cancel`; aceite com arquivo usa `POST .../proposal/decision` (multipart), recusa/devolução permanece `PATCH` JSON
 - **Nota Entrega 3:** testemunhas escolhidas no POST do PDF da construtora (`witness_1_user_id` / `witness_2_user_id`); sold exige 4 assinaturas; badge `pending_action` no card + `pending-actions-count` no menu (inclui reply); testemunha assina sem `reservations.cancel`
 - **Nota Entrega 4:** colunas derivadas de `status` + anexos (sem coluna `situation`); drag chama services existentes; 422 `action_required` abre o dialog; testemunha não arrasta; gestor vê todas, corretor só as suas

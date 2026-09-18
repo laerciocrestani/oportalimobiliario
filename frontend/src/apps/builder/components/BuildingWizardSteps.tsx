@@ -1,12 +1,6 @@
+import { WIZARD_STEPS } from '@/apps/builder/lib/wizard-steps'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-
-const STEPS = [
-  { id: 1, label: 'Identidade' },
-  { id: 2, label: 'Torres' },
-  { id: 3, label: 'Unidades' },
-  { id: 4, label: 'Mídia' },
-] as const
 
 type BuildingWizardStepsProps = {
   current: number
@@ -17,7 +11,7 @@ type BuildingWizardStepsProps = {
 export function BuildingWizardSteps({ current, maxReachable = current, onSelect }: BuildingWizardStepsProps) {
   return (
     <ol className="flex flex-wrap gap-2">
-      {STEPS.map((step) => {
+      {WIZARD_STEPS.map((step) => {
         const isCurrent = step.id === current
         const isDone = step.id < current
         const reachable = step.id <= maxReachable

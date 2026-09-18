@@ -13,12 +13,22 @@ import { EllipsisVerticalIcon, ListOrderedIcon, MessageSquareIcon, XIcon } from 
 type ReservationActionsMenuProps = {
   reservation: BuilderReservationListItem
   cancelling: boolean
+  canCancel?: boolean
+  canMessage?: boolean
   onTimeline: () => void
   onMessages: () => void
   onCancel: () => void
 }
 
 function timelineLabel(reservation: BuilderReservationListItem): string {
+  if (reservation.pending_action === 'witness_signature' || reservation.needs_witness_signature) {
+    return 'Andamento · testemunha'
+  }
+
+  if (reservation.pending_action === 'sold_validation' || reservation.needs_sold_validation) {
+    return 'Andamento · venda'
+  }
+
   if (reservation.needs_proposal_decision) {
     return 'Andamento · decisão'
   }
@@ -31,12 +41,18 @@ function timelineLabel(reservation: BuilderReservationListItem): string {
 }
 
 function messagesLabel(reservation: BuilderReservationListItem): string {
+  if (reservation.status === 'cancelled') {
+    return 'Ver conversa'
+  }
+
   return reservation.needs_reply ? 'Responder · nova' : 'Responder'
 }
 
 export function ReservationActionsMenu({
   reservation,
   cancelling,
+  canCancel = true,
+  canMessage = true,
   onTimeline,
   onMessages,
   onCancel,
@@ -63,18 +79,24 @@ export function ReservationActionsMenu({
             <ListOrderedIcon />
             {timelineLabel(reservation)}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onMessages}>
-            <MessageSquareIcon />
-            {messagesLabel(reservation)}
-          </DropdownMenuItem>
+          {canMessage ? (
+            <DropdownMenuItem onClick={onMessages}>
+              <MessageSquareIcon />
+              {messagesLabel(reservation)}
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          <DropdownMenuItem variant="destructive" disabled={cancelling} onClick={onCancel}>
-            <XIcon />
-            {cancelling ? 'Cancelando...' : 'Cancelar'}
-          </DropdownMenuItem>
-        </DropdownMenuGroup>
+        {reservation.status === 'cancelled' || !canCancel ? null : (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuGroup>
+              <DropdownMenuItem variant="destructive" disabled={cancelling} onClick={onCancel}>
+                <XIcon />
+                {cancelling ? 'Cancelando...' : 'Cancelar'}
+              </DropdownMenuItem>
+            </DropdownMenuGroup>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

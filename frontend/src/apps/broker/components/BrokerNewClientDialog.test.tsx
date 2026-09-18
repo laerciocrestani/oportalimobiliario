@@ -41,7 +41,7 @@ describe('BrokerNewClientDialog', () => {
     )
 
     await user.type(screen.getByLabelText('Nome *'), 'Maria')
-    await user.type(screen.getByLabelText('Telefone *'), '(11) 98888-7777')
+    await user.type(screen.getByLabelText('Telefone *'), '11988887777')
     await user.click(screen.getByRole('button', { name: 'Salvar cliente' }))
 
     expect(brokerApi.createClient).toHaveBeenCalledWith({
@@ -55,5 +55,22 @@ describe('BrokerNewClientDialog', () => {
       phone: '(11) 98888-7777',
       email: null,
     })
+  })
+
+  it('masks the phone as brazilian mobile and shows the whatsapp icon', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <BrokerNewClientDialog open onOpenChange={() => {}} onCreated={() => {}} />,
+    )
+
+    const phoneInput = screen.getByLabelText('Telefone *')
+
+    expect(phoneInput.closest('[data-slot="input-group"]')).toBeInTheDocument()
+    expect(screen.getByText('WhatsApp')).toBeInTheDocument()
+
+    await user.type(phoneInput, '11988887777')
+
+    expect(phoneInput).toHaveValue('(11) 98888-7777')
   })
 })

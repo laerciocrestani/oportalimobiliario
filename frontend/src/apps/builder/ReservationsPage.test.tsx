@@ -1,17 +1,22 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { ReservationsPage } from '@/apps/builder/ReservationsPage'
 
-const { listReservations } = vi.hoisted(() => ({
+const { listReservations, pendingActionsCount, permissionsState } = vi.hoisted(() => ({
   listReservations: vi.fn(),
+  pendingActionsCount: vi.fn(),
+  permissionsState: {
+    permissions: ['reservations.cancel'] as string[],
+    loading: false,
+  },
 }))
 
 vi.mock('@/apps/builder/hooks/use-builder-permissions', () => ({
   useBuilderPermissions: () => ({
-    can: (permission: string) => permission === 'reservations.cancel',
-    permissions: ['reservations.cancel'],
-    loading: false,
+    can: (permission: string) => permissionsState.permissions.includes(permission),
+    permissions: permissionsState.permissions,
+    loading: permissionsState.loading,
     user: { name: 'Builder', email: 'builder@demo.com' },
   }),
 }))
@@ -30,14 +35,37 @@ vi.mock('@/apps/builder/components/ReservationMessagesDialog', () => ({
 }))
 
 vi.mock('@/lib/api', () => ({
+  ApiRequestError: class ApiRequestError extends Error {
+    status: number
+    code?: string
+    constructor(message: string, status: number, _errors?: unknown, code?: string) {
+      super(message)
+      this.status = status
+      this.code = code
+    }
+  },
   builderApi: {
     listReservations,
+    pendingActionsCount,
+    moveReservationKanban: vi.fn(),
     cancelReservation: vi.fn(),
   },
 }))
 
+vi.mock('@/components/reservations/ReservationProgressDialog', () => ({
+  ReservationProgressDialog: () => null,
+}))
+
 describe('ReservationsPage', () => {
-  it('renders reservation table columns and data', async () => {
+  beforeEach(() => {
+    permissionsState.permissions = ['reservations.cancel']
+    permissionsState.loading = false
+    listReservations.mockReset()
+    pendingActionsCount.mockReset()
+  })
+
+  it('renders the kanban board with reservation cards', async () => {
+    pendingActionsCount.mockResolvedValue({ count: 1, witness_scope: false })
     listReservations.mockResolvedValue([
       {
         id: 1,
@@ -48,11 +76,17 @@ describe('ReservationsPage', () => {
         needs_reply: true,
         needs_proposal_decision: true,
         needs_deposit_proof_approval: false,
+        needs_witness_signature: false,
+        needs_sold_validation: false,
+        needs_action: true,
+        pending_action: 'proposal_decision',
         deposit_overdue: false,
+        kanban_column: 'proposal_review',
+        allowed_kanban_moves: ['cancelled', 'proposal_formalization'],
         situation: {
           previous: {
             key: 'proposal_submitted',
-            label: 'Proposta enviada',
+            label: 'Proposta',
             occurred_at: '2026-07-10T18:00:00.000Z',
           },
           current: {
@@ -81,27 +115,23 @@ describe('ReservationsPage', () => {
     render(<ReservationsPage />)
 
     await waitFor(() => {
-      expect(screen.getByText('Cliente')).toBeInTheDocument()
-      expect(screen.getByText('Empreendimento')).toBeInTheDocument()
-      expect(screen.getByText('Situação')).toBeInTheDocument()
-      expect(screen.getByText('Status')).toBeInTheDocument()
-      expect(screen.getByText('Corretor')).toBeInTheDocument()
-      expect(screen.queryByRole('columnheader', { name: 'Data' })).not.toBeInTheDocument()
-      expect(screen.getByText('João Silva')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Pré-reserva/Diálogo' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Proposta em análise' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Vendida' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Cancelada' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'João Silva' })).toBeInTheDocument()
       expect(screen.getByText(/Residencial Aurora · 1201/)).toBeInTheDocument()
       expect(screen.getByText('Corretor Alpha')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Conversar — Corretor Alpha · nova' })).toBeInTheDocument()
-      expect(screen.getByText('Decisão do gestor')).toBeInTheDocument()
-      expect(screen.getByText('Proposta enviada')).toBeInTheDocument()
-      expect(screen.getByText('Aguardando sinal (48h)')).toBeInTheDocument()
       expect(screen.getByText('Aguardando você')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Ações — João Silva' })).toBeInTheDocument()
       expect(screen.getByText('Proposta pendente')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Ações — João Silva' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Mover João Silva' })).toBeInTheDocument()
     })
   })
 
   it('opens cancel dialog from the actions menu', async () => {
     const user = userEvent.setup()
+    pendingActionsCount.mockResolvedValue({ count: 1, witness_scope: false })
     listReservations.mockResolvedValue([
       {
         id: 1,
@@ -112,11 +142,17 @@ describe('ReservationsPage', () => {
         needs_reply: true,
         needs_proposal_decision: true,
         needs_deposit_proof_approval: false,
+        needs_witness_signature: false,
+        needs_sold_validation: false,
+        needs_action: true,
+        pending_action: 'proposal_decision',
         deposit_overdue: false,
+        kanban_column: 'proposal_review',
+        allowed_kanban_moves: ['cancelled', 'proposal_formalization'],
         situation: {
           previous: {
             key: 'proposal_submitted',
-            label: 'Proposta enviada',
+            label: 'Proposta',
             occurred_at: '2026-07-10T18:00:00.000Z',
           },
           current: {
@@ -154,5 +190,45 @@ describe('ReservationsPage', () => {
 
     expect(screen.getByRole('dialog', { name: 'Cancelar reserva' })).toBeInTheDocument()
     expect(screen.getByLabelText('Motivo *')).toBeInTheDocument()
+  })
+
+  it('lists reservations for a manager even when witness_scope is false', async () => {
+    pendingActionsCount.mockResolvedValue({ count: 0, witness_scope: false })
+    listReservations.mockResolvedValue([])
+
+    render(<ReservationsPage />)
+
+    await waitFor(() => {
+      expect(listReservations).toHaveBeenCalled()
+      expect(screen.getByRole('heading', { name: 'Pré-reserva/Diálogo' })).toBeInTheDocument()
+    })
+
+    expect(pendingActionsCount).not.toHaveBeenCalled()
+    expect(screen.queryByText('Você não tem permissão para visualizar reservas.')).not.toBeInTheDocument()
+  })
+
+  it('keeps loading while permissions are still fetching', () => {
+    permissionsState.permissions = []
+    permissionsState.loading = true
+
+    render(<ReservationsPage />)
+
+    expect(screen.getByText('Carregando reservas...')).toBeInTheDocument()
+    expect(screen.queryByText('Você não tem permissão para visualizar reservas.')).not.toBeInTheDocument()
+    expect(listReservations).not.toHaveBeenCalled()
+    expect(pendingActionsCount).not.toHaveBeenCalled()
+  })
+
+  it('denies access when the user cannot manage reservations and has no witness scope', async () => {
+    permissionsState.permissions = []
+    pendingActionsCount.mockResolvedValue({ count: 0, witness_scope: false })
+
+    render(<ReservationsPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Você não tem permissão para visualizar reservas.')).toBeInTheDocument()
+    })
+
+    expect(listReservations).not.toHaveBeenCalled()
   })
 })

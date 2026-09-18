@@ -2,6 +2,7 @@
 
 return [
     'pre_reservation_ttl_minutes' => (int) env('OPIM_PRE_RESERVATION_TTL_MINUTES', 10),
+    'pre_reservation_hold_hours' => (int) env('OPIM_PRE_RESERVATION_HOLD_HOURS', 48),
     'reservation_ttl_hours' => (int) env('OPIM_RESERVATION_TTL_HOURS', 48),
     'deposit_window_hours' => (int) env('OPIM_DEPOSIT_WINDOW_HOURS', env('OPIM_RESERVATION_TTL_HOURS', 48)),
 

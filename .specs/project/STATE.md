@@ -32,14 +32,15 @@
 
 ## Sessão atual
 
-- **Fase:** `user-activity-log` (T-01…T-16 done)
-- **Branch:** `feature/user-activity-log`
-- **Última etapa concluída:** T-16 — índices de docs (TRACEABILITY, FRONTEND, PERMISSIONS, SEEDS, GLOSSARY)
-- **Próxima etapa:** review / PR da branch `feature/user-activity-log`
-- **Discovery:** `docs/discovery/resumo-log-atividade-usuario.md` (premissas aceitas em `context.md`)
-- **Nota:** `units.frozen_price_brl` já existe (contratos); não duplicar a coluna
-- **Nota T-07:** assinatura GOV reusa `reservation.contract.uploaded` (catálogo v1 não tem action própria); jobs de expiração não geram log
-- **Nota T-08:** wizard de estrutura/planta gera um `building.updated` (não N eventos por unidade); mídia e templates ficam fora do catálogo v1
+- **Fase:** `reservation-progress-flex` Entrega 4 **done** (T-13…T-14) — feature **done**
+- **Branch:** `feature/reservation-progress-flex`
+- **Última etapa concluída:** Kanban 7 colunas + drag validado (`PATCH .../kanban`) + dialog central no lugar do sheet
+- **Próxima etapa:** próxima feature do ROADMAP (feature `reservation-progress-flex` encerrada)
+- **Discovery:** `docs/discovery/resumo-andamento-reserva-flexivel.md`
+- **Spec:** `.specs/features/reservation-progress-flex/`
+- **Nota Entrega 2:** aceite exige `signed_file`; emitir PDF não muda status; CRUD = `proposals.manage`, emitir/aceitar = `reservations.cancel`; aceite com arquivo usa `POST .../proposal/decision` (multipart), recusa/devolução permanece `PATCH` JSON
+- **Nota Entrega 3:** testemunhas escolhidas no POST do PDF da construtora (`witness_1_user_id` / `witness_2_user_id`); sold exige 4 assinaturas; badge `pending_action` no card + `pending-actions-count` no menu (inclui reply); testemunha assina sem `reservations.cancel`
+- **Nota Entrega 4:** colunas derivadas de `status` + anexos (sem coluna `situation`); drag chama services existentes; 422 `action_required` abre o dialog; testemunha não arrasta; gestor vê todas, corretor só as suas
 
 ## Blockers
 

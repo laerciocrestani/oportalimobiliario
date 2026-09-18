@@ -99,8 +99,13 @@ class ReservationContractCompletionService
         });
     }
 
-    public function uploadBuilderSigned(User $builder, Reservation $reservation, UploadedFile $file): Reservation
-    {
+    public function uploadBuilderSigned(
+        User $builder,
+        Reservation $reservation,
+        UploadedFile $file,
+        int $witness1UserId,
+        int $witness2UserId,
+    ): Reservation {
         if (! $reservation->canUploadBuilderSignedContract()) {
             abort(422, 'Reservation is not open for builder signed contract upload.');
         }
@@ -117,7 +122,9 @@ class ReservationContractCompletionService
 
         $this->validateSignedPdf($file);
 
-        return DB::transaction(function () use ($builder, $reservation, $file) {
+        return DB::transaction(function () use ($builder, $reservation, $file, $witness1UserId, $witness2UserId) {
+            $this->syncWitnesses($builder, $reservation, $witness1UserId, $witness2UserId);
+
             $path = $this->storeFile($reservation, $file);
 
             $attachment = $reservation->attachments()->create([
@@ -137,10 +144,82 @@ class ReservationContractCompletionService
                 $reservation,
                 ReservationTimelineEventType::ContractBuilderSigned,
                 $builder,
-                ['attachment_id' => $attachment->id],
+                [
+                    'attachment_id' => $attachment->id,
+                    'witness_1_user_id' => $witness1UserId,
+                    'witness_2_user_id' => $witness2UserId,
+                ],
             );
 
-            return $reservation->fresh(['unit', 'attachments']);
+            return $reservation->fresh(['unit', 'attachments', 'witnesses.user']);
+        });
+    }
+
+    public function assignWitnesses(
+        User $builder,
+        Reservation $reservation,
+        int $witness1UserId,
+        int $witness2UserId,
+    ): Reservation {
+        if (! $reservation->isContractUploaded() && ! $reservation->isContractBuilderSigned()) {
+            abort(422, 'Reservation is not open for witness assignment.');
+        }
+
+        return DB::transaction(function () use ($builder, $reservation, $witness1UserId, $witness2UserId) {
+            $this->syncWitnesses($builder, $reservation, $witness1UserId, $witness2UserId);
+
+            return $reservation->fresh(['unit', 'attachments', 'witnesses.user']);
+        });
+    }
+
+    public function signAsWitness(User $user, Reservation $reservation, int $slot): Reservation
+    {
+        if (! in_array($slot, [1, 2], true)) {
+            abort(422, 'Slot de testemunha inválido.');
+        }
+
+        if (! $reservation->isContractBuilderSigned()) {
+            abort(422, 'A construtora precisa assinar o contrato antes das testemunhas.');
+        }
+
+        if ($slot === 2) {
+            $first = $reservation->witnessForSlot(1);
+
+            if ($first === null || ! $first->hasSigned()) {
+                abort(422, 'A testemunha 1 precisa assinar antes da testemunha 2.');
+            }
+        }
+
+        $witness = $reservation->witnessForSlot($slot);
+
+        if ($witness === null) {
+            abort(422, 'Nenhuma testemunha definida para este lugar.');
+        }
+
+        if ((int) $witness->user_id !== (int) $user->id) {
+            abort(403, 'Forbidden.');
+        }
+
+        if ($witness->hasSigned()) {
+            abort(422, 'Esta testemunha já registrou a assinatura.');
+        }
+
+        return DB::transaction(function () use ($user, $reservation, $witness, $slot) {
+            $witness->update(['signed_at' => now()]);
+
+            $this->timelineService->record(
+                $reservation,
+                $slot === 1
+                    ? ReservationTimelineEventType::ContractWitness1Signed
+                    : ReservationTimelineEventType::ContractWitness2Signed,
+                $user,
+                [
+                    'slot' => $slot,
+                    'witness_user_id' => $user->id,
+                ],
+            );
+
+            return $reservation->fresh(['unit', 'attachments', 'witnesses.user']);
         });
     }
 
@@ -154,6 +233,14 @@ class ReservationContractCompletionService
 
         if ($attachment === null) {
             abort(422, 'Builder signed contract attachment not found.');
+        }
+
+        if ($this->latestSignedContract($reservation) === null) {
+            abort(422, 'Contrato assinado pelo comprador não encontrado.');
+        }
+
+        if (! $reservation->hasAllWitnessSignatures()) {
+            abort(422, 'As duas testemunhas precisam registrar a assinatura antes de marcar como vendida.');
         }
 
         return DB::transaction(function () use ($builder, $reservation, $attachment, $note) {
@@ -189,8 +276,82 @@ class ReservationContractCompletionService
                 ['unit_id' => $unit->id],
             );
 
-            return $reservation->fresh(['unit', 'attachments']);
+            return $reservation->fresh(['unit', 'attachments', 'witnesses.user']);
         });
+    }
+
+    /**
+     * @return list<array{id: int, name: string}>
+     */
+    public function witnessCandidates(Reservation $reservation): array
+    {
+        return User::query()
+            ->where('tenant_id', $reservation->tenant_id)
+            ->where('role', 'builder')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (User $member) => [
+                'id' => $member->id,
+                'name' => $member->name,
+            ])
+            ->values()
+            ->all();
+    }
+
+    private function syncWitnesses(
+        User $actor,
+        Reservation $reservation,
+        int $witness1UserId,
+        int $witness2UserId,
+    ): void {
+        $reservation->loadMissing('witnesses');
+
+        if ($reservation->witnesses->contains(fn ($witness) => $witness->hasSigned())) {
+            abort(422, 'Não é possível alterar testemunhas após uma assinatura.');
+        }
+
+        if ($witness1UserId === $witness2UserId) {
+            abort(422, 'As testemunhas devem ser pessoas diferentes.');
+        }
+
+        $witness1 = $this->assertTeamMember($reservation, $witness1UserId);
+        $witness2 = $this->assertTeamMember($reservation, $witness2UserId);
+
+        $reservation->witnesses()->delete();
+
+        $reservation->witnesses()->create([
+            'user_id' => $witness1->id,
+            'slot' => 1,
+        ]);
+        $reservation->witnesses()->create([
+            'user_id' => $witness2->id,
+            'slot' => 2,
+        ]);
+
+        $this->timelineService->record(
+            $reservation,
+            ReservationTimelineEventType::ContractWitnessesAssigned,
+            $actor,
+            [
+                'witness_1_user_id' => $witness1->id,
+                'witness_2_user_id' => $witness2->id,
+            ],
+        );
+    }
+
+    private function assertTeamMember(Reservation $reservation, int $userId): User
+    {
+        $member = User::query()
+            ->where('id', $userId)
+            ->where('tenant_id', $reservation->tenant_id)
+            ->where('role', 'builder')
+            ->first();
+
+        if ($member === null) {
+            abort(422, 'Testemunha deve ser um membro da equipe desta construtora.');
+        }
+
+        return $member;
     }
 
     public function latestSignedContract(Reservation $reservation): ?ReservationAttachment

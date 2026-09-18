@@ -87,7 +87,7 @@ Ordem fixa exibida ao usuário. Steps sem evento ainda = `upcoming`; step do `cu
 |-------|-------|---------------|-----------|
 | 1 | `pre_hold_created` | Pré-reserva | `pre_hold_created` |
 | 2 | `dialogue` | Diálogo com construtora | `dialogue` (derivado de `messages_count > 0`) |
-| 3 | `proposal_submitted` | Proposta enviada | `proposal_submitted` |
+| 3 | `proposal_submitted` | Proposta | `proposal_submitted` |
 | 4 | `proposal_decision` | Decisão do gestor | `proposal_accepted` \| `proposal_rejected` \| `proposal_returned` |
 | 5 | `deposit_window` | Aguardando sinal (48h) | `deposit_window_opened`, `deposit_overdue` |
 | 6 | `deposit_proof` | Comprovante de pagamento | `deposit_proof_submitted`, `deposit_proof_approved` |
@@ -130,10 +130,10 @@ Ordem fixa exibida ao usuário. Steps sem evento ainda = `upcoming`; step do `cu
 | `zip` | string | |
 | `marital_status` | string | |
 | `nationality` | string | |
-| `land_value` | decimal | Valor do terreno |
-| `payment_terms` | text | Condições de pagamento |
+| `land_value` | decimal | Opcional no envio da proposta; preenchido depois se necessário |
+| `payment_terms` | text | Proposta comercial (entrada, parcelamento e demais condições) |
 | `decision` | enum nullable | `accepted` \| `rejected` \| `returned` |
-| `decision_note` | text nullable | Motivo devolução/recusa |
+| `decision_note` | text nullable | Motivo da devolução/recusa (obrigatório nesses casos; entra no diálogo) |
 | `submitted_by` | FK users | Corretor |
 | `decided_by` | FK users nullable | Gestor |
 | `decided_at` | timestamp nullable | |
@@ -180,7 +180,7 @@ expired
 |-------|------|-----------|
 | `id` | PK | |
 | `reservation_id` | FK | |
-| `kind` | enum | `deposit_proof` \| `contract_documentation` \| `contract_pdf` \| `contract_signed` \| `contract_signed_builder` |
+| `kind` | enum | `proposal` \| `deposit_proof` \| `contract_documentation` \| `contract_pdf` \| `contract_signed` \| `contract_signed_builder` |
 | `path` | string | Storage disk `local` |
 | `original_name` | string | |
 | `mime_type` | string | |
@@ -236,7 +236,7 @@ Padrão de upload: [`BuildingMediaController`](../../../backend/app/Http/Control
 | `current_stage` | Corretor | Gestor |
 |-----------------|----------|--------|
 | `pre_hold` | `submit_proposal`, `open_dialogue` | `open_dialogue` |
-| `proposal_pending` | — | `decide_proposal` |
+| `proposal_pending` | — | painel de decisão (Aceitar / Devolver / Recusar) |
 | `proposal_returned` | `submit_proposal` | — |
 | `deposit_pending` | `submit_deposit_proof` | — |
 | `deposit_proof_pending` | — | `approve_deposit_proof` |
@@ -251,28 +251,16 @@ Padrão de upload: [`BuildingMediaController`](../../../backend/app/Http/Control
 
 #### `POST /api/broker/reservations/{reservation}/proposal`
 
-**Body:**
+`multipart/form-data`:
 
-```json
-{
-  "client_name": "Maria Silva",
-  "client_email": "maria@email.com",
-  "client_phone": "11999999999",
-  "client_cpf": "12345678900",
-  "address": "Rua A, 100",
-  "city": "São Paulo",
-  "state": "SP",
-  "zip": "01000-000",
-  "marital_status": "casada",
-  "nationality": "brasileira",
-  "land_value": 150000.00,
-  "payment_terms": "Pix R$ 10.000 + terreno + 24x R$ 5.000"
-}
-```
+- `client_name`, `client_phone`, `payment_terms`
+- `files[]` (obrigatório, 1–10 arquivos: JPEG, PNG, WebP ou PDF, até 10MB)
 
-**201:** proposta criada + `stage: proposal_pending` + evento `proposal_submitted`
+Dados cadastrais completos (CPF, endereço, estado civil, e-mail) são enviados depois em `POST /contract-data`.
 
-**422:** stage inválido, pré-reserva expirada, campos obrigatórios
+**201:** proposta criada + anexos `kind: proposal` + `stage: proposal_pending` + evento `proposal_submitted` (`attachment_ids` no payload)
+
+**422:** stage inválido, pré-reserva expirada, campos obrigatórios, sem anexo
 
 #### `PATCH /api/builder/reservations/{reservation}/proposal/decision`
 
@@ -280,12 +268,19 @@ Padrão de upload: [`BuildingMediaController`](../../../backend/app/Http/Control
 
 ```json
 {
-  "decision": "accepted",
-  "decision_note": "opcional"
+  "decision": "returned",
+  "decision_note": "obrigatório para rejected e returned"
 }
 ```
 
 `decision`: `accepted` | `rejected` | `returned`
+
+Devolução e recusa gravam uma mensagem no diálogo da reserva:
+
+- `Proposta devolvida: {decision_note}`
+- `Proposta recusada: {decision_note}`
+
+A UI da proposta exibe um alerta com o motivo e um ícone para abrir o diálogo.
 
 **200:** stage atualizado conforme decisão
 

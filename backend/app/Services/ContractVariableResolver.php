@@ -74,17 +74,18 @@ class ContractVariableResolver
     }
 
     /**
+     * @param  list<array{slug?: mixed, label?: mixed}|mixed>  $customVariables
      * @return list<string>
      */
-    public function requiredCustomSlugs(ContractTemplate $template): array
+    public function requiredPlaceholders(string $markdown, array $customVariables): array
     {
         $customSlugs = array_values(array_filter(array_map(
             fn (mixed $variable): string => is_array($variable) ? (string) ($variable['slug'] ?? '') : '',
-            $template->custom_variables ?? [],
+            $customVariables,
         )));
 
-        $used = $this->extractPlaceholders($template->body_markdown);
-        $unknown = $this->unknownPlaceholders($template->body_markdown, $customSlugs);
+        $used = $this->extractPlaceholders($markdown);
+        $unknown = $this->unknownPlaceholders($markdown, $customSlugs);
 
         return array_values(array_unique([
             ...array_intersect($customSlugs, $used),
@@ -93,10 +94,27 @@ class ContractVariableResolver
     }
 
     /**
+     * @return list<string>
+     */
+    public function requiredCustomSlugs(ContractTemplate $template): array
+    {
+        return $this->requiredPlaceholders($template->body_markdown, $template->custom_variables ?? []);
+    }
+
+    /**
      * @param  array<string, mixed>  $overrides
      * @return array<string, string>
      */
     public function mergeValues(Reservation $reservation, ContractTemplate $template, array $overrides, string $finalPriceBrl): array
+    {
+        return $this->mergeOverrides($reservation, $overrides, $finalPriceBrl);
+    }
+
+    /**
+     * @param  array<string, mixed>  $overrides
+     * @return array<string, string>
+     */
+    public function mergeOverrides(Reservation $reservation, array $overrides, string $finalPriceBrl): array
     {
         $values = $this->systemValues($reservation, $finalPriceBrl);
 

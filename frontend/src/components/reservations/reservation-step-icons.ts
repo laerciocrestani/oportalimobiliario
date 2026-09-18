@@ -13,6 +13,7 @@ import {
   ReceiptIcon,
   ScaleIcon,
   ShieldCheckIcon,
+  UsersIcon,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -28,6 +29,8 @@ export const RESERVATION_STEP_KEYS = [
   'contract_sign_gov',
   'contract_upload',
   'contract_builder_sign',
+  'contract_witness_1',
+  'contract_witness_2',
   'contract_validate',
   'sold',
 ] as const
@@ -46,6 +49,8 @@ export const RESERVATION_STEP_ICONS: Record<ReservationStepKey, LucideIcon> = {
   contract_sign_gov: PenLineIcon,
   contract_upload: FileUpIcon,
   contract_builder_sign: FilePenLineIcon,
+  contract_witness_1: UsersIcon,
+  contract_witness_2: UsersIcon,
   contract_validate: ShieldCheckIcon,
   sold: KeyRoundIcon,
 }

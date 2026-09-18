@@ -108,9 +108,19 @@ class ReservationContractDataService
             }
 
             if ($client !== null) {
-                $client->update([
+                $clientUpdates = [
                     'email' => $payload['client_email'] !== '' ? $payload['client_email'] : null,
-                ]);
+                ];
+
+                if (trim((string) ($data['client_name'] ?? '')) !== '') {
+                    $clientUpdates['name'] = $payload['client_name'];
+                }
+
+                if (trim((string) ($data['client_phone'] ?? '')) !== '') {
+                    $clientUpdates['phone'] = $payload['client_phone'];
+                }
+
+                $client->update($clientUpdates);
             }
 
             $this->timelineService->record(

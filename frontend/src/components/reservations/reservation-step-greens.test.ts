@@ -10,11 +10,11 @@ import {
 } from '@/components/reservations/reservation-step-greens'
 
 describe('reservationStepGreenClass', () => {
-  it('maps the 13 timeline steps to a rising green scale', () => {
-    expect(RESERVATION_STEP_KEYS).toHaveLength(13)
-    expect(RESERVATION_STEP_GREEN_CLASSES).toHaveLength(13)
+  it('maps the 15 timeline steps to a rising green scale', () => {
+    expect(RESERVATION_STEP_KEYS).toHaveLength(15)
+    expect(RESERVATION_STEP_GREEN_CLASSES).toHaveLength(15)
     expect(reservationStepProgressIndex('pre_hold_created')).toBe(0)
-    expect(reservationStepProgressIndex('sold')).toBe(12)
+    expect(reservationStepProgressIndex('sold')).toBe(14)
     expect(reservationStepGreenClass('pre_hold_created')).toContain('bg-emerald-50')
     expect(reservationStepGreenClass('sold')).toContain('bg-[oklch(12%_0.08_172.552)]')
   })
@@ -36,9 +36,9 @@ describe('reservationStepGreenClass', () => {
     expect(reservationStepProgressFillClass('sold')).toContain('bg-[oklch(12%_0.08_172.552)]')
   })
 
-  it('computes the current step as a fraction of the 13-step flow', () => {
-    expect(reservationStepProgress('pre_hold_created')).toEqual({ current: 1, total: 13, percent: 8 })
-    expect(reservationStepProgress('proposal_decision')).toEqual({ current: 4, total: 13, percent: 31 })
-    expect(reservationStepProgress('sold')).toEqual({ current: 13, total: 13, percent: 100 })
+  it('computes the current step as a fraction of the 15-step flow', () => {
+    expect(reservationStepProgress('pre_hold_created')).toEqual({ current: 1, total: 15, percent: 7 })
+    expect(reservationStepProgress('proposal_decision')).toEqual({ current: 4, total: 15, percent: 27 })
+    expect(reservationStepProgress('sold')).toEqual({ current: 15, total: 15, percent: 100 })
   })
 })

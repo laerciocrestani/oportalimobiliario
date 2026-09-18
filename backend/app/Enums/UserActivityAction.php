@@ -18,19 +18,24 @@ enum UserActivityAction: string
     case ReservationPreHoldCreated = 'reservation.pre_hold.created';
     case ReservationPreHoldCancelled = 'reservation.pre_hold.cancelled';
     case ReservationPreHoldConfirmed = 'reservation.pre_hold.confirmed';
+    case ReservationHoldExtended = 'reservation.hold.extended';
     case ReservationCreated = 'reservation.created';
     case ReservationCancelled = 'reservation.cancelled';
     case ReservationMessageSent = 'reservation.message.sent';
     case ReservationProposalSubmitted = 'reservation.proposal.submitted';
+    case ReservationProposalPdfIssued = 'reservation.proposal.pdf_issued';
     case ReservationProposalAccepted = 'reservation.proposal.accepted';
     case ReservationProposalRejected = 'reservation.proposal.rejected';
     case ReservationProposalReturned = 'reservation.proposal.returned';
+    case ReservationProposalSignedBoth = 'reservation.proposal.signed_both';
     case ReservationDepositProofSubmitted = 'reservation.deposit_proof.submitted';
     case ReservationDepositProofApproved = 'reservation.deposit_proof.approved';
     case ReservationContractDataSubmitted = 'reservation.contract_data.submitted';
     case ReservationContractIssued = 'reservation.contract.issued';
     case ReservationContractUploaded = 'reservation.contract.uploaded';
     case ReservationContractBuilderSigned = 'reservation.contract.builder_signed';
+    case ReservationContractWitnessesAssigned = 'reservation.contract.witnesses_assigned';
+    case ReservationContractWitnessSigned = 'reservation.contract.witness_signed';
     case ReservationContractValidated = 'reservation.contract.validated';
     case ReservationSold = 'reservation.sold';
 

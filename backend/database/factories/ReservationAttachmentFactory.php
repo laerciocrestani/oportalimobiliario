@@ -28,6 +28,15 @@ class ReservationAttachmentFactory extends Factory
         ];
     }
 
+    public function proposal(): static
+    {
+        return $this->state(fn () => [
+            'kind' => ReservationAttachmentKind::Proposal,
+            'original_name' => 'proposta.pdf',
+            'mime_type' => 'application/pdf',
+        ]);
+    }
+
     public function depositProof(): static
     {
         return $this->state(fn () => ['kind' => ReservationAttachmentKind::DepositProof]);
@@ -63,6 +72,30 @@ class ReservationAttachmentFactory extends Factory
         return $this->state(fn () => [
             'kind' => ReservationAttachmentKind::ContractSignedBuilder,
             'original_name' => 'contrato-assinado-construtora.pdf',
+        ]);
+    }
+
+    public function proposalPdf(): static
+    {
+        return $this->state(fn () => [
+            'kind' => ReservationAttachmentKind::ProposalPdf,
+            'original_name' => 'proposta.pdf',
+        ]);
+    }
+
+    public function proposalSignedBuilder(): static
+    {
+        return $this->state(fn () => [
+            'kind' => ReservationAttachmentKind::ProposalSignedBuilder,
+            'original_name' => 'proposta-assinada-construtora.pdf',
+        ]);
+    }
+
+    public function proposalSignedBoth(): static
+    {
+        return $this->state(fn () => [
+            'kind' => ReservationAttachmentKind::ProposalSignedBoth,
+            'original_name' => 'proposta-assinada.pdf',
         ]);
     }
 }

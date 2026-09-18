@@ -8,15 +8,14 @@ type BuilderDashboardShellProps = {
   title: string
   children: ReactNode
   actions?: ReactNode
+  fill?: boolean
 }
 
-export function BuilderDashboardShell({ title, children, actions }: BuilderDashboardShellProps) {
+export function BuilderDashboardShell({ title, children, actions, fill = false }: BuilderDashboardShellProps) {
   const { user, permissions } = useBuilderPermissions()
   const canManageReservations = permissions.includes('reservations.cancel')
-  const { count: pendingRepliesCount } = useReservationNavBadge(
-    'builder',
-    canManageReservations,
-  )
+  const { count: pendingActionsCount, witnessScope } = useReservationNavBadge('builder', true)
+  const canAccessReservations = canManageReservations || witnessScope || pendingActionsCount > 0
 
   const navConfig = useMemo(() => {
     const base = dashboardNav.builder
@@ -27,10 +26,13 @@ export function BuilderDashboardShell({ title, children, actions }: BuilderDashb
           return permissions.includes('buildings.view')
         }
         if (item.url === '/reservations') {
-          return canManageReservations
+          return canAccessReservations
         }
         if (item.url === '/contracts') {
           return permissions.includes('contracts.manage')
+        }
+        if (item.url === '/proposals') {
+          return permissions.includes('proposals.manage')
         }
         if (item.url === '/team') {
           return permissions.includes('team.manage')
@@ -46,7 +48,7 @@ export function BuilderDashboardShell({ title, children, actions }: BuilderDashb
         return true
       })
       .map((item) =>
-        item.url === '/reservations' ? { ...item, badge: pendingRepliesCount } : item,
+        item.url === '/reservations' ? { ...item, badge: pendingActionsCount } : item,
       )
 
     return {
@@ -56,10 +58,10 @@ export function BuilderDashboardShell({ title, children, actions }: BuilderDashb
         : base.user,
       navMain,
     }
-  }, [canManageReservations, pendingRepliesCount, permissions, user])
+  }, [canAccessReservations, pendingActionsCount, permissions, user])
 
   return (
-    <DashboardShell role="builder" title={title} navConfig={navConfig} actions={actions}>
+    <DashboardShell role="builder" title={title} navConfig={navConfig} actions={actions} fill={fill}>
       {children}
     </DashboardShell>
   )

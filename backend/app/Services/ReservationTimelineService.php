@@ -9,6 +9,7 @@ use App\Models\ReservationAttachment;
 use App\Models\ReservationProposal;
 use App\Models\ReservationTimelineEvent;
 use App\Models\User;
+use App\Support\BuilderPermissions;
 use Illuminate\Support\Collection;
 
 /**
@@ -22,8 +23,9 @@ class ReservationTimelineService
     private const STEPS = [
         ['key' => 'pre_hold_created', 'label' => 'Pré-reserva', 'event_types' => [ReservationTimelineEventType::PreHoldCreated]],
         ['key' => 'dialogue', 'label' => 'Diálogo com construtora', 'event_types' => [ReservationTimelineEventType::Dialogue]],
-        ['key' => 'proposal_submitted', 'label' => 'Proposta enviada', 'event_types' => [ReservationTimelineEventType::ProposalSubmitted]],
+        ['key' => 'proposal_submitted', 'label' => 'Proposta', 'event_types' => [ReservationTimelineEventType::ProposalSubmitted]],
         ['key' => 'proposal_decision', 'label' => 'Decisão do gestor', 'event_types' => [
+            ReservationTimelineEventType::ProposalPdfIssued,
             ReservationTimelineEventType::ProposalAccepted,
             ReservationTimelineEventType::ProposalRejected,
             ReservationTimelineEventType::ProposalReturned,
@@ -31,6 +33,7 @@ class ReservationTimelineService
         ['key' => 'deposit_window', 'label' => 'Aguardando sinal (48h)', 'event_types' => [
             ReservationTimelineEventType::DepositWindowOpened,
             ReservationTimelineEventType::DepositOverdue,
+            ReservationTimelineEventType::ProposalSignedBoth,
         ]],
         ['key' => 'deposit_proof', 'label' => 'Comprovante de pagamento', 'event_types' => [
             ReservationTimelineEventType::DepositProofSubmitted,
@@ -41,6 +44,8 @@ class ReservationTimelineService
         ['key' => 'contract_sign_gov', 'label' => 'Assinatura GOV', 'event_types' => [ReservationTimelineEventType::ContractSignedGov]],
         ['key' => 'contract_upload', 'label' => 'Contrato assinado pelo comprador', 'event_types' => [ReservationTimelineEventType::ContractUploaded]],
         ['key' => 'contract_builder_sign', 'label' => 'Contrato assinado pela construtora', 'event_types' => [ReservationTimelineEventType::ContractBuilderSigned]],
+        ['key' => 'contract_witness_1', 'label' => 'Assinatura da testemunha 1', 'event_types' => [ReservationTimelineEventType::ContractWitness1Signed]],
+        ['key' => 'contract_witness_2', 'label' => 'Assinatura da testemunha 2', 'event_types' => [ReservationTimelineEventType::ContractWitness2Signed]],
         ['key' => 'contract_validate', 'label' => 'Validação final', 'event_types' => [ReservationTimelineEventType::ContractValidated]],
         ['key' => 'sold', 'label' => 'Unidade vendida', 'event_types' => [ReservationTimelineEventType::Sold]],
     ];
@@ -104,7 +109,7 @@ class ReservationTimelineService
      */
     public function build(Reservation $reservation, User $viewer): array
     {
-        $reservation->loadMissing(['unit', 'broker', 'client', 'timelineEvents.actor', 'proposals', 'attachments']);
+        $reservation->loadMissing(['unit', 'broker', 'client', 'timelineEvents.actor', 'proposals', 'attachments', 'witnesses.user']);
 
         $events = $reservation->timelineEvents->sortBy('created_at');
         $messagesCount = $reservation->messages()->count();
@@ -151,13 +156,61 @@ class ReservationTimelineService
                 'phone' => $reservation->client->phone,
                 'email' => $reservation->client->email,
             ],
-            'current_proposal' => $currentProposal?->toApiArray(),
+            'current_proposal' => $this->proposalToApiArray($currentProposal, $reservation, $attachmentPrefix),
             'current_deposit_proof' => $currentDepositProof?->toApiArray($attachmentPrefix),
             'current_signed_contract' => $currentSignedContract?->toApiArray($attachmentPrefix),
             'current_builder_signed_contract' => $currentBuilderSignedContract?->toApiArray($attachmentPrefix),
+            'witnesses' => $reservation->witnesses
+                ->sortBy('slot')
+                ->values()
+                ->map(fn ($witness) => $witness->toApiArray($viewer))
+                ->all(),
             'attachments' => $visibleAttachments,
             'steps' => $steps,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function proposalToApiArray(?ReservationProposal $proposal, Reservation $reservation, string $attachmentPrefix): ?array
+    {
+        if ($proposal === null) {
+            return null;
+        }
+
+        return [
+            ...$proposal->toApiArray(),
+            'attachments' => $this->proposalVersionAttachments($reservation, $proposal, $attachmentPrefix),
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function proposalVersionAttachments(Reservation $reservation, ReservationProposal $proposal, string $attachmentPrefix): array
+    {
+        $event = $reservation->timelineEvents
+            ->where('type', ReservationTimelineEventType::ProposalSubmitted)
+            ->filter(fn (ReservationTimelineEvent $event) => (int) ($event->payload['proposal_id'] ?? 0) === $proposal->id)
+            ->sortByDesc('id')
+            ->first();
+
+        $ids = collect($event?->payload['attachment_ids'] ?? [])
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        if ($ids === []) {
+            return [];
+        }
+
+        return $reservation->attachments
+            ->where('kind', ReservationAttachmentKind::Proposal)
+            ->whereIn('id', $ids)
+            ->sortBy('id')
+            ->values()
+            ->map(fn (ReservationAttachment $attachment) => $attachment->toApiArray($attachmentPrefix))
+            ->all();
     }
 
     /**
@@ -192,14 +245,14 @@ class ReservationTimelineService
      */
     public function situation(Reservation $reservation): array
     {
-        $reservation->loadMissing(['timelineEvents', 'proposals', 'messages', 'attachments']);
+        $reservation->loadMissing(['timelineEvents', 'proposals', 'messages', 'attachments', 'witnesses']);
 
         $events = $reservation->timelineEvents->sortBy('created_at');
         $messagesCount = $reservation->messages_count ?? $reservation->messages->count();
         $currentKey = $this->resolveCurrentStepKey($reservation, $messagesCount, $events);
         $currentIndex = $this->stepIndex($currentKey);
 
-        $currentStatus = $this->resolveSituationStatus($currentKey, $events);
+        $currentStatus = $this->resolveSituationStatus($currentKey, $events, $reservation);
         $current = $this->situationStep(
             $currentIndex,
             $reservation,
@@ -251,6 +304,10 @@ class ReservationTimelineService
             return 'proposal_decision';
         }
 
+        if ($reservation->isCancelled()) {
+            return $this->resolveCancelledStepKey($messagesCount, $events);
+        }
+
         if ($reservation->isProposalPending()) {
             return 'proposal_decision';
         }
@@ -264,9 +321,19 @@ class ReservationTimelineService
             return 'sold';
         }
 
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractWitness2Signed)
+            || $reservation->hasAllWitnessSignatures()) {
+            return 'contract_validate';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractWitness1Signed)
+            || $reservation->witnessForSlot(1)?->hasSigned()) {
+            return 'contract_witness_2';
+        }
+
         if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractBuilderSigned)
             || $reservation->isContractBuilderSigned()) {
-            return 'contract_validate';
+            return 'contract_witness_1';
         }
 
         if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractUploaded)
@@ -409,9 +476,7 @@ class ReservationTimelineService
                 ),
                 'due_at' => $this->resolveDueAt($definition['key'], $status, $reservation),
                 'actor' => $this->formatActor($latestEvent),
-                'actions' => $status === 'current'
-                    ? $this->resolveActions($definition['key'], $viewer)
-                    : [],
+                'actions' => $this->resolveVisibleActions($reservation, $status, $definition['key'], $viewer),
             ];
 
             $steps[] = $step;
@@ -432,6 +497,14 @@ class ReservationTimelineService
         int $messagesCount,
         bool $isLegacyConfirmed,
     ): string {
+        if ($reservation->isCancelled() && $index === $currentIndex) {
+            return 'failed';
+        }
+
+        if ($reservation->isCancelled() && $index > $currentIndex) {
+            return 'skipped';
+        }
+
         if ($stepEvents->isNotEmpty()) {
             $failedTypes = [
                 ReservationTimelineEventType::ProposalRejected,
@@ -462,6 +535,10 @@ class ReservationTimelineService
         }
 
         if ($index === $currentIndex) {
+            if ($reservation->isCancelled()) {
+                return 'failed';
+            }
+
             return 'current';
         }
 
@@ -595,24 +672,167 @@ class ReservationTimelineService
     /**
      * @return list<string>
      */
-    private function resolveActions(string $stepKey, User $viewer): array
+    private function resolveVisibleActions(
+        Reservation $reservation,
+        string $status,
+        string $stepKey,
+        User $viewer,
+    ): array {
+        if ($reservation->isCancelled()) {
+            return in_array($status, ['current', 'failed'], true) ? ['open_dialogue'] : [];
+        }
+
+        $actions = $status === 'current' ? $this->resolveActions($stepKey, $viewer, $reservation) : [];
+
+        if ($status === 'current' && $reservation->hasClientHold()) {
+            $isBroker = $viewer->role === 'broker';
+            $actions = [
+                ...$actions,
+                ...($isBroker ? ['submit_deposit_proof'] : ['extend_hold', 'drop_hold']),
+            ];
+        }
+
+        return array_values(array_unique($actions));
+    }
+
+    /**
+     * @param  Collection<int, ReservationTimelineEvent>  $events
+     */
+    private function resolveCancelledStepKey(int $messagesCount, Collection $events): string
+    {
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractValidated)) {
+            return 'sold';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractWitness2Signed)) {
+            return 'contract_validate';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractWitness1Signed)) {
+            return 'contract_witness_2';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractBuilderSigned)) {
+            return 'contract_witness_1';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractUploaded)) {
+            return 'contract_builder_sign';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractSignedGov)) {
+            return 'contract_upload';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractIssued)) {
+            return 'contract_sign_gov';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractDataSubmitted)
+            || $events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::DepositProofApproved)) {
+            return 'contract_issue';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::DepositProofSubmitted)) {
+            return 'deposit_proof';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::DepositWindowOpened)
+            || $events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ProposalAccepted)) {
+            return 'deposit_window';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ProposalSubmitted)) {
+            return 'proposal_decision';
+        }
+
+        if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ProposalReturned)) {
+            return 'proposal_submitted';
+        }
+
+        return $messagesCount > 0 ? 'dialogue' : 'pre_hold_created';
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function resolveActions(string $stepKey, User $viewer, Reservation $reservation): array
     {
         $isBroker = $viewer->role === 'broker';
 
         return match ($stepKey) {
             'dialogue' => ['open_dialogue'],
             'proposal_submitted' => $isBroker ? ['submit_proposal', 'open_dialogue'] : ['open_dialogue'],
-            'proposal_decision' => $isBroker ? ['open_dialogue'] : ['decide_proposal', 'open_dialogue'],
-            'deposit_window' => $isBroker ? ['submit_deposit_proof'] : [],
-            'deposit_proof' => $isBroker ? [] : ['approve_deposit_proof'],
+            'proposal_decision' => ['open_dialogue'],
+            'deposit_window' => $isBroker ? $this->depositWindowBrokerActions($reservation) : [],
+            'deposit_proof' => $this->depositProofActions($reservation, $isBroker),
             'contract_data' => $isBroker ? ['submit_contract_data'] : [],
             'contract_issue' => $isBroker ? [] : ['issue_contract'],
             'contract_sign_gov' => $isBroker ? ['mark_signed_gov'] : ['issue_contract'],
             'contract_upload' => $isBroker ? ['upload_signed_contract'] : [],
-            'contract_builder_sign' => $isBroker ? [] : ['upload_builder_signed_contract'],
-            'contract_validate' => $isBroker ? [] : ['validate_contract'],
+            'contract_builder_sign' => $this->isBuilderManager($viewer) ? ['upload_builder_signed_contract'] : [],
+            'contract_witness_1' => $this->witnessSignActions($reservation, $viewer, 1),
+            'contract_witness_2' => $this->witnessSignActions($reservation, $viewer, 2),
+            'contract_validate' => $this->isBuilderManager($viewer) ? ['validate_contract'] : [],
             default => [],
         };
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function witnessSignActions(Reservation $reservation, User $viewer, int $slot): array
+    {
+        $witness = $reservation->witnessForSlot($slot);
+
+        if ($witness === null || $witness->hasSigned()) {
+            return [];
+        }
+
+        if ((int) $witness->user_id !== (int) $viewer->id) {
+            return [];
+        }
+
+        if ($slot === 2) {
+            $first = $reservation->witnessForSlot(1);
+
+            if ($first === null || ! $first->hasSigned()) {
+                return [];
+            }
+        }
+
+        return ['sign_as_witness'];
+    }
+
+    private function isBuilderManager(User $viewer): bool
+    {
+        return $viewer->role === 'builder' && $viewer->can(BuilderPermissions::CANCEL_RESERVATIONS);
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function depositWindowBrokerActions(Reservation $reservation): array
+    {
+        $actions = ['submit_deposit_proof'];
+
+        if ($reservation->canReturnSignedProposal()) {
+            $actions[] = 'return_signed_proposal';
+        }
+
+        return $actions;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function depositProofActions(Reservation $reservation, bool $isBroker): array
+    {
+        if ($isBroker) {
+            return $reservation->canReturnSignedProposal() ? ['return_signed_proposal'] : [];
+        }
+
+        return ['approve_deposit_proof'];
     }
 
     private function stepIndex(string $key): int
@@ -691,10 +911,14 @@ class ReservationTimelineService
     /**
      * @param  Collection<int, ReservationTimelineEvent>  $events
      */
-    private function resolveSituationStatus(string $currentKey, Collection $events): string
+    private function resolveSituationStatus(string $currentKey, Collection $events, Reservation $reservation): string
     {
         if ($currentKey === 'sold') {
             return 'completed';
+        }
+
+        if ($reservation->isCancelled()) {
+            return 'failed';
         }
 
         $isFailed = match ($currentKey) {
@@ -715,11 +939,7 @@ class ReservationTimelineService
      */
     private function resolveWaitingOn(string $currentKey, string $currentStatus): ?string
     {
-        if ($currentStatus === 'completed') {
-            return null;
-        }
-
-        if ($currentKey === 'proposal_decision' && $currentStatus === 'failed') {
+        if ($currentStatus === 'completed' || $currentStatus === 'failed') {
             return null;
         }
 
@@ -735,6 +955,8 @@ class ReservationTimelineService
             'deposit_proof',
             'contract_issue',
             'contract_builder_sign',
+            'contract_witness_1',
+            'contract_witness_2',
             'contract_validate' => 'builder',
             default => null,
         };

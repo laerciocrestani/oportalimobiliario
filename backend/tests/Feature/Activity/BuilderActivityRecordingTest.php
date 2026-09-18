@@ -18,6 +18,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Support\BuilderPermissions;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
 it('records building create, update, publish and delete', function () {
@@ -217,8 +218,11 @@ it('records builder reservation decisions and messages via the shared write path
 
     Sanctum::actingAs($builder);
 
-    $this->patchJson("/api/builder/reservations/{$reservation->id}/proposal/decision", [
+    Storage::fake('local');
+
+    $this->patch("/api/builder/reservations/{$reservation->id}/proposal/decision", [
         'decision' => ProposalDecision::Accepted->value,
+        'signed_file' => signedProposalPdf(),
     ])->assertOk();
 
     assertUserActivity($builder, UserActivityAction::ReservationProposalAccepted, '101', $reservation->id);

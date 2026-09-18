@@ -56,7 +56,7 @@ describe('BrokerContractDataDialog', () => {
     vi.mocked(lookupCep).mockReset()
     vi.mocked(brokerApi.submitContractData).mockReset()
   })
-  it('shows registered name and phone as read-only and keeps submit disabled until remaining fields are filled', () => {
+  it('shows registered name and phone as editable and keeps submit disabled until remaining fields are filled', () => {
     render(
       <BrokerContractDataDialog
         open
@@ -68,10 +68,10 @@ describe('BrokerContractDataDialog', () => {
       />,
     )
 
-    expect(screen.getByLabelText('Nome')).toHaveValue('Ana Silva')
-    expect(screen.getByLabelText('Nome')).toBeDisabled()
-    expect(screen.getByLabelText('Telefone')).toHaveValue('(11) 88888-8888')
-    expect(screen.getByLabelText('Telefone')).toBeDisabled()
+    expect(screen.getByLabelText('Nome *')).toHaveValue('Ana Silva')
+    expect(screen.getByLabelText('Nome *')).toBeEnabled()
+    expect(screen.getByLabelText('Telefone *')).toHaveValue('(11) 88888-8888')
+    expect(screen.getByLabelText('Telefone *')).toBeEnabled()
     expect(screen.queryByRole('button', { name: 'Cancelar' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Enviar dados do contrato' })).toBeDisabled()
   })

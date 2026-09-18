@@ -28,6 +28,7 @@ Labels PT em `BuilderPermissions::labels()`.
 | `reservations.cancel` | Cancelar reservas | Listar/cancelar reservas, thread de mensagens (builder) |
 | `team.manage` | Gerenciar equipe | CRUD `/api/builder/team` |
 | `contracts.manage` | Gerenciar contratos | CRUD modelos de contrato |
+| `proposals.manage` | Gerenciar propostas | CRUD modelos de proposta |
 | `audit.view` | Auditar atividade da equipe | Ver log de outros builders do mesmo tenant |
 
 ### Policies que usam permissions
@@ -40,9 +41,10 @@ Labels PT em `BuilderPermissions::labels()`.
 | `BuildingMediaPolicy` | `buildings.manage` |
 | `BrokerInvitePolicy` | `invites.send` |
 | `BuildingAccessPolicy` | `access.manage` |
-| `ReservationPolicy` | `reservations.cancel` (builder); ownership (broker) |
+| `ReservationPolicy` | `reservations.cancel` (gestor: listar/cancelar/Kanban); ownership (broker); testemunha atribuída (`view` / `viewTimeline` / `signAsWitness`) sem permission extra. `moveKanban` = gestor ou dono da reserva |
 | `TeamMemberPolicy` | `team.manage` |
 | `ContractTemplatePolicy` | `contracts.manage` |
+| `ProposalTemplatePolicy` | `proposals.manage` |
 
 Todas as policies builder usam `AuthorizesBuilderTenant` para validar mesmo `tenant_id`.
 
@@ -72,8 +74,9 @@ Impersonate: `POST /api/admin/tenants/{tenant}/impersonate`.
 - `GET /api/auth/me` retorna `permissions: string[]` para builders.
 - Hook: `apps/builder/hooks/use-builder-permissions.ts`
 - Constantes espelhadas: `apps/builder/lib/builder-permissions.ts`
-- Nav item **Reservas** (builder): visível apenas com `reservations.cancel`
+- Nav item **Reservas** (builder): visível com `reservations.cancel` **ou** `witness_scope` / pendências em `pending-actions-count` (testemunha escolhida na reserva)
 - Nav item **Contratos**: visível apenas com `contracts.manage` (CRUD de modelos; emitir PDF na reserva usa `reservations.cancel`)
+- Nav item **Propostas**: visível apenas com `proposals.manage` (CRUD de modelos; emitir PDF e aceitar na reserva usa `reservations.cancel`)
 - Nav item **Equipe**: visível apenas com `team.manage`
 - Nav item **Atividade** (`/activity`): visível a todo builder autenticado (próprio log); seletor de equipe só com `audit.view`
 
@@ -83,7 +86,7 @@ Impersonate: `POST /api/admin/tenants/{tenant}/impersonate`.
 
 | Usuário | Permissions |
 |---------|-------------|
-| `construtora@alpha.demo` | todas (10, inclui `audit.view`) |
+| `construtora@alpha.demo` | todas (11, inclui `audit.view` e `proposals.manage`) |
 | `comercial@alpha.demo` | `buildings.view`, `invites.send` (sem `audit.view`) |
 | `supervisor@alpha.demo` | `buildings.view`, `units.update_status`, `reservations.cancel` (sem `audit.view`) |
 

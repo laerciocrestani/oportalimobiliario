@@ -34,6 +34,7 @@ import {
 } from '@/lib/api'
 import { cpfDigits, formatCpf, formatPhone, isValidCpf } from '@/lib/br-docs'
 import { formatCep, lookupCep } from '@/lib/viacep'
+import { WhatsAppPhoneInput } from '@/components/whatsapp-phone-input'
 
 type BrokerContractDataDialogProps = {
   open: boolean
@@ -244,6 +245,8 @@ export function BrokerContractDataDialog({
     hasSpouse && cpfDigits(form.spouse_cpf).length === 11 && !isValidCpf(form.spouse_cpf)
 
   const canSubmit =
+    form.client_name.trim() !== '' &&
+    form.client_phone.trim() !== '' &&
     isValidCpf(form.client_cpf) &&
     form.client_rg.trim() !== '' &&
     form.address.trim() !== '' &&
@@ -309,7 +312,7 @@ export function BrokerContractDataDialog({
         <DialogHeader>
           <DialogTitle>Dados para contrato</DialogTitle>
           <DialogDescription>
-            Nome e telefone já foram cadastrados. Complete as demais informações e anexe a documentação do cliente.
+            Confira nome e telefone, complete as demais informações e anexe a documentação do cliente.
           </DialogDescription>
         </DialogHeader>
 
@@ -323,15 +326,25 @@ export function BrokerContractDataDialog({
             <TabsContent value="client" className="flex flex-col gap-5">
               <FieldGroup>
                 <FieldSet>
-                  <FieldLegend>Dados já cadastrados</FieldLegend>
+                  <FieldLegend>Dados do cliente</FieldLegend>
                   <FieldGroup className="grid grid-cols-1 sm:grid-cols-2">
-                    <Field data-disabled>
-                      <FieldLabel htmlFor="contract-name">Nome</FieldLabel>
-                      <Input id="contract-name" value={form.client_name} disabled />
+                    <Field>
+                      <FieldLabel htmlFor="contract-name">Nome *</FieldLabel>
+                      <Input
+                        id="contract-name"
+                        value={form.client_name}
+                        onChange={(e) => updateField('client_name', e.target.value)}
+                        disabled={submitting}
+                      />
                     </Field>
-                    <Field data-disabled>
-                      <FieldLabel htmlFor="contract-phone">Telefone</FieldLabel>
-                      <Input id="contract-phone" value={form.client_phone} disabled />
+                    <Field>
+                      <FieldLabel htmlFor="contract-phone">Telefone *</FieldLabel>
+                      <WhatsAppPhoneInput
+                        id="contract-phone"
+                        value={form.client_phone}
+                        onChange={(value) => updateField('client_phone', value)}
+                        disabled={submitting}
+                      />
                     </Field>
                   </FieldGroup>
                 </FieldSet>

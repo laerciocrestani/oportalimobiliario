@@ -76,7 +76,8 @@ sequenceDiagram
 - Pré-reserva: `PreReservationService.php`, `Broker/ReservationController.php`
 - Expiração confirmadas: `ReservationExpirationService.php`, `ExpireReservations.php`
 - Expiração pré-holds: `PreReservationService.php`, `ExpirePreReservations.php`
-- TTL: `config/opim.php` → `pre_reservation_ttl_minutes` (10), `reservation_ttl_hours` (48)
+- TTL: `config/opim.php` → `pre_reservation_ttl_minutes` (10, sem cliente), `pre_reservation_hold_hours` (48, com cliente), `reservation_ttl_hours` (48 legado)
+- Hold gestor: `PATCH .../hold/extend`, `POST .../hold/drop`
 - Scheduler: serviço Docker `scheduler` (`php artisan schedule:work`)
 - FE polling: `frontend/src/lib/reservation-polling.ts`, `BrokerUnitsDialog.tsx`
 
@@ -124,7 +125,7 @@ sequenceDiagram
     Bld->>API: POST /builder/reservations/{id}/messages
     Brk->>API: GET /broker/reservations/{id}/messages
     Brk->>API: POST /broker/reservations/{id}/messages
-    Note over Bld,Brk: badge pending-replies-count na nav
+    Note over Bld,Brk: badge pending-actions-count na nav (inclui reply)
 ```
 
 **Policy:** `ReservationPolicy::viewMessages` — broker só vê próprias reservas; builder precisa `reservations.cancel` + mesmo tenant.
@@ -162,6 +163,8 @@ flowchart TD
         S10[contract_signed_gov]
         S11[contract_uploaded]
         S12[contract_builder_signed]
+        S12a[contract_witness_1]
+        S12b[contract_witness_2]
         S13[contract_validated]
         S14[sold]
     end
@@ -172,13 +175,14 @@ flowchart TD
     S4 -->|devolvida| S4c --> S2
     S5 --> S6 --> S7
     S5 -->|sem sinal| S7alert
-    S7 --> S8 --> S9 --> S10 --> S11 --> S12 --> S13 --> S14
+    S7 --> S8 --> S9 --> S10 --> S11 --> S12 --> S12a --> S12b --> S13 --> S14
 ```
 
 ### 4.1 Sequência por ator
 
 ```mermaid
 sequenceDiagram
+    participant Wit as Testemunha
     participant Brk as Corretor
     participant Bld as Gestor
     participant API as API
@@ -195,9 +199,12 @@ sequenceDiagram
     Bld->>API: POST contract/issue (PDF)
     Brk->>API: POST contract/gov (registro manual)
     Brk->>API: POST contract/signed (PDF comprador)
-    Bld->>API: POST contract/signed (PDF construtora)
+    Bld->>API: POST contract/signed (PDF construtora + testemunhas)
+    Wit->>API: POST contract/witnesses/1/sign
+    Wit->>API: POST contract/witnesses/2/sign
     Bld->>API: PATCH contract/validate (nota opcional)
-    Note over API: unit sold
+    Note over API: unit sold apenas com todas as assinaturas
+    Note over Brk: badge in-app no card e no menu
     CMD->>API: deposit_overdue alert (se 48h sem comprovante)
 ```
 
@@ -206,7 +213,7 @@ sequenceDiagram
 | Endpoint | Ator |
 |----------|------|
 | `GET /api/broker/reservations/{id}/timeline` | Corretor dono |
-| `GET /api/builder/reservations/{id}/timeline` | Gestor (`reservations.cancel`) |
+| `GET /api/builder/reservations/{id}/timeline` | Gestor (`reservations.cancel`) ou testemunha atribuída |
 
 Resposta: `current_stage`, `expires_at`, `steps[]` com status `completed` | `current` | `upcoming` | `skipped` | `failed`.
 
@@ -223,10 +230,18 @@ Resposta: `current_stage`, `expires_at`, `steps[]` com status `completed` | `cur
 | Emissão de contrato | Gestor escolhe modelo ativo, preenche variáveis + R$ final; gera PDF (`contract_pdf`) e congela `frozen_price_brl` |
 | Reemissão | Substitui o PDF até existir contrato assinado / evento GOV |
 | PDF para o corretor | Somente leitura/download no andamento da reserva |
+| Emissão de proposta | Gestor escolhe modelo ativo, preenche variáveis; gera PDF (`proposal_pdf`). CRUD dos modelos: `proposals.manage`; emitir: `reservations.cancel` |
+| Aceite com PDF assinado | Gestor envia `proposal_signed_builder` no aceite; sem arquivo a API recusa (422) |
+| Devolução da proposta | Corretor envia `proposal_signed_both` + comprovante de sinal opcional num único POST |
+| Contrato sequencial | Comprador assina → corretor envia PDF → construtora assina e escolhe 2 testemunhas da equipe → testemunha 1 → testemunha 2 → gestor marca `sold` |
+| Testemunhas | Users builder do mesmo tenant, escolhidas **por reserva** (`reservation_witnesses`). Assinatura é registro in-app (sem gov.br / e-mail). Sem `reservations.cancel` só para assinar |
+| Venda (`sold`) | Só o gestor (`reservations.cancel`). 422 se faltar PDF do comprador, da construtora ou assinatura de alguma testemunha |
+| Aviso pendente | In-app: `pending_action` no card do Kanban + contador `pending-actions-count` no menu Reservas (não perde o badge de reply) |
+| Kanban | 7 colunas derivadas de `status` + anexos (`kanban_column`). `PATCH .../kanban` chama o mesmo service da transição; movimento que precisa de upload/formulário devolve 422 `action_required` e o UI abre o dialog central |
 
 ### 4.4 Alinhamento com v2 atual
 
-Fluxo completo: pré-reserva → diálogo → proposta → sinal → dados/contrato → GOV → PDF assinado → `sold`.
+Fluxo completo: pré-reserva → diálogo → proposta → sinal → dados/contrato → GOV → PDF comprador → PDF construtora + testemunhas → testemunhas assinam → `sold`.
 
 **Arquivos previstos:** ver [reservation-timeline/design.md § Arquivos previstos](../features/reservation-timeline/design.md#arquivos-previstos-implementação).
 

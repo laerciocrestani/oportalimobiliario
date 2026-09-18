@@ -4,6 +4,10 @@ namespace App\Enums;
 
 enum ReservationAttachmentKind: string
 {
+    case Proposal = 'proposal';
+    case ProposalPdf = 'proposal_pdf';
+    case ProposalSignedBuilder = 'proposal_signed_builder';
+    case ProposalSignedBoth = 'proposal_signed_both';
     case DepositProof = 'deposit_proof';
     case ContractDocumentation = 'contract_documentation';
     case ContractPdf = 'contract_pdf';

@@ -38,4 +38,23 @@ describe('ReservationWaitingStatus', () => {
     expect(screen.getByText('—')).toBeInTheDocument()
     expect(screen.queryByText('Aguardando você')).not.toBeInTheDocument()
   })
+
+  it('shows cancelled status instead of a waiting badge', () => {
+    render(
+      <ReservationWaitingStatus waitingOn="broker" profile="builder" reservationStatus="cancelled" />,
+    )
+
+    expect(screen.getByText('Cancelada')).toBeInTheDocument()
+    expect(screen.queryByText('Aguardando você')).not.toBeInTheDocument()
+    expect(screen.queryByText('Aguardando corretor')).not.toBeInTheDocument()
+  })
+
+  it('does not mark the manager as waiting when the pending action belongs to a witness', () => {
+    render(
+      <ReservationWaitingStatus waitingOn="builder" profile="builder" needsAction={false} />,
+    )
+
+    expect(screen.getByText('Aguardando construtora')).toBeInTheDocument()
+    expect(screen.queryByText('Aguardando você')).not.toBeInTheDocument()
+  })
 })

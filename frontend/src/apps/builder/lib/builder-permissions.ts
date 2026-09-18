@@ -8,6 +8,7 @@ export const BUILDER_PERMISSIONS = [
   'reservations.cancel',
   'team.manage',
   'contracts.manage',
+  'proposals.manage',
   'audit.view',
 ] as const
 
@@ -23,5 +24,6 @@ export const builderPermissionLabels: Record<BuilderPermission, string> = {
   'reservations.cancel': 'Cancelar reservas',
   'team.manage': 'Gerenciar equipe',
   'contracts.manage': 'Gerenciar contratos',
+  'proposals.manage': 'Gerenciar propostas',
   'audit.view': 'Auditar atividade da equipe',
 }

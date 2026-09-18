@@ -17,7 +17,7 @@ Ordem de execução (`DatabaseSeeder`):
 ```
 TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → AmenitySeeder → BuildingSeeder
 → WizardBuildingSeeder → TowerSeeder → UnitSeeder → BuildingMediaSeeder → BrokerInviteSeeder → BrokerTenantSeeder
-→ UnitAccessSeeder → BuildingAccessSeeder → ReservationSeeder → ContractTemplateSeeder
+→ UnitAccessSeeder → BuildingAccessSeeder → ReservationSeeder → ContractTemplateSeeder → ProposalTemplateSeeder
 ```
 
 ---
@@ -69,6 +69,7 @@ TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → Ame
 | `BrokerTenantSeeder` | Vínculo corretor ↔ tenant após aceite |
 | `ReservationSeeder` | Reservas ativas e expiradas para testes |
 | `ContractTemplateSeeder` | Modelo **Compra e venda padrão** no tenant Alpha |
+| `ProposalTemplateSeeder` | Modelo **Proposta comercial padrão** no tenant Alpha |
 
 ### Residencial Bosque (caminho do wizard)
 

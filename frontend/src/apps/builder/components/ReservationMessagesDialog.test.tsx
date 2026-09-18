@@ -90,4 +90,33 @@ describe('ReservationMessagesDialog', () => {
       'end',
     )
   })
+
+  it('hides the composer when the reservation is read-only', async () => {
+    vi.mocked(builderApi.listReservationMessages).mockResolvedValue([
+      {
+        id: 1,
+        body: 'Cliente prefere canto.',
+        created_at: '2026-06-12T10:00:00.000000Z',
+        author: { id: 2, name: 'Corretor Alpha', role: 'broker' },
+      },
+    ])
+
+    render(
+      <ReservationMessagesDialog
+        profile="builder"
+        reservationId={5}
+        open
+        onOpenChange={() => {}}
+        readOnly
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByText('Cliente prefere canto.')).toBeInTheDocument()
+    })
+
+    expect(screen.queryByLabelText('Sua mensagem')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Enviar' })).not.toBeInTheDocument()
+    expect(screen.getByText(/apenas para consulta/)).toBeInTheDocument()
+  })
 })

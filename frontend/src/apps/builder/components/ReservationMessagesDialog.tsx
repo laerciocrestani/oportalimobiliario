@@ -48,6 +48,7 @@ type ReservationMessagesDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
   onMessageSent?: () => void
+  readOnly?: boolean
 }
 
 function formatDateTime(value: string): string {
@@ -84,6 +85,7 @@ export function ReservationMessagesDialog({
   open,
   onOpenChange,
   onMessageSent,
+  readOnly = false,
 }: ReservationMessagesDialogProps) {
   const [messages, setMessages] = useState<ReservationMessage[]>([])
   const [body, setBody] = useState('')
@@ -225,6 +227,11 @@ export function ReservationMessagesDialog({
           ) : null}
         </div>
 
+        {readOnly ? (
+          <p className="border-t px-3 py-2 text-sm text-muted-foreground">
+            Reserva cancelada — a conversa fica disponível apenas para consulta.
+          </p>
+        ) : (
         <form
           className="border-t p-3"
           onSubmit={(event) => {
@@ -261,6 +268,7 @@ export function ReservationMessagesDialog({
             {error ? <FieldError>{error}</FieldError> : null}
           </Field>
         </form>
+        )}
       </DialogContent>
     </Dialog>
   )

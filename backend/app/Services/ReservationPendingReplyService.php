@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
 use App\Models\Reservation;
 use App\Models\ReservationMessage;
 use App\Models\ReservationTimelineEvent;
+use App\Models\ReservationWitness;
 use App\Models\User;
+use App\Support\BuilderPermissions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
@@ -14,16 +17,20 @@ class ReservationPendingReplyService
 {
     public function __construct(
         private readonly ReservationTimelineService $timelineService,
+        private readonly ReservationKanbanService $kanbanService,
     ) {}
 
     public function needsReplyFromUser(Reservation $reservation, User $user): bool
     {
-        $latestMessage = $reservation->messages()
-            ->with('user:id,role')
-            ->latest('id')
-            ->first();
+        if ($reservation->isReadOnly()) {
+            return false;
+        }
 
-        if ($latestMessage === null) {
+        $latestMessage = $reservation->relationLoaded('messages')
+            ? $reservation->messages->sortByDesc('id')->first()
+            : $reservation->messages()->with('user:id,role')->latest('id')->first();
+
+        if ($latestMessage === null || $latestMessage->user === null) {
             return false;
         }
 
@@ -33,7 +40,7 @@ class ReservationPendingReplyService
     public function countForBuilder(): int
     {
         return $this->countWhereLatestMessageFromRole(
-            Reservation::query()->listed(),
+            Reservation::query()->listed()->where('status', '!=', ReservationStatus::Cancelled),
             'broker',
         );
     }
@@ -44,9 +51,73 @@ class ReservationPendingReplyService
             Reservation::query()
                 ->withoutGlobalScope('tenant')
                 ->listed()
+                ->where('status', '!=', ReservationStatus::Cancelled)
                 ->where('broker_id', $broker->id),
             'builder',
         );
+    }
+
+    public function pendingActionCountForBuilder(User $builder): int
+    {
+        return $this->pendingActionPayloadForBuilder($builder)['count'];
+    }
+
+    public function pendingActionCountForBroker(User $broker): int
+    {
+        return $this->pendingActionPayloadForBroker($broker)['count'];
+    }
+
+    /**
+     * @return array{count: int, witness_scope: bool}
+     */
+    public function pendingActionPayloadForBuilder(User $builder): array
+    {
+        $isManager = $builder->can(BuilderPermissions::CANCEL_RESERVATIONS);
+        $witnessReservationIds = ReservationWitness::query()
+            ->where('user_id', $builder->id)
+            ->pluck('reservation_id');
+
+        $query = Reservation::query()
+            ->listed()
+            ->where('status', '!=', ReservationStatus::Cancelled)
+            ->when(
+                ! $isManager,
+                fn (Builder $builderQuery) => $builderQuery->whereIn('id', $witnessReservationIds),
+            );
+
+        $reservations = $query
+            ->with(['messages.user:id,role', 'timelineEvents', 'attachments', 'witnesses', 'proposals'])
+            ->get();
+
+        $count = $reservations
+            ->filter(fn (Reservation $reservation) => $this->pendingActionFor($reservation, $builder) !== null)
+            ->count();
+
+        return [
+            'count' => $count,
+            'witness_scope' => $witnessReservationIds->isNotEmpty(),
+        ];
+    }
+
+    /**
+     * @return array{count: int, witness_scope: bool}
+     */
+    public function pendingActionPayloadForBroker(User $broker): array
+    {
+        $reservations = Reservation::query()
+            ->withoutGlobalScope('tenant')
+            ->listed()
+            ->where('status', '!=', ReservationStatus::Cancelled)
+            ->where('broker_id', $broker->id)
+            ->with(['messages.user:id,role', 'timelineEvents', 'attachments', 'witnesses', 'proposals'])
+            ->get();
+
+        return [
+            'count' => $reservations
+                ->filter(fn (Reservation $reservation) => $this->pendingActionFor($reservation, $broker) !== null)
+                ->count(),
+            'witness_scope' => false,
+        ];
     }
 
     /**
@@ -54,6 +125,11 @@ class ReservationPendingReplyService
      */
     public function formatListItem(Reservation $reservation, User $viewer): array
     {
+        $isManager = $viewer->role === 'builder' && $viewer->can(BuilderPermissions::CANCEL_RESERVATIONS);
+        $pendingAction = $this->pendingActionFor($reservation, $viewer);
+        $needsWitnessSignature = $pendingAction === 'witness_signature';
+        $needsSoldValidation = $pendingAction === 'sold_validation';
+
         return [
             'id' => $reservation->id,
             'status' => $reservation->status->value,
@@ -61,10 +137,16 @@ class ReservationPendingReplyService
             'expires_at' => $reservation->expires_at,
             'messages_count' => $reservation->messages_count ?? $reservation->messages()->count(),
             'needs_reply' => $this->needsReplyFromUser($reservation, $viewer),
-            'needs_proposal_decision' => $reservation->isProposalPending(),
-            'needs_deposit_proof_approval' => $reservation->isDepositProofPending(),
+            'needs_proposal_decision' => $isManager && $reservation->isProposalPending(),
+            'needs_deposit_proof_approval' => $isManager && $reservation->isDepositProofPending(),
+            'needs_witness_signature' => $needsWitnessSignature,
+            'needs_sold_validation' => $needsSoldValidation,
+            'needs_action' => $pendingAction !== null,
+            'pending_action' => $pendingAction,
             'deposit_overdue' => $this->isDepositOverdue($reservation),
             'situation' => $this->timelineService->situation($reservation),
+            'kanban_column' => $this->kanbanService->column($reservation)->value,
+            'allowed_kanban_moves' => $this->kanbanService->allowedMoves($reservation, $viewer),
             'client' => $reservation->client ? [
                 'id' => $reservation->client->id,
                 'name' => $reservation->client->name,
@@ -84,13 +166,102 @@ class ReservationPendingReplyService
         ];
     }
 
-    private function isDepositOverdue(Reservation $reservation): bool
+    public function pendingActionFor(Reservation $reservation, User $viewer): ?string
+    {
+        if ($reservation->isReadOnly() || $reservation->isSold()) {
+            return null;
+        }
+
+        if ($viewer->role === 'broker') {
+            return $this->pendingActionForBroker($reservation, $viewer);
+        }
+
+        return $this->pendingActionForBuilder($reservation, $viewer);
+    }
+
+    private function pendingActionForBroker(Reservation $reservation, User $viewer): ?string
+    {
+        if ($reservation->isProposalReturned()) {
+            return 'submit_proposal';
+        }
+
+        if ($reservation->canReturnSignedProposal()) {
+            return 'return_signed_proposal';
+        }
+
+        if ($reservation->canSubmitDepositProof() && $reservation->isDepositPending()) {
+            return 'submit_deposit_proof';
+        }
+
+        if ($reservation->canSubmitContractData()) {
+            return 'submit_contract_data';
+        }
+
+        if ($reservation->isContractIssued() && ! $this->hasTimelineEvent($reservation, ReservationTimelineEventType::ContractSignedGov)) {
+            return 'mark_signed_gov';
+        }
+
+        if ($reservation->canUploadSignedContract() && $this->hasTimelineEvent($reservation, ReservationTimelineEventType::ContractSignedGov)) {
+            return 'upload_signed_contract';
+        }
+
+        if ($this->needsReplyFromUser($reservation, $viewer)) {
+            return 'reply';
+        }
+
+        return null;
+    }
+
+    private function pendingActionForBuilder(Reservation $reservation, User $viewer): ?string
+    {
+        $slot = $reservation->currentUnsignedWitnessSlot();
+        $currentWitness = $slot === null ? null : $reservation->witnessForSlot($slot);
+
+        if ($currentWitness !== null && (int) $currentWitness->user_id === (int) $viewer->id) {
+            return 'witness_signature';
+        }
+
+        $isManager = $viewer->can(BuilderPermissions::CANCEL_RESERVATIONS);
+
+        if (! $isManager) {
+            return null;
+        }
+
+        if ($reservation->isProposalPending()) {
+            return 'proposal_decision';
+        }
+
+        if ($reservation->isDepositProofPending()) {
+            return 'deposit_proof_approval';
+        }
+
+        if ($reservation->canUploadBuilderSignedContract()) {
+            return 'builder_contract_sign';
+        }
+
+        if ($reservation->isContractBuilderSigned() && $reservation->hasAllWitnessSignatures()) {
+            return 'sold_validation';
+        }
+
+        if ($this->needsReplyFromUser($reservation, $viewer)) {
+            return 'reply';
+        }
+
+        return null;
+    }
+
+    private function hasTimelineEvent(Reservation $reservation, ReservationTimelineEventType $type): bool
     {
         $reservation->loadMissing('timelineEvents');
 
         return $reservation->timelineEvents->contains(
-            fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::DepositOverdue,
+            fn (ReservationTimelineEvent $event) => $event->type === $type,
         );
+    }
+
+    private function isDepositOverdue(Reservation $reservation): bool
+    {
+        return $this->hasTimelineEvent($reservation, ReservationTimelineEventType::DepositOverdue);
     }
 
     private function countWhereLatestMessageFromRole(Builder $reservationsQuery, string $latestAuthorRole): int

@@ -20,6 +20,7 @@ class PreReservationService
     public function __construct(
         private readonly ReservationTimelineService $timelineService,
         private readonly UserActivityCatalog $activityCatalog,
+        private readonly ReservationHoldService $holdService,
     ) {}
 
     /**
@@ -86,9 +87,11 @@ class PreReservationService
                 abort(422, 'Unidade não está mais disponível.');
             }
 
+            $holdHours = (int) config('opim.pre_reservation_hold_hours', 48);
+
             $reservation->update([
                 'client_id' => $client->id,
-                'expires_at' => null,
+                'expires_at' => now()->addHours($holdHours),
             ]);
 
             if ($observationsText !== '') {
@@ -149,6 +152,13 @@ class PreReservationService
         $count = 0;
 
         foreach ($expired as $reservation) {
+            if ($reservation->client_id !== null) {
+                $this->holdService->expireStalled($reservation);
+                $count++;
+
+                continue;
+            }
+
             DB::transaction(function () use ($reservation, &$count) {
                 $unit = Unit::query()
                     ->withoutGlobalScope('tenant')

@@ -505,9 +505,11 @@ class UserActivityCatalog
         return match ($type) {
             ReservationTimelineEventType::PreHoldCreated => UserActivityAction::ReservationPreHoldCreated,
             ReservationTimelineEventType::ProposalSubmitted => UserActivityAction::ReservationProposalSubmitted,
+            ReservationTimelineEventType::ProposalPdfIssued => UserActivityAction::ReservationProposalPdfIssued,
             ReservationTimelineEventType::ProposalAccepted => UserActivityAction::ReservationProposalAccepted,
             ReservationTimelineEventType::ProposalRejected => UserActivityAction::ReservationProposalRejected,
             ReservationTimelineEventType::ProposalReturned => UserActivityAction::ReservationProposalReturned,
+            ReservationTimelineEventType::ProposalSignedBoth => UserActivityAction::ReservationProposalSignedBoth,
             ReservationTimelineEventType::DepositProofSubmitted => UserActivityAction::ReservationDepositProofSubmitted,
             ReservationTimelineEventType::DepositProofApproved => UserActivityAction::ReservationDepositProofApproved,
             ReservationTimelineEventType::ContractDataSubmitted => UserActivityAction::ReservationContractDataSubmitted,
@@ -515,9 +517,13 @@ class UserActivityCatalog
             ReservationTimelineEventType::ContractSignedGov => UserActivityAction::ReservationContractUploaded,
             ReservationTimelineEventType::ContractUploaded => UserActivityAction::ReservationContractUploaded,
             ReservationTimelineEventType::ContractBuilderSigned => UserActivityAction::ReservationContractBuilderSigned,
+            ReservationTimelineEventType::ContractWitnessesAssigned => UserActivityAction::ReservationContractWitnessesAssigned,
+            ReservationTimelineEventType::ContractWitness1Signed,
+            ReservationTimelineEventType::ContractWitness2Signed => UserActivityAction::ReservationContractWitnessSigned,
             ReservationTimelineEventType::ContractValidated => UserActivityAction::ReservationContractValidated,
             ReservationTimelineEventType::Sold => UserActivityAction::ReservationSold,
             ReservationTimelineEventType::Cancelled => UserActivityAction::ReservationCancelled,
+            ReservationTimelineEventType::HoldExtended => UserActivityAction::ReservationHoldExtended,
             ReservationTimelineEventType::Dialogue,
             ReservationTimelineEventType::DepositWindowOpened,
             ReservationTimelineEventType::DepositOverdue,
@@ -538,9 +544,14 @@ class UserActivityCatalog
         return match ($type) {
             ReservationTimelineEventType::PreHoldCreated => "Criou pré-reserva da unidade {$unit}.",
             ReservationTimelineEventType::ProposalSubmitted => $this->proposalSubmittedMessage($reservation, $unit, $payload),
+            ReservationTimelineEventType::ProposalPdfIssued => "Emitiu o PDF da proposta da unidade {$unit}.",
             ReservationTimelineEventType::ProposalAccepted => "Aceitou a proposta da unidade {$unit}.",
             ReservationTimelineEventType::ProposalRejected => $this->withNote("Recusou a proposta da unidade {$unit}.", $payload),
             ReservationTimelineEventType::ProposalReturned => $this->withNote("Devolveu a proposta da unidade {$unit} para revisão.", $payload),
+            ReservationTimelineEventType::ProposalSignedBoth => $this->attachmentMessage(
+                "Devolveu a proposta assinada por ambas as partes da unidade {$unit}",
+                $payload['attachment_id'] ?? null,
+            ),
             ReservationTimelineEventType::DepositProofSubmitted => $this->attachmentMessage(
                 "Enviou comprovante de sinal da unidade {$unit}",
                 $payload['attachment_id'] ?? null,
@@ -557,11 +568,25 @@ class UserActivityCatalog
                 "Enviou o contrato assinado pela construtora da unidade {$unit}",
                 $payload['attachment_id'] ?? null,
             ),
+            ReservationTimelineEventType::ContractWitnessesAssigned => "Definiu as testemunhas do contrato da unidade {$unit}.",
+            ReservationTimelineEventType::ContractWitness1Signed => "Registrou a assinatura da testemunha 1 no contrato da unidade {$unit}.",
+            ReservationTimelineEventType::ContractWitness2Signed => "Registrou a assinatura da testemunha 2 no contrato da unidade {$unit}.",
             ReservationTimelineEventType::ContractValidated => "Validou o contrato assinado da unidade {$unit}.",
             ReservationTimelineEventType::Sold => "Marcou a unidade {$unit} como vendida.",
             ReservationTimelineEventType::Cancelled => $this->withNote("Cancelou a reserva da unidade {$unit}.", $payload, 'reason'),
+            ReservationTimelineEventType::HoldExtended => $this->holdExtendedMessage($unit, $payload),
             default => "Registrou {$type->value} na reserva da unidade {$unit}.",
         };
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $payload
+     */
+    private function holdExtendedMessage(string $unit, ?array $payload): string
+    {
+        $hours = (int) ($payload['hours'] ?? 48);
+
+        return "Estendeu em {$hours}h o prazo da pré-reserva da unidade {$unit}.";
     }
 
     /**
@@ -578,7 +603,27 @@ class UserActivityCatalog
             return "Enviou proposta da unidade {$unit}.";
         }
 
-        return "Enviou proposta da unidade {$unit} para {$proposal->client_name}, CPF {$proposal->client_cpf}, telefone {$proposal->client_phone}, valor do terreno R$ {$proposal->land_value}.";
+        $details = ["Enviou proposta da unidade {$unit} para {$proposal->client_name}"];
+
+        if ($proposal->client_cpf !== '') {
+            $details[] = "CPF {$proposal->client_cpf}";
+        }
+
+        $details[] = "telefone {$proposal->client_phone}";
+
+        if ((float) $proposal->land_value > 0) {
+            $details[] = "valor do terreno R$ {$proposal->land_value}";
+        }
+
+        $attachmentNames = collect($payload['attachment_names'] ?? [])
+            ->filter(fn ($name) => is_string($name) && $name !== '')
+            ->values();
+
+        if ($attachmentNames->isNotEmpty()) {
+            $details[] = 'anexos '.$attachmentNames->implode(', ');
+        }
+
+        return implode(', ', $details).'.';
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ReservationAttachmentKind;
 use App\Enums\ReservationStatus;
 use App\Tenancy\Concerns\BelongsToTenant;
 use Database\Factories\ReservationFactory;
@@ -58,6 +59,7 @@ class Reservation extends Model
                     ReservationStatus::ContractUploaded,
                     ReservationStatus::ContractBuilderSigned,
                     ReservationStatus::Sold,
+                    ReservationStatus::Cancelled,
                 ])
                 ->orWhere(function (Builder $preHoldWithClient): void {
                     $preHoldWithClient
@@ -130,6 +132,11 @@ class Reservation extends Model
         return $this->status === ReservationStatus::Cancelled;
     }
 
+    public function isReadOnly(): bool
+    {
+        return $this->isCancelled();
+    }
+
     public function isConfirmed(): bool
     {
         return in_array($this->status, [
@@ -143,9 +150,27 @@ class Reservation extends Model
         ], true);
     }
 
+    public function hasClientHold(): bool
+    {
+        return $this->isPreHold() && $this->client_id !== null;
+    }
+
     public function canSubmitDepositProof(): bool
     {
-        return $this->isDepositPending();
+        return $this->isDepositPending() || $this->hasClientHold();
+    }
+
+    public function canReturnSignedProposal(): bool
+    {
+        if ($this->attachments()->where('kind', ReservationAttachmentKind::ProposalSignedBoth)->exists()) {
+            return false;
+        }
+
+        if (! $this->attachments()->where('kind', ReservationAttachmentKind::ProposalSignedBuilder)->exists()) {
+            return false;
+        }
+
+        return $this->isDepositPending() || $this->isDepositProofPending();
     }
 
     public function canSubmitContractData(): bool
@@ -171,6 +196,63 @@ class Reservation extends Model
     public function canValidateContract(): bool
     {
         return $this->isContractBuilderSigned();
+    }
+
+    public function hasAssignedWitnesses(): bool
+    {
+        $this->loadMissing('witnesses');
+
+        $slots = $this->witnesses->pluck('slot');
+
+        return $slots->contains(1) && $slots->contains(2);
+    }
+
+    public function hasAllWitnessSignatures(): bool
+    {
+        $this->loadMissing('witnesses');
+
+        $signedSlots = $this->witnesses
+            ->filter(fn (ReservationWitness $witness) => $witness->hasSigned())
+            ->pluck('slot');
+
+        return $signedSlots->contains(1) && $signedSlots->contains(2);
+    }
+
+    public function witnessForSlot(int $slot): ?ReservationWitness
+    {
+        $this->loadMissing('witnesses');
+
+        return $this->witnesses->firstWhere('slot', $slot);
+    }
+
+    public function isAssignedWitness(User $user): bool
+    {
+        $this->loadMissing('witnesses');
+
+        return $this->witnesses->contains(
+            fn (ReservationWitness $witness) => (int) $witness->user_id === (int) $user->id,
+        );
+    }
+
+    public function currentUnsignedWitnessSlot(): ?int
+    {
+        if (! $this->isContractBuilderSigned()) {
+            return null;
+        }
+
+        $first = $this->witnessForSlot(1);
+
+        if ($first !== null && ! $first->hasSigned()) {
+            return 1;
+        }
+
+        $second = $this->witnessForSlot(2);
+
+        if ($second !== null && ! $second->hasSigned()) {
+            return 2;
+        }
+
+        return null;
     }
 
     public function contractTemplate(): BelongsTo
@@ -220,6 +302,12 @@ class Reservation extends Model
     public function attachments(): HasMany
     {
         return $this->hasMany(ReservationAttachment::class);
+    }
+
+    /** @return HasMany<ReservationWitness, $this> */
+    public function witnesses(): HasMany
+    {
+        return $this->hasMany(ReservationWitness::class);
     }
 
     public function isExpired(): bool

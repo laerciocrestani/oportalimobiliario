@@ -107,8 +107,22 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 | REQ-RPF-013 | Contrato sequencial + invariante de `sold` | `ReservationContractCompletionService.php`, `Builder/ReservationWitnessController.php`, `ReservationTimelineService.php` | `BuilderSignedContractDialog.tsx`, `BuilderWitnessSignDialog.tsx`, `BuilderMarkSoldDialog.tsx`, `ReservationProgressDialog.tsx` | `ReservationWitnessTest.php`, `ReservationContractCompletionTest.php`, `BuilderSignedContractDialog.test.tsx`, `BuilderWitnessSignDialog.test.tsx`, `BuilderMarkSoldDialog.test.tsx` |
 | REQ-RPF-014 | Testemunhas = equipe do tenant, por reserva | `ReservationWitness.php`, `reservation_witnesses` | `BuilderSignedContractDialog.tsx` | `ReservationWitnessTest.php` |
 | REQ-RPF-015 | Badge de ação pendente no card e no menu | `ReservationPendingReplyService.php` (`pending-actions-count`) | `ReservationPendingActionBadge.tsx`, `ReservationsPage.tsx`, `BrokerReservationsPage.tsx`, `BuilderDashboardShell.tsx`, `BrokerDashboardShell.tsx`, `use-reservation-nav-badge.ts` | `ReservationPendingActionTest.php`, `ReservationPendingActionBadge.test.tsx`, `ReservationsPage.test.tsx`, `BrokerReservationsPage.test.tsx` |
-| REQ-RPF-016 | Kanban 7 colunas; drag validado; dialog central | `ReservationKanbanService.php`, `ReservationKanbanColumn.php`, `Builder/ReservationKanbanController.php`, `Broker/ReservationKanbanController.php` | `ReservationKanbanBoard.tsx`, `ReservationProgressDialog.tsx`, `ReservationsPage.tsx`, `BrokerReservationsPage.tsx` | `ReservationKanbanTest.php`, `ReservationKanbanBoard.test.tsx`, `ReservationProgressDialog.test.tsx`, `ReservationsPage.test.tsx`, `BrokerReservationsPage.test.tsx` |
+| REQ-RPF-016 | Kanban 7 colunas; drag validado; dialog central | `ReservationKanbanService.php`, `ReservationKanbanColumn.php`, `Builder/ReservationKanbanController.php`, `Broker/ReservationKanbanController.php` | `ReservationKanbanBoard.tsx`, `ReservationHoldCountdown.tsx`, `ReservationProgressDialog.tsx`, `ReservationsPage.tsx`, `BrokerReservationsPage.tsx` | `ReservationKanbanTest.php`, `ReservationKanbanBoard.test.tsx`, `reservation-hold-countdown.test.ts`, `ReservationProgressDialog.test.tsx`, `ReservationsPage.test.tsx`, `BrokerReservationsPage.test.tsx` |
 | REQ-RPF-017 | Gestor vê todas; corretor só as suas | `Builder/ReservationController.php` (tenant + gestor), `Broker/ReservationController.php` (`broker_id`) | `ReservationsPage.tsx`, `BrokerReservationsPage.tsx` | `ReservationKanbanTest.php`, `Builder/ReservationTest.php`, `ReservationTest.php` |
+
+---
+
+## reservation-progress-column-modal
+
+> Spec: `.specs/features/reservation-progress-column-modal/spec.md` · Fonte: `docs/discovery/resumo-modal-andamento-por-coluna.md` · Status: **in_progress**
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-RPC-001 | Layout 60/40 com chat embutido | — | `ReservationProgressDialog.tsx`, `ReservationChatPanel.tsx` | `ReservationProgressDialog.test.tsx`, `ReservationMessagesDialog.test.tsx` |
+| REQ-RPC-002 | Sem esteira de etapas de outras colunas | — | `ReservationTimeline.tsx` | `ReservationTimeline.test.tsx` |
+| REQ-RPC-003 | Painéis/CTAs filtrados pela coluna | — | `reservation-kanban.ts`, `ReservationProgressDialog.tsx` | `reservation-kanban.test.ts`, `ReservationProgressDialog.test.tsx` |
+| REQ-RPC-004 | Zona de arquivos sempre visível | — | `ReservationTimeline.tsx` | `ReservationTimeline.test.tsx` |
+| REQ-RPC-005 | Chat leitura na cancelada | — | `ReservationChatPanel.tsx`, `ReservationProgressDialog.tsx` | `ReservationMessagesDialog.test.tsx` |
 
 ---
 

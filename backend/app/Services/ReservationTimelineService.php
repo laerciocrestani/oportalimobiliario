@@ -245,7 +245,7 @@ class ReservationTimelineService
      */
     public function situation(Reservation $reservation): array
     {
-        $reservation->loadMissing(['timelineEvents', 'proposals', 'messages', 'attachments', 'witnesses']);
+        $reservation->loadMissing(['timelineEvents', 'proposals', 'messages.user', 'attachments', 'witnesses']);
 
         $events = $reservation->timelineEvents->sortBy('created_at');
         $messagesCount = $reservation->messages_count ?? $reservation->messages->count();
@@ -266,7 +266,7 @@ class ReservationTimelineService
             'occurred_at' => $reservation->created_at?->toIso8601String(),
             'status' => $currentStatus,
         ];
-        $current['waiting_on'] = $this->resolveWaitingOn($currentKey, $currentStatus);
+        $current['waiting_on'] = $this->resolveWaitingOn($currentKey, $currentStatus, $reservation);
 
         return [
             'previous' => $this->situationStep($currentIndex - 1, $reservation, $events, $messagesCount, $currentIndex),
@@ -684,11 +684,11 @@ class ReservationTimelineService
 
         $actions = $status === 'current' ? $this->resolveActions($stepKey, $viewer, $reservation) : [];
 
-        if ($status === 'current' && $reservation->hasClientHold()) {
-            $isBroker = $viewer->role === 'broker';
+        if ($status === 'current' && $reservation->hasClientHold() && $viewer->role !== 'broker') {
             $actions = [
                 ...$actions,
-                ...($isBroker ? ['submit_deposit_proof'] : ['extend_hold', 'drop_hold']),
+                'extend_hold',
+                'drop_hold',
             ];
         }
 
@@ -937,15 +937,17 @@ class ReservationTimelineService
     /**
      * @return 'broker'|'builder'|null
      */
-    private function resolveWaitingOn(string $currentKey, string $currentStatus): ?string
+    private function resolveWaitingOn(string $currentKey, string $currentStatus, Reservation $reservation): ?string
     {
         if ($currentStatus === 'completed' || $currentStatus === 'failed') {
             return null;
         }
 
+        if ($reservation->isPreHold() || in_array($currentKey, ['pre_hold_created', 'dialogue'], true)) {
+            return $this->resolveDialogueWaitingOn($reservation);
+        }
+
         return match ($currentKey) {
-            'pre_hold_created',
-            'dialogue',
             'proposal_submitted',
             'deposit_window',
             'contract_data',
@@ -960,5 +962,21 @@ class ReservationTimelineService
             'contract_validate' => 'builder',
             default => null,
         };
+    }
+
+    /**
+     * @return 'broker'|'builder'
+     */
+    private function resolveDialogueWaitingOn(Reservation $reservation): string
+    {
+        $latest = $reservation->relationLoaded('messages')
+            ? $reservation->messages->sortByDesc('id')->first()
+            : $reservation->messages()->with('user:id,role')->latest('id')->first();
+
+        if ($latest?->user?->role === 'broker') {
+            return 'builder';
+        }
+
+        return 'broker';
     }
 }

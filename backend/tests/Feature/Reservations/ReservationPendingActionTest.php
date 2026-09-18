@@ -5,10 +5,12 @@
  */
 use App\Enums\ReservationStatus;
 use App\Enums\UnitStatus;
+use App\Models\BrokerClient;
 use App\Models\Reservation;
 use App\Models\ReservationMessage;
 use App\Models\Tenant;
 use App\Models\Unit;
+use App\Models\UnitAccess;
 use App\Models\User;
 use App\Support\BuilderPermissions;
 use Illuminate\Support\Facades\Storage;
@@ -198,3 +200,125 @@ it('returns zero pending actions for a builder without reservation access', func
 
     $this->getJson('/api/builder/reservations')->assertForbidden();
 });
+
+it('asks the broker to start dialogue when pre-hold has no messages', function () {
+    [
+        'builder' => $builder,
+        'broker' => $broker,
+        'reservation' => $reservation,
+    ] = listedPreHoldSetup();
+
+    Sanctum::actingAs($broker);
+    $this->getJson('/api/broker/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.id', $reservation->id)
+        ->assertJsonPath('0.pending_action', 'start_dialogue')
+        ->assertJsonPath('0.needs_action', true)
+        ->assertJsonPath('0.needs_reply', false)
+        ->assertJsonPath('0.situation.current.waiting_on', 'broker');
+
+    $this->getJson('/api/broker/reservations/pending-actions-count')
+        ->assertOk()
+        ->assertJsonPath('count', 1);
+
+    Sanctum::actingAs($builder);
+    $this->getJson('/api/builder/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.id', $reservation->id)
+        ->assertJsonPath('0.pending_action', null)
+        ->assertJsonPath('0.needs_action', false)
+        ->assertJsonPath('0.situation.current.waiting_on', 'broker');
+});
+
+it('asks the builder to reply when the broker started pre-hold with a message', function () {
+    [
+        'builder' => $builder,
+        'broker' => $broker,
+        'reservation' => $reservation,
+    ] = listedPreHoldSetup();
+
+    ReservationMessage::factory()->create([
+        'reservation_id' => $reservation->id,
+        'user_id' => $broker->id,
+        'body' => 'Cliente prefere unidade de canto.',
+    ]);
+
+    Sanctum::actingAs($builder);
+    $this->getJson('/api/builder/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.id', $reservation->id)
+        ->assertJsonPath('0.pending_action', 'reply')
+        ->assertJsonPath('0.needs_reply', true)
+        ->assertJsonPath('0.situation.current.waiting_on', 'builder');
+
+    Sanctum::actingAs($broker);
+    $this->getJson('/api/broker/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.id', $reservation->id)
+        ->assertJsonPath('0.pending_action', null)
+        ->assertJsonPath('0.needs_reply', false)
+        ->assertJsonPath('0.situation.current.waiting_on', 'builder');
+});
+
+it('asks the broker to continue when the builder already replied on pre-hold', function () {
+    [
+        'builder' => $builder,
+        'broker' => $broker,
+        'reservation' => $reservation,
+    ] = listedPreHoldSetup();
+
+    ReservationMessage::factory()->create([
+        'reservation_id' => $reservation->id,
+        'user_id' => $broker->id,
+        'body' => 'Podemos avançar com a proposta?',
+    ]);
+    ReservationMessage::factory()->create([
+        'reservation_id' => $reservation->id,
+        'user_id' => $builder->id,
+        'body' => 'Pode enviar a documentação.',
+    ]);
+
+    Sanctum::actingAs($broker);
+    $this->getJson('/api/broker/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.pending_action', 'reply')
+        ->assertJsonPath('0.situation.current.waiting_on', 'broker');
+
+    Sanctum::actingAs($builder);
+    $this->getJson('/api/builder/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.pending_action', null)
+        ->assertJsonPath('0.situation.current.waiting_on', 'broker');
+});
+
+/**
+ * @return array{builder: User, broker: User, reservation: Reservation}
+ */
+function listedPreHoldSetup(): array
+{
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create();
+    $broker = User::factory()->broker()->create();
+    $client = BrokerClient::factory()->for($broker, 'broker')->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+
+    UnitAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'unit_id' => $unit->id,
+    ]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = Reservation::factory()->preHold()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+        'client_id' => $client->id,
+        'expires_at' => now()->addHours(48),
+    ]);
+
+    return compact('builder', 'broker', 'reservation');
+}

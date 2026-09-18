@@ -33,9 +33,8 @@
 ## Sessão atual
 
 - **Fase:** `building-wizard-redesign` em execução
-- **Branch:** `feature/building-wizard-redesign` (criada a partir da `main`)
-- **WIP preservado:** stash `WIP: feature/kanban-ajustes reservation progress` na branch `feature/kanban-ajustes`
-- **Última etapa concluída:** TR-06 — wizard 3 steps (`Identidade` / `Estrutura` / `Mídia`) + `BuildingWizardProvider` + persistência 1–3 + “Continuar cadastro”
+- **Branch:** `main`
+- **Última etapa concluída:** TR-06 — wizard 3 steps (`Identidade` / `Estrutura` / `Mídia`) + `BuildingWizardProvider` + persistência 1–3 + “Continuar cadastro”; Kanban + dialog 60/40 (PR #15) já na `main`
 - **Próxima etapa:** TR-07 — `floor-stack.ts` (tipos, esqueleto, códigos 0/negativos, cloneMirror/exceção, payload)
 - **Discovery:** `docs/discovery/resumo-redesenho-wizard-empreendimentos.md`
 - **Spec:** `.specs/features/building-wizard-redesign/`

@@ -11,7 +11,7 @@ Ordem: backend (schema → validação → API) antes do frontend. 1 commit atô
 
 - [x] **TR-01** Migration: `floors.number` `unsignedSmallInteger`→`smallInteger`; add `floors.customized` boolean default false; add `towers.reference_floor` smallInteger nullable. `FloorKind::Garage`. Atualizar `Floor`/`Tower` fillable+casts.
   - Gate: `php artisan test --compact --filter=BuildingStructure` e `--filter=UnitFloor` verdes; seeders/factories existentes não quebram.
-- [ ] **TR-02** `PUT .../structure`: aceitar `number` 0/negativo e `kind=garage`; persistir `reference_floor`; 409 se publicado; 422 estrutura inválida.
+- [x] **TR-02** `PUT .../structure`: aceitar `number` 0/negativo e `kind=garage`; persistir `reference_floor`; 409 se publicado; 422 estrutura inválida.
   - Gate: `php artisan test --compact --filter=BuildingStructure` (casos: térreo 0, subsolos negativos, garagem, reference_floor).
 
 ## Backend — grade e garagem

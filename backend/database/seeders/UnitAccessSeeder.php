@@ -18,6 +18,7 @@ class UnitAccessSeeder extends Seeder
             ['building' => 'Residencial Bosque', 'code' => '101', 'broker_email' => 'corretor@demo.com'],
             ['building' => 'Residencial Bosque', 'code' => '201', 'broker_email' => 'corretor@demo.com'],
             ['building' => 'Residencial Bosque', 'code' => '301', 'broker_email' => 'corretor@demo.com'],
+            ['building' => 'Residencial Bosque', 'code' => 'S1-01', 'broker_email' => 'corretor@demo.com'],
             ['building' => 'Residencial Aurora', 'code' => '101', 'broker_email' => 'corretor@demo.com'],
             ['building' => 'Residencial Aurora', 'code' => '102', 'broker_email' => 'corretor@demo.com'],
             ['building' => 'Residencial Aurora', 'code' => '201', 'broker_email' => 'corretor@demo.com'],

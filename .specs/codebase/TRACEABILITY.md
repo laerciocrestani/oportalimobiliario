@@ -306,13 +306,17 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 
 | REQ | Descrição | BE | FE | Testes |
 |-----|-----------|----|----|--------|
-| REQ-WZR-002 | Andar 0/negativos + códigos `101`/`L01`/`S1-01` | `UnitCode.php`, `floors.number` signed | `lib/floor-stack.ts` | `BuildingUnitGridTest.php`, `floor-stack.test.ts` |
+| REQ-WZR-001 | Wizard de criação em 3 steps | `BuildingController.php` (`wizard_step`) | `BuildingWizardPage.tsx`, `BuildingWizardProvider.tsx` | `BuildingWizardPage.test.tsx` |
+| REQ-WZR-002 | Andar 0/negativos + códigos `101`/`L01`/`S1-01` | `UnitCode.php`, `floors.number` signed | `lib/floor-stack.ts` | `BuildingUnitGridTest.php`, `floor-stack.test.ts`, `WizardBuildingSeederTest.php` |
 | REQ-WZR-003 | `FloorKind::Garage` | `FloorKind.php` | `FloorKind` em `api.ts` | `BuildingStructureTest.php`, `floor-stack.test.ts` |
 | REQ-WZR-004 | Andar-espelho + clonagem por faixa | `towers.reference_floor` | `cloneMirror`, `StructureEditor.tsx` (`MirrorPanel`) | `floor-stack.test.ts`, `StructureEditor.test.tsx` |
-| REQ-WZR-005 | Exceções preservadas na reclonagem | `floors.customized` | `markException`/`resetFloor`, `MirrorPanel` | `floor-stack.test.ts`, `StructureEditor.test.tsx` |
-| REQ-WZR-006 | Vaga = unit em andar `garage` | `BuildingUnitGridService.php` | esqueleto + `unitGridPayload`, `GaragePanel` | `BuildingUnitGridTest.php`, `floor-stack.test.ts`, `StructureEditor.test.tsx` |
+| REQ-WZR-005 | Exceções preservadas na reclonagem | `floors.customized` | `markException`/`resetFloor`, `MirrorPanel` | `floor-stack.test.ts`, `StructureEditor.test.tsx`, `WizardBuildingSeederTest.php` |
+| REQ-WZR-006 | Vaga = unit em andar `garage` | `BuildingUnitGridService.php` | esqueleto + `unitGridPayload`, `GaragePanel` | `BuildingUnitGridTest.php`, `floor-stack.test.ts`, `StructureEditor.test.tsx`, `WizardBuildingSeederTest.php` |
 | REQ-WZR-007 | Campos enxutos no wizard; ficha + defaults na edição | — | `StructureEditor.tsx`, `BuildingDefaultsCard.tsx`, `UnitDetailDrawer.tsx` | `BuildingWizardPage.test.tsx`, `BuildingEditForm.test.tsx`, `UnitDetailDrawer.test.tsx` |
 | REQ-WZR-008 | Editor visual em pilha | — | `StructureEditor.tsx`, `WizardStructureStep.tsx` | `StructureEditor.test.tsx`, `BuildingWizardPage.test.tsx` |
+| REQ-WZR-009 | Persistência por step / rascunho retomável (`wizard_step` 1–3) | `BuildingController.php`, `BuildingStructureService.php`, `BuildingUnitGridService.php` | `BuildingWizardProvider.tsx` | `BuildingWizardPage.test.tsx` |
+| REQ-WZR-010 | Validações: min 1 unidade/andar; publish exige preço; PUT só em rascunho | `BuildingStructureService.php`, `BuildingUnitGridService.php`, `BuildingController.php` | — | `BuildingStructureTest.php`, `BuildingUnitGridTest.php`, `BuildingTest.php` |
+| REQ-WZR-011 | Pest + OpenAPI + Vitest + seed demo (garagem/térreo/clone) | `WizardBuildingSeeder.php` | wizard + `StructureEditor` | `docs/api/openapi.yaml`, `WizardBuildingSeederTest.php`, `StructureEditor.test.tsx` |
 
 ---
 

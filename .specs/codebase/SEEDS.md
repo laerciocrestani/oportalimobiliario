@@ -59,7 +59,7 @@ TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → Ame
 | `InccIndexSeeder` | Índice INCC-M global (fev–jul/2026, valores demo, `source=manual`) |
 | `AmenitySeeder` | Catálogo fechado de adicionais (água quente, piscina, academia, etc.) |
 | `BuildingSeeder` | Empreendimentos por tenant (publicados e rascunho) — fluxo legado |
-| `WizardBuildingSeeder` | **Residencial Bosque** (`residencial-bosque`) via `BuildingStructureService` + `BuildingUnitGridService`: endereço, defaults, adicionais do prédio, 1 torre / 3 andares, ficha, `price_base` + competência `2026-02-01`, publicado com `wizard_completed_at` |
+| `WizardBuildingSeeder` | **Residencial Bosque** (`residencial-bosque`) via `BuildingStructureService` + `BuildingUnitGridService`: endereço, defaults, adicionais, Torre A com subsolo/garagem, lojas no térreo, apartamentos clonados do andar 1, `price_base` + competência `2026-02-01`, publicado com `wizard_completed_at` |
 | `TowerSeeder` | Torres vinculadas aos buildings (pula Bosque / wizard concluído) |
 | `UnitSeeder` | Unidades com status variados; preenche `price_base` e `price_competence` para o cálculo INCC-M (pula Bosque) |
 | `BuildingMediaSeeder` | Mídias de capa e galeria |
@@ -80,10 +80,10 @@ Slug `residencial-bosque`, tenant Alpha, **publicado**. Não passa por `TowerSee
 | Endereço | Av. Paulista, 1578 — Bela Vista, São Paulo/SP, CEP `01310100` |
 | Defaults | forro gesso, esquadria alumínio, piso porcelanato, solar norte, sol manhã |
 | Adicionais do prédio | piscina, academia, água quente |
-| Estrutura | Torre A, 3 andares (`floors.kind`: 1–2 residencial, 3 comercial) |
-| Unidades | 101, 102, 201, 202, 301 — `price_base` + competência `2026-02-01` |
-| Extra 301 | adicional `closet` (união com os do prédio) |
-| Corretor demo | acesso a 101, 201 e 301 |
+| Estrutura | Torre A, `reference_floor=1`: subsolo `-1` garagem, térreo `0` comercial, andares `1–3` residenciais (`floors_count=3`) |
+| Unidades | Vagas `S1-01`/`S1-02`; lojas `L01`/`L02`; aptos `101`/`102` (espelho), `201`/`202` (clone), `301`/`302` (exceção); competência `2026-02-01` |
+| Extra 301 | adicional `closet` (união com os do prédio); andar 3 `customized=true` |
+| Corretor demo | acesso a 101, 201, 301 e vaga `S1-01` |
 
 Re-seed é idempotente: se `published` ou `wizard_completed_at` já existem, o seeder não regrava a estrutura (409 no serviço).
 

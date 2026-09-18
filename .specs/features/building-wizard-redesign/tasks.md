@@ -1,6 +1,6 @@
 ---
 feature: building-wizard-redesign
-status: in_progress
+status: done
 ---
 
 # Tasks — building-wizard-redesign
@@ -38,7 +38,7 @@ Ordem: backend (schema → validação → API) antes do frontend. 1 commit atô
 
 ## Encerramento
 
-- [ ] **TR-11** Seeds demo (torre com subsolo/garagem + lojas no térreo + apartamentos clonados) + `TRACEABILITY.md` (REQ-WZR-*). `STATE.md` apenas pelo orquestrador.
+- [x] **TR-11** Seeds demo (torre com subsolo/garagem + lojas no térreo + apartamentos clonados) + `TRACEABILITY.md` (REQ-WZR-*). `STATE.md` apenas pelo orquestrador.
   - Gate: seed roda; `php artisan test` e `pnpm test` verdes.
 
 ## Follow-up (fora desta fatia)

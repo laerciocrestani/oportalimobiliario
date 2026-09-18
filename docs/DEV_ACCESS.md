@@ -54,7 +54,7 @@ docker compose exec backend php artisan db:seed
 7. **Público** — http://www.localhost:5173/ → listagem sem login (apenas `published=true`). **Residencial Bosque** mostra preço INCC-M calculado (não o bruto).
 8. **Reservas** — corretor cria reserva em unidade disponível → aparece em `/reservations` nos dois portais.
 9. **Contratos** — `construtora@alpha.demo` → menu **Contratos** (`/contracts`) cadastra modelos; na reserva com dados enviados, **Emitir contrato** gera o PDF. Corretor vê/baixa no andamento.
-10. **Wizard** — construtora → `/buildings` rascunhos com **Continuar cadastro**; `/buildings/new` abre o wizard de 4 steps. Bosque já está concluído (não deve oferecer continuar).
+10. **Wizard** — construtora → `/buildings` rascunhos com **Continuar cadastro**; `/buildings/new` abre o wizard de 3 steps. Bosque já está concluído (não deve oferecer continuar).
 
 ## Login via API (debug)
 

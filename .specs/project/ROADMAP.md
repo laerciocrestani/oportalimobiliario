@@ -47,10 +47,12 @@
 | builder-team | done | inline | inline | done |
 | user-activity-log | done | done | done | done |
 | reservation-progress-flex | done | done | done | Entregas 1–4 |
+| building-wizard-redesign | done | done | done | done |
 
 ## Próximos passos (pós-MVP v1)
 
 - ~~**`building-wizard`**~~ **done** (wizard 4 steps, INCC-M na leitura, admin INCC/amenities, seed `Residencial Bosque`)
+- ~~**`building-wizard-redesign`**~~ **done** (3 steps, pilha de andares, subsolo/garagem, térreo 0, clone com exceção)
 - **`builder-contracts`:** catálogo + emissão PDF **done**; GOV / upload assinado / `sold` na timeline **done**
 - ~~**`reservation-timeline` Fase A:**~~ migrations + GET timeline + componente UI
 - ~~**`reservation-timeline` Fase B:**~~ proposta (form corretor + decisão gestor); `PATCH confirm` alias de `POST /proposal`; TTL 48h após aceite; recusa soft

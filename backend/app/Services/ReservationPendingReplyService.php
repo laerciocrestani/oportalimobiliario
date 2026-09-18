@@ -26,9 +26,7 @@ class ReservationPendingReplyService
             return false;
         }
 
-        $latestMessage = $reservation->relationLoaded('messages')
-            ? $reservation->messages->sortByDesc('id')->first()
-            : $reservation->messages()->with('user:id,role')->latest('id')->first();
+        $latestMessage = $this->latestMessage($reservation);
 
         if ($latestMessage === null || $latestMessage->user === null) {
             return false;
@@ -181,6 +179,10 @@ class ReservationPendingReplyService
 
     private function pendingActionForBroker(Reservation $reservation, User $viewer): ?string
     {
+        if ($this->brokerShouldStartDialogue($reservation)) {
+            return 'start_dialogue';
+        }
+
         if ($reservation->isProposalReturned()) {
             return 'submit_proposal';
         }
@@ -248,6 +250,20 @@ class ReservationPendingReplyService
         }
 
         return null;
+    }
+
+    private function brokerShouldStartDialogue(Reservation $reservation): bool
+    {
+        return $reservation->isPreHold() && $this->latestMessage($reservation) === null;
+    }
+
+    private function latestMessage(Reservation $reservation): ?ReservationMessage
+    {
+        if ($reservation->relationLoaded('messages')) {
+            return $reservation->messages->sortByDesc('id')->first();
+        }
+
+        return $reservation->messages()->with('user:id,role')->latest('id')->first();
     }
 
     private function hasTimelineEvent(Reservation $reservation, ReservationTimelineEventType $type): bool

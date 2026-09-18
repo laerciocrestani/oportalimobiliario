@@ -39,24 +39,18 @@ const sampleTimeline: ReservationTimelineData = {
 }
 
 describe('ReservationTimeline', () => {
-  it('renders steps and current action button', () => {
+  it('renders only the current step and keeps files visible', () => {
     const onAction = vi.fn()
 
     render(<ReservationTimeline timeline={sampleTimeline} onAction={onAction} />)
 
-    expect(screen.getByText('Pré-reserva')).toBeInTheDocument()
-    expect(screen.getByText(/ · João/)).toBeInTheDocument()
-    expect(screen.getByText('Diálogo com construtora')).toBeInTheDocument()
-    expect(screen.queryByText('Em andamento')).not.toBeInTheDocument()
-    expect(screen.queryByText('Concluído')).not.toBeInTheDocument()
-    expect(screen.queryByText('Pendente')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Abrir diálogo' })).toBeInTheDocument()
-    expect(document.querySelector('ol span[aria-hidden]')).toHaveClass('bg-emerald-50')
-    expect(document.querySelector('.animate-ping')).toBeInTheDocument()
-    expect(screen.getByText('Diálogo com construtora').closest('li')).toHaveAttribute(
-      'aria-current',
-      'step',
-    )
+    expect(screen.queryByText('Diálogo com construtora')).not.toBeInTheDocument()
+    expect(screen.queryByText('Pré-reserva')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Abrir diálogo' })).not.toBeInTheDocument()
+    expect(screen.getByText('Arquivos da reserva')).toBeInTheDocument()
+    expect(screen.getByText('Nenhum arquivo enviado ainda')).toBeInTheDocument()
+    expect(screen.getByText('101')).toBeInTheDocument()
+    expect(document.querySelector('.animate-ping')).not.toBeInTheDocument()
   })
 
   it('lists historic attachments after the process moves forward', () => {
@@ -81,7 +75,7 @@ describe('ReservationTimeline', () => {
       />,
     )
 
-    expect(screen.getByText('Anexos da reserva')).toBeInTheDocument()
+    expect(screen.getByText('Arquivos da reserva')).toBeInTheDocument()
     expect(screen.getByText('Comprovante de pagamento')).toBeInTheDocument()
     expect(screen.getByText('pix.pdf')).toBeInTheDocument()
   })
@@ -285,7 +279,7 @@ describe('ReservationTimeline', () => {
     expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeInTheDocument()
   })
 
-  it('renders upcoming steps with a disabled gray tone', () => {
+  it('does not render upcoming steps from other columns', () => {
     render(
       <ReservationTimeline
         timeline={{
@@ -301,17 +295,23 @@ describe('ReservationTimeline', () => {
               actor: null,
               actions: [],
             },
+            {
+              key: 'deposit_window',
+              label: 'Aguardando sinal (48h)',
+              status: 'upcoming',
+              occurred_at: null,
+              due_at: null,
+              actor: null,
+              actions: [],
+            },
           ],
         }}
       />,
     )
 
-    const label = screen.getByText('Proposta')
-    expect(label).toHaveClass('text-muted-foreground')
-    expect(label.closest('li')?.querySelector('.rounded-full')).toHaveClass(
-      'bg-muted',
-      'text-muted-foreground',
-    )
+    expect(screen.queryByText('Proposta')).not.toBeInTheDocument()
+    expect(screen.queryByText('Aguardando sinal (48h)')).not.toBeInTheDocument()
+    expect(screen.queryByText('Diálogo com construtora')).not.toBeInTheDocument()
   })
 
   it('labels hold actions for the builder on a current pre-reservation', () => {

@@ -6,7 +6,7 @@ import { useBuilderPermissions } from '@/apps/builder/hooks/use-builder-permissi
 import { ReservationCancelDialog } from '@/components/reservations/ReservationCancelDialog'
 import { ReservationKanbanBoard } from '@/components/reservations/ReservationKanbanBoard'
 import { ReservationProgressDialog } from '@/components/reservations/ReservationProgressDialog'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { kanbanProcessHint } from '@/components/reservations/reservation-kanban'
 import {
   ApiRequestError,
   builderApi,
@@ -116,6 +116,13 @@ export function ReservationsPage() {
     setTimelineOpen(true)
   }
 
+  function handleProcessRequired(reservation: BuilderReservationListItem, action?: string) {
+    toast.warning('Não é possível avançar ainda', {
+      description: kanbanProcessHint(action ?? reservation.pending_action),
+    })
+    handleOpenTimeline(reservation.id)
+  }
+
   function handleOpenMessages(reservationId: number) {
     setMessagesReservationId(reservationId)
     setMessagesOpen(true)
@@ -134,7 +141,7 @@ export function ReservationsPage() {
       notifyReservationBadgeRefresh()
     } catch (caught) {
       if (caught instanceof ApiRequestError && caught.code === 'action_required') {
-        handleOpenTimeline(reservation.id)
+        handleProcessRequired(reservation, caught.action)
         return
       }
 
@@ -169,31 +176,24 @@ export function ReservationsPage() {
       <div className="flex min-h-0 flex-1 flex-col gap-4">
         {error ? <p className="shrink-0 text-sm text-destructive">{error}</p> : null}
 
-        <Card className="min-h-0 flex-1">
-          <CardHeader className="shrink-0">
-            <CardTitle>Reservas</CardTitle>
-            <CardDescription>
-              Arraste o card para a coluna correspondente. Movimentos inválidos são bloqueados.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            {loading ? (
-              <p className="text-sm text-muted-foreground">Carregando reservas...</p>
-            ) : (
-              <ReservationKanbanBoard
-                profile="builder"
-                reservations={reservations}
-                cancellingId={cancellingId}
-                canCancel={canManage}
-                canMessage={canManage}
-                onOpen={handleOpenTimeline}
-                onMessages={handleOpenMessages}
-                onCancel={setCancelTarget}
-                onMove={handleMove}
-              />
-            )}
-          </CardContent>
-        </Card>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Carregando reservas...</p>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <ReservationKanbanBoard
+              profile="builder"
+              reservations={reservations}
+              cancellingId={cancellingId}
+              canCancel={canManage}
+              canMessage={canManage}
+              onOpen={handleOpenTimeline}
+              onMessages={handleOpenMessages}
+              onCancel={setCancelTarget}
+              onMove={handleMove}
+              onProcessRequired={handleProcessRequired}
+            />
+          </div>
+        )}
       </div>
 
       <ReservationCancelDialog

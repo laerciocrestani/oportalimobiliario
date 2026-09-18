@@ -11,7 +11,7 @@ import type { ReservationProposal } from '@/lib/api'
 
 type ProposalDecisionAlertProps = {
   proposal: ReservationProposal
-  onOpenDialogue: () => void
+  onOpenDialogue?: () => void
   showProposal?: boolean
 }
 
@@ -64,17 +64,19 @@ export function ProposalDecisionAlert({
         {note ? (
           <AlertDescription className="whitespace-pre-wrap">{note}</AlertDescription>
         ) : null}
-        <AlertAction>
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            onClick={onOpenDialogue}
-            aria-label="Abrir diálogo"
-          >
-            <MessageSquareIcon />
-          </Button>
-        </AlertAction>
+        {onOpenDialogue ? (
+          <AlertAction>
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              onClick={onOpenDialogue}
+              aria-label="Abrir diálogo"
+            >
+              <MessageSquareIcon />
+            </Button>
+          </AlertAction>
+        ) : null}
       </Alert>
     </div>
   )

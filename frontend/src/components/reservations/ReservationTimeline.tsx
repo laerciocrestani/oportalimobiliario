@@ -1,11 +1,17 @@
 import { DownloadIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import { Separator } from '@/components/ui/separator'
 import { ReservationAttachmentPreview } from '@/components/reservations/ReservationAttachmentPreview'
 import {
   downloadReservationAttachment,
   latestAttachmentByKind,
   latestContractPdf,
 } from '@/components/reservations/download-reservation-attachment'
+import {
+  timelineKanbanColumn,
+  visibleColumnActions,
+} from '@/components/reservations/reservation-kanban'
 import {
   reservationStepGreenBgClass,
   reservationStepGreenClass,
@@ -19,7 +25,6 @@ import type {
 import { cn } from '@/lib/utils'
 
 const ACTION_LABELS: Record<string, string> = {
-  open_dialogue: 'Abrir diálogo',
   submit_proposal: 'Enviar proposta',
   submit_deposit_proof: 'Anexar comprovante',
   return_signed_proposal: 'Devolver proposta assinada',
@@ -101,38 +106,6 @@ function StepIcon({ stepKey }: { stepKey: string }) {
   return <Icon aria-hidden className="size-4" />
 }
 
-function StepMarker({
-  stepKey,
-  status,
-}: {
-  stepKey: string
-  status: ReservationTimelineStepStatus
-}) {
-  const isCurrent = status === 'current'
-
-  return (
-    <div className="relative z-10 mt-0.5 flex size-7 shrink-0 items-center justify-center">
-      {isCurrent ? (
-        <span
-          aria-hidden
-          className={cn(
-            'absolute size-7 animate-ping rounded-full opacity-75',
-            stepLineClass(stepKey, status),
-          )}
-        />
-      ) : null}
-      <div
-        className={cn(
-          'relative flex size-7 items-center justify-center rounded-full',
-          stepToneClass(stepKey, status),
-        )}
-      >
-        <StepIcon stepKey={stepKey} />
-      </div>
-    </div>
-  )
-}
-
 function currentStepContractPdf(
   stepKey: string,
   issued: ReservationAttachment | null,
@@ -154,17 +127,9 @@ function currentStepContractPdf(
   return null
 }
 
-function isPendingStep(status: ReservationTimelineStepStatus): boolean {
-  return status === 'upcoming' || status === 'skipped'
-}
-
 function stepToneClass(stepKey: string, status: ReservationTimelineStepStatus): string {
   if (status === 'failed') {
     return 'bg-destructive text-primary-foreground'
-  }
-
-  if (isPendingStep(status)) {
-    return 'bg-muted text-muted-foreground'
   }
 
   return reservationStepGreenClass(stepKey)
@@ -175,154 +140,167 @@ function stepLineClass(stepKey: string, status: ReservationTimelineStepStatus): 
     return 'bg-destructive'
   }
 
-  if (isPendingStep(status)) {
-    return 'bg-muted'
-  }
-
   return reservationStepGreenBgClass(stepKey)
 }
 
 type ReservationTimelineProps = {
   timeline: ReservationTimeline
   onAction?: (action: string) => void
+  className?: string
 }
 
-export function ReservationTimeline({ timeline, onAction }: ReservationTimelineProps) {
+export function ReservationTimeline({ timeline, onAction, className }: ReservationTimelineProps) {
+  const column = timelineKanbanColumn(timeline)
+  const currentStep = timeline.steps.find((step) => step.status === 'current' || step.status === 'failed')
+  const actions = currentStep ? visibleColumnActions(column, currentStep.actions) : []
   const contractPdf = latestContractPdf(timeline.attachments)
   const buyerSignedPdf = latestAttachmentByKind(timeline.attachments, 'contract_signed')
   const builderSignedPdf = latestAttachmentByKind(timeline.attachments, 'contract_signed_builder')
+  const stepPdf =
+    currentStep && column === 'contract'
+      ? currentStepContractPdf(currentStep.key, contractPdf, buyerSignedPdf, builderSignedPdf)
+      : null
+
+  const skipCurrentStep =
+    column === 'cancelled' ||
+    (column === 'pre_reservation' &&
+      (currentStep?.key === 'pre_hold_created' ||
+        currentStep?.key === 'dialogue' ||
+        currentStep?.key === 'proposal_submitted'))
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-        <p>
-          <span className="text-muted-foreground">Unidade:</span>{' '}
-          <span className="font-medium">{timeline.unit.code}</span>
-        </p>
-        {timeline.expires_at ? (
-          <p className="mt-1 text-muted-foreground">
-            Prazo: {formatDateTime(timeline.expires_at)}
+    <div className={cn('flex min-h-0 flex-1 flex-col gap-4', className)}>
+      <div className="flex shrink-0 flex-col gap-3">
+        <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+          <p>
+            <span className="text-muted-foreground">Unidade:</span>{' '}
+            <span className="font-medium">{timeline.unit.code}</span>
           </p>
-        ) : null}
-        {timeline.deposit_overdue ? (
-          <p className="mt-1 text-sm text-destructive">
-            Prazo de sinal vencido — envie o comprovante o quanto antes.
-          </p>
+          {timeline.client ? (
+            <p className="mt-1">
+              <span className="text-muted-foreground">Cliente:</span>{' '}
+              <span className="font-medium">{timeline.client.name}</span>
+            </p>
+          ) : null}
+          {timeline.expires_at ? (
+            <p className="mt-1 text-muted-foreground">
+              Prazo: {formatDateTime(timeline.expires_at)}
+            </p>
+          ) : null}
+          {timeline.deposit_overdue && column === 'docs_deposit' ? (
+            <p className="mt-1 text-sm text-destructive">
+              Prazo de sinal vencido — envie o comprovante o quanto antes.
+            </p>
+          ) : null}
+        </div>
+
+        {currentStep ? (
+          <div className="flex gap-3" aria-current={currentStep.status === 'current' ? 'step' : undefined}>
+            {skipCurrentStep ? null : (
+              <div className="relative z-10 mt-0.5 flex size-7 shrink-0 items-center justify-center">
+                {currentStep.status === 'current' ? (
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'absolute size-7 animate-ping rounded-full opacity-75',
+                      stepLineClass(currentStep.key, currentStep.status),
+                    )}
+                  />
+                ) : null}
+                <div
+                  className={cn(
+                    'relative flex size-7 items-center justify-center rounded-full',
+                    stepToneClass(currentStep.key, currentStep.status),
+                  )}
+                >
+                  <StepIcon stepKey={currentStep.key} />
+                </div>
+              </div>
+            )}
+
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              {skipCurrentStep ? null : <p className="font-medium">{currentStep.label}</p>}
+
+              {!skipCurrentStep && currentStep.occurred_at ? (
+                <p className="text-xs text-muted-foreground">
+                  {formatDateTime(currentStep.occurred_at)}
+                  {currentStep.actor ? ` · ${currentStep.actor.name}` : ''}
+                </p>
+              ) : null}
+
+              {currentStep.status === 'current' && currentStep.due_at ? (
+                <p className="text-xs text-muted-foreground">
+                  Vence em {formatDateTime(currentStep.due_at)}
+                </p>
+              ) : null}
+
+              {stepPdf ? (
+                <div className="flex flex-col gap-2">
+                  <ReservationAttachmentPreview attachment={stepPdf} />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => void downloadReservationAttachment(stepPdf)}
+                  >
+                    <DownloadIcon data-icon="inline-start" />
+                    Baixar PDF
+                  </Button>
+                </div>
+              ) : null}
+
+              {actions.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {actions.map((action) => (
+                    <Button
+                      key={action}
+                      type="button"
+                      size="sm"
+                      variant={action === 'drop_hold' ? 'destructive' : 'default'}
+                      onClick={() => onAction?.(action)}
+                    >
+                      {action === 'issue_contract' &&
+                      timeline.attachments.some((attachment) => attachment.kind === 'contract_pdf')
+                        ? 'Reemitir contrato'
+                        : (ACTION_LABELS[action] ?? action)}
+                    </Button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          </div>
         ) : null}
       </div>
 
-      {timeline.attachments.length > 0 ? (
-        <div className="flex flex-col gap-3 rounded-lg border bg-muted/20 p-3">
-          <div>
-            <p className="font-medium">Anexos da reserva</p>
-            <p className="text-xs text-muted-foreground">
-              Comprovantes, documentos e contratos enviados nesta reserva.
-            </p>
-          </div>
-          {groupedAttachments(timeline.attachments).map((group) => (
-            <div key={group.kind} className="flex flex-col gap-2">
-              <p className="text-xs font-medium text-muted-foreground">{group.label}</p>
-              {group.items.map((attachment) => (
-                <ReservationAttachmentPreview key={attachment.id} attachment={attachment} />
-              ))}
-            </div>
-          ))}
+      <Separator />
+
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
+        <div>
+          <p className="font-medium">Arquivos da reserva</p>
+          <p className="text-xs text-muted-foreground">
+            Comprovantes, documentos, PDFs e contratos enviados nesta reserva.
+          </p>
         </div>
-      ) : null}
-
-      <ol className="flex flex-col">
-        {timeline.steps.map((step, index) => {
-          const isLast = index === timeline.steps.length - 1
-          const stepPdf =
-            step.status === 'current'
-              ? currentStepContractPdf(
-                  step.key,
-                  contractPdf,
-                  buyerSignedPdf,
-                  builderSignedPdf,
-                )
-              : null
-
-          return (
-            <li
-              key={step.key}
-              className="relative flex gap-3 pb-6 last:pb-0"
-              aria-current={step.status === 'current' ? 'step' : undefined}
-            >
-              {!isLast ? (
-                <span
-                  aria-hidden
-                  className={cn(
-                    'absolute top-7 left-[13px] h-[calc(100%-14px)] w-0.5',
-                    stepLineClass(step.key, step.status),
-                  )}
-                />
-              ) : null}
-
-              <StepMarker stepKey={step.key} status={step.status} />
-
-              <div className="flex min-w-0 flex-1 flex-col gap-2">
-                <p className={cn('font-medium', isPendingStep(step.status) ? 'text-muted-foreground' : null)}>
-                  {step.label}
-                </p>
-
-                {step.occurred_at ? (
-                  <p className="text-xs text-muted-foreground">
-                    {formatDateTime(step.occurred_at)}
-                    {step.actor ? ` · ${step.actor.name}` : ''}
-                  </p>
-                ) : null}
-
-                {step.status === 'current' && step.due_at ? (
-                  <p className="text-xs text-muted-foreground">
-                    Vence em {formatDateTime(step.due_at)}
-                  </p>
-                ) : null}
-
-                {stepPdf ? (
-                    <div className="flex flex-col gap-2">
-                      <ReservationAttachmentPreview attachment={stepPdf} />
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => void downloadReservationAttachment(stepPdf)}
-                      >
-                        <DownloadIcon data-icon="inline-start" />
-                        Baixar PDF
-                      </Button>
-                    </div>
-                ) : null}
-
-                {step.status === 'current' && step.actions.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {step.actions.map((action) => (
-                      <Button
-                        key={action}
-                        type="button"
-                        size="sm"
-                        variant={
-                          action === 'open_dialogue'
-                            ? 'outline'
-                            : action === 'drop_hold'
-                              ? 'destructive'
-                              : 'default'
-                        }
-                        onClick={() => onAction?.(action)}
-                      >
-                        {action === 'issue_contract' &&
-                        timeline.attachments.some((attachment) => attachment.kind === 'contract_pdf')
-                          ? 'Reemitir contrato'
-                          : (ACTION_LABELS[action] ?? action)}
-                      </Button>
-                    ))}
-                  </div>
-                ) : null}
+        {timeline.attachments.length === 0 ? (
+          <Empty className="min-h-0 flex-1 border border-dashed">
+            <EmptyHeader>
+              <EmptyTitle>Nenhum arquivo enviado ainda</EmptyTitle>
+              <EmptyDescription>Os arquivos desta reserva aparecem nesta área.</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+            {groupedAttachments(timeline.attachments).map((group) => (
+              <div key={group.kind} className="flex flex-col gap-2">
+                <p className="text-xs font-medium text-muted-foreground">{group.label}</p>
+                {group.items.map((attachment) => (
+                  <ReservationAttachmentPreview key={attachment.id} attachment={attachment} />
+                ))}
               </div>
-            </li>
-          )
-        })}
-      </ol>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

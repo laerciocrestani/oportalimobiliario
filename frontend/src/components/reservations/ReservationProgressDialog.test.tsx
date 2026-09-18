@@ -3,22 +3,23 @@ import { describe, expect, it, vi } from 'vitest'
 import { ReservationProgressDialog } from '@/components/reservations/ReservationProgressDialog'
 
 const getReservationTimeline = vi.fn()
+const listReservationMessages = vi.fn()
 
 vi.mock('@/lib/api', () => ({
   builderApi: {
     getReservationTimeline: (...args: unknown[]) => getReservationTimeline(...args),
+    listReservationMessages: (...args: unknown[]) => listReservationMessages(...args),
+    replyReservation: vi.fn(),
   },
   brokerApi: {
     getReservationTimeline: vi.fn(),
+    listReservationMessages: vi.fn(),
+    replyReservation: vi.fn(),
   },
 }))
 
-vi.mock('@/apps/builder/components/ReservationMessagesDialog', () => ({
-  ReservationMessagesDialog: () => null,
-}))
-
 describe('ReservationProgressDialog', () => {
-  it('renders the andamento as a centered dialog', async () => {
+  it('embeds the chat and hides stages that belong to other kanban columns', async () => {
     getReservationTimeline.mockResolvedValue({
       reservation_id: 1,
       current_stage: 'proposal_pending',
@@ -40,10 +41,20 @@ describe('ReservationProgressDialog', () => {
           occurred_at: null,
           due_at: null,
           actor: null,
+          actions: ['open_dialogue'],
+        },
+        {
+          key: 'deposit_window',
+          label: 'Aguardando sinal (48h)',
+          status: 'upcoming',
+          occurred_at: null,
+          due_at: null,
+          actor: null,
           actions: [],
         },
       ],
     })
+    listReservationMessages.mockResolvedValue([])
 
     render(
       <ReservationProgressDialog
@@ -56,7 +67,15 @@ describe('ReservationProgressDialog', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: 'Andamento da reserva' })).toBeInTheDocument()
+      expect(screen.getByText('Proposta em análise')).toBeInTheDocument()
       expect(screen.getByText('Decisão do gestor')).toBeInTheDocument()
     })
+
+    expect(screen.getByText('Diálogo')).toBeInTheDocument()
+    expect(screen.getByText('Arquivos da reserva')).toBeInTheDocument()
+    expect(screen.getByText('Nenhum arquivo enviado ainda')).toBeInTheDocument()
+    expect(screen.queryByText('Aguardando sinal (48h)')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Abrir diálogo' })).not.toBeInTheDocument()
+    expect(listReservationMessages).toHaveBeenCalledWith(1)
   })
 })

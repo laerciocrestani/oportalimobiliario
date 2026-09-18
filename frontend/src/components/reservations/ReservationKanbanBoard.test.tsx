@@ -60,6 +60,8 @@ describe('ReservationKanbanBoard', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Proposta em análise' })).toBeInTheDocument()
+    expect(screen.getAllByRole('separator')).toHaveLength(7)
+    expect(screen.getByRole('region', { name: 'Proposta em análise' }).querySelector('svg')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Proposta em análise' })).toContainElement(
       screen.getByRole('button', { name: 'João Silva' }),
     )

@@ -18,7 +18,7 @@ Ordem: backend (schema → validação → API) antes do frontend. 1 commit atô
 
 - [x] **TR-03** `PUT .../unit-grid`: aceitar vagas (andar `garage`) e `customized` por andar; geração/validação de código (`101`/`L01`/`S1-01`); min 1 unidade/andar (422).
   - Gate: `php artisan test --compact --filter=BuildingUnitGrid` (vaga, exceção `customized`, códigos).
-- [ ] **TR-04** Publish (`PATCH published=true`) exige `price_base` em unidades/vagas `available` (422). Serializar `floor.kind`/`customized` no DTO `Building`; garantir `price` calculado nas vagas.
+- [x] **TR-04** Publish (`PATCH published=true`) exige `price_base` em unidades/vagas `available` (422). Serializar `floor.kind`/`customized` no DTO `Building`; garantir `price` calculado nas vagas.
   - Gate: `--filter=BuildingPriceCalculation` e publish sem preço → 422.
 - [ ] **TR-05** OpenAPI: atualizar `structure`/`unit-grid` (0/negativo, garagem, `customized`, `reference_floor`) e schema `Building`/`Floor`.
   - Gate: `docs/api/openapi.yaml` versionado; lint OK.

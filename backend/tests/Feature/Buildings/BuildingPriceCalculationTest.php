@@ -4,13 +4,17 @@
  * @see REQ-WIZ-009
  * @see REQ-WIZ-011
  * @see REQ-WIZ-016
+ * @see REQ-WZR-010
  */
+use App\Enums\FloorKind;
 use App\Enums\UnitStatus;
 use App\Models\Amenity;
 use App\Models\Building;
 use App\Models\BuildingAccess;
+use App\Models\Floor;
 use App\Models\InccIndex;
 use App\Models\Tenant;
+use App\Models\Tower;
 use App\Models\Unit;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
@@ -144,4 +148,63 @@ it('serializes frozen_price_brl as price on builder and public apis', function (
     $this->getJson("/api/public/buildings/{$building->slug}")
         ->assertOk()
         ->assertJsonPath('units.0.price', '555000.00');
+});
+
+it('serializes calculated garage price and floor kind on the building dto', function () {
+    seedInccCurve();
+
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create();
+    $tower = Tower::factory()->for($tenant)->for($building)->create(['name' => 'Torre A']);
+    Floor::factory()->for($tenant)->for($tower)->garage()->create([
+        'number' => -1,
+        'customized' => true,
+    ]);
+    Unit::factory()->for($tenant)->for($building)->create([
+        'tower_id' => $tower->id,
+        'code' => 'S1-01',
+        'floor' => -1,
+        'price' => 45000,
+        'price_base' => 45000,
+        'price_competence' => '2026-02-01',
+        'status' => UnitStatus::Available,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->getJson("/api/builder/buildings/{$building->id}")
+        ->assertOk()
+        ->assertJsonPath('towers.0.floors.0.number', -1)
+        ->assertJsonPath('towers.0.floors.0.kind', FloorKind::Garage->value)
+        ->assertJsonPath('towers.0.floors.0.customized', true)
+        ->assertJsonPath('units.0.code', 'S1-01')
+        ->assertJsonPath('units.0.price', '45922.50')
+        ->assertJsonPath('units.0.price_base', '45000.00');
+});
+
+it('rejects publishing when an available garage spot has no price_base', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create(['published' => false]);
+    $tower = Tower::factory()->for($tenant)->for($building)->create();
+    Floor::factory()->for($tenant)->for($tower)->garage()->create(['number' => -1]);
+    Unit::factory()->for($tenant)->for($building)->create([
+        'tower_id' => $tower->id,
+        'code' => 'S1-01',
+        'floor' => -1,
+        'status' => UnitStatus::Available,
+        'price' => 45000,
+        'price_base' => null,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->patchJson("/api/builder/buildings/{$building->id}", [
+        'published' => true,
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['published']);
+
+    expect($building->fresh()->published)->toBeFalse();
 });

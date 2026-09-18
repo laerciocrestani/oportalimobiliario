@@ -32,6 +32,7 @@ use Illuminate\Validation\ValidationException;
  * @see REQ-WIZ-009
  * @see REQ-WIZ-011
  * @see REQ-WIZ-015
+ * @see REQ-WZR-010
  */
 class BuildingController extends Controller
 {
@@ -257,12 +258,12 @@ class BuildingController extends Controller
     {
         $availableWithoutPrice = $building->units()
             ->where('status', UnitStatus::Available)
-            ->whereNull('price')
+            ->whereNull('price_base')
             ->exists();
 
         if ($availableWithoutPrice) {
             throw ValidationException::withMessages([
-                'published' => 'Cannot publish while available units have no price.',
+                'published' => 'Cannot publish while available units have no price_base.',
             ]);
         }
     }

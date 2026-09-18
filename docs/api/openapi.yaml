@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Oportalimobiliário API
-  version: 0.6.0
+  version: 0.7.0
 paths:
   /api/health:
     get:
@@ -399,7 +399,7 @@ paths:
         '404':
           description: Not found
         '422':
-          description: Validation error (including publish without price on available units)
+          description: Validation error (including publish without price_base on available units or garage spots)
   /api/builder/buildings/{building}/structure:
     put:
       summary: Replace towers and floors (draft wizard step 2)
@@ -425,14 +425,36 @@ paths:
                   maxItems: 20
                   items:
                     type: object
-                    required: [name, floors_count]
+                    required: [name]
+                    description: Provide `floors` (preferred) or `floors_count`. `floors_count` generates residential floors 1..N.
                     properties:
                       name:
                         type: string
+                      reference_floor:
+                        type: [integer, 'null']
+                        minimum: -20
+                        maximum: 80
+                        description: Mirror floor number used when cloning. Must exist in `floors` when sent.
                       floors_count:
                         type: integer
                         minimum: 1
                         maximum: 80
+                        description: Above-ground floor count. Ignored when `floors` is sent; derived from floors with number > 0.
+                      floors:
+                        type: array
+                        minItems: 1
+                        maxItems: 101
+                        items:
+                          type: object
+                          required: [number, kind]
+                          properties:
+                            number:
+                              type: integer
+                              minimum: -20
+                              maximum: 80
+                              description: 0 = ground floor; negative = garage basement.
+                            kind:
+                              $ref: '#/components/schemas/FloorKind'
       responses:
         '200':
           description: Building with replaced towers and floors
@@ -449,7 +471,7 @@ paths:
         '409':
           description: Building is published or wizard is completed
         '422':
-          description: Validation error
+          description: Validation error (invalid garage/negative pairing, duplicate floor numbers, missing reference floor)
   /api/builder/buildings/{building}/unit-grid:
     put:
       summary: Replace unit grid (draft wizard step 3)
@@ -478,6 +500,10 @@ paths:
                     properties:
                       id:
                         type: integer
+                      reference_floor:
+                        type: [integer, 'null']
+                        minimum: -20
+                        maximum: 80
                       floors:
                         type: array
                         minItems: 1
@@ -487,18 +513,23 @@ paths:
                           properties:
                             number:
                               type: integer
+                              minimum: -20
+                              maximum: 80
+                              description: 0 = ground floor; negative = garage basement.
                             kind:
-                              type: string
-                              enum: [residential, commercial]
+                              $ref: '#/components/schemas/FloorKind'
+                            customized:
+                              type: boolean
+                              description: When true, recloning the mirror floor must not overwrite this floor.
                             units:
                               type: array
                               minItems: 1
                               items:
                                 type: object
-                                required: [code]
                                 properties:
                                   code:
-                                    type: string
+                                    type: [string, 'null']
+                                    description: Generated as 101 / L01 / S1-01 when omitted; must match that pattern when sent.
                                   area_m2:
                                     type: number
                                     nullable: true
@@ -580,7 +611,7 @@ paths:
         '409':
           description: Building is published or wizard is completed
         '422':
-          description: Validation error (empty floor, missing tower/floor, duplicate codes)
+          description: Validation error (empty floor, missing tower/floor, duplicate or invalid codes 101/L01/S1-01)
   /api/builder/buildings/{building}/generate-description:
     post:
       summary: Generate building description with the configured LLM (Gemini or OpenAI)
@@ -3329,6 +3360,7 @@ components:
         floor:
           type: integer
           nullable: true
+          description: Floor number. 0 = ground; negative = garage basement.
         floor_id:
           type: integer
           nullable: true
@@ -3672,6 +3704,49 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Unit'
+        towers:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tower'
+    FloorKind:
+      type: string
+      enum: [residential, commercial, garage]
+    Floor:
+      type: object
+      properties:
+        id:
+          type: integer
+        number:
+          type: integer
+          description: 0 = ground floor; negative = garage basement.
+        kind:
+          $ref: '#/components/schemas/FloorKind'
+        customized:
+          type: boolean
+    Tower:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        floors_count:
+          type: integer
+          description: Count of above-ground floors (number > 0).
+        reference_floor:
+          type: [integer, 'null']
+        sort_order:
+          type: integer
+        floors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Floor'
+        units:
+          type: array
+          items:
+            $ref: '#/components/schemas/Unit'
+        units_summary:
+          $ref: '#/components/schemas/UnitsSummary'
     ReservationSituationStep:
       type: object
       properties:
@@ -4036,55 +4111,6 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/ReservationAttachment'
-    UserActivityEvent:
-      type: object
-      properties:
-        id:
-          type: integer
-        action:
-          type: string
-        message:
-          type: string
-        resource_type:
-          type: string
-          nullable: true
-        resource_id:
-          type: integer
-          nullable: true
-        old_values:
-          type: object
-          nullable: true
-          additionalProperties: true
-        new_values:
-          type: object
-          nullable: true
-          additionalProperties: true
-        tenant_id:
-          type: integer
-          nullable: true
-        actor_user_id:
-          type: integer
-          nullable: true
-        actor:
-          type: object
-          nullable: true
-          properties:
-            id:
-              type: integer
-            name:
-              type: string
-            email:
-              type: string
-        impersonator_user_id:
-          type: integer
-          nullable: true
-        impersonated_user_id:
-          type: integer
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-          nullable: true
     UserActivityEvent:
       type: object
       properties:

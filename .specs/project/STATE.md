@@ -35,8 +35,8 @@
 - **Fase:** `building-wizard-redesign` em execução
 - **Branch:** `feature/building-wizard-redesign` (criada a partir da `main`)
 - **WIP preservado:** stash `WIP: feature/kanban-ajustes reservation progress` na branch `feature/kanban-ajustes`
-- **Última etapa concluída:** TR-04 — publish exige `price_base` em unidades/vagas `available`; `floor.kind`/`customized` e preço INCC da vaga no DTO
-- **Próxima etapa:** TR-05 — OpenAPI `structure`/`unit-grid` e schema `Building`/`Floor`
+- **Última etapa concluída:** TR-05 — OpenAPI 0.7.0 documenta andares 0/negativos, `garage`, `customized`, `reference_floor` e códigos 101/L01/S1-01
+- **Próxima etapa:** TR-06 — wizard 3 steps + `BuildingWizardProvider` + persistência por step + “Continuar cadastro”
 - **Discovery:** `docs/discovery/resumo-redesenho-wizard-empreendimentos.md`
 - **Spec:** `.specs/features/building-wizard-redesign/`
 - **Nota Entrega 2:** aceite exige `signed_file`; emitir PDF não muda status; CRUD = `proposals.manage`, emitir/aceitar = `reservations.cancel`; aceite com arquivo usa `POST .../proposal/decision` (multipart), recusa/devolução permanece `PATCH` JSON

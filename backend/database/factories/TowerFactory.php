@@ -22,6 +22,7 @@ class TowerFactory extends Factory
             'name' => fake()->randomElement(['Torre A', 'Torre B', 'Torre Comercial', 'Torre única']),
             'sort_order' => 0,
             'floors_count' => 0,
+            'reference_floor' => null,
         ];
     }
 }

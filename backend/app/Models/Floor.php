@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'tower_id',
     'number',
     'kind',
+    'customized',
 ])]
 class Floor extends Model
 {
@@ -24,12 +25,15 @@ class Floor extends Model
 
     protected $attributes = [
         'kind' => 'residential',
+        'customized' => false,
     ];
 
     protected function casts(): array
     {
         return [
+            'number' => 'integer',
             'kind' => FloorKind::class,
+            'customized' => 'boolean',
         ];
     }
 

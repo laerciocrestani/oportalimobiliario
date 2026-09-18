@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'name',
     'sort_order',
     'floors_count',
+    'reference_floor',
 ])]
 class Tower extends Model
 {
@@ -26,12 +27,14 @@ class Tower extends Model
     protected $attributes = [
         'sort_order' => 0,
         'floors_count' => 0,
+        'reference_floor' => null,
     ];
 
     protected function casts(): array
     {
         return [
             'floors_count' => 'integer',
+            'reference_floor' => 'integer',
         ];
     }
 

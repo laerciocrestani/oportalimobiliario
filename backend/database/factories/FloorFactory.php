@@ -20,6 +20,7 @@ class FloorFactory extends Factory
             'tower_id' => Tower::factory(),
             'number' => fake()->numberBetween(1, 40),
             'kind' => FloorKind::Residential,
+            'customized' => false,
         ];
     }
 
@@ -42,6 +43,13 @@ class FloorFactory extends Factory
     {
         return $this->state(fn () => [
             'kind' => FloorKind::Commercial,
+        ]);
+    }
+
+    public function garage(): static
+    {
+        return $this->state(fn () => [
+            'kind' => FloorKind::Garage,
         ]);
     }
 }

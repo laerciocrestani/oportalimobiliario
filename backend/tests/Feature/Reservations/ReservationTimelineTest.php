@@ -514,7 +514,7 @@ it('keeps cancelled timeline read-only with dialogue and attachments', function 
     expect($mutating)->toBeEmpty();
 });
 
-it('exposes deposit and hold actions on a client pre-hold timeline', function () {
+it('exposes hold actions on a client pre-hold timeline without deposit proof', function () {
     $tenant = Tenant::factory()->create();
     $builder = User::factory()->builder()->withBuilderPermissions([
         BuilderPermissions::CANCEL_RESERVATIONS,
@@ -540,7 +540,7 @@ it('exposes deposit and hold actions on a client pre-hold timeline', function ()
         ->json('steps.1.actions');
 
     expect($brokerActions)->toContain('open_dialogue')
-        ->and($brokerActions)->toContain('submit_deposit_proof');
+        ->and($brokerActions)->not->toContain('submit_deposit_proof');
 
     Sanctum::actingAs($builder);
 

@@ -6,6 +6,7 @@ import { useBuilderPermissions } from '@/apps/builder/hooks/use-builder-permissi
 import { ReservationCancelDialog } from '@/components/reservations/ReservationCancelDialog'
 import { ReservationKanbanBoard } from '@/components/reservations/ReservationKanbanBoard'
 import { ReservationProgressDialog } from '@/components/reservations/ReservationProgressDialog'
+import { kanbanProcessHint } from '@/components/reservations/reservation-kanban'
 import {
   ApiRequestError,
   builderApi,
@@ -115,6 +116,13 @@ export function ReservationsPage() {
     setTimelineOpen(true)
   }
 
+  function handleProcessRequired(reservation: BuilderReservationListItem, action?: string) {
+    toast.warning('Não é possível avançar ainda', {
+      description: kanbanProcessHint(action ?? reservation.pending_action),
+    })
+    handleOpenTimeline(reservation.id)
+  }
+
   function handleOpenMessages(reservationId: number) {
     setMessagesReservationId(reservationId)
     setMessagesOpen(true)
@@ -133,7 +141,7 @@ export function ReservationsPage() {
       notifyReservationBadgeRefresh()
     } catch (caught) {
       if (caught instanceof ApiRequestError && caught.code === 'action_required') {
-        handleOpenTimeline(reservation.id)
+        handleProcessRequired(reservation, caught.action)
         return
       }
 
@@ -182,6 +190,7 @@ export function ReservationsPage() {
               onMessages={handleOpenMessages}
               onCancel={setCancelTarget}
               onMove={handleMove}
+              onProcessRequired={handleProcessRequired}
             />
           </div>
         )}

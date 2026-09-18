@@ -14,11 +14,25 @@ import {
   type DropAnimation,
 } from '@dnd-kit/core'
 import { ReservationActionsMenu } from '@/components/reservations/ReservationActionsMenu'
-import { ReservationPendingActionBadge } from '@/components/reservations/ReservationPendingActionBadge'
-import { ReservationWaitingStatus } from '@/components/reservations/ReservationWaitingStatus'
-import { RESERVATION_KANBAN_COLUMNS } from '@/components/reservations/reservation-kanban'
-import { GripVerticalIcon, type LucideIcon } from 'lucide-react'
+import { ReservationHoldCountdown } from '@/components/reservations/ReservationHoldCountdown'
+import {
+  KANBAN_CARD_ACTIONS,
+  RESERVATION_KANBAN_COLUMNS,
+  avatarToneClass,
+  clientInitials,
+  resolveKanbanDrop,
+  type KanbanColumnTheme,
+} from '@/components/reservations/reservation-kanban'
+import { Building2Icon, MessageCircleIcon, ReplyIcon, type LucideIcon } from 'lucide-react'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
 import type { BuilderReservationListItem, ReservationKanbanColumn } from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -33,6 +47,7 @@ type ReservationKanbanBoardProps = {
   onMessages: (reservationId: number) => void
   onCancel: (reservation: BuilderReservationListItem) => void
   onMove: (reservation: BuilderReservationListItem, column: ReservationKanbanColumn) => void
+  onProcessRequired: (reservation: BuilderReservationListItem) => void
 }
 
 const dropAnimation: DropAnimation = {
@@ -46,7 +61,6 @@ const dropAnimation: DropAnimation = {
 }
 
 export function ReservationKanbanBoard({
-  profile,
   reservations,
   cancellingId,
   canCancel,
@@ -55,6 +69,7 @@ export function ReservationKanbanBoard({
   onMessages,
   onCancel,
   onMove,
+  onProcessRequired,
 }: ReservationKanbanBoardProps) {
   const [activeId, setActiveId] = useState<number | null>(null)
   const sensors = useSensors(
@@ -93,11 +108,22 @@ export function ReservationKanbanBoard({
 
     setActiveId(null)
 
-    if (!reservation || column === null || column === reservation.kanban_column) {
+    if (!reservation) {
       return
     }
 
-    onMove(reservation, column)
+    const decision = resolveKanbanDrop(reservation, column)
+
+    if (decision === 'ignore') {
+      return
+    }
+
+    if (decision === 'process_required') {
+      onProcessRequired(reservation)
+      return
+    }
+
+    onMove(reservation, column as ReservationKanbanColumn)
   }
 
   function handleDragCancel() {
@@ -119,12 +145,13 @@ export function ReservationKanbanBoard({
             column={column.id}
             label={column.label}
             icon={column.icon}
+            theme={column.theme}
+            emptyDescription={column.emptyDescription}
             count={grouped[column.id].length}
           >
             {grouped[column.id].map((reservation) => (
               <KanbanCard
                 key={reservation.id}
-                profile={profile}
                 reservation={reservation}
                 cancelling={cancellingId === reservation.id}
                 canCancel={canCancel}
@@ -139,7 +166,7 @@ export function ReservationKanbanBoard({
       </div>
       <DragOverlay dropAnimation={dropAnimation}>
         {activeReservation ? (
-          <KanbanCardPreview profile={profile} reservation={activeReservation} />
+          <KanbanCardPreview reservation={activeReservation} />
         ) : null}
       </DragOverlay>
     </DndContext>
@@ -150,12 +177,16 @@ function KanbanColumn({
   column,
   label,
   icon: Icon,
+  theme,
+  emptyDescription,
   count,
   children,
 }: {
   column: ReservationKanbanColumn
   label: string
   icon: LucideIcon
+  theme: KanbanColumnTheme
+  emptyDescription: string
   count: number
   children: ReactNode
 }) {
@@ -169,27 +200,46 @@ function KanbanColumn({
       ref={setNodeRef}
       aria-label={label}
       className={cn(
-        'flex h-full min-h-0 w-72 shrink-0 flex-col gap-3 rounded-xl border bg-muted/30 p-3',
-        isOver ? 'border-ring ring-2 ring-ring/40' : null,
+        'flex h-full min-h-0 w-80 shrink-0 flex-col gap-3 rounded-2xl p-3',
+        theme.column,
+        isOver ? cn('ring-2', theme.ring) : null,
       )}
     >
       <header className="flex shrink-0 items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-md border bg-background text-muted-foreground">
-            <Icon className="size-3.5" aria-hidden />
+          <span
+            className={cn(
+              'flex size-8 shrink-0 items-center justify-center rounded-lg',
+              theme.iconWrap,
+            )}
+          >
+            <Icon className="size-4" aria-hidden />
           </span>
-          <h2 className="min-w-0 text-sm font-medium leading-5">{label}</h2>
+          <h2 className={cn('min-w-0 text-sm font-semibold leading-5', theme.title)}>{label}</h2>
         </div>
-        <span className="text-xs text-muted-foreground">{count}</span>
+        <span className={cn('text-sm font-medium', theme.count)}>{count}</span>
       </header>
       <Separator />
-      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">{children}</div>
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto">
+        {count === 0 ? (
+          <Empty className="min-h-48 flex-1 border-0 p-4">
+            <EmptyHeader>
+              <EmptyMedia variant="icon" className={theme.iconWrap}>
+                <Icon />
+              </EmptyMedia>
+              <EmptyTitle>Nenhuma reserva aqui</EmptyTitle>
+              <EmptyDescription className="text-xs">{emptyDescription}</EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : (
+          children
+        )}
+      </div>
     </section>
   )
 }
 
 function KanbanCard({
-  profile,
   reservation,
   cancelling,
   canCancel,
@@ -198,7 +248,6 @@ function KanbanCard({
   onMessages,
   onCancel,
 }: {
-  profile: 'builder' | 'broker'
   reservation: BuilderReservationListItem
   cancelling: boolean
   canCancel: boolean
@@ -218,12 +267,17 @@ function KanbanCard({
     <article
       ref={setNodeRef}
       className={cn(
-        'shrink-0 rounded-lg border bg-background p-3 shadow-sm',
+        'relative shrink-0 rounded-2xl border bg-background p-4',
         isDragging ? 'opacity-40' : null,
       )}
     >
+      <button
+        type="button"
+        className="absolute inset-0 cursor-pointer rounded-2xl border-0 bg-transparent shadow-none"
+        aria-label={`Abrir andamento de ${reservation.client?.name ?? `Reserva ${reservation.id}`}`}
+        onClick={onOpen}
+      />
       <KanbanCardBody
-        profile={profile}
         reservation={reservation}
         dragHandle={canDrag ? { attributes, listeners } : null}
         actions={
@@ -244,27 +298,23 @@ function KanbanCard({
 }
 
 function KanbanCardPreview({
-  profile,
   reservation,
 }: {
-  profile: 'builder' | 'broker'
   reservation: BuilderReservationListItem
 }) {
   return (
-    <article className="w-64 cursor-grabbing rounded-lg border bg-background p-3 shadow-lg">
-      <KanbanCardBody profile={profile} reservation={reservation} />
+    <article className="w-72 cursor-grabbing rounded-2xl border bg-background p-4">
+      <KanbanCardBody reservation={reservation} />
     </article>
   )
 }
 
 function KanbanCardBody({
-  profile,
   reservation,
   dragHandle,
   actions,
   onOpen,
 }: {
-  profile: 'builder' | 'broker'
   reservation: BuilderReservationListItem
   dragHandle?: {
     attributes: ReturnType<typeof useDraggable>['attributes']
@@ -274,58 +324,66 @@ function KanbanCardBody({
   onOpen?: () => void
 }) {
   const clientName = reservation.client?.name ?? `Reserva ${reservation.id}`
-  const place = [
-    reservation.unit?.building?.name,
-    reservation.unit?.code,
-  ].filter(Boolean).join(' · ')
+  const buildingName = reservation.unit?.building?.name
+  const unitCode = reservation.unit?.code
+  const cardAction = reservation.pending_action
+    ? KANBAN_CARD_ACTIONS[reservation.pending_action]
+    : null
+  const avatar = (
+    <Avatar size="default" className="size-9">
+      <AvatarFallback className={cn('text-xs font-semibold', avatarToneClass(reservation.id))}>
+        {clientInitials(clientName)}
+      </AvatarFallback>
+    </Avatar>
+  )
 
   return (
-    <>
-      <div className="flex items-start justify-between gap-2">
+    <div className="pointer-events-none relative flex flex-col gap-3">
+      <div className="flex items-center gap-2">
         {dragHandle ? (
           <button
             type="button"
-            className="mt-0.5 shrink-0 cursor-grab text-muted-foreground"
+            className="pointer-events-auto shrink-0 cursor-grab rounded-full"
             aria-label={`Mover ${clientName}`}
             {...dragHandle.listeners}
             {...dragHandle.attributes}
           >
-            <GripVerticalIcon className="size-4" />
+            {avatar}
           </button>
-        ) : dragHandle === null ? null : (
-          <span className="mt-0.5 shrink-0 text-muted-foreground" aria-hidden>
-            <GripVerticalIcon className="size-4" />
-          </span>
-        )}
-        {onOpen ? (
-          <Button
-            variant="link"
-            className="h-auto min-w-0 justify-start p-0 text-left font-medium text-foreground"
-            onClick={onOpen}
-          >
-            {clientName}
-          </Button>
         ) : (
-          <p className="min-w-0 font-medium">{clientName}</p>
+          avatar
         )}
-        {actions}
+        <p className="min-w-0 flex-1 truncate font-semibold leading-none">{clientName}</p>
+        {actions ? <div className="pointer-events-auto shrink-0">{actions}</div> : null}
       </div>
-      <p className="text-xs text-muted-foreground">{place || '—'}</p>
-      {profile === 'builder' && reservation.broker?.name ? (
-        <p className="text-xs text-muted-foreground">{reservation.broker.name}</p>
-      ) : null}
-      <div className="flex flex-wrap items-center gap-1 pt-1">
-        {reservation.needs_action ? (
-          <ReservationPendingActionBadge pendingAction={reservation.pending_action} />
+      <div className="flex flex-col gap-1">
+        <div className="flex min-w-0 items-center gap-2">
+          <Building2Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <p className="truncate text-xs text-muted-foreground">{buildingName || '—'}</p>
+        </div>
+        {unitCode ? (
+          <p className="pl-6 text-xs text-muted-foreground">Unid. {unitCode}</p>
         ) : null}
-        <ReservationWaitingStatus
-          profile={profile}
-          waitingOn={reservation.situation.current.waiting_on}
-          reservationStatus={reservation.status}
-          needsAction={reservation.needs_action}
-        />
       </div>
-    </>
+      {reservation.kanban_column === 'pre_reservation' && reservation.expires_at ? (
+        <ReservationHoldCountdown
+          createdAt={reservation.created_at}
+          expiresAt={reservation.expires_at}
+        />
+      ) : null}
+      {reservation.needs_action && cardAction && onOpen ? (
+        <div className="flex flex-col gap-2">
+          <p className="flex items-start gap-2 text-xs text-muted-foreground">
+            <MessageCircleIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+            <span>{cardAction.hint}</span>
+          </p>
+          <Button type="button" className="pointer-events-auto w-full" onClick={onOpen}>
+            <ReplyIcon data-icon="inline-start" />
+            {cardAction.label}
+          </Button>
+        </div>
+      ) : null}
+    </div>
   )
 }
 

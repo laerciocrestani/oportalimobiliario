@@ -32,12 +32,12 @@
 
 ## Sessão atual
 
-- **Fase:** `reservation-progress-flex` Entrega 4 **done** (T-13…T-14) — feature **done**
-- **Branch:** `feature/reservation-progress-flex`
-- **Última etapa concluída:** Kanban 7 colunas + drag validado (`PATCH .../kanban`) + dialog central no lugar do sheet
-- **Próxima etapa:** próxima feature do ROADMAP (feature `reservation-progress-flex` encerrada)
-- **Discovery:** `docs/discovery/resumo-andamento-reserva-flexivel.md`
-- **Spec:** `.specs/features/reservation-progress-flex/`
+- **Fase:** `reservation-progress-column-modal` concluída neste branch
+- **Branch:** `feature/kanban-ajustes`
+- **Última etapa concluída:** Kanban + dialog 60/40 por coluna, chat embutido, countdown da pré-reserva e polish visual
+- **Próxima etapa:** PR / review
+- **Discovery:** `docs/discovery/resumo-modal-andamento-por-coluna.md`
+- **Spec:** `.specs/features/reservation-progress-column-modal/spec.md`
 - **Nota Entrega 2:** aceite exige `signed_file`; emitir PDF não muda status; CRUD = `proposals.manage`, emitir/aceitar = `reservations.cancel`; aceite com arquivo usa `POST .../proposal/decision` (multipart), recusa/devolução permanece `PATCH` JSON
 - **Nota Entrega 3:** testemunhas escolhidas no POST do PDF da construtora (`witness_1_user_id` / `witness_2_user_id`); sold exige 4 assinaturas; badge `pending_action` no card + `pending-actions-count` no menu (inclui reply); testemunha assina sem `reservations.cancel`
 - **Nota Entrega 4:** colunas derivadas de `status` + anexos (sem coluna `situation`); drag chama services existentes; 422 `action_required` abre o dialog; testemunha não arrasta; gestor vê todas, corretor só as suas

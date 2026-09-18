@@ -1,6 +1,6 @@
 ---
 feature: building-wizard-redesign
-status: in_progress
+status: done
 ---
 
 # Design — Redesenho do Wizard de Empreendimentos

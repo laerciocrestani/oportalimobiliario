@@ -114,13 +114,14 @@ export type UnitsSummary = {
   unavailable: number
 }
 
-export type FloorKind = 'residential' | 'commercial'
+export type FloorKind = 'residential' | 'commercial' | 'garage'
 
 export type Floor = {
   id: number
   tower_id: number
   number: number
   kind: FloorKind
+  customized?: boolean
 }
 
 export type Tower = {
@@ -129,21 +130,29 @@ export type Tower = {
   sort_order: number
   building_id?: number
   floors_count?: number
+  reference_floor?: number | null
   floors?: Floor[]
   units_summary?: UnitsSummary
   units?: Unit[]
 }
 
 export type BuildingStructurePayload = {
-  towers: Array<{ name: string; floors_count: number }>
+  towers: Array<{
+    name: string
+    floors_count?: number
+    reference_floor?: number | null
+    floors?: Array<{ number: number; kind: FloorKind }>
+  }>
 }
 
 export type BuildingUnitGridPayload = {
   towers: Array<{
     id: number
+    reference_floor?: number | null
     floors: Array<{
       number: number
       kind: FloorKind
+      customized?: boolean
       units: Array<{
         code: string
         area_m2?: number | null

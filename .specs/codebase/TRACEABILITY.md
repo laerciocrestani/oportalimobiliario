@@ -285,12 +285,12 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 | REQ-WIZ-001 | Wizard de criação em 4 steps; edição posterior nas telas atuais | `BuildingController.php`, `UnitController.php` | `BuildingWizardPage.tsx`, `BuildingEditForm.tsx`, `UnitDetailDrawer.tsx`, `UnitCreateDialog.tsx` | `BuildingWizardPage.test.tsx`, `BuildingEditForm.test.tsx`, `UnitDetailDrawer.test.tsx`, `UnitCreateDialog.test.tsx` |
 | REQ-WIZ-002 | Step 1 nome + endereço / ViaCEP | `BuildingController.php`, `CepController.php`, `ViaCepClient.php` | `BuildingWizardPage.tsx`, `BuildingWizardIdentityStep.tsx`, `BuildingEditForm.tsx` | `BuildingTest.php`, `CepLookupTest.php`, `BuildingWizardPage.test.tsx`, `BuildingEditForm.test.tsx` |
 | REQ-WIZ-003 | Persistência por step (rascunho) | `buildings.wizard_step` | `/buildings/new`, `/buildings/:id/wizard` | `BuildingWizardPage.test.tsx` |
-| REQ-WIZ-004 | Step 2 torres + andares + prédio CSS | `BuildingStructureController.php`, `BuildingStructureService.php`, `Floor.php` | `BuildingWizardTowersStep.tsx`, `BuildingMassing.tsx` | `BuildingStructureTest.php`, `BuildingWizardPage.test.tsx`, `BuildingMassing.test.tsx` |
-| REQ-WIZ-005 | Step 3 planta típica + códigos `101…` | `BuildingUnitGridController.php`, `BuildingUnitGridService.php` | `BuildingWizardUnitsStep.tsx`, `lib/unit-grid.ts` | `BuildingUnitGridTest.php`, `BuildingWizardPage.test.tsx` |
-| REQ-WIZ-006 | Exceção redesenha o andar | `BuildingUnitGridService.php` | `BuildingWizardUnitsStep.tsx` | `BuildingWizardPage.test.tsx` |
-| REQ-WIZ-007 | Tipo do andar residencial/comercial | `floors.kind` | `BuildingWizardUnitsStep.tsx` | `BuildingUnitGridTest.php` |
-| REQ-WIZ-008 | Ficha da unidade (áreas, cômodos, preço-base) | migration `add_building_defaults_and_unit_specs`, `UnitController.php`, `BuildingUnitGridService.php` | `BuildingWizardUnitsStep.tsx`, `BuildingWizardUnitSpecCard.tsx` | `BuildingTest.php`, `BuildingUnitGridTest.php`, `BuildingWizardPage.test.tsx` |
-| REQ-WIZ-009 | Defaults do empreendimento (herança por NULL + união de adicionais) | `AmenityAssignmentService.php`, `AmenityPresentation.php`, `BuildingController.php`, `UnitController.php` | `BuildingWizardDefaultsCard.tsx`, `BuildingWizardUnitSpecCard.tsx` | `BuildingTest.php`, `BuildingAmenityTest.php`, `BuildingWizardPage.test.tsx` |
+| REQ-WIZ-004 | Step 2 torres + andares (substituído pelo editor em pilha) | `BuildingStructureController.php`, `BuildingStructureService.php`, `Floor.php` | `StructureEditor.tsx` | `BuildingStructureTest.php`, `BuildingWizardPage.test.tsx`, `StructureEditor.test.tsx` |
+| REQ-WIZ-005 | Códigos `101…` / grade de unidades | `BuildingUnitGridController.php`, `BuildingUnitGridService.php` | `lib/floor-stack.ts` | `BuildingUnitGridTest.php`, `floor-stack.test.ts` |
+| REQ-WIZ-006 | Exceção no andar | `BuildingUnitGridService.php` | `lib/floor-stack.ts`, `StructureEditor.tsx` | `floor-stack.test.ts`, `StructureEditor.test.tsx` |
+| REQ-WIZ-007 | Tipo do andar residencial/comercial | `floors.kind` | `StructureEditor.tsx` | `BuildingUnitGridTest.php`, `floor-stack.test.ts` |
+| REQ-WIZ-008 | Ficha da unidade (áreas, cômodos, preço-base) | migration `add_building_defaults_and_unit_specs`, `UnitController.php` | `UnitDetailDrawer.tsx`, `UnitCreateDialog.tsx`, `UnitSpecFields.tsx` | `BuildingTest.php`, `UnitDetailDrawer.test.tsx`, `UnitCreateDialog.test.tsx` |
+| REQ-WIZ-009 | Defaults do empreendimento (herança por NULL + união de adicionais) | `AmenityAssignmentService.php`, `AmenityPresentation.php`, `BuildingController.php`, `UnitController.php` | `BuildingDefaultsCard.tsx`, `BuildingEditForm.tsx` | `BuildingTest.php`, `BuildingAmenityTest.php`, `BuildingEditForm.test.tsx` |
 | REQ-WIZ-010 | Catálogo fechado de adicionais (admin) | `Admin/AmenityController.php`, `Builder/AmenityController.php`, `Amenity.php` | `AmenitiesPage.tsx` | `AmenityTest.php`, `AmenitiesPage.test.tsx` |
 | REQ-WIZ-011 | Preço sempre INCC-M (cálculo na leitura) | `UnitPriceCalculator.php`, `AmenityPresentation.php`, `BrokerUnitSerializer.php`, `Public/BuildingController.php` | `unit-listing.ts`, `BrokerUnitsDialog.tsx`, `PublicUnitList.tsx`, `BuildingCard.tsx`, `sites/src/pages/empreendimentos/[slug].astro` | `UnitPriceCalculatorTest.php`, `BuildingPriceCalculationTest.php`, `unit-listing.test.ts`, `BrokerUnitsDialog.test.tsx`, `PublicUnitList.test.tsx`, `BuildingCard.test.tsx` |
 | REQ-WIZ-012 | Tabela INCC-M (fonte do cálculo) | `InccIndex.php`, `BcbInccClient.php`, `FetchInccIndex.php`, `InccIndexSeeder.php` | — | `InccIndexTest.php`, `FetchInccIndexTest.php` |
@@ -299,6 +299,24 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 | REQ-WIZ-015 | Publicar exige unidade `available` com preço | `BuildingController.php` | `BuildingWizardPage.tsx` | `BuildingTest.php`, `BuildingWizardPage.test.tsx` |
 | REQ-WIZ-016 | APIs broker/público expõem preço calculado | `BrokerUnitSerializer.php`, `Public/BuildingController.php` | `unit-listing.ts`, `BrokerUnitsDialog.tsx`, `PublicUnitList.tsx`, `BuildingCard.tsx`, `sites/` | `BuildingPriceCalculationTest.php`, `unit-listing.test.ts`, `BrokerUnitsDialog.test.tsx`, `PublicUnitList.test.tsx` |
 | REQ-WIZ-017 | Pest + OpenAPI + Vitest + seeds/factories | `WizardBuildingSeeder.php`, `InccIndexSeeder.php`, `AmenitySeeder.php` | wizard + admin + broker/público | `docs/api/openapi.yaml` + testes T-01…T-19; `WizardBuildingSeederTest.php` |
+
+---
+
+## building-wizard-redesign
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-WZR-001 | Wizard de criação em 3 steps | `BuildingController.php` (`wizard_step`) | `BuildingWizardPage.tsx`, `BuildingWizardProvider.tsx` | `BuildingWizardPage.test.tsx` |
+| REQ-WZR-002 | Andar 0/negativos + códigos `101`/`L01`/`S1-01` | `UnitCode.php`, `floors.number` signed | `lib/floor-stack.ts` | `BuildingUnitGridTest.php`, `floor-stack.test.ts`, `WizardBuildingSeederTest.php` |
+| REQ-WZR-003 | `FloorKind::Garage` | `FloorKind.php` | `FloorKind` em `api.ts` | `BuildingStructureTest.php`, `floor-stack.test.ts` |
+| REQ-WZR-004 | Andar-espelho + clonagem por faixa | `towers.reference_floor` | `cloneMirror`, `StructureEditor.tsx` (`MirrorPanel`) | `floor-stack.test.ts`, `StructureEditor.test.tsx` |
+| REQ-WZR-005 | Exceções preservadas na reclonagem | `floors.customized` | `markException`/`resetFloor`, `MirrorPanel` | `floor-stack.test.ts`, `StructureEditor.test.tsx`, `WizardBuildingSeederTest.php` |
+| REQ-WZR-006 | Vaga = unit em andar `garage` | `BuildingUnitGridService.php` | esqueleto + `unitGridPayload`, `GaragePanel` | `BuildingUnitGridTest.php`, `floor-stack.test.ts`, `StructureEditor.test.tsx`, `WizardBuildingSeederTest.php` |
+| REQ-WZR-007 | Campos enxutos no wizard; ficha + defaults na edição | — | `StructureEditor.tsx`, `BuildingDefaultsCard.tsx`, `UnitDetailDrawer.tsx` | `BuildingWizardPage.test.tsx`, `BuildingEditForm.test.tsx`, `UnitDetailDrawer.test.tsx` |
+| REQ-WZR-008 | Editor visual em pilha | — | `StructureEditor.tsx`, `WizardStructureStep.tsx` | `StructureEditor.test.tsx`, `BuildingWizardPage.test.tsx` |
+| REQ-WZR-009 | Persistência por step / rascunho retomável (`wizard_step` 1–3) | `BuildingController.php`, `BuildingStructureService.php`, `BuildingUnitGridService.php` | `BuildingWizardProvider.tsx` | `BuildingWizardPage.test.tsx` |
+| REQ-WZR-010 | Validações: min 1 unidade/andar; publish exige preço; PUT só em rascunho | `BuildingStructureService.php`, `BuildingUnitGridService.php`, `BuildingController.php` | — | `BuildingStructureTest.php`, `BuildingUnitGridTest.php`, `BuildingTest.php` |
+| REQ-WZR-011 | Pest + OpenAPI + Vitest + seed demo (garagem/térreo/clone) | `WizardBuildingSeeder.php` | wizard + `StructureEditor` | `docs/api/openapi.yaml`, `WizardBuildingSeederTest.php`, `StructureEditor.test.tsx` |
 
 ---
 

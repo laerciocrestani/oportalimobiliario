@@ -1,6 +1,6 @@
 ---
 feature: building-wizard-redesign
-status: in_progress
+status: done
 ---
 
 # Tasks — building-wizard-redesign
@@ -27,18 +27,18 @@ Ordem: backend (schema → validação → API) antes do frontend. 1 commit atô
 
 - [x] **TR-06** Wizard 3 steps + `BuildingWizardProvider` (compound + `use()`) + persistência por step + “Continuar cadastro”.
   - Gate: `pnpm test` `BuildingWizardPage.test.tsx` (navegação 3 steps, retomada).
-- [ ] **TR-07** `floor-stack.ts`: tipos, esqueleto, `unitCode` (0/negativos), `cloneMirror`/`markException`/`resetFloor`, `payload`. Testes unitários.
+- [x] **TR-07** `floor-stack.ts`: tipos, esqueleto, `unitCode` (0/negativos), `cloneMirror`/`markException`/`resetFloor`, `payload`. Testes unitários.
   - Gate: `pnpm test` `floor-stack.test.ts` (clonagem faixa acima/abaixo, preserve exceção, códigos térreo/subsolo).
-- [ ] **TR-08** `StructureEditor` (Skeleton + TowerTabs + FloorStack + FloorRow + UnitEditor) + Vitest de interação.
+- [x] **TR-08** `StructureEditor` (Skeleton + TowerTabs + FloorStack + FloorRow + UnitEditor) + Vitest de interação.
   - Gate: `pnpm test` `StructureEditor.test.tsx` (gera esqueleto, edita andar, marca exceção).
-- [ ] **TR-09** `MirrorPanel` (espelho + faixa + direção + clonar) e `GaragePanel` (vagas área+preço) + Vitest.
+- [x] **TR-09** `MirrorPanel` (espelho + faixa + direção + clonar) e `GaragePanel` (vagas área+preço) + Vitest.
   - Gate: `pnpm test` (clonar preserva exceção; vaga com área+preço).
-- [ ] **TR-10** Aposentar `BuildingMassing`; migrar `BuildingMassing.test.tsx` para `FloorStack`. Mover ficha completa + defaults de herança para a edição pós-criação (telas de detalhe).
+- [x] **TR-10** Aposentar `BuildingMassing`; migrar `BuildingMassing.test.tsx` para `FloorStack`. Mover ficha completa + defaults de herança para a edição pós-criação (telas de detalhe).
   - Gate: `pnpm test` sem referências mortas; edição pós-criação cobre os campos removidos do wizard.
 
 ## Encerramento
 
-- [ ] **TR-11** Seeds demo (torre com subsolo/garagem + lojas no térreo + apartamentos clonados) + `TRACEABILITY.md` (REQ-WZR-*). `STATE.md` apenas pelo orquestrador.
+- [x] **TR-11** Seeds demo (torre com subsolo/garagem + lojas no térreo + apartamentos clonados) + `TRACEABILITY.md` (REQ-WZR-*). `STATE.md` apenas pelo orquestrador.
   - Gate: seed roda; `php artisan test` e `pnpm test` verdes.
 
 ## Follow-up (fora desta fatia)

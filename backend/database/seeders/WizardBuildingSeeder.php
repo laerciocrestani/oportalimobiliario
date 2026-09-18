@@ -19,9 +19,12 @@ use App\Tenancy\TenantContext;
 use Illuminate\Database\Seeder;
 
 /**
- * One demo building created through the wizard services (structure + unit-grid).
+ * Demo building created through the wizard services (structure + unit-grid).
  *
  * @see REQ-WIZ-017
+ * @see REQ-WZR-002
+ * @see REQ-WZR-006
+ * @see REQ-WZR-011
  */
 class WizardBuildingSeeder extends Seeder
 {
@@ -82,7 +85,7 @@ class WizardBuildingSeeder extends Seeder
             'flooring_type' => FlooringType::Porcelain,
             'solar_position' => SolarPosition::North,
             'sun_period' => SunPeriod::Morning,
-            'description' => 'Lançamento demo gerado pelo wizard, com preço-base em INCC-M e ficha completa das unidades.',
+            'description' => 'Lançamento demo gerado pelo wizard, com subsolo de garagem, lojas no térreo e andares clonados.',
             'seo_title' => 'Residencial Bosque — Lançamento SP',
             'seo_description' => 'Empreendimento demo do wizard com preço corrigido pelo INCC-M.',
             'wizard_step' => max((int) $building->wizard_step, 1),
@@ -97,7 +100,17 @@ class WizardBuildingSeeder extends Seeder
         );
 
         $building = app(BuildingStructureService::class)->replace($building, [
-            ['name' => 'Torre A', 'floors_count' => 3],
+            [
+                'name' => 'Torre A',
+                'reference_floor' => 1,
+                'floors' => [
+                    ['number' => -1, 'kind' => 'garage'],
+                    ['number' => 0, 'kind' => 'commercial'],
+                    ['number' => 1, 'kind' => 'residential'],
+                    ['number' => 2, 'kind' => 'residential'],
+                    ['number' => 3, 'kind' => 'residential'],
+                ],
+            ],
         ]);
 
         $tower = $building->towers->first();
@@ -112,13 +125,13 @@ class WizardBuildingSeeder extends Seeder
 
         $building->update([
             'published' => true,
-            'wizard_step' => 4,
+            'wizard_step' => 3,
             'wizard_completed_at' => now(),
         ]);
     }
 
     /**
-     * @return array{id: int, floors: list<array<string, mixed>>}
+     * @return array{id: int, reference_floor: int, floors: list<array<string, mixed>>}
      */
     private function unitGrid(Tower $tower): array
     {
@@ -126,62 +139,108 @@ class WizardBuildingSeeder extends Seeder
 
         return [
             'id' => $tower->id,
+            'reference_floor' => 1,
             'floors' => [
+                [
+                    'number' => -1,
+                    'kind' => 'garage',
+                    'customized' => false,
+                    'units' => [
+                        $this->garageSpot('S1-01', 12.5, 45000),
+                        $this->garageSpot('S1-02', 13.0, 48000),
+                    ],
+                ],
+                [
+                    'number' => 0,
+                    'kind' => 'commercial',
+                    'customized' => false,
+                    'units' => [
+                        $this->shop('L01', 38.0, 210000),
+                        $this->shop('L02', 42.0, 240000),
+                    ],
+                ],
                 [
                     'number' => 1,
                     'kind' => 'residential',
-                    'units' => [
-                        $this->typicalUnit('101', [
-                            'price_base' => 480000,
-                            'area_m2' => 72.5,
-                            'total_area_m2' => 84.0,
-                        ]),
-                        $this->typicalUnit('102', [
-                            'price_base' => 495000,
-                            'area_m2' => 78.0,
-                            'total_area_m2' => 90.0,
-                            'bedrooms' => 3,
-                            'suites' => 2,
-                        ]),
-                    ],
+                    'customized' => false,
+                    'units' => $this->clonedApartments(1),
                 ],
                 [
                     'number' => 2,
                     'kind' => 'residential',
-                    'units' => [
-                        $this->typicalUnit('201', [
-                            'price_base' => 510000,
-                            'area_m2' => 72.5,
-                            'total_area_m2' => 84.0,
-                        ]),
-                        $this->typicalUnit('202', [
-                            'price_base' => 525000,
-                            'area_m2' => 78.0,
-                            'total_area_m2' => 90.0,
-                            'bedrooms' => 3,
-                            'suites' => 2,
-                        ]),
-                    ],
+                    'customized' => false,
+                    'units' => $this->clonedApartments(2, [
+                        ['price_base' => 510000],
+                        ['price_base' => 525000],
+                    ]),
                 ],
                 [
                     'number' => 3,
-                    'kind' => 'commercial',
-                    'units' => [
-                        $this->typicalUnit('301', [
+                    'kind' => 'residential',
+                    'customized' => true,
+                    'units' => $this->clonedApartments(3, [
+                        [
                             'price_base' => 620000,
                             'area_m2' => 95.0,
                             'total_area_m2' => 110.0,
-                            'bedrooms' => 0,
-                            'bathrooms' => 2,
-                            'suites' => 0,
-                            'powder_rooms' => 1,
-                            'balconies' => 0,
-                            'property_position' => PropertyPosition::Front->value,
                             'amenity_ids' => $closetId === null ? [] : [$closetId],
-                        ]),
-                    ],
+                        ],
+                        ['price_base' => 540000],
+                    ]),
                 ],
             ],
+        ];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $overrides
+     * @return list<array<string, mixed>>
+     */
+    private function clonedApartments(int $floor, array $overrides = []): array
+    {
+        return [
+            $this->typicalUnit("{$floor}01", $overrides[0] ?? []),
+            $this->typicalUnit("{$floor}02", [
+                'price_base' => 495000,
+                'area_m2' => 78.0,
+                'total_area_m2' => 90.0,
+                'bedrooms' => 3,
+                'suites' => 2,
+                ...($overrides[1] ?? []),
+            ]),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function garageSpot(string $code, float $area, float $priceBase): array
+    {
+        return [
+            'code' => $code,
+            'private_area_m2' => $area,
+            'price_base' => $priceBase,
+            'price_competence' => self::PRICE_COMPETENCE,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function shop(string $code, float $area, float $priceBase): array
+    {
+        return [
+            'code' => $code,
+            'price_base' => $priceBase,
+            'price_competence' => self::PRICE_COMPETENCE,
+            'area_m2' => $area,
+            'total_area_m2' => $area,
+            'bedrooms' => 0,
+            'bathrooms' => 1,
+            'suites' => 0,
+            'powder_rooms' => 1,
+            'balconies' => 0,
+            'property_position' => PropertyPosition::Front->value,
         ];
     }
 

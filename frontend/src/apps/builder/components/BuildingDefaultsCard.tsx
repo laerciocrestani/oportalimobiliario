@@ -9,17 +9,17 @@ import {
 } from '@/apps/builder/lib/unit-spec'
 import type { Amenity } from '@/lib/api'
 
-type BuildingWizardDefaultsCardProps = {
+type BuildingDefaultsCardProps = {
   defaults: BuildingDefaultsForm
   amenities: Amenity[]
   onChange: (defaults: BuildingDefaultsForm) => void
 }
 
-export function BuildingWizardDefaultsCard({
+export function BuildingDefaultsCard({
   defaults,
   amenities,
   onChange,
-}: BuildingWizardDefaultsCardProps) {
+}: BuildingDefaultsCardProps) {
   function toggleAmenity(amenityId: number, checked: boolean) {
     const amenity_ids = checked
       ? [...defaults.amenity_ids, amenityId]
@@ -40,7 +40,7 @@ export function BuildingWizardDefaultsCard({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <BuildingWizardEnumSelect
-          id="wizard-building-ceiling"
+          id="building-ceiling"
           label="Forro"
           value={defaults.ceiling_type}
           emptyLabel="Não informado"
@@ -48,7 +48,7 @@ export function BuildingWizardDefaultsCard({
           onChange={(ceiling_type) => onChange({ ...defaults, ceiling_type })}
         />
         <BuildingWizardEnumSelect
-          id="wizard-building-opening"
+          id="building-opening"
           label="Aberturas"
           value={defaults.opening_type}
           emptyLabel="Não informado"
@@ -56,7 +56,7 @@ export function BuildingWizardDefaultsCard({
           onChange={(opening_type) => onChange({ ...defaults, opening_type })}
         />
         <BuildingWizardEnumSelect
-          id="wizard-building-flooring"
+          id="building-flooring"
           label="Piso"
           value={defaults.flooring_type}
           emptyLabel="Não informado"
@@ -64,7 +64,7 @@ export function BuildingWizardDefaultsCard({
           onChange={(flooring_type) => onChange({ ...defaults, flooring_type })}
         />
         <BuildingWizardEnumSelect
-          id="wizard-building-solar"
+          id="building-solar"
           label="Posição solar"
           value={defaults.solar_position}
           emptyLabel="Não informado"
@@ -72,7 +72,7 @@ export function BuildingWizardDefaultsCard({
           onChange={(solar_position) => onChange({ ...defaults, solar_position })}
         />
         <BuildingWizardEnumSelect
-          id="wizard-building-sun"
+          id="building-sun"
           label="Período de sol"
           value={defaults.sun_period}
           emptyLabel="Não informado"

@@ -42,6 +42,7 @@ describe('UnitCreateDialog', () => {
     expect(screen.getByLabelText('Área privativa (m²)')).toBeInTheDocument()
     expect(screen.getByLabelText('Preço-base (R$)')).toBeInTheDocument()
     expect(screen.getByLabelText('Competência INCC')).toBeInTheDocument()
+    expect(screen.getByLabelText('Suítes')).toBeInTheDocument()
     expect(screen.getByLabelText('Status')).toBeInTheDocument()
   })
 

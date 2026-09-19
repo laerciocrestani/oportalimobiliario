@@ -197,20 +197,13 @@ export const KANBAN_CARD_ACTIONS: Record<string, { hint: string; label: string }
   },
 }
 
-const WAITING_ON_LABEL: Record<'broker' | 'builder', string> = {
-  broker: 'Aguardando corretor',
-  builder: 'Aguardando construtora',
-}
-
-export type KanbanCardCta = {
-  hint: string
-  label: string
-  interactive: boolean
-}
+export type KanbanCardCta =
+  | { hint: string; label: string; interactive: true }
+  | { hint: string; interactive: false }
 
 /**
  * Pré-reserva: botão com label da ação (Responder, Enviar mensagem…) quando é a vez do viewer;
- * senão, só a label de fila. Demais colunas (incl. proposta): fila por waiting_on, nunca “Responder” de mensagem.
+ * senão, só o hint de fila. Demais colunas (incl. proposta): fila por waiting_on, nunca “Responder” de mensagem.
  */
 export function resolveKanbanCardCta(
   reservation: Pick<
@@ -227,7 +220,8 @@ export function resolveKanbanCardCta(
     ? KANBAN_CARD_ACTIONS[reservation.pending_action]
     : null
   const waitingOn = reservation.situation?.current?.waiting_on ?? null
-  const defaultHint = 'Abra o andamento da reserva e conclua a etapa atual para avançar.'
+  const ownTurnHint =
+    actionMeta?.hint ?? 'Abra o andamento da reserva e conclua a etapa atual para avançar.'
 
   if (reservation.kanban_column === 'pre_reservation') {
     if (reservation.needs_action && actionMeta) {
@@ -242,34 +236,55 @@ export function resolveKanbanCardCta(
       return null
     }
 
-    return queueCta(waitingOn, profile, actionMeta?.hint ?? defaultHint)
+    return queueCta(waitingOn, profile, reservation.kanban_column, ownTurnHint)
   }
 
   if (!waitingOn) {
     return null
   }
 
-  return queueCta(waitingOn, profile, actionMeta?.hint ?? defaultHint)
+  return queueCta(waitingOn, profile, reservation.kanban_column, ownTurnHint)
 }
 
 function queueCta(
   waitingOn: 'broker' | 'builder',
   profile: 'builder' | 'broker',
-  hint: string,
+  column: ReservationKanbanColumn,
+  ownTurnHint: string,
 ): KanbanCardCta {
   if (waitingOn === profile) {
     return {
-      hint,
+      hint: ownTurnHint,
       label: 'Aguardando você',
       interactive: true,
     }
   }
 
   return {
-    hint,
-    label: WAITING_ON_LABEL[waitingOn],
+    hint: waitingOnOtherHint(waitingOn, column),
     interactive: false,
   }
+}
+
+function waitingOnOtherHint(
+  waitingOn: 'broker' | 'builder',
+  column: ReservationKanbanColumn,
+): string {
+  if (column === 'proposal_review') {
+    return waitingOn === 'builder'
+      ? 'A construtora está analisando a proposta.'
+      : 'O corretor precisa reenviar a proposta.'
+  }
+
+  if (column === 'pre_reservation') {
+    return waitingOn === 'builder'
+      ? 'A construtora precisa responder no diálogo.'
+      : 'O corretor precisa continuar o diálogo ou enviar a proposta.'
+  }
+
+  return waitingOn === 'builder'
+    ? 'A próxima ação é da construtora.'
+    : 'A próxima ação é do corretor.'
 }
 
 export function kanbanProcessHint(action: string | null | undefined): string {

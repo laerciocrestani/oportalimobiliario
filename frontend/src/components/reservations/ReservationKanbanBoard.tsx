@@ -394,6 +394,16 @@ function KanbanCardBody({
             </p>
           </Fragment>
         ))}
+        {cardCta ? (
+          <>
+            <Separator className="col-span-2 my-0.5" />
+            <MessageCircleIcon
+              className="mt-0.5 size-4 justify-self-center self-start text-muted-foreground"
+              aria-hidden
+            />
+            <p className="text-xs leading-snug text-muted-foreground">{cardCta.hint}</p>
+          </>
+        ) : null}
       </div>
       {reservation.kanban_column === 'pre_reservation' && reservation.expires_at ? (
         <ReservationHoldCountdown
@@ -401,23 +411,13 @@ function KanbanCardBody({
           expiresAt={reservation.expires_at}
         />
       ) : null}
-      {cardCta ? (
-        <div className="flex flex-col gap-2">
-          <p className="flex items-start gap-2 text-xs text-muted-foreground">
-            <MessageCircleIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>{cardCta.hint}</span>
-          </p>
-          {cardCta.interactive && onOpen ? (
-            <Button type="button" className="pointer-events-auto w-full" onClick={onOpen}>
-              {reservation.kanban_column === 'pre_reservation' ? (
-                <ReplyIcon data-icon="inline-start" />
-              ) : null}
-              {cardCta.label}
-            </Button>
-          ) : (
-            <p className="text-center text-xs font-medium text-muted-foreground">{cardCta.label}</p>
-          )}
-        </div>
+      {cardCta && cardCta.interactive && onOpen ? (
+        <Button type="button" className="pointer-events-auto w-full" onClick={onOpen}>
+          {reservation.kanban_column === 'pre_reservation' ? (
+            <ReplyIcon data-icon="inline-start" />
+          ) : null}
+          {cardCta.label}
+        </Button>
       ) : null}
     </div>
   )

@@ -425,7 +425,7 @@ export type ReservationSituationStep = {
   occurred_at: string | null
 }
 
-export type ReservationWaitingOn = 'broker' | 'builder'
+export type ReservationWaitingOn = 'broker' | 'builder' | 'witness'
 
 export type ReservationSituation = {
   previous: ReservationSituationStep | null

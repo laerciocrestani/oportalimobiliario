@@ -12,7 +12,9 @@ import type {
   BuilderReservationListItem,
   ReservationKanbanColumn,
   ReservationTimeline,
+  ReservationWaitingOn,
 } from '@/lib/api'
+import { WAITING_LABEL } from '@/components/reservations/ReservationWaitingStatus'
 
 export type KanbanColumnTheme = {
   column: string
@@ -239,15 +241,34 @@ export function resolveKanbanCardCta(
     return queueCta(waitingOn, profile, reservation.kanban_column, ownTurnHint)
   }
 
+  if (reservation.kanban_column === 'proposal_review') {
+    if (!waitingOn) {
+      return null
+    }
+
+    return queueCta(waitingOn, profile, reservation.kanban_column, ownTurnHint)
+  }
+
+  if (reservation.needs_action && actionMeta) {
+    return {
+      hint: actionMeta.hint,
+      label: actionMeta.label,
+      interactive: true,
+    }
+  }
+
   if (!waitingOn) {
     return null
   }
 
-  return queueCta(waitingOn, profile, reservation.kanban_column, ownTurnHint)
+  return {
+    hint: WAITING_LABEL[waitingOn],
+    interactive: false,
+  }
 }
 
 function queueCta(
-  waitingOn: 'broker' | 'builder',
+  waitingOn: ReservationWaitingOn,
   profile: 'builder' | 'broker',
   column: ReservationKanbanColumn,
   ownTurnHint: string,
@@ -267,9 +288,12 @@ function queueCta(
 }
 
 function waitingOnOtherHint(
-  waitingOn: 'broker' | 'builder',
+  waitingOn: ReservationWaitingOn,
   column: ReservationKanbanColumn,
 ): string {
+  if (waitingOn === 'witness') {
+    return WAITING_LABEL.witness
+  }
   if (column === 'proposal_review') {
     return waitingOn === 'builder'
       ? 'A construtora está analisando a proposta.'
@@ -337,12 +361,11 @@ const COLUMN_ACTION_ALLOWLIST: Record<ReservationKanbanColumn, readonly string[]
   proposal_formalization: ['return_signed_proposal'],
   docs_deposit: [
     'submit_deposit_proof',
-    'return_signed_proposal',
     'submit_contract_data',
     'approve_deposit_proof',
+    'issue_contract',
   ],
   contract: [
-    'issue_contract',
     'mark_signed_gov',
     'upload_signed_contract',
     'upload_builder_signed_contract',

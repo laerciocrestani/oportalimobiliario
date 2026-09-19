@@ -127,13 +127,13 @@ Phase 3:
 
 **Done when**:
 
-- [ ] H broker: botão `Devolver`; builder: hint “Aguardando corretor”, sem “Aguardando você”
-- [ ] L builder: `Emitir`; broker: “Aguardando construtora”
-- [ ] P testemunha: `Assinar`; gestor não-T e corretor: “Aguardando testemunha”
-- [ ] `proposal_review` inalterado (Emma original)
-- [ ] sold/cancelled: CTA null
-- [ ] `visibleColumnActions('docs_deposit')` inclui `issue_contract`
-- [ ] Gate: `docker compose exec frontend pnpm test src/components/reservations/reservation-kanban.test.ts src/components/reservations/ReservationWaitingStatus.test.tsx`
+- [x] H broker: botão `Devolver`; builder: hint “Aguardando corretor”, sem “Aguardando você”
+- [x] L builder: `Emitir`; broker: “Aguardando construtora”
+- [x] P testemunha: `Assinar`; gestor não-T e corretor: “Aguardando testemunha”
+- [x] `proposal_review` inalterado (Emma original)
+- [x] sold/cancelled: CTA null
+- [x] `visibleColumnActions('docs_deposit')` inclui `issue_contract`
+- [x] Gate: `docker compose exec frontend pnpm test src/components/reservations/reservation-kanban.test.ts src/components/reservations/ReservationWaitingStatus.test.tsx`
 
 **Tests**: unit (Vitest)  
 **Gate**: quick

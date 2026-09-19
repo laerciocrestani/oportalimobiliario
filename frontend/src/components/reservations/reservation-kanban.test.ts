@@ -164,6 +164,153 @@ describe('RESERVATION_KANBAN_COLUMNS', () => {
       interactive: false,
     })
   })
+
+  it('uses stage verbs after proposal instead of Aguardando você', () => {
+    const situation = {
+      previous: null,
+      current: {
+        key: 'deposit_window',
+        label: 'Aguardando sinal (48h)',
+        status: 'current' as const,
+        waiting_on: 'broker' as const,
+        occurred_at: null,
+      },
+      next: null,
+    }
+
+    expect(
+      resolveKanbanCardCta(
+        {
+          kanban_column: 'proposal_formalization',
+          needs_action: true,
+          pending_action: 'return_signed_proposal',
+          status: 'deposit_pending',
+          situation: {
+            ...situation,
+            current: { ...situation.current, key: 'deposit_window', waiting_on: 'broker' },
+          },
+        },
+        'broker',
+      ),
+    ).toEqual({
+      hint: 'É necessário devolver a proposta assinada.',
+      label: 'Devolver',
+      interactive: true,
+    })
+
+    expect(
+      resolveKanbanCardCta(
+        {
+          kanban_column: 'proposal_formalization',
+          needs_action: false,
+          pending_action: null,
+          status: 'deposit_pending',
+          situation: {
+            ...situation,
+            current: { ...situation.current, waiting_on: 'broker' },
+          },
+        },
+        'builder',
+      ),
+    ).toEqual({
+      hint: 'Aguardando corretor',
+      interactive: false,
+    })
+
+    expect(
+      resolveKanbanCardCta(
+        {
+          kanban_column: 'docs_deposit',
+          needs_action: true,
+          pending_action: 'issue_contract',
+          status: 'contract_data_pending',
+          situation: {
+            ...situation,
+            current: { ...situation.current, key: 'contract_issue', waiting_on: 'builder' },
+          },
+        },
+        'builder',
+      ),
+    ).toEqual({
+      hint: 'Emita o contrato no andamento da reserva para avançar.',
+      label: 'Emitir',
+      interactive: true,
+    })
+
+    expect(
+      resolveKanbanCardCta(
+        {
+          kanban_column: 'docs_deposit',
+          needs_action: false,
+          pending_action: null,
+          status: 'contract_data_pending',
+          situation: {
+            ...situation,
+            current: { ...situation.current, key: 'contract_issue', waiting_on: 'builder' },
+          },
+        },
+        'broker',
+      ),
+    ).toEqual({
+      hint: 'Aguardando construtora',
+      interactive: false,
+    })
+
+    expect(
+      resolveKanbanCardCta(
+        {
+          kanban_column: 'contract',
+          needs_action: true,
+          pending_action: 'witness_signature',
+          status: 'contract_builder_signed',
+          situation: {
+            ...situation,
+            current: { ...situation.current, key: 'contract_witness_1', waiting_on: 'witness' },
+          },
+        },
+        'builder',
+      ),
+    ).toEqual({
+      hint: 'É necessário assinar o contrato como testemunha.',
+      label: 'Assinar',
+      interactive: true,
+    })
+
+    expect(
+      resolveKanbanCardCta(
+        {
+          kanban_column: 'contract',
+          needs_action: false,
+          pending_action: null,
+          status: 'contract_builder_signed',
+          situation: {
+            ...situation,
+            current: { ...situation.current, key: 'contract_witness_1', waiting_on: 'witness' },
+          },
+        },
+        'builder',
+      ),
+    ).toEqual({
+      hint: 'Aguardando testemunha',
+      interactive: false,
+    })
+
+    expect(
+      resolveKanbanCardCta(
+        {
+          kanban_column: 'sold',
+          needs_action: false,
+          pending_action: null,
+          status: 'sold',
+          situation: {
+            ...situation,
+            current: { ...situation.current, waiting_on: null, status: 'completed' },
+          },
+        },
+        'broker',
+      ),
+    ).toBeNull()
+  })
 })
 
 function timeline(
@@ -214,5 +361,8 @@ describe('visibleColumnActions', () => {
     ).toEqual(['submit_proposal', 'extend_hold'])
 
     expect(visibleColumnActions('sold', ['validate_contract', 'open_dialogue'])).toEqual([])
+    expect(visibleColumnActions('docs_deposit', ['issue_contract', 'return_signed_proposal'])).toEqual([
+      'issue_contract',
+    ])
   })
 })

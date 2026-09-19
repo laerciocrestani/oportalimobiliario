@@ -4,6 +4,7 @@ import type { ReservationWaitingOn } from '@/lib/api'
 export const WAITING_LABEL: Record<ReservationWaitingOn, string> = {
   broker: 'Aguardando corretor',
   builder: 'Aguardando construtora',
+  witness: 'Aguardando testemunha',
 }
 
 export function ReservationWaitingStatus({

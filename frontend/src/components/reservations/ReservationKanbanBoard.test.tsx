@@ -263,10 +263,14 @@ describe('ReservationKanbanBoard', () => {
     )
 
     expect(screen.queryByRole('button', { name: 'Responder' })).not.toBeInTheDocument()
-    expect(screen.getByText('Aguardando construtora')).toBeInTheDocument()
+    expect(screen.queryByText('Aguardando construtora')).not.toBeInTheDocument()
+    expect(screen.getByText('A construtora está analisando a proposta.')).toBeInTheDocument()
+    expect(
+      screen.queryByText('Abra o andamento da reserva e conclua a etapa atual para avançar.'),
+    ).not.toBeInTheDocument()
   })
 
-  it('shows unread badge and keeps queue label for broker on proposal review even with reply pending_action', () => {
+  it('shows unread badge and keeps queue hint for broker on proposal review even with reply pending_action', () => {
     render(
       <ReservationKanbanBoard
         profile="broker"
@@ -289,7 +293,8 @@ describe('ReservationKanbanBoard', () => {
     )
 
     expect(screen.getByLabelText('2 mensagens não lidas')).toHaveTextContent('2')
-    expect(screen.getByText('Aguardando construtora')).toBeInTheDocument()
+    expect(screen.queryByText('Aguardando construtora')).not.toBeInTheDocument()
+    expect(screen.getByText('A construtora está analisando a proposta.')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Responder' })).not.toBeInTheDocument()
   })
 

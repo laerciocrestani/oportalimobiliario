@@ -103,8 +103,12 @@ describe('RESERVATION_KANBAN_COLUMNS', () => {
           },
         },
         'builder',
-      )?.label,
-    ).toBe('Aguardando você')
+      ),
+    ).toEqual({
+      hint: 'É necessário responder a proposta do cliente.',
+      label: 'Aguardando você',
+      interactive: true,
+    })
 
     expect(
       resolveKanbanCardCta(
@@ -121,8 +125,7 @@ describe('RESERVATION_KANBAN_COLUMNS', () => {
         'broker',
       ),
     ).toEqual({
-      hint: 'Abra o andamento da reserva e conclua a etapa atual para avançar.',
-      label: 'Aguardando construtora',
+      hint: 'A construtora está analisando a proposta.',
       interactive: false,
     })
 
@@ -139,8 +142,11 @@ describe('RESERVATION_KANBAN_COLUMNS', () => {
           },
         },
         'broker',
-      )?.label,
-    ).toBe('Aguardando construtora')
+      ),
+    ).toEqual({
+      hint: 'A construtora está analisando a proposta.',
+      interactive: false,
+    })
 
     expect(
       resolveKanbanCardCta(
@@ -154,8 +160,7 @@ describe('RESERVATION_KANBAN_COLUMNS', () => {
         'builder',
       ),
     ).toEqual({
-      hint: 'Abra o andamento da reserva e conclua a etapa atual para avançar.',
-      label: 'Aguardando corretor',
+      hint: 'O corretor precisa continuar o diálogo ou enviar a proposta.',
       interactive: false,
     })
   })

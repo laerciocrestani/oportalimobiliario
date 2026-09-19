@@ -28,6 +28,7 @@ Lista de armadilhas que agentes de IA frequentemente cometem aqui.
 | Misturar prefixos (`/api/builder` no portal corretor) | `builderApi`, `brokerApi`, etc. em `lib/api.ts` |
 | Endpoint novo sem Feature test | Pest + tenant isolation + 401/403/422 |
 | Alterar rota sem atualizar OpenAPI | `docs/api/openapi.yaml` |
+| Role/portal `witness` | Permission `reservations.witness` + slot por reserva |
 
 ## Frontend
 

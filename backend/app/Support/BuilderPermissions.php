@@ -22,6 +22,8 @@ class BuilderPermissions
 
     public const CANCEL_RESERVATIONS = 'reservations.cancel';
 
+    public const WITNESS = 'reservations.witness';
+
     public const MANAGE_TEAM = 'team.manage';
 
     public const MANAGE_CONTRACTS = 'contracts.manage';
@@ -43,6 +45,7 @@ class BuilderPermissions
             self::SEND_INVITES,
             self::MANAGE_ACCESS,
             self::CANCEL_RESERVATIONS,
+            self::WITNESS,
             self::MANAGE_TEAM,
             self::MANAGE_CONTRACTS,
             self::MANAGE_PROPOSALS,
@@ -63,6 +66,7 @@ class BuilderPermissions
             self::SEND_INVITES => 'Convidar corretores',
             self::MANAGE_ACCESS => 'Gerenciar acesso de corretores',
             self::CANCEL_RESERVATIONS => 'Cancelar reservas',
+            self::WITNESS => 'Pode ser testemunha',
             self::MANAGE_TEAM => 'Gerenciar equipe',
             self::MANAGE_CONTRACTS => 'Gerenciar contratos',
             self::MANAGE_PROPOSALS => 'Gerenciar propostas',

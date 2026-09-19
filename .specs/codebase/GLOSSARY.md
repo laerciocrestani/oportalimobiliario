@@ -28,6 +28,7 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | contrato assinado | `contract_signed` |
 | contrato assinado pela construtora | `contract_signed_builder` |
 | testemunha da reserva | `reservation_witness` / `reservation_witnesses` |
+| permissão de testemunha | `reservations.witness` (elegibilidade; assinatura é pelo slot) |
 | testemunha 1 / 2 | `slot` 1 / 2 |
 | registrar assinatura da testemunha | `sign_as_witness` |
 | ação pendente (in-app) | `pending_action` / `pending-actions-count` |

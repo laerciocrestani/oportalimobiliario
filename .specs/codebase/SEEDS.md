@@ -39,14 +39,14 @@ TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → Ame
 | `admin@oportalimobiliario.com.br` | `admin` | — | — | `admin.localhost:5173` |
 | `construtora@alpha.demo` | `builder` | alpha | **todas** (`BuilderPermissions::all()`) | `construtora.localhost:5173` |
 | `comercial@alpha.demo` | `builder` | alpha | `buildings.view`, `invites.send` | construtora |
-| `supervisor@alpha.demo` | `builder` | alpha | `buildings.view`, `units.update_status`, `reservations.cancel` | construtora |
+| `supervisor@alpha.demo` | `builder` | alpha | `buildings.view`, `units.update_status`, `reservations.cancel`, `reservations.witness` | construtora |
 | `construtora@beta.demo` | `builder` | beta | **todas** | construtora |
 | `corretor@demo.com` | `broker` | — | — (acesso via `building_access` / `unit_access`) | `corretor.localhost:5173` |
 
 ### Cenários de permissão
 
 - **comercial@alpha.demo** — vê empreendimentos e envia convites; não gerencia unidades nem cancela reservas; **não** tem `audit.view`.
-- **supervisor@alpha.demo** — altera status de unidades e cancela reservas; não gerencia equipe nem empreendimentos; **não** tem `audit.view`.
+- **supervisor@alpha.demo** — altera status de unidades, cancela reservas e pode ser testemunha (funções combináveis); não gerencia equipe nem empreendimentos; **não** tem `audit.view`.
 - **construtora@alpha.demo** — `BuilderPermissions::all()` inclui `audit.view` (auditar atividade da equipe).
 - **construtora@beta.demo** — usar para testar **isolamento de tenant** (não deve ver dados da alpha).
 

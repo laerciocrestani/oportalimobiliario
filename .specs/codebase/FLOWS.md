@@ -234,7 +234,7 @@ Resposta: `current_stage`, `expires_at`, `steps[]` com status `completed` | `cur
 | Aceite com PDF assinado | Gestor envia `proposal_signed_builder` no aceite; sem arquivo a API recusa (422) |
 | Devolução da proposta | Corretor envia só `proposal_signed_both`. Comprovante de sinal **não** vai neste POST; o card só sai de Formalização depois do PDF de ambos. |
 | Contrato sequencial | Comprador assina → corretor envia PDF → construtora assina e escolhe 2 testemunhas da equipe → testemunha 1 → testemunha 2 → gestor marca `sold` |
-| Testemunhas | Users builder do mesmo tenant, escolhidas **por reserva** (`reservation_witnesses`). Assinatura é registro in-app (sem gov.br / e-mail). Sem `reservations.cancel` só para assinar |
+| Testemunhas | Elegibilidade: permission `reservations.witness` (checkbox na Equipe). Atribuição: 2 slots por reserva (`reservation_witnesses`). Assinatura: registro in-app pelo slot (sem gov.br / e-mail), mesmo se a permission for revogada depois. `reservations.cancel` / `contracts.manage` **não** implicam testemunha. |
 | Venda (`sold`) | Só o gestor (`reservations.cancel`). 422 se faltar PDF do comprador, da construtora ou assinatura de alguma testemunha |
 | Aviso pendente | In-app: `pending_action` no card do Kanban + contador `pending-actions-count` no menu Reservas (não perde o badge de reply) |
 | Fila vs mensagem (até proposta) | CTA do card usa `situation.current.waiting_on`. Badge de chat usa `unread_messages_count` (por usuário). Abrir o andamento (`GET .../timeline`) marca leitura. `pending_action=reply` só na pré-reserva. Recusa → cancelada; devolução permanece em Proposta em análise com bola no corretor. |
@@ -286,7 +286,7 @@ flowchart LR
     E --> F[Controller action]
 ```
 
-- Catálogo: `BuilderPermissions.php` (8 permissions).
+- Catálogo: `BuilderPermissions.php` (12 permissions, incluindo `reservations.witness`).
 - Atribuição: `TeamMemberController` ou `UserSeeder` (perfis demo).
 - FE: `GET /api/auth/me` retorna `permissions[]` → `use-builder-permissions.ts`.
 

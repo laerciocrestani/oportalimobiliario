@@ -30,6 +30,11 @@ it('includes contracts.manage and proposals.manage in the permission catalog', f
         ->and(BuilderPermissions::labels()[BuilderPermissions::MANAGE_PROPOSALS])->toBe('Gerenciar propostas');
 });
 
+it('includes reservations.witness in the permission catalog', function () {
+    expect(BuilderPermissions::all())->toContain(BuilderPermissions::WITNESS)
+        ->and(BuilderPermissions::labels()[BuilderPermissions::WITNESS])->toBe('Pode ser testemunha');
+});
+
 it('creates team member with custom permissions', function () {
     $tenant = Tenant::factory()->create();
     $manager = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();

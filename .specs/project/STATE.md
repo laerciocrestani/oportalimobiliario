@@ -32,12 +32,12 @@
 
 ## Sessão atual
 
-- **Fase:** `reservation-kanban-post-proposal` execute done
+- **Fase:** `reservation-witness-permission` execute done
 - **Branch:** `docs/kanban-dono-da-bola-colunas`
-- **Última etapa concluída:** REQ-RKP-001…008 — porta Formalização, fila H–S, `waiting_on=witness`, CTA verbo pós-proposta
+- **Última etapa concluída:** REQ-WIT-001…004 — `reservations.witness` no catálogo, seletor filtrado, slot assina após revoke
 - **Próxima etapa:** push/PR se solicitado
-- **Spec:** `.specs/features/reservation-kanban-post-proposal/`
-- **Nota:** matriz A–G não reabriu; menu Reservas (contador) permanece lacuna aceita
+- **Spec:** `.specs/features/reservation-witness-permission/`
+- **Nota:** sem role/portal testemunha; supervisor demo acumula gestor + testemunha
 
 ## Preferences
 

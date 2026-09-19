@@ -131,6 +131,19 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 
 ---
 
+## reservation-witness-permission
+
+> Spec: `.specs/features/reservation-witness-permission/spec.md` · Branch: `docs/kanban-dono-da-bola-colunas`
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-WIT-001 | Catálogo `reservations.witness` / Pode ser testemunha | `BuilderPermissions.php` | `lib/builder-permissions.ts`, `TeamPage.tsx` | `TeamTest.php` |
+| REQ-WIT-002 | Candidatos só com a permission | `ReservationContractCompletionService::witnessCandidates` | seletor existente | `ReservationWitnessTest.php` |
+| REQ-WIT-003 | Atribuição 422 sem a permission | `assertTeamMember` | — | `ReservationWitnessTest.php` |
+| REQ-WIT-004 | Slot assina após revoke | `ReservationPolicy::signAsWitness` | — | `ReservationWitnessTest.php` |
+
+---
+
 ## reservation-progress-flex
 
 > Spec: `.specs/features/reservation-progress-flex/spec.md` · Branch: `feature/reservation-progress-flex` · Status: **Entrega 4 done**

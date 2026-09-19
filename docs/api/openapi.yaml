@@ -2020,10 +2020,11 @@ paths:
         '403':
           description: Forbidden
         '422':
-          description: Invalid stage, missing buyer-signed PDF, invalid file, or invalid witnesses
+          description: Invalid stage, missing buyer-signed PDF, invalid file, or invalid witnesses (must have reservations.witness)
   /api/builder/reservations/{reservation}/contract/witness-candidates:
     get:
       summary: List builder team members eligible as witnesses
+      description: Same-tenant builders with `reservations.witness`. Assignment is per reservation slot; signing uses the slot even if the permission is later revoked.
       security:
         - bearerAuth: []
       parameters:
@@ -2034,7 +2035,7 @@ paths:
             type: integer
       responses:
         '200':
-          description: Team members of the same tenant
+          description: Eligible team members (`reservations.witness`) of the same tenant
           content:
             application/json:
               schema:
@@ -2072,11 +2073,11 @@ paths:
         '403':
           description: Forbidden
         '422':
-          description: Invalid users, same person twice, or contract not ready
+          description: Invalid users, missing reservations.witness, same person twice, or contract not ready
   /api/builder/reservations/{reservation}/contract/witnesses/{slot}/sign:
     post:
       summary: Register the assigned witness signature for slot 1 or 2
-      description: Sequential — slot 2 only after slot 1. In-app record only (no gov.br / e-mail).
+      description: Sequential — slot 2 only after slot 1. In-app record only (no gov.br / e-mail). Assigned slot may sign even if `reservations.witness` was revoked.
       security:
         - bearerAuth: []
       parameters:

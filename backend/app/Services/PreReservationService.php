@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\DB;
  * @see REQ-RES-005
  * @see REQ-RES-006
  * @see REQ-RES-007
+ * @see REQ-RGS-002
+ * @see REQ-RGS-004
  */
 class PreReservationService
 {
@@ -21,20 +23,20 @@ class PreReservationService
         private readonly ReservationTimelineService $timelineService,
         private readonly UserActivityCatalog $activityCatalog,
         private readonly ReservationHoldService $holdService,
+        private readonly ReservationGarageService $garageService,
     ) {}
 
     /**
      * @param  array{tenant_id: int}  $access
+     * @param  list<int>  $garageUnitIds
      */
-    public function createPreHold(User $broker, Unit $unit, array $access): Reservation
+    public function createPreHold(User $broker, Unit $unit, array $access, array $garageUnitIds = []): Reservation
     {
         $ttlMinutes = (int) config('opim.pre_reservation_ttl_minutes', 10);
+        $garageIds = $this->garageService->normalizeIds($garageUnitIds);
 
-        $reservation = DB::transaction(function () use ($broker, $unit, $access, $ttlMinutes) {
-            $locked = Unit::query()
-                ->withoutGlobalScope('tenant')
-                ->lockForUpdate()
-                ->findOrFail($unit->id);
+        $reservation = DB::transaction(function () use ($broker, $unit, $access, $ttlMinutes, $garageIds) {
+            [$locked, $garages] = $this->garageService->lockPrimaryAndGarages($unit, $garageIds);
 
             if ($locked->status !== UnitStatus::Available) {
                 abort(422, 'Esta unidade acaba de ser pré-reservada por outro corretor.');
@@ -42,7 +44,7 @@ class PreReservationService
 
             $locked->update(['status' => UnitStatus::PreReserved]);
 
-            return Reservation::query()->create([
+            $reservation = Reservation::query()->create([
                 'tenant_id' => $access['tenant_id'],
                 'unit_id' => $locked->id,
                 'broker_id' => $broker->id,
@@ -50,11 +52,15 @@ class PreReservationService
                 'status' => ReservationStatus::PreHold,
                 'expires_at' => now()->addMinutes($ttlMinutes),
             ]);
+
+            $this->garageService->attachLocked($reservation, $garages, UnitStatus::PreReserved);
+
+            return $reservation;
         });
 
         $this->timelineService->recordPreHoldCreated($reservation, $broker);
 
-        return $reservation;
+        return $reservation->load(['unit', 'garageUnits']);
     }
 
     public function attachClient(
@@ -101,7 +107,7 @@ class PreReservationService
                 ]);
             }
 
-            return $reservation->fresh(['unit', 'client']);
+            return $reservation->fresh(['unit', 'client', 'garageUnits']);
         });
 
         $this->activityCatalog->recordPreHoldConfirmed($broker, $reservation);
@@ -137,6 +143,8 @@ class PreReservationService
                 $unit->update(['status' => UnitStatus::Available]);
             }
 
+            $this->garageService->detachAndRelease($reservation);
+
             $reservation->delete();
         });
     }
@@ -168,6 +176,8 @@ class PreReservationService
                 if ($unit !== null && $unit->status === UnitStatus::PreReserved) {
                     $unit->update(['status' => UnitStatus::Available]);
                 }
+
+                $this->garageService->detachAndRelease($reservation);
 
                 $reservation->delete();
                 $count++;

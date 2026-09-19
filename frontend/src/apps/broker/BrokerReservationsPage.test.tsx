@@ -15,10 +15,6 @@ vi.mock('@/apps/broker/components/BrokerDashboardShell', () => ({
   ),
 }))
 
-vi.mock('@/apps/builder/components/ReservationMessagesDialog', () => ({
-  ReservationMessagesDialog: () => null,
-}))
-
 vi.mock('@/lib/api', () => ({
   ApiRequestError: class ApiRequestError extends Error {
     status: number
@@ -96,11 +92,11 @@ describe('BrokerReservationsPage', () => {
       expect(screen.getByRole('button', { name: 'Abrir andamento de Maria Souza' })).toBeInTheDocument()
       expect(screen.getByText('Maria Souza')).toBeInTheDocument()
       expect(screen.getByText('Torre Central')).toBeInTheDocument()
-      expect(screen.getByText('Unid. 501')).toBeInTheDocument()
+      expect(screen.getByText('501')).toBeInTheDocument()
       expect(screen.queryByText('Imóvel')).not.toBeInTheDocument()
       expect(screen.getByText('É necessário anexar o comprovante de sinal.')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Anexar' })).toBeInTheDocument()
-      expect(screen.queryByText('Aguardando você')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Aguardando você' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Anexar' })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Ações — Maria Souza' })).toBeInTheDocument()
     })
   })

@@ -29,6 +29,7 @@ it('lists reservations for builder tenant', function () {
     $building = Building::factory()->for($tenant)->create(['name' => 'Residencial Aurora']);
     $unit = Unit::factory()->for($tenant)->for($building)->create([
         'status' => UnitStatus::Reserved,
+        'price' => 850000,
     ]);
 
     $reservation = Reservation::factory()->create([
@@ -58,6 +59,7 @@ it('lists reservations for builder tenant', function () {
         ->assertJsonPath('0.client.name', 'João Silva')
         ->assertJsonPath('0.broker.name', 'Corretor Alpha')
         ->assertJsonPath('0.unit.building.name', 'Residencial Aurora')
+        ->assertJsonPath('0.unit.price', '850000.00')
         ->assertJsonPath('0.messages_count', 1)
         ->assertJsonPath('0.needs_reply', true)
         ->assertJsonPath('0.situation.previous.label', 'Decisão do gestor')

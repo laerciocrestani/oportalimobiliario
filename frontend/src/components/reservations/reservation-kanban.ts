@@ -197,6 +197,81 @@ export const KANBAN_CARD_ACTIONS: Record<string, { hint: string; label: string }
   },
 }
 
+const WAITING_ON_LABEL: Record<'broker' | 'builder', string> = {
+  broker: 'Aguardando corretor',
+  builder: 'Aguardando construtora',
+}
+
+export type KanbanCardCta = {
+  hint: string
+  label: string
+  interactive: boolean
+}
+
+/**
+ * Pré-reserva: botão com label da ação (Responder, Enviar mensagem…) quando é a vez do viewer;
+ * senão, só a label de fila. Demais colunas (incl. proposta): fila por waiting_on, nunca “Responder” de mensagem.
+ */
+export function resolveKanbanCardCta(
+  reservation: Pick<
+    BuilderReservationListItem,
+    'kanban_column' | 'needs_action' | 'pending_action' | 'situation' | 'status'
+  >,
+  profile: 'builder' | 'broker',
+): KanbanCardCta | null {
+  if (reservation.kanban_column === 'sold' || reservation.kanban_column === 'cancelled') {
+    return null
+  }
+
+  const actionMeta = reservation.pending_action
+    ? KANBAN_CARD_ACTIONS[reservation.pending_action]
+    : null
+  const waitingOn = reservation.situation?.current?.waiting_on ?? null
+  const defaultHint = 'Abra o andamento da reserva e conclua a etapa atual para avançar.'
+
+  if (reservation.kanban_column === 'pre_reservation') {
+    if (reservation.needs_action && actionMeta) {
+      return {
+        hint: actionMeta.hint,
+        label: actionMeta.label,
+        interactive: true,
+      }
+    }
+
+    if (!waitingOn) {
+      return null
+    }
+
+    return queueCta(waitingOn, profile, actionMeta?.hint ?? defaultHint)
+  }
+
+  if (!waitingOn) {
+    return null
+  }
+
+  return queueCta(waitingOn, profile, actionMeta?.hint ?? defaultHint)
+}
+
+function queueCta(
+  waitingOn: 'broker' | 'builder',
+  profile: 'builder' | 'broker',
+  hint: string,
+): KanbanCardCta {
+  if (waitingOn === profile) {
+    return {
+      hint,
+      label: 'Aguardando você',
+      interactive: true,
+    }
+  }
+
+  return {
+    hint,
+    label: WAITING_ON_LABEL[waitingOn],
+    interactive: false,
+  }
+}
+
 export function kanbanProcessHint(action: string | null | undefined): string {
   return (
     (action ? KANBAN_CARD_ACTIONS[action]?.hint : null) ??

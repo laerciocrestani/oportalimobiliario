@@ -78,7 +78,7 @@ Shells que consomem:
 - `apps/broker/components/BrokerDashboardShell.tsx`
 - `components/layout/DashboardShell.tsx` (admin)
 
-Badges dinâmicos (`pending-actions-count`, inclui reply) injetados nos shells via `use-reservation-nav-badge.ts`, não no `dashboard-nav.tsx`. No card do Kanban: `ReservationPendingActionBadge` (`pending_action`). Andamento abre em dialog central (`ReservationProgressDialog`). Board: `ReservationKanbanBoard` (7 colunas; drag chama `PATCH .../kanban`).
+Badges dinâmicos (`pending-actions-count`, inclui reply) injetados nos shells via `use-reservation-nav-badge.ts`, não no `dashboard-nav.tsx`. No card do Kanban: badge numérico `unread_messages_count` (mensagens) **independente** do CTA de fila (`waiting_on` / `resolveKanbanCardCta`). Diálogo só no modal de andamento (`ReservationProgressDialog` + `ReservationChatPanel`); kebab do card não abre dialog paralelo de mensagens. Board: `ReservationKanbanBoard` (7 colunas; drag chama `PATCH .../kanban`).
 
 Item **Atividade** (`/activity`) existe nos três portais autenticados. No builder o item é visível para qualquer usuário logado (próprio log); o seletor de membro exige `audit.view`.
 

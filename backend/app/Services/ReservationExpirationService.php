@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\DB;
  */
 class ReservationExpirationService
 {
+    public function __construct(
+        private readonly ReservationGarageService $garageService,
+    ) {}
+
     public function expireDueReservations(): int
     {
         $expired = Reservation::query()
@@ -32,6 +36,8 @@ class ReservationExpirationService
                 if ($unit !== null && $unit->status === UnitStatus::Reserved) {
                     $unit->update(['status' => UnitStatus::Available]);
                 }
+
+                $this->garageService->detachAndRelease($reservation);
 
                 $reservation->delete();
                 $count++;

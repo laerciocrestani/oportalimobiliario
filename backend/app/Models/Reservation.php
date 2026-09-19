@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
@@ -270,6 +271,14 @@ class Reservation extends Model
         return $this->belongsTo(Unit::class);
     }
 
+    /** @return BelongsToMany<Unit, $this> */
+    public function garageUnits(): BelongsToMany
+    {
+        return $this->belongsToMany(Unit::class, 'reservation_garage_units')
+            ->withPivot('tenant_id')
+            ->withTimestamps();
+    }
+
     public function broker(): BelongsTo
     {
         return $this->belongsTo(User::class, 'broker_id');
@@ -284,6 +293,12 @@ class Reservation extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(ReservationMessage::class);
+    }
+
+    /** @return HasMany<ReservationMessageRead, $this> */
+    public function messageReads(): HasMany
+    {
+        return $this->hasMany(ReservationMessageRead::class);
     }
 
     /** @return HasMany<ReservationTimelineEvent, $this> */

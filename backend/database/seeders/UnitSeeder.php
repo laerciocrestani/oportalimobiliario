@@ -2,14 +2,18 @@
 
 namespace Database\Seeders;
 
+use App\Enums\FloorKind;
 use App\Enums\UnitStatus;
 use App\Models\Building;
+use App\Models\Floor;
 use App\Models\Tower;
 use App\Models\Unit;
 use Illuminate\Database\Seeder;
 
 class UnitSeeder extends Seeder
 {
+    public const GARAGE_PRICE_COMPETENCE = '2026-02-01';
+
     /**
      * @return array<string, list<array{code: string, tower: string, floor: int, area_m2: float, price: float, status: UnitStatus}>>
      */
@@ -73,6 +77,17 @@ class UnitSeeder extends Seeder
         ];
     }
 
+    /**
+     * @return list<array{code: string, private_area_m2: float, price: float}>
+     */
+    public static function garageSpotDefinitions(): array
+    {
+        return [
+            ['code' => 'S1-01', 'private_area_m2' => 12.5, 'price' => 45000],
+            ['code' => 'S1-02', 'private_area_m2' => 13.0, 'price' => 48000],
+        ];
+    }
+
     public function run(): void
     {
         foreach (self::definitions() as $buildingName => $units) {
@@ -81,6 +96,8 @@ class UnitSeeder extends Seeder
             if ($building === null || $building->slug === WizardBuildingSeeder::SLUG || $building->wizard_completed_at !== null) {
                 continue;
             }
+
+            $seededTowerIds = [];
 
             foreach ($units as $unit) {
                 $tower = Tower::query()
@@ -101,11 +118,51 @@ class UnitSeeder extends Seeder
                         'area_m2' => $unit['area_m2'],
                         'price' => $unit['price'],
                         'price_base' => $unit['price'],
-                        'price_competence' => '2026-02-01',
+                        'price_competence' => self::GARAGE_PRICE_COMPETENCE,
                         'status' => $unit['status'],
                     ],
                 );
+
+                $seededTowerIds[$tower->id] = $tower;
             }
+
+            foreach ($seededTowerIds as $tower) {
+                $this->seedGarageSpots($building, $tower);
+            }
+        }
+    }
+
+    private function seedGarageSpots(Building $building, Tower $tower): void
+    {
+        $floor = Floor::query()->firstOrCreate(
+            ['tower_id' => $tower->id, 'number' => -1],
+            [
+                'tenant_id' => $building->tenant_id,
+                'kind' => FloorKind::Garage,
+                'customized' => false,
+            ],
+        );
+
+        if ($floor->kind !== FloorKind::Garage) {
+            $floor->update(['kind' => FloorKind::Garage]);
+        }
+
+        foreach (self::garageSpotDefinitions() as $spot) {
+            Unit::query()->updateOrCreate(
+                ['tower_id' => $tower->id, 'code' => $spot['code']],
+                [
+                    'tenant_id' => $building->tenant_id,
+                    'building_id' => $building->id,
+                    'floor_id' => $floor->id,
+                    'floor' => -1,
+                    'private_area_m2' => $spot['private_area_m2'],
+                    'area_m2' => null,
+                    'price' => $spot['price'],
+                    'price_base' => $spot['price'],
+                    'price_competence' => self::GARAGE_PRICE_COMPETENCE,
+                    'status' => UnitStatus::Available,
+                ],
+            );
         }
     }
 }

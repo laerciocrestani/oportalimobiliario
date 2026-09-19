@@ -13,11 +13,15 @@ use App\Support\BuilderPermissions;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * @see REQ-RGS-002
+ */
 class ReservationPendingReplyService
 {
     public function __construct(
         private readonly ReservationTimelineService $timelineService,
         private readonly ReservationKanbanService $kanbanService,
+        private readonly ReservationMessageReadService $messageReadService,
     ) {}
 
     public function needsReplyFromUser(Reservation $reservation, User $user): bool
@@ -127,6 +131,7 @@ class ReservationPendingReplyService
         $pendingAction = $this->pendingActionFor($reservation, $viewer);
         $needsWitnessSignature = $pendingAction === 'witness_signature';
         $needsSoldValidation = $pendingAction === 'sold_validation';
+        $unreadMessagesCount = $this->messageReadService->unreadCount($reservation, $viewer);
 
         return [
             'id' => $reservation->id,
@@ -134,7 +139,8 @@ class ReservationPendingReplyService
             'created_at' => $reservation->created_at,
             'expires_at' => $reservation->expires_at,
             'messages_count' => $reservation->messages_count ?? $reservation->messages()->count(),
-            'needs_reply' => $this->needsReplyFromUser($reservation, $viewer),
+            'unread_messages_count' => $unreadMessagesCount,
+            'needs_reply' => $unreadMessagesCount > 0,
             'needs_proposal_decision' => $isManager && $reservation->isProposalPending(),
             'needs_deposit_proof_approval' => $isManager && $reservation->isDepositProofPending(),
             'needs_witness_signature' => $needsWitnessSignature,
@@ -156,11 +162,13 @@ class ReservationPendingReplyService
             'unit' => $reservation->unit ? [
                 'id' => $reservation->unit->id,
                 'code' => $reservation->unit->code,
+                'price' => $reservation->unit->price,
                 'building' => $reservation->unit->building ? [
                     'id' => $reservation->unit->building->id,
                     'name' => $reservation->unit->building->name,
                 ] : null,
             ] : null,
+            'garage_units' => ReservationGarageService::serializeGarageUnits($reservation),
         ];
     }
 
@@ -207,7 +215,7 @@ class ReservationPendingReplyService
             return 'upload_signed_contract';
         }
 
-        if ($this->needsReplyFromUser($reservation, $viewer)) {
+        if ($this->needsReplyFromUser($reservation, $viewer) && $reservation->isPreHold()) {
             return 'reply';
         }
 
@@ -245,7 +253,7 @@ class ReservationPendingReplyService
             return 'sold_validation';
         }
 
-        if ($this->needsReplyFromUser($reservation, $viewer)) {
+        if ($this->needsReplyFromUser($reservation, $viewer) && $reservation->isPreHold()) {
             return 'reply';
         }
 

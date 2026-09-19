@@ -12,6 +12,7 @@ import {
   RESERVATION_KANBAN_COLUMNS,
   clientInitials,
   kanbanProcessHint,
+  resolveKanbanCardCta,
   resolveKanbanDrop,
   timelineKanbanColumn,
   visibleColumnActions,
@@ -57,6 +58,106 @@ describe('RESERVATION_KANBAN_COLUMNS', () => {
     expect(resolveKanbanDrop(reservation, 'cancelled')).toBe('move')
     expect(resolveKanbanDrop(reservation, 'proposal_formalization')).toBe('process_required')
     expect(resolveKanbanDrop({ ...reservation, allowed_kanban_moves: ['sold'] }, 'sold')).toBe('move')
+  })
+
+  it('resolves card CTA labels by column and waiting queue', () => {
+    const situation = {
+      previous: null,
+      current: {
+        key: 'dialogue',
+        label: 'Diálogo',
+        status: 'current' as const,
+        waiting_on: 'broker' as const,
+        occurred_at: null,
+      },
+      next: null,
+    }
+
+    expect(
+      resolveKanbanCardCta(
+        {
+          kanban_column: 'pre_reservation',
+          needs_action: true,
+          pending_action: 'reply',
+          status: 'pre_hold',
+          situation,
+        },
+        'broker',
+      ),
+    ).toEqual({
+      hint: 'Há uma mensagem aguardando sua resposta.',
+      label: 'Responder',
+      interactive: true,
+    })
+
+    expect(
+      resolveKanbanCardCta(
+        {
+          kanban_column: 'proposal_review',
+          needs_action: true,
+          pending_action: 'proposal_decision',
+          status: 'proposal_pending',
+          situation: {
+            ...situation,
+            current: { ...situation.current, waiting_on: 'builder', key: 'proposal_decision' },
+          },
+        },
+        'builder',
+      )?.label,
+    ).toBe('Aguardando você')
+
+    expect(
+      resolveKanbanCardCta(
+        {
+          kanban_column: 'proposal_review',
+          needs_action: false,
+          pending_action: null,
+          status: 'proposal_pending',
+          situation: {
+            ...situation,
+            current: { ...situation.current, waiting_on: 'builder', key: 'proposal_decision' },
+          },
+        },
+        'broker',
+      ),
+    ).toEqual({
+      hint: 'Abra o andamento da reserva e conclua a etapa atual para avançar.',
+      label: 'Aguardando construtora',
+      interactive: false,
+    })
+
+    expect(
+      resolveKanbanCardCta(
+        {
+          kanban_column: 'proposal_review',
+          needs_action: true,
+          pending_action: 'reply',
+          status: 'proposal_pending',
+          situation: {
+            ...situation,
+            current: { ...situation.current, waiting_on: 'builder', key: 'proposal_decision' },
+          },
+        },
+        'broker',
+      )?.label,
+    ).toBe('Aguardando construtora')
+
+    expect(
+      resolveKanbanCardCta(
+        {
+          kanban_column: 'pre_reservation',
+          needs_action: false,
+          pending_action: null,
+          status: 'pre_hold',
+          situation,
+        },
+        'builder',
+      ),
+    ).toEqual({
+      hint: 'Abra o andamento da reserva e conclua a etapa atual para avançar.',
+      label: 'Aguardando corretor',
+      interactive: false,
+    })
   })
 })
 

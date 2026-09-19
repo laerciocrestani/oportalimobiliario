@@ -2,8 +2,10 @@
 
 namespace Database\Factories;
 
+use App\Enums\FloorKind;
 use App\Enums\UnitStatus;
 use App\Models\Building;
+use App\Models\Floor;
 use App\Models\Tenant;
 use App\Models\Tower;
 use App\Models\Unit;
@@ -72,5 +74,38 @@ class UnitFactory extends Factory
     public function unavailable(): static
     {
         return $this->state(fn () => ['status' => UnitStatus::Unavailable]);
+    }
+
+    public function garage(?string $code = null): static
+    {
+        return $this->afterCreating(function (Unit $unit) use ($code): void {
+            $tower = Tower::query()->find($unit->tower_id);
+
+            if ($tower === null) {
+                return;
+            }
+
+            $floor = Floor::query()->firstOrCreate(
+                ['tower_id' => $tower->id, 'number' => -1],
+                [
+                    'tenant_id' => $unit->tenant_id,
+                    'kind' => FloorKind::Garage,
+                    'customized' => false,
+                ],
+            );
+
+            $unit->forceFill([
+                'floor_id' => $floor->id,
+                'floor' => -1,
+                'code' => $code ?? $unit->code,
+                'private_area_m2' => $unit->private_area_m2 ?? 12.5,
+                'area_m2' => null,
+                'bedrooms' => null,
+                'bathrooms' => null,
+                'suites' => null,
+                'powder_rooms' => null,
+                'balconies' => null,
+            ])->save();
+        });
     }
 }

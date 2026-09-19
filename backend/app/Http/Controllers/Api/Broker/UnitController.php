@@ -44,6 +44,7 @@ class UnitController extends Controller
                 'building.publicCoverMedia',
                 'building.amenities' => fn ($query) => $query->orderBy('name'),
                 'amenities' => fn ($query) => $query->orderBy('name'),
+                'floorRecord',
                 'reservation.client',
             ])
             ->where(function ($query) use ($buildingIds, $legacyUnitIds): void {

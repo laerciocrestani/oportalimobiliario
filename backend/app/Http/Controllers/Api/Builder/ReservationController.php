@@ -39,7 +39,7 @@ class ReservationController extends Controller
                     fn ($witnesses) => $witnesses->where('user_id', $user->id),
                 ),
             )
-            ->with(['client', 'broker', 'unit.building', 'timelineEvents', 'messages.user', 'proposals', 'attachments', 'witnesses'])
+            ->with(['client', 'broker', 'unit.building', 'garageUnits', 'timelineEvents', 'messages.user', 'proposals', 'attachments', 'witnesses', 'messageReads' => fn ($query) => $query->where('user_id', $user->id)])
             ->withCount('messages')
             ->orderByDesc('created_at')
             ->get()

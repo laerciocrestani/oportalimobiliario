@@ -29,6 +29,7 @@ class ReservationProposalService
     public function __construct(
         private readonly ReservationTimelineService $timelineService,
         private readonly UserActivityCatalog $activityCatalog,
+        private readonly ReservationGarageService $garageService,
     ) {}
 
     /**
@@ -228,6 +229,7 @@ class ReservationProposalService
         }
 
         $unit->update(['status' => UnitStatus::Reserved]);
+        $this->garageService->syncStatus($reservation, UnitStatus::Reserved);
 
         $reservation->update([
             'client_id' => $client->id,
@@ -269,6 +271,8 @@ class ReservationProposalService
         if ($unit !== null && $unit->status === UnitStatus::PreReserved) {
             $unit->update(['status' => UnitStatus::Available]);
         }
+
+        $this->garageService->detachAndRelease($reservation);
 
         $this->timelineService->record(
             $reservation,

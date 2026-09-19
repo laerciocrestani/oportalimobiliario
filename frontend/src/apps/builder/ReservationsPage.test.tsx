@@ -30,10 +30,6 @@ vi.mock('@/apps/builder/components/BuilderDashboardShell', () => ({
   ),
 }))
 
-vi.mock('@/apps/builder/components/ReservationMessagesDialog', () => ({
-  ReservationMessagesDialog: () => null,
-}))
-
 vi.mock('@/lib/api', () => ({
   ApiRequestError: class ApiRequestError extends Error {
     status: number
@@ -122,11 +118,11 @@ describe('ReservationsPage', () => {
       expect(screen.getByRole('button', { name: 'Abrir andamento de João Silva' })).toBeInTheDocument()
       expect(screen.getByText('João Silva')).toBeInTheDocument()
       expect(screen.getByText('Residencial Aurora')).toBeInTheDocument()
-      expect(screen.getByText('Unid. 1201')).toBeInTheDocument()
+      expect(screen.getByText('1201')).toBeInTheDocument()
       expect(screen.queryByText('Imóvel')).not.toBeInTheDocument()
-      expect(screen.queryByText('Aguardando você')).not.toBeInTheDocument()
       expect(screen.getByText('É necessário responder a proposta do cliente.')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'Responder' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Aguardando você' })).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Responder' })).not.toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Ações — João Silva' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Mover João Silva' })).toBeInTheDocument()
     })

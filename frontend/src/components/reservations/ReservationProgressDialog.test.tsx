@@ -56,12 +56,15 @@ describe('ReservationProgressDialog', () => {
     })
     listReservationMessages.mockResolvedValue([])
 
+    const onTimelineRefresh = vi.fn()
+
     render(
       <ReservationProgressDialog
         profile="builder"
         reservationId={1}
         open
         onOpenChange={() => {}}
+        onTimelineRefresh={onTimelineRefresh}
       />,
     )
 
@@ -77,5 +80,6 @@ describe('ReservationProgressDialog', () => {
     expect(screen.queryByText('Aguardando sinal (48h)')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Abrir diálogo' })).not.toBeInTheDocument()
     expect(listReservationMessages).toHaveBeenCalledWith(1)
+    expect(onTimelineRefresh).toHaveBeenCalled()
   })
 })

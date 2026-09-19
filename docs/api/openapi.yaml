@@ -3797,8 +3797,8 @@ components:
                 waiting_on:
                   type: string
                   nullable: true
-                  enum: [broker, builder]
-                  description: Who must act on the current gate (corretor or construtora).
+                  enum: [broker, builder, witness]
+                  description: Who must act on the current gate (corretor, construtora, or testemunha da vez).
                   example: builder
         next:
           nullable: true

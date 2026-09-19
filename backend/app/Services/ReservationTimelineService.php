@@ -935,7 +935,7 @@ class ReservationTimelineService
     }
 
     /**
-     * @return 'broker'|'builder'|null
+     * @return 'broker'|'builder'|'witness'|null
      */
     private function resolveWaitingOn(string $currentKey, string $currentStatus, Reservation $reservation): ?string
     {
@@ -957,9 +957,9 @@ class ReservationTimelineService
             'deposit_proof',
             'contract_issue',
             'contract_builder_sign',
-            'contract_witness_1',
-            'contract_witness_2',
             'contract_validate' => 'builder',
+            'contract_witness_1',
+            'contract_witness_2' => 'witness',
             default => null,
         };
     }

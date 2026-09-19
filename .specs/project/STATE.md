@@ -32,12 +32,16 @@
 
 ## Sessão atual
 
-- **Fase:** `reservation-kanban-queue` execute done (na branch `feature/reservation-garage-spots`)
-- **Branch:** `feature/reservation-garage-spots`
-- **Última etapa concluída:** REQ-RKQ-001…006 — unread por user, CTA de fila até proposta, chat só no modal
-- **Próxima etapa:** push/PR se solicitado; mapa pós-aceite (sinal/contrato) fora desta fatia
-- **Spec:** `.specs/features/reservation-kanban-queue/`
-- **Nota:** `garage-spots` permanece código local na mesma branch; leitura de mensagem é por usuário
+- **Fase:** `reservation-kanban-post-proposal` Execute T1
+- **Branch:** `docs/kanban-dono-da-bola-colunas`
+- **Última etapa concluída:** spec + design + tasks a partir de `docs/discovery/resumo-kanban-dono-da-bola-colunas.md`
+- **Próxima etapa:** T1 `waiting_on=witness` + Pest matriz H–S
+- **Spec:** `.specs/features/reservation-kanban-post-proposal/`
+- **Nota:** matriz A–G não reabre; Formalização é mudança de fluxo (porta)
+
+## Preferences
+
+**Model Guidance Shown:** 2026-09-19
 
 
 ## Blockers

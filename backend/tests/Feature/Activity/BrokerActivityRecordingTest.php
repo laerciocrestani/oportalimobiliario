@@ -8,6 +8,7 @@ use App\Enums\UnitStatus;
 use App\Enums\UserActivityAction;
 use App\Models\BrokerClient;
 use App\Models\Reservation;
+use App\Models\ReservationAttachment;
 use App\Models\ReservationProposal;
 use App\Models\ReservationTimelineEvent;
 use App\Models\Tenant;
@@ -224,6 +225,11 @@ it('records deposit proof metadata without storing the file', function () {
         'tenant_id' => $tenant->id,
         'unit_id' => $unit->id,
         'broker_id' => $broker->id,
+    ]);
+
+    ReservationAttachment::factory()->proposalSignedBoth()->create([
+        'reservation_id' => $reservation->id,
+        'uploaded_by' => $broker->id,
     ]);
 
     Sanctum::actingAs($broker);

@@ -814,13 +814,11 @@ class ReservationTimelineService
      */
     private function depositWindowBrokerActions(Reservation $reservation): array
     {
-        $actions = ['submit_deposit_proof'];
-
         if ($reservation->canReturnSignedProposal()) {
-            $actions[] = 'return_signed_proposal';
+            return ['return_signed_proposal'];
         }
 
-        return $actions;
+        return $reservation->canSubmitDepositProof() ? ['submit_deposit_proof'] : [];
     }
 
     /**

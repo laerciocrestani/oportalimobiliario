@@ -158,7 +158,22 @@ class Reservation extends Model
 
     public function canSubmitDepositProof(): bool
     {
-        return $this->isDepositPending() || $this->hasClientHold();
+        if ($this->hasClientHold()) {
+            return true;
+        }
+
+        if (! $this->isDepositPending()) {
+            return false;
+        }
+
+        $hasBuilderSigned = $this->attachments()
+            ->where('kind', ReservationAttachmentKind::ProposalSignedBuilder)
+            ->exists();
+        $hasBothSigned = $this->attachments()
+            ->where('kind', ReservationAttachmentKind::ProposalSignedBoth)
+            ->exists();
+
+        return ! ($hasBuilderSigned && ! $hasBothSigned);
     }
 
     public function canReturnSignedProposal(): bool

@@ -2,6 +2,7 @@
 
 /**
  * @see REQ-RKP-001
+ * @see REQ-RKP-002
  * @see REQ-RKP-005
  * @see REQ-RKP-007
  */
@@ -17,6 +18,7 @@ use App\Models\Unit;
 use App\Models\UnitAccess;
 use App\Models\User;
 use App\Support\BuilderPermissions;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
@@ -227,6 +229,68 @@ it('omits queue waiting_on on sold and cancelled cards', function () {
         ->assertOk()
         ->assertJsonPath('0.kanban_column', 'cancelled')
         ->assertJsonPath('0.situation.current.waiting_on', null);
+});
+
+it('rejects deposit proof bundled with the signed proposal return', function () {
+    Storage::fake('local');
+
+    ['builder' => $builder, 'broker' => $broker, 'reservation' => $reservation] = postProposalKanbanSetup();
+    ReservationAttachment::factory()->proposalSignedBuilder()->create([
+        'reservation_id' => $reservation->id,
+        'uploaded_by' => $builder->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+    $this->post("/api/broker/reservations/{$reservation->id}/proposal/signed", [
+        'signed_file' => signedProposalPdf(),
+        'deposit_proof' => UploadedFile::fake()->create('comprovante.pdf', 80, 'application/pdf'),
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['deposit_proof']);
+});
+
+it('rejects deposit proof before both parties signed the proposal', function () {
+    Storage::fake('local');
+
+    ['builder' => $builder, 'broker' => $broker, 'reservation' => $reservation] = postProposalKanbanSetup();
+    ReservationAttachment::factory()->proposalSignedBuilder()->create([
+        'reservation_id' => $reservation->id,
+        'uploaded_by' => $builder->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+    $this->post("/api/broker/reservations/{$reservation->id}/deposit-proof", [
+        'file' => UploadedFile::fake()->create('comprovante.pdf', 80, 'application/pdf'),
+    ])->assertUnprocessable();
+});
+
+it('moves the card to docs_deposit after returning only the signed proposal', function () {
+    Storage::fake('local');
+
+    ['builder' => $builder, 'broker' => $broker, 'reservation' => $reservation] = postProposalKanbanSetup();
+    ReservationAttachment::factory()->proposalSignedBuilder()->create([
+        'reservation_id' => $reservation->id,
+        'uploaded_by' => $builder->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+    $timeline = $this->getJson("/api/broker/reservations/{$reservation->id}/timeline")
+        ->assertOk()
+        ->assertJsonPath('current_stage', 'deposit_pending')
+        ->json();
+
+    $depositStep = collect($timeline['steps'])->firstWhere('key', 'deposit_window');
+    expect($depositStep['actions'])->toBe(['return_signed_proposal']);
+
+    $this->post("/api/broker/reservations/{$reservation->id}/proposal/signed", [
+        'signed_file' => signedProposalPdf(),
+    ])->assertOk();
+
+    Sanctum::actingAs($builder);
+    $this->getJson('/api/builder/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.kanban_column', 'docs_deposit')
+        ->assertJsonPath('0.situation.current.waiting_on', 'broker');
 });
 
 /**

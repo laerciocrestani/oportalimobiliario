@@ -2606,7 +2606,7 @@ paths:
       summary: Return proposal signed by both parties (broker)
       description: |
         Single submission after the builder accepted with a signed PDF.
-        Requires `signed_file` (PDF). Optional `deposit_proof` when there is a deposit.
+        Requires `signed_file` (PDF). Deposit proof is not accepted here — send it after formalization via `POST /deposit-proof`.
       security:
         - bearerAuth: []
       parameters:
@@ -2627,12 +2627,9 @@ paths:
                 signed_file:
                   type: string
                   format: binary
-                deposit_proof:
-                  type: string
-                  format: binary
       responses:
         '200':
-          description: Signed proposal stored; deposit proof processed when sent
+          description: Signed proposal stored; card moves to Documentação & Sinal
         '403':
           description: Not the reservation owner
         '422':
@@ -2640,7 +2637,7 @@ paths:
   /api/broker/reservations/{reservation}/deposit-proof:
     post:
       summary: Upload deposit proof (broker)
-      description: Attach payment proof after proposal accepted. Moves reservation to deposit_proof_pending.
+      description: Attach payment proof after both parties signed the proposal. Moves reservation to deposit_proof_pending.
       security:
         - bearerAuth: []
       parameters:

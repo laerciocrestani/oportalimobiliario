@@ -76,14 +76,14 @@ Phase 3:
 
 **Done when**:
 
-- [ ] POST signed com `deposit_proof` → 422
-- [ ] POST deposit-proof sem PDF ambos (reserva aceita) → 422
-- [ ] POST signed só com PDF → 200, coluna `docs_deposit`, `waiting_on=broker`
-- [ ] Timeline broker na Formalização: actions contém `return_signed_proposal` e não `submit_deposit_proof`
-- [ ] Pré-hold com cliente ainda pode anexar sinal (regressão `ReservationHoldTest` / deposit na pré-reserva)
-- [ ] Gate: `docker compose exec backend php artisan test --compact --filter=ReservationKanbanPostProposal`
-- [ ] Também verde: `--filter=ProposalFormalization`
-- [ ] Test count: sem silent deletions na suite tocada
+- [x] POST signed com `deposit_proof` → 422
+- [x] POST deposit-proof sem PDF ambos (reserva aceita) → 422
+- [x] POST signed só com PDF → 200, coluna `docs_deposit`, `waiting_on=broker`
+- [x] Timeline broker na Formalização: actions contém `return_signed_proposal` e não `submit_deposit_proof`
+- [x] Pré-hold com cliente ainda pode anexar sinal (regressão `ReservationHoldTest` / deposit na pré-reserva)
+- [x] Gate: `docker compose exec backend php artisan test --compact --filter=ReservationKanbanPostProposal`
+- [x] Também verde: `--filter=ProposalFormalization`
+- [x] Test count: sem silent deletions na suite tocada
 
 **Tests**: integration  
 **Gate**: full

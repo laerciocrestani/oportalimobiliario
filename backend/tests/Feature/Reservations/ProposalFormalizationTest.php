@@ -79,7 +79,7 @@ it('returns the signed proposal without deposit proof', function () {
     assertUserActivity($broker, UserActivityAction::ReservationProposalSignedBoth, $reservation->unit->code);
 });
 
-it('returns signed proposal and optional deposit proof in a single request', function () {
+it('rejects signed proposal return when deposit proof is sent in the same request', function () {
     $tenant = Tenant::factory()->create();
     $builder = User::factory()->builder()->withBuilderPermissions([
         BuilderPermissions::CANCEL_RESERVATIONS,
@@ -93,12 +93,8 @@ it('returns signed proposal and optional deposit proof in a single request', fun
         'signed_file' => signedProposalPdf('ambas.pdf'),
         'deposit_proof' => UploadedFile::fake()->create('comprovante.pdf', 80, 'application/pdf'),
     ])
-        ->assertOk()
-        ->assertJsonPath('status', ReservationStatus::DepositProofPending->value);
-
-    expect(ReservationAttachment::query()->where('kind', ReservationAttachmentKind::ProposalSignedBoth)->count())->toBe(1);
-    expect(ReservationAttachment::query()->where('kind', ReservationAttachmentKind::DepositProof)->count())->toBe(1);
-    expect($reservation->unit->fresh()->status)->toBe(UnitStatus::Reserved);
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['deposit_proof']);
 });
 
 it('rejects return without the signed pdf', function () {

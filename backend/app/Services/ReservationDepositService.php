@@ -24,6 +24,7 @@ class ReservationDepositService
 {
     public function __construct(
         private readonly ReservationTimelineService $timelineService,
+        private readonly ReservationGarageService $garageService,
     ) {}
 
     public function submitProof(User $broker, Reservation $reservation, UploadedFile $file): Reservation
@@ -59,6 +60,7 @@ class ReservationDepositService
 
                 if ($unit->status === UnitStatus::PreReserved) {
                     $unit->update(['status' => UnitStatus::Reserved]);
+                    $this->garageService->syncStatus($reservation, UnitStatus::Reserved);
                 }
             }
 

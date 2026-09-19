@@ -25,6 +25,9 @@ class BrokerUnitSerializer
 
         unset($payload['reservation']);
 
+        $unit->loadMissing('floorRecord');
+        $payload['floor_kind'] = $unit->floorRecord?->kind?->value;
+
         if ($reservation === null) {
             return $payload;
         }

@@ -4,14 +4,18 @@ namespace Database\Seeders;
 
 use App\Enums\CeilingType;
 use App\Enums\FlooringType;
+use App\Enums\FloorKind;
 use App\Enums\OpeningType;
 use App\Enums\PropertyPosition;
 use App\Enums\SolarPosition;
 use App\Enums\SunPeriod;
+use App\Enums\UnitStatus;
 use App\Models\Amenity;
 use App\Models\Building;
+use App\Models\Floor;
 use App\Models\Tenant;
 use App\Models\Tower;
+use App\Models\Unit;
 use App\Services\AmenityAssignmentService;
 use App\Services\BuildingStructureService;
 use App\Services\BuildingUnitGridService;
@@ -57,6 +61,8 @@ class WizardBuildingSeeder extends Seeder
         );
 
         if ($building->published || $building->wizard_completed_at !== null) {
+            $this->ensureGarageInventory($building);
+
             return;
         }
 
@@ -66,6 +72,52 @@ class WizardBuildingSeeder extends Seeder
             $this->seedDraft($building);
         } finally {
             TenantContext::forget();
+        }
+    }
+
+    /**
+     * Backfill garage spots on an already-published Bosque without rewriting structure.
+     */
+    private function ensureGarageInventory(Building $building): void
+    {
+        $tower = $building->towers()->orderBy('sort_order')->first();
+
+        if ($tower === null) {
+            return;
+        }
+
+        $floor = Floor::query()->firstOrCreate(
+            ['tower_id' => $tower->id, 'number' => -1],
+            [
+                'tenant_id' => $building->tenant_id,
+                'kind' => FloorKind::Garage,
+                'customized' => false,
+            ],
+        );
+
+        if ($floor->kind !== FloorKind::Garage) {
+            $floor->update(['kind' => FloorKind::Garage]);
+        }
+
+        foreach ([
+            ['code' => 'S1-01', 'private_area_m2' => 12.5, 'price' => 45000],
+            ['code' => 'S1-02', 'private_area_m2' => 13.0, 'price' => 48000],
+        ] as $spot) {
+            Unit::query()->firstOrCreate(
+                ['tower_id' => $tower->id, 'code' => $spot['code']],
+                [
+                    'tenant_id' => $building->tenant_id,
+                    'building_id' => $building->id,
+                    'floor_id' => $floor->id,
+                    'floor' => -1,
+                    'private_area_m2' => $spot['private_area_m2'],
+                    'area_m2' => null,
+                    'price' => $spot['price'],
+                    'price_base' => $spot['price'],
+                    'price_competence' => self::PRICE_COMPETENCE,
+                    'status' => UnitStatus::Available,
+                ],
+            );
         }
     }
 

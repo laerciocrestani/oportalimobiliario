@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, Fragment, type ReactNode } from 'react'
 import {
   DndContext,
   DragOverlay,
@@ -16,15 +16,16 @@ import {
 import { ReservationActionsMenu } from '@/components/reservations/ReservationActionsMenu'
 import { ReservationHoldCountdown } from '@/components/reservations/ReservationHoldCountdown'
 import {
-  KANBAN_CARD_ACTIONS,
   RESERVATION_KANBAN_COLUMNS,
   avatarToneClass,
   clientInitials,
+  resolveKanbanCardCta,
   resolveKanbanDrop,
   type KanbanColumnTheme,
 } from '@/components/reservations/reservation-kanban'
-import { Building2Icon, MessageCircleIcon, ReplyIcon, type LucideIcon } from 'lucide-react'
+import { Building2Icon, CarIcon, HomeIcon, MessageCircleIcon, ReplyIcon, type LucideIcon } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   Empty,
@@ -35,6 +36,7 @@ import {
 } from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
 import type { BuilderReservationListItem, ReservationKanbanColumn } from '@/lib/api'
+import { formatListedPrice } from '@/lib/unit-listing'
 import { cn } from '@/lib/utils'
 
 type ReservationKanbanBoardProps = {
@@ -42,9 +44,7 @@ type ReservationKanbanBoardProps = {
   reservations: BuilderReservationListItem[]
   cancellingId: number | null
   canCancel: boolean
-  canMessage: boolean
   onOpen: (reservationId: number) => void
-  onMessages: (reservationId: number) => void
   onCancel: (reservation: BuilderReservationListItem) => void
   onMove: (reservation: BuilderReservationListItem, column: ReservationKanbanColumn) => void
   onProcessRequired: (reservation: BuilderReservationListItem) => void
@@ -61,12 +61,11 @@ const dropAnimation: DropAnimation = {
 }
 
 export function ReservationKanbanBoard({
+  profile,
   reservations,
   cancellingId,
   canCancel,
-  canMessage,
   onOpen,
-  onMessages,
   onCancel,
   onMove,
   onProcessRequired,
@@ -152,12 +151,11 @@ export function ReservationKanbanBoard({
             {grouped[column.id].map((reservation) => (
               <KanbanCard
                 key={reservation.id}
+                profile={profile}
                 reservation={reservation}
                 cancelling={cancellingId === reservation.id}
                 canCancel={canCancel}
-                canMessage={canMessage}
                 onOpen={() => onOpen(reservation.id)}
-                onMessages={() => onMessages(reservation.id)}
                 onCancel={() => onCancel(reservation)}
               />
             ))}
@@ -166,7 +164,7 @@ export function ReservationKanbanBoard({
       </div>
       <DragOverlay dropAnimation={dropAnimation}>
         {activeReservation ? (
-          <KanbanCardPreview reservation={activeReservation} />
+          <KanbanCardPreview profile={profile} reservation={activeReservation} />
         ) : null}
       </DragOverlay>
     </DndContext>
@@ -240,20 +238,18 @@ function KanbanColumn({
 }
 
 function KanbanCard({
+  profile,
   reservation,
   cancelling,
   canCancel,
-  canMessage,
   onOpen,
-  onMessages,
   onCancel,
 }: {
+  profile: 'builder' | 'broker'
   reservation: BuilderReservationListItem
   cancelling: boolean
   canCancel: boolean
-  canMessage: boolean
   onOpen: () => void
-  onMessages: () => void
   onCancel: () => void
 }) {
   const canDrag = (reservation.allowed_kanban_moves ?? []).length > 0
@@ -278,6 +274,7 @@ function KanbanCard({
         onClick={onOpen}
       />
       <KanbanCardBody
+        profile={profile}
         reservation={reservation}
         dragHandle={canDrag ? { attributes, listeners } : null}
         actions={
@@ -285,9 +282,7 @@ function KanbanCard({
             reservation={reservation}
             cancelling={cancelling}
             canCancel={canCancel}
-            canMessage={canMessage}
             onTimeline={onOpen}
-            onMessages={onMessages}
             onCancel={onCancel}
           />
         }
@@ -298,23 +293,27 @@ function KanbanCard({
 }
 
 function KanbanCardPreview({
+  profile,
   reservation,
 }: {
+  profile: 'builder' | 'broker'
   reservation: BuilderReservationListItem
 }) {
   return (
     <article className="w-72 cursor-grabbing rounded-2xl border bg-background p-4">
-      <KanbanCardBody reservation={reservation} />
+      <KanbanCardBody profile={profile} reservation={reservation} />
     </article>
   )
 }
 
 function KanbanCardBody({
+  profile,
   reservation,
   dragHandle,
   actions,
   onOpen,
 }: {
+  profile: 'builder' | 'broker'
   reservation: BuilderReservationListItem
   dragHandle?: {
     attributes: ReturnType<typeof useDraggable>['attributes']
@@ -326,9 +325,10 @@ function KanbanCardBody({
   const clientName = reservation.client?.name ?? `Reserva ${reservation.id}`
   const buildingName = reservation.unit?.building?.name
   const unitCode = reservation.unit?.code
-  const cardAction = reservation.pending_action
-    ? KANBAN_CARD_ACTIONS[reservation.pending_action]
-    : null
+  const unitPrice = reservation.unit?.price
+  const garageSpots = reservation.garage_units ?? []
+  const negotiationTotal = reservationNegotiationTotal(reservation)
+  const cardCta = resolveKanbanCardCta(reservation, profile)
   const avatar = (
     <Avatar size="default" className="size-9">
       <AvatarFallback className={cn('text-xs font-semibold', avatarToneClass(reservation.id))}>
@@ -339,11 +339,11 @@ function KanbanCardBody({
 
   return (
     <div className="pointer-events-none relative flex flex-col gap-3">
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         {dragHandle ? (
           <button
             type="button"
-            className="pointer-events-auto shrink-0 cursor-grab rounded-full"
+            className="pointer-events-auto mt-0.5 shrink-0 cursor-grab rounded-full"
             aria-label={`Mover ${clientName}`}
             {...dragHandle.listeners}
             {...dragHandle.attributes}
@@ -351,19 +351,49 @@ function KanbanCardBody({
             {avatar}
           </button>
         ) : (
-          avatar
+          <div className="mt-0.5 shrink-0">{avatar}</div>
         )}
-        <p className="min-w-0 flex-1 truncate font-semibold leading-none">{clientName}</p>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate font-semibold leading-tight">{clientName}</p>
+            <UnreadMessagesBadge count={reservation.unread_messages_count ?? 0} />
+          </div>
+          {negotiationTotal != null ? (
+            <p className="mt-0.5 text-xs font-semibold tabular-nums text-foreground">
+              {formatListedPrice(String(negotiationTotal))}
+            </p>
+          ) : null}
+        </div>
         {actions ? <div className="pointer-events-auto shrink-0">{actions}</div> : null}
       </div>
-      <div className="flex flex-col gap-1">
-        <div className="flex min-w-0 items-center gap-2">
-          <Building2Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-          <p className="truncate text-xs text-muted-foreground">{buildingName || '—'}</p>
-        </div>
-        {unitCode ? (
-          <p className="pl-6 text-xs text-muted-foreground">Unid. {unitCode}</p>
+      <div className="grid grid-cols-[1rem_minmax(0,1fr)] items-center gap-x-2 gap-y-1.5">
+        <Building2Icon className="size-4 justify-self-center text-foreground" aria-hidden />
+        <p className="truncate text-sm font-medium leading-none text-foreground">
+          {buildingName || '—'}
+        </p>
+        {unitCode || garageSpots.length > 0 ? (
+          <Separator className="col-span-2 my-0.5" />
         ) : null}
+        {unitCode ? (
+          <>
+            <HomeIcon className="size-4 justify-self-center text-muted-foreground" aria-hidden />
+            <p className="truncate text-xs leading-none text-muted-foreground">
+              <span className="font-semibold tabular-nums text-foreground">{unitCode}</span>
+              <span className="mx-1.5 text-muted-foreground/60">·</span>
+              <span className="tabular-nums">{formatListedPrice(unitPrice)}</span>
+            </p>
+          </>
+        ) : null}
+        {garageSpots.map((spot) => (
+          <Fragment key={spot.id}>
+            <CarIcon className="size-4 justify-self-center text-muted-foreground" aria-hidden />
+            <p className="truncate text-xs leading-none text-muted-foreground">
+              <span className="font-semibold tabular-nums text-foreground">{spot.code}</span>
+              <span className="mx-1.5 text-muted-foreground/60">·</span>
+              <span className="tabular-nums">{formatListedPrice(spot.price)}</span>
+            </p>
+          </Fragment>
+        ))}
       </div>
       {reservation.kanban_column === 'pre_reservation' && reservation.expires_at ? (
         <ReservationHoldCountdown
@@ -371,20 +401,52 @@ function KanbanCardBody({
           expiresAt={reservation.expires_at}
         />
       ) : null}
-      {reservation.needs_action && cardAction && onOpen ? (
+      {cardCta ? (
         <div className="flex flex-col gap-2">
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
             <MessageCircleIcon className="mt-0.5 size-3.5 shrink-0" aria-hidden />
-            <span>{cardAction.hint}</span>
+            <span>{cardCta.hint}</span>
           </p>
-          <Button type="button" className="pointer-events-auto w-full" onClick={onOpen}>
-            <ReplyIcon data-icon="inline-start" />
-            {cardAction.label}
-          </Button>
+          {cardCta.interactive && onOpen ? (
+            <Button type="button" className="pointer-events-auto w-full" onClick={onOpen}>
+              {reservation.kanban_column === 'pre_reservation' ? (
+                <ReplyIcon data-icon="inline-start" />
+              ) : null}
+              {cardCta.label}
+            </Button>
+          ) : (
+            <p className="text-center text-xs font-medium text-muted-foreground">{cardCta.label}</p>
+          )}
         </div>
       ) : null}
     </div>
   )
+}
+
+function UnreadMessagesBadge({ count }: { count: number }) {
+  if (count <= 0) {
+    return null
+  }
+
+  return (
+    <Badge variant="destructive" className="shrink-0" aria-label={`${count} mensagens não lidas`}>
+      {count}
+    </Badge>
+  )
+}
+
+function reservationNegotiationTotal(reservation: BuilderReservationListItem): number | null {
+  const unitPrice = Number(reservation.unit?.price)
+  if (!Number.isFinite(unitPrice)) {
+    return null
+  }
+
+  const garageTotal = (reservation.garage_units ?? []).reduce((sum, spot) => {
+    const price = Number(spot.price)
+    return sum + (Number.isFinite(price) ? price : 0)
+  }, 0)
+
+  return unitPrice + garageTotal
 }
 
 function resolveColumn(

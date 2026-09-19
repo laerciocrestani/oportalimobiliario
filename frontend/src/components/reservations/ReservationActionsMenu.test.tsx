@@ -10,6 +10,7 @@ const reservation: BuilderReservationListItem = {
   created_at: '2026-06-12T10:00:00.000000Z',
   expires_at: '2026-06-14T10:00:00.000000Z',
   messages_count: 2,
+  unread_messages_count: 2,
   needs_reply: true,
   needs_proposal_decision: true,
   needs_deposit_proof_approval: false,
@@ -41,10 +42,9 @@ const reservation: BuilderReservationListItem = {
 }
 
 describe('ReservationActionsMenu', () => {
-  it('opens kebab menu with andamento, responder and cancelar', async () => {
+  it('opens kebab menu with andamento and cancelar, without a separate chat item', async () => {
     const user = userEvent.setup()
     const onTimeline = vi.fn()
-    const onMessages = vi.fn()
     const onCancel = vi.fn()
 
     render(
@@ -52,7 +52,6 @@ describe('ReservationActionsMenu', () => {
         reservation={reservation}
         cancelling={false}
         onTimeline={onTimeline}
-        onMessages={onMessages}
         onCancel={onCancel}
       />,
     )
@@ -62,19 +61,22 @@ describe('ReservationActionsMenu', () => {
     await waitFor(() => {
       expect(screen.getByRole('menuitem', { name: 'Andamento · decisão' })).toBeInTheDocument()
     })
-    expect(screen.getByRole('menuitem', { name: 'Responder · nova' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Responder · nova' })).not.toBeInTheDocument()
     expect(screen.getByRole('menuitem', { name: 'Cancelar' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('menuitem', { name: 'Andamento · decisão' }))
+    expect(onTimeline).toHaveBeenCalledOnce()
   })
 
-  it('hides cancel and labels the conversation as view-only when cancelled', async () => {
+  it('keeps andamento for cancelled reservations and hides cancel', async () => {
     const user = userEvent.setup()
+    const onTimeline = vi.fn()
 
     render(
       <ReservationActionsMenu
         reservation={{ ...reservation, status: 'cancelled', needs_reply: false, needs_proposal_decision: false }}
         cancelling={false}
-        onTimeline={() => {}}
-        onMessages={() => {}}
+        onTimeline={onTimeline}
         onCancel={() => {}}
       />,
     )
@@ -82,12 +84,13 @@ describe('ReservationActionsMenu', () => {
     await user.click(screen.getByRole('button', { name: 'Ações — João Silva' }))
 
     await waitFor(() => {
-      expect(screen.getByRole('menuitem', { name: 'Ver conversa' })).toBeInTheDocument()
+      expect(screen.getByRole('menuitem', { name: 'Andamento · conversa' })).toBeInTheDocument()
     })
+    expect(screen.queryByRole('menuitem', { name: 'Ver conversa' })).not.toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: 'Cancelar' })).not.toBeInTheDocument()
   })
 
-  it('hides conversation and cancel when the viewer cannot manage the reservation', async () => {
+  it('hides cancel when the viewer cannot manage the reservation', async () => {
     const user = userEvent.setup()
 
     render(
@@ -95,9 +98,7 @@ describe('ReservationActionsMenu', () => {
         reservation={{ ...reservation, pending_action: 'witness_signature', needs_witness_signature: true }}
         cancelling={false}
         canCancel={false}
-        canMessage={false}
         onTimeline={() => {}}
-        onMessages={() => {}}
         onCancel={() => {}}
       />,
     )

@@ -36,6 +36,7 @@ const reservation: BuilderReservationListItem = {
   unit: {
     id: 10,
     code: '1201',
+    price: '850000.00',
     building: { id: 3, name: 'Residencial Aurora' },
   },
 }
@@ -78,9 +79,7 @@ describe('ReservationKanbanBoard', () => {
         reservations={[reservation]}
         cancellingId={null}
         canCancel
-        canMessage
         onOpen={onOpen}
-        onMessages={() => {}}
         onCancel={() => {}}
         onMove={() => {}}
         onProcessRequired={() => {}}
@@ -95,10 +94,12 @@ describe('ReservationKanbanBoard', () => {
     )
     expect(screen.getByText('João Silva')).toBeInTheDocument()
     expect(screen.getByText('Residencial Aurora')).toBeInTheDocument()
-    expect(screen.getByText('Unid. 1201')).toBeInTheDocument()
+    expect(screen.getByText('1201')).toBeInTheDocument()
+    expect(screen.getAllByText('R$ 850.000,00')).toHaveLength(2)
     expect(screen.queryByText('Imóvel')).not.toBeInTheDocument()
     expect(screen.getByText('É necessário responder a proposta do cliente.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Responder' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Aguardando você' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Responder' })).not.toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Abrir andamento de João Silva' }))
 
@@ -113,9 +114,7 @@ describe('ReservationKanbanBoard', () => {
         reservations={[{ ...reservation, kanban_column: 'sold', allowed_kanban_moves: [], status: 'sold' }]}
         cancellingId={null}
         canCancel
-        canMessage
         onOpen={() => {}}
-        onMessages={() => {}}
         onCancel={() => {}}
         onMove={() => {}}
         onProcessRequired={() => {}}
@@ -139,9 +138,7 @@ describe('ReservationKanbanBoard', () => {
         reservations={[preReservation]}
         cancellingId={null}
         canCancel
-        canMessage
         onOpen={() => {}}
-        onMessages={() => {}}
         onCancel={() => {}}
         onMove={() => {}}
         onProcessRequired={() => {}}
@@ -159,9 +156,7 @@ describe('ReservationKanbanBoard', () => {
         reservations={[{ ...preReservation, expires_at: '2026-09-22T10:00:00.000Z' }]}
         cancellingId={null}
         canCancel
-        canMessage
         onOpen={() => {}}
-        onMessages={() => {}}
         onCancel={() => {}}
         onMove={() => {}}
         onProcessRequired={() => {}}
@@ -171,5 +166,147 @@ describe('ReservationKanbanBoard', () => {
     expect(screen.getByRole('progressbar', { name: /até 22\/09.*resta 3d/ })).toHaveClass(
       '[&_[data-slot=progress-indicator]]:bg-zinc-500',
     )
+  })
+
+  it('shows aligned unit and garage rows with prices and total under the client name', () => {
+    render(
+      <ReservationKanbanBoard
+        profile="broker"
+        reservations={[
+          {
+            ...reservation,
+            needs_action: false,
+            pending_action: null,
+            needs_proposal_decision: false,
+            garage_units: [
+              {
+                id: 30,
+                code: 'S1-01',
+                price: '45000.00',
+                status: 'pre_reserved',
+                floor_kind: 'garage',
+              },
+            ],
+          },
+        ]}
+        cancellingId={null}
+        canCancel
+        onOpen={() => {}}
+        onCancel={() => {}}
+        onMove={() => {}}
+        onProcessRequired={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('Residencial Aurora')).toHaveClass('font-medium')
+    expect(screen.getByText('1201')).toBeInTheDocument()
+    expect(screen.getByText('S1-01')).toBeInTheDocument()
+    expect(screen.getByText('R$ 45.000,00')).toBeInTheDocument()
+    expect(screen.getByText('R$ 895.000,00')).toBeInTheDocument()
+    expect(screen.getByText('R$ 850.000,00')).toBeInTheDocument()
+  })
+
+  it('keeps Responder only on pre-reservation and shows waiting queue on later columns', () => {
+    const { rerender } = render(
+      <ReservationKanbanBoard
+        profile="broker"
+        reservations={[
+          {
+            ...preReservation,
+            needs_action: true,
+            pending_action: 'reply',
+            situation: {
+              ...preReservation.situation,
+              current: {
+                ...preReservation.situation.current,
+                waiting_on: 'broker',
+              },
+            },
+          },
+        ]}
+        cancellingId={null}
+        canCancel
+        onOpen={() => {}}
+        onCancel={() => {}}
+        onMove={() => {}}
+        onProcessRequired={() => {}}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Responder' })).toBeInTheDocument()
+
+    rerender(
+      <ReservationKanbanBoard
+        profile="broker"
+        reservations={[
+          {
+            ...reservation,
+            needs_action: false,
+            pending_action: null,
+            kanban_column: 'proposal_review',
+            situation: {
+              ...reservation.situation,
+              current: {
+                ...reservation.situation.current,
+                waiting_on: 'builder',
+              },
+            },
+          },
+        ]}
+        cancellingId={null}
+        canCancel
+        onOpen={() => {}}
+        onCancel={() => {}}
+        onMove={() => {}}
+        onProcessRequired={() => {}}
+      />,
+    )
+
+    expect(screen.queryByRole('button', { name: 'Responder' })).not.toBeInTheDocument()
+    expect(screen.getByText('Aguardando construtora')).toBeInTheDocument()
+  })
+
+  it('shows unread badge and keeps queue label for broker on proposal review even with reply pending_action', () => {
+    render(
+      <ReservationKanbanBoard
+        profile="broker"
+        reservations={[
+          {
+            ...reservation,
+            unread_messages_count: 2,
+            needs_action: true,
+            pending_action: 'reply',
+            needs_proposal_decision: false,
+          },
+        ]}
+        cancellingId={null}
+        canCancel
+        onOpen={() => {}}
+        onCancel={() => {}}
+        onMove={() => {}}
+        onProcessRequired={() => {}}
+      />,
+    )
+
+    expect(screen.getByLabelText('2 mensagens não lidas')).toHaveTextContent('2')
+    expect(screen.getByText('Aguardando construtora')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Responder' })).not.toBeInTheDocument()
+  })
+
+  it('hides unread badge when there are no unread messages', () => {
+    render(
+      <ReservationKanbanBoard
+        profile="builder"
+        reservations={[{ ...reservation, unread_messages_count: 0, needs_reply: false }]}
+        cancellingId={null}
+        canCancel
+        onOpen={() => {}}
+        onCancel={() => {}}
+        onMove={() => {}}
+        onProcessRequired={() => {}}
+      />,
+    )
+
+    expect(screen.queryByLabelText(/mensagens não lidas/)).not.toBeInTheDocument()
   })
 })

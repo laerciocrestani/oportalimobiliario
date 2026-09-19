@@ -24,6 +24,7 @@ class ReservationContractCompletionService
 {
     public function __construct(
         private readonly ReservationTimelineService $timelineService,
+        private readonly ReservationGarageService $garageService,
     ) {}
 
     public function markSignedGov(User $broker, Reservation $reservation, ?string $note = null): Reservation
@@ -254,6 +255,7 @@ class ReservationContractCompletionService
             }
 
             $unit->update(['status' => UnitStatus::Sold]);
+            $this->garageService->syncStatus($reservation, UnitStatus::Sold);
 
             $reservation->update([
                 'status' => ReservationStatus::Sold,

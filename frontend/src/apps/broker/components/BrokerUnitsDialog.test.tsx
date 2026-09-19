@@ -93,6 +93,12 @@ const building: BuildingWithUnits = {
 }
 
 describe('BrokerUnitsDialog', () => {
+  beforeEach(() => {
+    vi.mocked(brokerApi.createPreHold).mockReset()
+    vi.mocked(brokerApi.cancelReservation).mockReset()
+    vi.mocked(brokerApi.listUnits).mockReset()
+  })
+
   it('asks to consult when the calculated price is missing', () => {
     render(
       <BrokerUnitsDialog
@@ -186,7 +192,101 @@ describe('BrokerUnitsDialog', () => {
     await user.click(screen.getByRole('button', { name: 'Pré-reservar' }))
 
     await waitFor(() => {
-      expect(brokerApi.createPreHold).toHaveBeenCalledWith(10)
+      expect(brokerApi.createPreHold).toHaveBeenCalledWith(10, [])
+    })
+  })
+
+  it('does not show Pré-reservar for garage spots', () => {
+    render(
+      <BrokerUnitsDialog
+        open
+        onOpenChange={() => {}}
+        building={{
+          ...building,
+          units: [
+            {
+              id: 30,
+              code: 'S1-01',
+              floor: -1,
+              floor_kind: 'garage',
+              area_m2: null,
+              private_area_m2: '12.5',
+              price: '45000',
+              status: 'available',
+            },
+            {
+              id: 10,
+              code: '1201',
+              floor: 12,
+              area_m2: '72',
+              price: '450000',
+              status: 'available',
+            },
+          ],
+        }}
+        onReserved={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('S1-01')).toBeInTheDocument()
+    expect(screen.getByText('Vaga disponível')).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Pré-reservar' })).toHaveLength(1)
+  })
+
+  it('lets the broker optionally attach garage spots before pre-hold', async () => {
+    const user = userEvent.setup()
+
+    vi.mocked(brokerApi.createPreHold).mockResolvedValue({
+      id: 88,
+      unit_id: 10,
+      client_id: null,
+      broker_id: 1,
+      status: 'pre_hold',
+      expires_at: '2026-07-10T21:10:00.000000Z',
+      garage_units: [{ id: 30, code: 'S1-01', price: '45000', status: 'pre_reserved', floor_kind: 'garage' }],
+    })
+
+    render(
+      <BrokerUnitsDialog
+        open
+        onOpenChange={() => {}}
+        building={{
+          ...building,
+          units: [
+            {
+              id: 10,
+              code: '1201',
+              floor: 12,
+              area_m2: '72',
+              price: '450000',
+              status: 'available',
+            },
+            {
+              id: 30,
+              code: 'S1-01',
+              floor: -1,
+              floor_kind: 'garage',
+              area_m2: null,
+              private_area_m2: '12.5',
+              price: '45000',
+              status: 'available',
+            },
+          ],
+        }}
+        onReserved={() => {}}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'Pré-reservar' }))
+
+    expect(screen.getByText('Vagas de garagem')).toBeInTheDocument()
+    expect(brokerApi.createPreHold).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('checkbox', { name: 'Selecionar vaga S1-01' }))
+    await user.click(screen.getByRole('button', { name: 'Continuar' }))
+
+    await waitFor(() => {
+      expect(brokerApi.createPreHold).toHaveBeenCalledWith(10, [30])
     })
   })
 

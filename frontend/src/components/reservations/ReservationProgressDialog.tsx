@@ -89,6 +89,9 @@ export function ReservationProgressDialog({
         setError(null)
         setTimeline(null)
         await loadTimeline()
+        if (!cancelled) {
+          onTimelineRefresh?.()
+        }
       } catch {
         if (!cancelled) {
           setError('Não foi possível carregar o andamento da reserva.')

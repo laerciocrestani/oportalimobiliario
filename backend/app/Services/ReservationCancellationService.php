@@ -14,6 +14,7 @@ class ReservationCancellationService
 {
     public function __construct(
         private readonly ReservationTimelineService $timelineService,
+        private readonly ReservationGarageService $garageService,
     ) {}
 
     public function cancel(User $actor, Reservation $reservation, string $reason): void
@@ -41,6 +42,8 @@ class ReservationCancellationService
             if ($unit->status !== UnitStatus::Sold) {
                 $unit->update(['status' => UnitStatus::Available]);
             }
+
+            $this->garageService->detachAndRelease($reservation);
 
             $reservation->update(['status' => ReservationStatus::Cancelled]);
 

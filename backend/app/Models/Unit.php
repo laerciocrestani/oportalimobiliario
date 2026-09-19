@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\CeilingType;
 use App\Enums\FlooringType;
+use App\Enums\FloorKind;
 use App\Enums\OpeningType;
 use App\Enums\PropertyPosition;
 use App\Enums\SolarPosition;
@@ -98,6 +99,13 @@ class Unit extends Model
     public function floorRecord(): BelongsTo
     {
         return $this->belongsTo(Floor::class, 'floor_id');
+    }
+
+    public function isGarage(): bool
+    {
+        $this->loadMissing('floorRecord');
+
+        return $this->floorRecord?->kind === FloorKind::Garage;
     }
 
     public function reservation(): HasOne

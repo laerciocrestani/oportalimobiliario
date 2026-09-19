@@ -86,6 +86,34 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 
 ---
 
+## reservation-garage-spots
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-RGS-001 | Pivô `reservation_garage_units` + `Unit::isGarage()` | migration, `Reservation.php`, `Unit.php` | — | `ReservationGarageSpotsTest.php` |
+| REQ-RGS-002 | `garage_unit_ids` no pre-hold/store; resposta com `garage_units` | `PreReservationService.php`, `Broker/ReservationController.php`, `ReservationGaragePresenter.php` | `api.ts`, `BrokerUnitsDialog.tsx` | `ReservationGarageSpotsTest.php`, OpenAPI |
+| REQ-RGS-003 | Validação mesmo building / garage / available + lock | `ReservationGarageService.php` | — | `ReservationGarageSpotsTest.php` |
+| REQ-RGS-004 | Cascata status vagas (hold/cancel/expire/reserved/sold) | `ReservationGarageService` nos services de reserva | — | `ReservationGarageSpotsTest.php` |
+| REQ-RGS-005 | Seeds legado + Bosque + ReservationSeeder atrela vaga | `UnitSeeder.php`, `WizardBuildingSeeder.php`, `ReservationSeeder.php` | — | `SEEDS.md`, `WizardBuildingSeederTest.php` |
+| REQ-RGS-006 | Picker 0..N; sem Pré-reservar em vaga; exibir no kanban | — | `BrokerUnitsDialog.tsx`, `ReservationKanbanBoard.tsx` | `BrokerUnitsDialog.test.tsx` |
+
+---
+
+## reservation-kanban-queue
+
+> Spec: `.specs/features/reservation-kanban-queue/spec.md` · Branch: `feature/reservation-garage-spots` · Escopo: até proposta
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-RKQ-001 | Dois sinais no card (fila + badge de msgs) | `ReservationPendingReplyService` `unread_messages_count` | `ReservationKanbanBoard.tsx` | `ReservationKanbanQueueTest.php`, `ReservationKanbanBoard.test.tsx` |
+| REQ-RKQ-002 | Leitura por user; GET timeline / POST message marca lido | `ReservationMessageReadService`, migration `reservation_message_reads` | `ReservationProgressDialog.tsx` | `ReservationKanbanQueueTest.php` |
+| REQ-RKQ-003 | Matriz de fila até proposta (`waiting_on`) | `ReservationTimelineService::resolveWaitingOn` | `resolveKanbanCardCta` | `ReservationKanbanQueueTest.php`, `reservation-kanban.test.ts` |
+| REQ-RKQ-004 | `proposal_review` CTA só fila; `reply` só em `pre_hold` | `pendingActionFor*` | `reservation-kanban.ts` | idem |
+| REQ-RKQ-005 | Diálogo só no modal de andamento (Kanban) | — | `ReservationsPage`, `BrokerReservationsPage`, `ReservationActionsMenu` | `ReservationActionsMenu.test.tsx` |
+| REQ-RKQ-006 | Recusa → cancelada; devolução → mesma coluna, bola corretor | `ReservationProposalService` | Kanban coluna `proposal_review` | `ReservationKanbanQueueTest.php` |
+
+---
+
 ## reservation-progress-flex
 
 > Spec: `.specs/features/reservation-progress-flex/spec.md` · Branch: `feature/reservation-progress-flex` · Status: **Entrega 4 done**

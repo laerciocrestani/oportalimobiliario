@@ -1706,6 +1706,7 @@ paths:
       summary: Get reservation timeline (builder)
       description: |
         Returns current stage, steps, and available actions for the manager.
+        Marks reservation messages as read for the authenticated user.
       security:
         - bearerAuth: []
       parameters:
@@ -2283,11 +2284,16 @@ paths:
               properties:
                 unit_id:
                   type: integer
+                garage_unit_ids:
+                  type: array
+                  description: Optional garage spot unit IDs from the same building (0..N).
+                  items:
+                    type: integer
       responses:
         '201':
-          description: Pre-hold created
+          description: Pre-hold created (includes garage_units)
         '422':
-          description: Unit not available
+          description: Unit or garage spot not available / invalid
   /api/broker/reservations/{reservation}/confirm:
     patch:
       summary: Submit proposal (legacy alias of POST /proposal)
@@ -2399,9 +2405,14 @@ paths:
                   type: string
                   maxLength: 2000
                   nullable: true
+                garage_unit_ids:
+                  type: array
+                  description: Optional garage spot unit IDs from the same building (0..N).
+                  items:
+                    type: integer
       responses:
         '201':
-          description: Created
+          description: Created (includes garage_units)
   /api/broker/reservations/pending-replies-count:
     get:
       summary: Count reservations awaiting broker reply
@@ -2543,6 +2554,7 @@ paths:
       summary: Get reservation timeline (broker)
       description: |
         Returns current stage, steps, and available actions for the broker.
+        Marks reservation messages as read for the authenticated user.
       security:
         - bearerAuth: []
       parameters:
@@ -3364,6 +3376,11 @@ components:
         floor_id:
           type: integer
           nullable: true
+        floor_kind:
+          allOf:
+            - $ref: '#/components/schemas/FloorKind'
+          nullable: true
+          description: Kind of the floor this unit belongs to (garage spots have floor_kind=garage).
         area_m2:
           type: string
           nullable: true
@@ -3803,8 +3820,13 @@ components:
           nullable: true
         messages_count:
           type: integer
+        unread_messages_count:
+          type: integer
+          description: Count of unread messages from the other party for the current viewer.
+          example: 2
         needs_reply:
           type: boolean
+          description: True when unread_messages_count is greater than zero.
         needs_proposal_decision:
           type: boolean
         needs_deposit_proof_approval:
@@ -3856,6 +3878,47 @@ components:
         unit:
           type: object
           nullable: true
+          properties:
+            id:
+              type: integer
+            code:
+              type: string
+            price:
+              type: string
+              nullable: true
+              description: Unit list price (BRL)
+            building:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+        garage_units:
+          type: array
+          items:
+            $ref: '#/components/schemas/GarageUnit'
+    GarageUnit:
+      type: object
+      properties:
+        id:
+          type: integer
+        code:
+          type: string
+          example: S1-01
+        price:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [available, pre_reserved, reserved, sold, unavailable]
+        private_area_m2:
+          type: string
+          nullable: true
+        floor_kind:
+          type: string
+          enum: [garage]
     ReservationKanbanMove:
       type: object
       required:

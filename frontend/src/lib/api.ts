@@ -233,6 +233,7 @@ export type Unit = {
   code: string
   floor: number | null
   floor_id?: number | null
+  floor_kind?: FloorKind | null
   area_m2: string | null
   private_area_m2?: string | null
   total_area_m2?: string | null
@@ -261,6 +262,15 @@ export type Unit = {
   inherited_amenities?: Amenity[]
   extra_amenities?: Amenity[]
   resolved_defaults?: UnitResolvedDefaults
+}
+
+export type GarageUnit = {
+  id: number
+  code: string
+  price: string | null
+  status: string
+  private_area_m2?: string | null
+  floor_kind: 'garage'
 }
 
 export type Tenant = {
@@ -395,6 +405,7 @@ export type Reservation = {
   client?: BrokerClient
   broker?: Pick<LinkedBroker, 'id' | 'name'>
   messages_count?: number
+  garage_units?: GarageUnit[]
 }
 
 export type ReservationMessage = {
@@ -440,6 +451,7 @@ export type BuilderReservationListItem = {
   created_at: string
   expires_at: string
   messages_count: number
+  unread_messages_count?: number
   needs_reply: boolean
   needs_proposal_decision: boolean
   needs_deposit_proof_approval: boolean
@@ -456,8 +468,10 @@ export type BuilderReservationListItem = {
   unit: {
     id: number
     code: string
+    price?: string | null
     building: Pick<Building, 'id' | 'name'> | null
   } | null
+  garage_units?: GarageUnit[]
 }
 
 export type ReservationPendingActionCount = {
@@ -1242,10 +1256,13 @@ export const brokerApi = {
         observations: observations?.trim() || undefined,
       }),
     }),
-  createPreHold: (unitId: number) =>
+  createPreHold: (unitId: number, garageUnitIds: number[] = []) =>
     apiFetch<Reservation>('/broker/reservations/pre-hold', {
       method: 'POST',
-      body: JSON.stringify({ unit_id: unitId }),
+      body: JSON.stringify({
+        unit_id: unitId,
+        garage_unit_ids: garageUnitIds,
+      }),
     }),
   attachPreHoldClient: (reservationId: number, clientId: number, observations?: string) =>
     apiFetch<Reservation>(`/broker/reservations/${reservationId}/pre-hold`, {

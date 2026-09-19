@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { BuilderDashboardShell } from '@/apps/builder/components/BuilderDashboardShell'
-import { ReservationMessagesDialog } from '@/apps/builder/components/ReservationMessagesDialog'
 import { useBuilderPermissions } from '@/apps/builder/hooks/use-builder-permissions'
 import { ReservationCancelDialog } from '@/components/reservations/ReservationCancelDialog'
 import { ReservationKanbanBoard } from '@/components/reservations/ReservationKanbanBoard'
@@ -22,8 +21,6 @@ export function ReservationsPage() {
   const [loading, setLoading] = useState(true)
   const [cancellingId, setCancellingId] = useState<number | null>(null)
   const [cancelTarget, setCancelTarget] = useState<BuilderReservationListItem | null>(null)
-  const [messagesReservationId, setMessagesReservationId] = useState<number | null>(null)
-  const [messagesOpen, setMessagesOpen] = useState(false)
   const [timelineReservationId, setTimelineReservationId] = useState<number | null>(null)
   const [timelineOpen, setTimelineOpen] = useState(false)
   const loadRequestId = useRef(0)
@@ -123,11 +120,6 @@ export function ReservationsPage() {
     handleOpenTimeline(reservation.id)
   }
 
-  function handleOpenMessages(reservationId: number) {
-    setMessagesReservationId(reservationId)
-    setMessagesOpen(true)
-  }
-
   async function handleMove(reservation: BuilderReservationListItem, column: ReservationKanbanColumn) {
     if (column === 'cancelled') {
       setCancelTarget(reservation)
@@ -147,10 +139,6 @@ export function ReservationsPage() {
 
       toast.error(caught instanceof Error ? caught.message : 'Não foi possível mover a reserva.')
     }
-  }
-
-  function handleMessageSent() {
-    void load()
   }
 
   if (permissionsLoading || (loading && !canAccess)) {
@@ -185,9 +173,7 @@ export function ReservationsPage() {
               reservations={reservations}
               cancellingId={cancellingId}
               canCancel={canManage}
-              canMessage={canManage}
               onOpen={handleOpenTimeline}
-              onMessages={handleOpenMessages}
               onCancel={setCancelTarget}
               onMove={handleMove}
               onProcessRequired={handleProcessRequired}
@@ -213,15 +199,6 @@ export function ReservationsPage() {
         open={timelineOpen}
         onOpenChange={setTimelineOpen}
         onTimelineRefresh={() => void load()}
-      />
-
-      <ReservationMessagesDialog
-        profile="builder"
-        reservationId={messagesReservationId}
-        open={messagesOpen}
-        onOpenChange={setMessagesOpen}
-        onMessageSent={handleMessageSent}
-        readOnly={reservations.find((item) => item.id === messagesReservationId)?.status === 'cancelled'}
       />
     </BuilderDashboardShell>
   )

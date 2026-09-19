@@ -237,6 +237,7 @@ Resposta: `current_stage`, `expires_at`, `steps[]` com status `completed` | `cur
 | Testemunhas | Users builder do mesmo tenant, escolhidas **por reserva** (`reservation_witnesses`). Assinatura é registro in-app (sem gov.br / e-mail). Sem `reservations.cancel` só para assinar |
 | Venda (`sold`) | Só o gestor (`reservations.cancel`). 422 se faltar PDF do comprador, da construtora ou assinatura de alguma testemunha |
 | Aviso pendente | In-app: `pending_action` no card do Kanban + contador `pending-actions-count` no menu Reservas (não perde o badge de reply) |
+| Fila vs mensagem (até proposta) | CTA do card usa `situation.current.waiting_on`. Badge de chat usa `unread_messages_count` (por usuário). Abrir o andamento (`GET .../timeline`) marca leitura. `pending_action=reply` só na pré-reserva. Recusa → cancelada; devolução permanece em Proposta em análise com bola no corretor. |
 | Kanban | 7 colunas derivadas de `status` + anexos (`kanban_column`). `PATCH .../kanban` chama o mesmo service da transição; movimento que precisa de upload/formulário devolve 422 `action_required` e o UI abre o dialog central |
 
 ### 4.4 Alinhamento com v2 atual

@@ -61,13 +61,13 @@ TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → Ame
 | `BuildingSeeder` | Empreendimentos por tenant (publicados e rascunho) — fluxo legado |
 | `WizardBuildingSeeder` | **Residencial Bosque** (`residencial-bosque`) via `BuildingStructureService` + `BuildingUnitGridService`: endereço, defaults, adicionais, Torre A com subsolo/garagem, lojas no térreo, apartamentos clonados do andar 1, `price_base` + competência `2026-02-01`, publicado com `wizard_completed_at` |
 | `TowerSeeder` | Torres vinculadas aos buildings (pula Bosque / wizard concluído) |
-| `UnitSeeder` | Unidades com status variados; preenche `price_base` e `price_competence` para o cálculo INCC-M (pula Bosque) |
+| `UnitSeeder` | Unidades com status variados; preenche `price_base` e `price_competence` para o cálculo INCC-M (pula Bosque); **por torre** cria subsolo `kind=garage` com vagas `S1-01`/`S1-02` |
 | `BuildingMediaSeeder` | Mídias de capa e galeria |
 | `BrokerInviteSeeder` | Convites pendentes/aceitos |
 | `BuildingAccessSeeder` | Acesso do corretor demo a empreendimentos |
 | `UnitAccessSeeder` | Acesso legado por unidade |
 | `BrokerTenantSeeder` | Vínculo corretor ↔ tenant após aceite |
-| `ReservationSeeder` | Reservas ativas e expiradas para testes |
+| `ReservationSeeder` | Reservas confirmadas + **1 vaga de garagem** atrelada por reserva (quando houver); inclui Bosque `101`+`S1-01` |
 | `ContractTemplateSeeder` | Modelo **Compra e venda padrão** no tenant Alpha |
 | `ProposalTemplateSeeder` | Modelo **Proposta comercial padrão** no tenant Alpha |
 
@@ -84,6 +84,11 @@ Slug `residencial-bosque`, tenant Alpha, **publicado**. Não passa por `TowerSee
 | Unidades | Vagas `S1-01`/`S1-02`; lojas `L01`/`L02`; aptos `101`/`102` (espelho), `201`/`202` (clone), `301`/`302` (exceção); competência `2026-02-01` |
 | Extra 301 | adicional `closet` (união com os do prédio); andar 3 `customized=true` |
 | Corretor demo | acesso a 101, 201, 301 e vaga `S1-01` |
+| Reserva demo | `101` reservada com vaga `S1-01` atrelada (`ReservationSeeder`) |
+
+### Garagens nos empreendimentos legado
+
+Cada torre dos buildings **não-wizard** recebe andar `-1` (`kind=garage`) com vagas `S1-01` (R$ 45.000) e `S1-02` (R$ 48.000), competência `2026-02-01`. Códigos `G-*` no Parque das Flores continuam sendo garden (não vaga).
 
 Re-seed é idempotente: se `published` ou `wizard_completed_at` já existem, o seeder não regrava a estrutura (409 no serviço).
 

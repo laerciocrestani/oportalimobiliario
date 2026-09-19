@@ -32,15 +32,13 @@
 
 ## Sessão atual
 
-- **Fase:** `building-wizard-redesign` concluída
-- **Branch:** `feature/building-wizard-floor-stack`
-- **Última etapa concluída:** TR-11 — seed Bosque com subsolo/garagem, lojas no térreo e andares clonados; TRACEABILITY REQ-WZR-* fechada
-- **Próxima etapa:** nenhuma nesta feature (push/PR se solicitado)
-- **Discovery:** `docs/discovery/resumo-redesenho-wizard-empreendimentos.md`
-- **Spec:** `.specs/features/building-wizard-redesign/`
-- **Nota Entrega 2:** aceite exige `signed_file`; emitir PDF não muda status; CRUD = `proposals.manage`, emitir/aceitar = `reservations.cancel`; aceite com arquivo usa `POST .../proposal/decision` (multipart), recusa/devolução permanece `PATCH` JSON
-- **Nota Entrega 3:** testemunhas escolhidas no POST do PDF da construtora (`witness_1_user_id` / `witness_2_user_id`); sold exige 4 assinaturas; badge `pending_action` no card + `pending-actions-count` no menu (inclui reply); testemunha assina sem `reservations.cancel`
-- **Nota Entrega 4:** colunas derivadas de `status` + anexos (sem coluna `situation`); drag chama services existentes; 422 `action_required` abre o dialog; testemunha não arrasta; gestor vê todas, corretor só as suas
+- **Fase:** `reservation-kanban-queue` execute done (na branch `feature/reservation-garage-spots`)
+- **Branch:** `feature/reservation-garage-spots`
+- **Última etapa concluída:** REQ-RKQ-001…006 — unread por user, CTA de fila até proposta, chat só no modal
+- **Próxima etapa:** push/PR se solicitado; mapa pós-aceite (sinal/contrato) fora desta fatia
+- **Spec:** `.specs/features/reservation-kanban-queue/`
+- **Nota:** `garage-spots` permanece código local na mesma branch; leitura de mensagem é por usuário
+
 
 ## Blockers
 

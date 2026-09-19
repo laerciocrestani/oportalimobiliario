@@ -11,11 +11,13 @@ use App\Models\Unit;
 use App\Services\BrokerUnitAccessService;
 use App\Services\PreReservationService;
 use App\Services\ReservationCancellationService;
+use App\Services\ReservationGarageService;
 use App\Services\ReservationPendingReplyService;
 use App\Services\ReservationProposalService;
 use App\Services\ReservationTimelineService;
 use App\Services\UserActivityCatalog;
 use App\Support\ReservationCancelRules;
+use App\Support\ReservationGaragePresenter;
 use App\Support\ReservationProposalRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -37,6 +39,7 @@ class ReservationController extends Controller
         private readonly ReservationProposalService $proposalService,
         private readonly ReservationTimelineService $timelineService,
         private readonly UserActivityCatalog $activityCatalog,
+        private readonly ReservationGarageService $garageService,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -47,7 +50,7 @@ class ReservationController extends Controller
             ->withoutGlobalScope('tenant')
             ->listed()
             ->where('broker_id', $broker->id)
-            ->with(['client', 'unit.building', 'timelineEvents', 'messages.user', 'proposals', 'attachments', 'witnesses'])
+            ->with(['client', 'unit.building', 'garageUnits', 'timelineEvents', 'messages.user', 'proposals', 'attachments', 'witnesses', 'messageReads' => fn ($query) => $query->where('user_id', $broker->id)])
             ->withCount('messages')
             ->orderByDesc('created_at')
             ->get()
@@ -74,11 +77,14 @@ class ReservationController extends Controller
     {
         $data = $request->validate([
             'unit_id' => ['required', 'integer', 'exists:units,id'],
+            'garage_unit_ids' => ['sometimes', 'array'],
+            'garage_unit_ids.*' => ['integer', 'distinct', 'exists:units,id'],
         ]);
 
         $broker = $request->user();
         $unit = Unit::query()
             ->withoutGlobalScope('tenant')
+            ->with('floorRecord')
             ->findOrFail($data['unit_id']);
 
         $access = $this->brokerUnitAccessService->resolveAccess($broker, $unit);
@@ -93,9 +99,17 @@ class ReservationController extends Controller
             ], 422);
         }
 
-        $reservation = $this->preReservationService->createPreHold($broker, $unit, $access);
+        $reservation = $this->preReservationService->createPreHold(
+            $broker,
+            $unit,
+            $access,
+            $data['garage_unit_ids'] ?? [],
+        );
 
-        return response()->json($reservation->load('unit'), 201);
+        return response()->json(
+            ReservationGaragePresenter::fromReservation($reservation->load(['unit', 'garageUnits'])),
+            201,
+        );
     }
 
     public function updatePreHold(Request $request, Reservation $reservation): JsonResponse
@@ -157,6 +171,8 @@ class ReservationController extends Controller
             'unit_id' => ['required', 'integer', 'exists:units,id'],
             'client_id' => ['required', 'integer', 'exists:broker_clients,id'],
             'observations' => ['nullable', 'string', 'max:2000'],
+            'garage_unit_ids' => ['sometimes', 'array'],
+            'garage_unit_ids.*' => ['integer', 'distinct', 'exists:units,id'],
         ]);
 
         $broker = $request->user();
@@ -172,6 +188,7 @@ class ReservationController extends Controller
 
         $unit = Unit::query()
             ->withoutGlobalScope('tenant')
+            ->with('floorRecord')
             ->findOrFail($data['unit_id']);
 
         $access = $this->brokerUnitAccessService->resolveAccess($broker, $unit);
@@ -185,12 +202,10 @@ class ReservationController extends Controller
         }
 
         $ttlHours = (int) config('opim.reservation_ttl_hours', 48);
+        $garageIds = $data['garage_unit_ids'] ?? [];
 
-        $reservation = DB::transaction(function () use ($data, $broker, $access, $ttlHours, $unit, $client) {
-            $locked = Unit::query()
-                ->withoutGlobalScope('tenant')
-                ->lockForUpdate()
-                ->findOrFail($unit->id);
+        $reservation = DB::transaction(function () use ($data, $broker, $access, $ttlHours, $unit, $client, $garageIds) {
+            [$locked, $garages] = $this->garageService->lockPrimaryAndGarages($unit, $garageIds);
 
             if ($locked->status !== UnitStatus::Available) {
                 abort(422, 'Unit not available for reservation.');
@@ -206,6 +221,8 @@ class ReservationController extends Controller
                 'status' => ReservationStatus::DepositPending,
                 'expires_at' => now()->addHours($ttlHours),
             ]);
+
+            $this->garageService->attachLocked($reservation, $garages, UnitStatus::Reserved);
 
             $observations = trim((string) ($data['observations'] ?? ''));
 
@@ -229,7 +246,10 @@ class ReservationController extends Controller
             $this->activityCatalog->recordMessageSent($broker, $reservation, $observations);
         }
 
-        return response()->json($reservation->load(['unit', 'client']), 201);
+        return response()->json(
+            ReservationGaragePresenter::fromReservation($reservation->load(['unit', 'client', 'garageUnits'])),
+            201,
+        );
     }
 
     public function destroy(Request $request, Reservation $reservation): JsonResponse

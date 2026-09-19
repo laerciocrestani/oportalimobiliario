@@ -20,6 +20,7 @@ class ReservationHoldService
     public function __construct(
         private readonly ReservationTimelineService $timelineService,
         private readonly ReservationCancellationService $cancellationService,
+        private readonly ReservationGarageService $garageService,
     ) {}
 
     public function extend(User $builder, Reservation $reservation, int $hours = 48): Reservation
@@ -78,6 +79,8 @@ class ReservationHoldService
             if ($unit !== null && $unit->status === UnitStatus::PreReserved) {
                 $unit->update(['status' => UnitStatus::Available]);
             }
+
+            $this->garageService->detachAndRelease($reservation);
 
             $reservation->update(['status' => ReservationStatus::Cancelled]);
 

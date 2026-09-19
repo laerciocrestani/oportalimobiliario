@@ -8,15 +8,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { BuilderReservationListItem } from '@/lib/api'
-import { EllipsisVerticalIcon, ListOrderedIcon, MessageSquareIcon, XIcon } from 'lucide-react'
+import { EllipsisVerticalIcon, ListOrderedIcon, XIcon } from 'lucide-react'
 
 type ReservationActionsMenuProps = {
   reservation: BuilderReservationListItem
   cancelling: boolean
   canCancel?: boolean
-  canMessage?: boolean
   onTimeline: () => void
-  onMessages: () => void
   onCancel: () => void
 }
 
@@ -37,24 +35,18 @@ function timelineLabel(reservation: BuilderReservationListItem): string {
     return 'Andamento · comprovante'
   }
 
-  return 'Andamento'
-}
-
-function messagesLabel(reservation: BuilderReservationListItem): string {
   if (reservation.status === 'cancelled') {
-    return 'Ver conversa'
+    return 'Andamento · conversa'
   }
 
-  return reservation.needs_reply ? 'Responder · nova' : 'Responder'
+  return 'Andamento'
 }
 
 export function ReservationActionsMenu({
   reservation,
   cancelling,
   canCancel = true,
-  canMessage = true,
   onTimeline,
-  onMessages,
   onCancel,
 }: ReservationActionsMenuProps) {
   const clientName = reservation.client?.name ?? `reserva ${reservation.id}`
@@ -79,12 +71,6 @@ export function ReservationActionsMenu({
             <ListOrderedIcon />
             {timelineLabel(reservation)}
           </DropdownMenuItem>
-          {canMessage ? (
-            <DropdownMenuItem onClick={onMessages}>
-              <MessageSquareIcon />
-              {messagesLabel(reservation)}
-            </DropdownMenuItem>
-          ) : null}
         </DropdownMenuGroup>
         {reservation.status === 'cancelled' || !canCancel ? null : (
           <>

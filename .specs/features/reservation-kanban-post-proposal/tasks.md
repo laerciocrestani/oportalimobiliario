@@ -152,10 +152,10 @@ Phase 3:
 
 **Done when**:
 
-- [ ] Dialog de devolução não tem campo de comprovante; API chamada só com PDF
-- [ ] Card `docs_deposit` + `deposit_overdue` mostra o alerta para broker e builder
-- [ ] Card sem overdue não mostra o alerta
-- [ ] Gate: `docker compose exec frontend pnpm test src/components/reservations/BrokerReturnSignedProposalDialog.test.tsx src/components/reservations/ReservationKanbanBoard.test.tsx`
+- [x] Dialog de devolução não tem campo de comprovante; API chamada só com PDF
+- [x] Card `docs_deposit` + `deposit_overdue` mostra o alerta para broker e builder
+- [x] Card sem overdue não mostra o alerta
+- [x] Gate: `docker compose exec frontend pnpm test src/components/reservations/BrokerReturnSignedProposalDialog.test.tsx src/components/reservations/ReservationKanbanBoard.test.tsx`
 
 **Tests**: unit (Vitest)  
 **Gate**: quick

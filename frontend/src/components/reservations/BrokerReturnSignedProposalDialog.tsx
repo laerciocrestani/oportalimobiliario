@@ -29,14 +29,12 @@ export function BrokerReturnSignedProposalDialog({
   onSubmitted,
 }: BrokerReturnSignedProposalDialogProps) {
   const [signedFiles, setSignedFiles] = useState<ReservationFileItem[]>([])
-  const [depositFiles, setDepositFiles] = useState<ReservationFileItem[]>([])
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   function handleClose(nextOpen: boolean) {
     if (!nextOpen) {
       setSignedFiles([])
-      setDepositFiles([])
       setError(null)
     }
 
@@ -56,9 +54,8 @@ export function BrokerReturnSignedProposalDialog({
     )
 
     try {
-      await brokerApi.returnSignedProposal(reservationId, signed.file, depositFiles[0]?.file)
+      await brokerApi.returnSignedProposal(reservationId, signed.file)
       setSignedFiles([])
-      setDepositFiles([])
       onOpenChange(false)
       onSubmitted()
     } catch {
@@ -81,7 +78,7 @@ export function BrokerReturnSignedProposalDialog({
         <DialogHeader>
           <DialogTitle>Devolver proposta assinada</DialogTitle>
           <DialogDescription>
-            Envie o PDF assinado pelo comprador e pela construtora. O comprovante de sinal é opcional.
+            Envie o PDF assinado pelo comprador e pela construtora. O comprovante de sinal entra na coluna Documentação & Sinal.
           </DialogDescription>
         </DialogHeader>
 
@@ -92,13 +89,6 @@ export function BrokerReturnSignedProposalDialog({
             accept="application/pdf"
             disabled={submitting}
             emptyLabel="Selecionar PDF assinado por ambas as partes"
-          />
-
-          <ReservationAttachmentField
-            files={depositFiles}
-            onFilesChange={setDepositFiles}
-            disabled={submitting}
-            emptyLabel="Comprovante de sinal (opcional)"
           />
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}

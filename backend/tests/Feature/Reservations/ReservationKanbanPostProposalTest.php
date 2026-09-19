@@ -3,8 +3,11 @@
 /**
  * @see REQ-RKP-001
  * @see REQ-RKP-002
+ * @see REQ-RKP-003
  * @see REQ-RKP-005
+ * @see REQ-RKP-006
  * @see REQ-RKP-007
+ * @see REQ-RKP-008
  */
 use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
@@ -290,6 +293,84 @@ it('moves the card to docs_deposit after returning only the signed proposal', fu
     $this->getJson('/api/builder/reservations')
         ->assertOk()
         ->assertJsonPath('0.kanban_column', 'docs_deposit')
+        ->assertJsonPath('0.situation.current.waiting_on', 'broker');
+});
+
+it('exposes sequential pending actions from formalization through issue contract', function () {
+    ['builder' => $builder, 'broker' => $broker, 'reservation' => $reservation] = postProposalKanbanSetup();
+    ReservationAttachment::factory()->proposalSignedBuilder()->create([
+        'reservation_id' => $reservation->id,
+        'uploaded_by' => $builder->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+    $this->getJson('/api/broker/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.pending_action', 'return_signed_proposal');
+
+    attachSignedProposalBoth($reservation, $builder);
+
+    Sanctum::actingAs($broker);
+    $this->getJson('/api/broker/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.pending_action', 'submit_deposit_proof');
+
+    $reservation->update(['status' => ReservationStatus::DepositProofPending]);
+
+    Sanctum::actingAs($builder);
+    $this->getJson('/api/builder/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.pending_action', 'deposit_proof_approval');
+
+    $reservation->update(['status' => ReservationStatus::ContractDataPending]);
+
+    Sanctum::actingAs($broker);
+    $this->getJson('/api/broker/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.pending_action', 'submit_contract_data');
+
+    ReservationTimelineEvent::factory()->create([
+        'reservation_id' => $reservation->id,
+        'type' => ReservationTimelineEventType::ContractDataSubmitted,
+        'actor_id' => $broker->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+    $this->getJson('/api/broker/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.pending_action', null)
+        ->assertJsonPath('0.kanban_column', 'docs_deposit');
+
+    Sanctum::actingAs($builder);
+    $this->getJson('/api/builder/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.pending_action', 'issue_contract')
+        ->assertJsonPath('0.kanban_column', 'docs_deposit')
+        ->assertJsonPath('0.situation.current.waiting_on', 'builder');
+});
+
+it('keeps overdue deposit waiting on the broker', function () {
+    ['builder' => $builder, 'broker' => $broker, 'reservation' => $reservation] = postProposalKanbanSetup();
+    attachSignedProposalBoth($reservation, $builder);
+
+    ReservationTimelineEvent::factory()->create([
+        'reservation_id' => $reservation->id,
+        'type' => ReservationTimelineEventType::DepositOverdue,
+        'actor_id' => $broker->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+    $this->getJson('/api/broker/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.deposit_overdue', true)
+        ->assertJsonPath('0.pending_action', 'submit_deposit_proof')
+        ->assertJsonPath('0.situation.current.waiting_on', 'broker');
+
+    Sanctum::actingAs($builder);
+    $this->getJson('/api/builder/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.deposit_overdue', true)
+        ->assertJsonPath('0.pending_action', null)
         ->assertJsonPath('0.situation.current.waiting_on', 'broker');
 });
 

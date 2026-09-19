@@ -937,7 +937,11 @@ class ReservationTimelineService
      */
     private function resolveWaitingOn(string $currentKey, string $currentStatus, Reservation $reservation): ?string
     {
-        if ($currentStatus === 'completed' || $currentStatus === 'failed') {
+        if ($currentStatus === 'completed') {
+            return null;
+        }
+
+        if ($currentStatus === 'failed' && $currentKey !== 'deposit_window') {
             return null;
         }
 

@@ -203,7 +203,7 @@ class ReservationPendingReplyService
             return 'submit_deposit_proof';
         }
 
-        if ($reservation->canSubmitContractData()) {
+        if ($reservation->canSubmitContractData() && ! $this->hasTimelineEvent($reservation, ReservationTimelineEventType::ContractDataSubmitted)) {
             return 'submit_contract_data';
         }
 
@@ -243,6 +243,11 @@ class ReservationPendingReplyService
 
         if ($reservation->isDepositProofPending()) {
             return 'deposit_proof_approval';
+        }
+
+        if ($reservation->isContractDataPending()
+            && $this->hasTimelineEvent($reservation, ReservationTimelineEventType::ContractDataSubmitted)) {
+            return 'issue_contract';
         }
 
         if ($reservation->canUploadBuilderSignedContract()) {

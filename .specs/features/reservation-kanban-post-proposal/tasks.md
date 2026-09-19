@@ -102,11 +102,11 @@ Phase 3:
 
 **Done when**:
 
-- [ ] Broker Formalização: `pending_action=return_signed_proposal`
-- [ ] Broker I / I2: `submit_deposit_proof`; `deposit_overdue` + sem comprovante → `waiting_on=broker`
-- [ ] Gestor J: `deposit_proof_approval`; K broker `submit_contract_data`; L gestor `issue_contract` e coluna `docs_deposit`
-- [ ] Builder sem `reservations.cancel` e sem vez de testemunha: `pending_action=null`
-- [ ] Gate: `docker compose exec backend php artisan test --compact --filter=ReservationKanbanPostProposal`
+- [x] Broker Formalização: `pending_action=return_signed_proposal`
+- [x] Broker I / I2: `submit_deposit_proof`; `deposit_overdue` + sem comprovante → `waiting_on=broker`
+- [x] Gestor J: `deposit_proof_approval`; K broker `submit_contract_data`; L gestor `issue_contract` e coluna `docs_deposit`
+- [x] Builder sem `reservations.cancel` e sem vez de testemunha: `pending_action=null`
+- [x] Gate: `docker compose exec backend php artisan test --compact --filter=ReservationKanbanPostProposal`
 
 **Tests**: integration  
 **Gate**: full

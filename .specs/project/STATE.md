@@ -32,12 +32,12 @@
 
 ## Sessão atual
 
-- **Fase:** `reservation-kanban-post-proposal` Execute T1
+- **Fase:** `reservation-kanban-post-proposal` execute done
 - **Branch:** `docs/kanban-dono-da-bola-colunas`
-- **Última etapa concluída:** spec + design + tasks a partir de `docs/discovery/resumo-kanban-dono-da-bola-colunas.md`
-- **Próxima etapa:** T1 `waiting_on=witness` + Pest matriz H–S
+- **Última etapa concluída:** REQ-RKP-001…008 — porta Formalização, fila H–S, `waiting_on=witness`, CTA verbo pós-proposta
+- **Próxima etapa:** push/PR se solicitado
 - **Spec:** `.specs/features/reservation-kanban-post-proposal/`
-- **Nota:** matriz A–G não reabre; Formalização é mudança de fluxo (porta)
+- **Nota:** matriz A–G não reabriu; menu Reservas (contador) permanece lacuna aceita
 
 ## Preferences
 

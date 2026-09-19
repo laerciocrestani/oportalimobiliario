@@ -1,7 +1,7 @@
 # Tasks: reservation-kanban-post-proposal
 
 **Design**: `.specs/features/reservation-kanban-post-proposal/design.md`  
-**Status**: In Progress
+**Status**: Done
 
 Gate commands (TESTING.md):
 

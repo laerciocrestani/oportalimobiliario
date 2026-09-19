@@ -31,6 +31,8 @@ Code identifiers, database schema, and API contracts use **English**. User-facin
 | testemunha 1 / 2 | `slot` 1 / 2 |
 | registrar assinatura da testemunha | `sign_as_witness` |
 | ação pendente (in-app) | `pending_action` / `pending-actions-count` |
+| dono da bola | `situation.current.waiting_on` (`broker` \| `builder` \| `witness`) |
+| aguardando testemunha | `waiting_on=witness` |
 | coluna do Kanban | `kanban_column` / `allowed_kanban_moves` |
 | Pré-reserva/Diálogo | `pre_reservation` |
 | Proposta em análise | `proposal_review` |

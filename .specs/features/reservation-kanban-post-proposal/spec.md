@@ -1,6 +1,6 @@
 ---
 branch: docs/kanban-dono-da-bola-colunas
-status: in_progress
+status: done
 depends_on: reservation-kanban-queue, reservation-timeline, builder-contracts
 source: docs/discovery/resumo-kanban-dono-da-bola-colunas.md
 ---
@@ -15,12 +15,12 @@ Objetivo: fechar **quem tem a bola**, **qual CTA o dono vê** e **o que o outro 
 
 ## Goals
 
-- [ ] Porta de Formalização: o card só sai depois do PDF assinado por ambos; sem anexar sinal nessa coluna
-- [ ] Docs & Sinal sequencial, um dono por card, inclusive `Emitir` ainda nessa coluna
-- [ ] CTA pós-proposta: verbo da etapa para quem tem a bola; “Aguardando X” para o outro lado (nunca “Aguardando você”)
-- [ ] Testemunha da vez é dono da bola distinto do gestor (`waiting_on=witness`)
-- [ ] Sinal em atraso: bola permanece no corretor; alerta visível para os dois
-- [ ] Vendida/Cancelada sem CTA de fila; badge de mensagem se houver não lidas
+- [x] Porta de Formalização: o card só sai depois do PDF assinado por ambos; sem anexar sinal nessa coluna
+- [x] Docs & Sinal sequencial, um dono por card, inclusive `Emitir` ainda nessa coluna
+- [x] CTA pós-proposta: verbo da etapa para quem tem a bola; “Aguardando X” para o outro lado (nunca “Aguardando você”)
+- [x] Testemunha da vez é dono da bola distinto do gestor (`waiting_on=witness`)
+- [x] Sinal em atraso: bola permanece no corretor; alerta visível para os dois
+- [x] Vendida/Cancelada sem CTA de fila; badge de mensagem se houver não lidas
 
 ## Out of Scope
 
@@ -145,14 +145,14 @@ Objetivo: fechar **quem tem a bola**, **qual CTA o dono vê** e **o que o outro 
 
 | Requirement ID | Story | Phase | Status |
 | -------------- | ----- | ----- | ------ |
-| REQ-RKP-001 | P1: dois sinais independentes (herdado) nestas colunas | Execute | Implementing |
-| REQ-RKP-002 | P1: porta de Formalização | Tasks | Pending |
-| REQ-RKP-003 | P1: Docs & Sinal sequencial + Emitir na mesma coluna | Tasks | Pending |
-| REQ-RKP-004 | P1: CTA verbo × “Aguardando X”; sem “Aguardando você” | Tasks | Pending |
-| REQ-RKP-005 | P1: testemunha da vez (`waiting_on=witness`) | Execute | Implementing |
-| REQ-RKP-006 | P1: sinal em atraso permanece no corretor + alerta | Tasks | Pending |
-| REQ-RKP-007 | P1: Vendida/Cancelada sem CTA de fila | Execute | Implementing |
-| REQ-RKP-008 | P1: builder sem gestão e sem vez de testemunha sem CTA interativo | Tasks | Pending |
+| REQ-RKP-001 | P1: dois sinais independentes (herdado) nestas colunas | Execute | Verified |
+| REQ-RKP-002 | P1: porta de Formalização | Execute | Verified |
+| REQ-RKP-003 | P1: Docs & Sinal sequencial + Emitir na mesma coluna | Execute | Verified |
+| REQ-RKP-004 | P1: CTA verbo × “Aguardando X”; sem “Aguardando você” | Execute | Verified |
+| REQ-RKP-005 | P1: testemunha da vez (`waiting_on=witness`) | Execute | Verified |
+| REQ-RKP-006 | P1: sinal em atraso permanece no corretor + alerta | Execute | Verified |
+| REQ-RKP-007 | P1: Vendida/Cancelada sem CTA de fila | Execute | Verified |
+| REQ-RKP-008 | P1: builder sem gestão e sem vez de testemunha sem CTA interativo | Execute | Verified |
 
 **Coverage:** 8 total, mapped in tasks.md
 
@@ -160,9 +160,9 @@ Objetivo: fechar **quem tem a bola**, **qual CTA o dono vê** e **o que o outro 
 
 ## Success Criteria
 
-- [ ] Formalização: só `Devolver`; comprovante 422 até PDF ambos
-- [ ] Docs & Sinal: um dono por vez; `Emitir` ainda nesta coluna
-- [ ] Emma 2.0: gestor não-testemunha vê “Aguardando testemunha”; testemunha da vez vê `Assinar`
-- [ ] Corretor na vez pós-proposta vê o verbo, nunca “Aguardando você”
-- [ ] Sinal atrasado: `Anexar` + alerta; bola não passa à construtora
-- [ ] Sem regressão na matriz A–G
+- [x] Formalização: só `Devolver`; comprovante 422 até PDF ambos
+- [x] Docs & Sinal: um dono por vez; `Emitir` ainda nesta coluna
+- [x] Emma 2.0: gestor não-testemunha vê “Aguardando testemunha”; testemunha da vez vê `Assinar`
+- [x] Corretor na vez pós-proposta vê o verbo, nunca “Aguardando você”
+- [x] Sinal atrasado: `Anexar` + alerta; bola não passa à construtora
+- [x] Sem regressão na matriz A–G

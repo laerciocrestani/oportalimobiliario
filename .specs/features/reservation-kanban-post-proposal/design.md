@@ -1,7 +1,7 @@
 # Design: reservation-kanban-post-proposal
 
 **Spec**: `.specs/features/reservation-kanban-post-proposal/spec.md`  
-**Status**: Draft (resumo confirmado; não reabrir discovery)
+**Status**: Approved (resumo confirmado; não reabrir discovery)
 
 ---
 

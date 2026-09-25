@@ -32,12 +32,16 @@
 
 ## Sessão atual
 
-- **Fase:** `reservation-kanban-queue` execute done (na branch `feature/reservation-garage-spots`)
-- **Branch:** `feature/reservation-garage-spots`
-- **Última etapa concluída:** REQ-RKQ-001…006 — unread por user, CTA de fila até proposta, chat só no modal
-- **Próxima etapa:** push/PR se solicitado; mapa pós-aceite (sinal/contrato) fora desta fatia
-- **Spec:** `.specs/features/reservation-kanban-queue/`
-- **Nota:** `garage-spots` permanece código local na mesma branch; leitura de mensagem é por usuário
+- **Fase:** `reservation-witness-permission` execute done
+- **Branch:** `docs/kanban-dono-da-bola-colunas`
+- **Última etapa concluída:** REQ-WIT-001…004 — `reservations.witness` no catálogo, seletor filtrado, slot assina após revoke
+- **Próxima etapa:** push/PR se solicitado
+- **Spec:** `.specs/features/reservation-witness-permission/`
+- **Nota:** sem role/portal testemunha; supervisor demo acumula gestor + testemunha
+
+## Preferences
+
+**Model Guidance Shown:** 2026-09-19
 
 
 ## Blockers

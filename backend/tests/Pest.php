@@ -139,9 +139,11 @@ function createWitnesses(Tenant $tenant): array
     return [
         User::factory()->builder()->withBuilderPermissions([
             BuilderPermissions::VIEW_BUILDINGS,
+            BuilderPermissions::WITNESS,
         ])->for($tenant)->create(['name' => 'Testemunha Um']),
         User::factory()->builder()->withBuilderPermissions([
             BuilderPermissions::VIEW_BUILDINGS,
+            BuilderPermissions::WITNESS,
         ])->for($tenant)->create(['name' => 'Testemunha Dois']),
     ];
 }

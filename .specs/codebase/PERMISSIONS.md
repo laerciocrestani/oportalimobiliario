@@ -26,6 +26,7 @@ Labels PT em `BuilderPermissions::labels()`.
 | `invites.send` | Convidar corretores | CRUD convites, reenvio |
 | `access.manage` | Gerenciar acesso de corretores | `building_access` por corretor |
 | `reservations.cancel` | Cancelar reservas | Listar/cancelar reservas, thread de mensagens (builder) |
+| `reservations.witness` | Pode ser testemunha | Elegível no seletor de testemunhas da reserva. Assinar usa o **slot** atribuído, não esta permission. |
 | `team.manage` | Gerenciar equipe | CRUD `/api/builder/team` |
 | `contracts.manage` | Gerenciar contratos | CRUD modelos de contrato |
 | `proposals.manage` | Gerenciar propostas | CRUD modelos de proposta |
@@ -41,7 +42,7 @@ Labels PT em `BuilderPermissions::labels()`.
 | `BuildingMediaPolicy` | `buildings.manage` |
 | `BrokerInvitePolicy` | `invites.send` |
 | `BuildingAccessPolicy` | `access.manage` |
-| `ReservationPolicy` | `reservations.cancel` (gestor: listar/cancelar/Kanban); ownership (broker); testemunha atribuída (`view` / `viewTimeline` / `signAsWitness`) sem permission extra. `moveKanban` = gestor ou dono da reserva |
+| `ReservationPolicy` | `reservations.cancel` (gestor: listar/cancelar/Kanban); ownership (broker); testemunha atribuída (`view` / `viewTimeline` / `signAsWitness`) **pelo slot**, sem exigir `reservations.witness` na hora de assinar. Elegibilidade no seletor: `reservations.witness`. `moveKanban` = gestor ou dono da reserva |
 | `TeamMemberPolicy` | `team.manage` |
 | `ContractTemplatePolicy` | `contracts.manage` |
 | `ProposalTemplatePolicy` | `proposals.manage` |
@@ -86,8 +87,8 @@ Impersonate: `POST /api/admin/tenants/{tenant}/impersonate`.
 
 | Usuário | Permissions |
 |---------|-------------|
-| `construtora@alpha.demo` | todas (11, inclui `audit.view` e `proposals.manage`) |
-| `comercial@alpha.demo` | `buildings.view`, `invites.send` (sem `audit.view`) |
-| `supervisor@alpha.demo` | `buildings.view`, `units.update_status`, `reservations.cancel` (sem `audit.view`) |
+| `construtora@alpha.demo` | todas (12, inclui `audit.view`, `proposals.manage` e `reservations.witness`) |
+| `comercial@alpha.demo` | `buildings.view`, `invites.send` (sem `audit.view` nem `reservations.witness`) |
+| `supervisor@alpha.demo` | `buildings.view`, `units.update_status`, `reservations.cancel`, `reservations.witness` (sem `audit.view`) |
 
 Use estes perfis para testar 403 sem adivinhar permissões.

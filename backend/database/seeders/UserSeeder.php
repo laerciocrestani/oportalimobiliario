@@ -83,6 +83,7 @@ class UserSeeder extends Seeder
                 BuilderPermissions::VIEW_BUILDINGS,
                 BuilderPermissions::UPDATE_UNIT_STATUS,
                 BuilderPermissions::CANCEL_RESERVATIONS,
+                BuilderPermissions::WITNESS,
             ]);
         }
 

@@ -814,13 +814,11 @@ class ReservationTimelineService
      */
     private function depositWindowBrokerActions(Reservation $reservation): array
     {
-        $actions = ['submit_deposit_proof'];
-
         if ($reservation->canReturnSignedProposal()) {
-            $actions[] = 'return_signed_proposal';
+            return ['return_signed_proposal'];
         }
 
-        return $actions;
+        return $reservation->canSubmitDepositProof() ? ['submit_deposit_proof'] : [];
     }
 
     /**
@@ -935,11 +933,15 @@ class ReservationTimelineService
     }
 
     /**
-     * @return 'broker'|'builder'|null
+     * @return 'broker'|'builder'|'witness'|null
      */
     private function resolveWaitingOn(string $currentKey, string $currentStatus, Reservation $reservation): ?string
     {
-        if ($currentStatus === 'completed' || $currentStatus === 'failed') {
+        if ($currentStatus === 'completed') {
+            return null;
+        }
+
+        if ($currentStatus === 'failed' && $currentKey !== 'deposit_window') {
             return null;
         }
 
@@ -957,9 +959,9 @@ class ReservationTimelineService
             'deposit_proof',
             'contract_issue',
             'contract_builder_sign',
-            'contract_witness_1',
-            'contract_witness_2',
             'contract_validate' => 'builder',
+            'contract_witness_1',
+            'contract_witness_2' => 'witness',
             default => null,
         };
     }

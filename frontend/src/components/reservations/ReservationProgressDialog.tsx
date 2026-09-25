@@ -222,18 +222,18 @@ export function ReservationProgressDialog({
                   timeline.current_proposal &&
                   timeline.current_stage === 'proposal_pending' &&
                   timeline.current_proposal.decision === null ? (
-                    <BuilderProposalDecisionPanel
-                      reservationId={timeline.reservation_id}
-                      proposal={timeline.current_proposal}
-                      attachments={timeline.attachments}
-                      onDecided={() => void handleRefresh()}
-                    />
+                    <div className="min-h-0 max-h-[50%] overflow-y-auto">
+                      <BuilderProposalDecisionPanel
+                        reservationId={timeline.reservation_id}
+                        proposal={timeline.current_proposal}
+                        attachments={timeline.attachments}
+                        onDecided={() => void handleRefresh()}
+                      />
+                    </div>
                   ) : null}
 
                   {column === 'proposal_review' && isReturnedOrRejectedProposal(timeline.current_proposal) ? (
-                    <div className="rounded-lg border p-4">
-                      <ProposalDecisionAlert proposal={timeline.current_proposal} />
-                    </div>
+                    <ProposalDecisionAlert proposal={timeline.current_proposal} showProposal={false} />
                   ) : null}
 
                   {column === 'docs_deposit' &&

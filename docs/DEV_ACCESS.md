@@ -38,7 +38,7 @@ docker compose exec backend php artisan db:seed
 |-------|------|--------|
 | `construtora@alpha.demo` | builder (todas permissões) | construtora |
 | `comercial@alpha.demo` | builder (view + convites) | construtora |
-| `supervisor@alpha.demo` | builder (status + reservas) | construtora |
+| `supervisor@alpha.demo` | builder (status + reservas + testemunha) | construtora |
 | `construtora@beta.demo` | builder (tenant beta) | construtora |
 | `corretor@demo.com` | broker | corretor |
 | `admin@oportalimobiliario.com.br` | admin | admin |

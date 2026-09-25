@@ -43,14 +43,13 @@ class ReservationProposalController extends Controller
 
         $data = $request->validate([
             'signed_file' => ['required', 'file'],
-            'deposit_proof' => ['sometimes', 'nullable', 'file'],
+            'deposit_proof' => ['prohibited'],
         ]);
 
         $updated = $this->proposalService->returnSigned(
             $request->user(),
             $reservation,
             $data['signed_file'],
-            $data['deposit_proof'] ?? null,
         );
 
         return response()->json($this->formatReservation($updated));

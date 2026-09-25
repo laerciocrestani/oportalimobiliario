@@ -114,6 +114,36 @@ Specs completas em `.specs/features/<feature>/spec.md`.
 
 ---
 
+## reservation-kanban-post-proposal
+
+> Spec: `.specs/features/reservation-kanban-post-proposal/spec.md` · Branch: `docs/kanban-dono-da-bola-colunas` · Escopo: Formalização → Vendida (matriz H–S)
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-RKP-001 | Dois sinais independentes nestas colunas | `waiting_on` + `unread_messages_count` | `resolveKanbanCardCta` + badge | `ReservationKanbanPostProposalTest.php`, `reservation-kanban.test.ts` |
+| REQ-RKP-002 | Porta de Formalização (sem sinal até PDF ambos) | `Reservation::canSubmitDepositProof`, `returnSigned` | `BrokerReturnSignedProposalDialog` | `ReservationKanbanPostProposalTest.php`, `ProposalFormalizationTest.php` |
+| REQ-RKP-003 | Docs & Sinal sequencial; `Emitir` na mesma coluna | `pendingActionFor*` `issue_contract` | allowlist `docs_deposit` | `ReservationKanbanPostProposalTest.php` |
+| REQ-RKP-004 | CTA verbo × “Aguardando X”; sem “Aguardando você” | `pending_action` | `resolveKanbanCardCta` | `reservation-kanban.test.ts` |
+| REQ-RKP-005 | Testemunha da vez (`waiting_on=witness`) | `resolveWaitingOn` | `WAITING_LABEL.witness` | `ReservationKanbanPostProposalTest.php`, `ReservationWaitingStatus.test.tsx` |
+| REQ-RKP-006 | Sinal atrasado: bola no corretor + alerta | overdue não zera `waiting_on` | alerta no card | `ReservationKanbanPostProposalTest.php`, `ReservationKanbanBoard.test.tsx` |
+| REQ-RKP-007 | Vendida/Cancelada sem CTA de fila | `waiting_on=null` | CTA `null` | `ReservationKanbanPostProposalTest.php`, `reservation-kanban.test.ts` |
+| REQ-RKP-008 | Builder sem gestão/vez: sem CTA interativo | `pendingActionForBuilder` | verbo só com `needs_action` | `ReservationKanbanPostProposalTest.php` |
+
+---
+
+## reservation-witness-permission
+
+> Spec: `.specs/features/reservation-witness-permission/spec.md` · Branch: `docs/kanban-dono-da-bola-colunas`
+
+| REQ | Descrição | BE | FE | Testes |
+|-----|-----------|----|----|--------|
+| REQ-WIT-001 | Catálogo `reservations.witness` / Pode ser testemunha | `BuilderPermissions.php` | `lib/builder-permissions.ts`, `TeamPage.tsx` | `TeamTest.php` |
+| REQ-WIT-002 | Candidatos só com a permission | `ReservationContractCompletionService::witnessCandidates` | seletor existente | `ReservationWitnessTest.php` |
+| REQ-WIT-003 | Atribuição 422 sem a permission | `assertTeamMember` | — | `ReservationWitnessTest.php` |
+| REQ-WIT-004 | Slot assina após revoke | `ReservationPolicy::signAsWitness` | — | `ReservationWitnessTest.php` |
+
+---
+
 ## reservation-progress-flex
 
 > Spec: `.specs/features/reservation-progress-flex/spec.md` · Branch: `feature/reservation-progress-flex` · Status: **Entrega 4 done**

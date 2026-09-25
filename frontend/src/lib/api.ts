@@ -425,7 +425,7 @@ export type ReservationSituationStep = {
   occurred_at: string | null
 }
 
-export type ReservationWaitingOn = 'broker' | 'builder'
+export type ReservationWaitingOn = 'broker' | 'builder' | 'witness'
 
 export type ReservationSituation = {
   previous: ReservationSituationStep | null
@@ -1288,12 +1288,9 @@ export const brokerApi = {
       formData,
     )
   },
-  returnSignedProposal: (reservationId: number, signedFile: File, depositProof?: File) => {
+  returnSignedProposal: (reservationId: number, signedFile: File) => {
     const formData = new FormData()
     formData.append('signed_file', signedFile)
-    if (depositProof) {
-      formData.append('deposit_proof', depositProof)
-    }
 
     return apiUpload<Reservation & { proposal?: ReservationProposal }>(
       `/broker/reservations/${reservationId}/proposal/signed`,

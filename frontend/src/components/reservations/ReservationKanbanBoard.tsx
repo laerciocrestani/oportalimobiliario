@@ -405,6 +405,11 @@ function KanbanCardBody({
           </>
         ) : null}
       </div>
+      {reservation.deposit_overdue && reservation.kanban_column === 'docs_deposit' ? (
+        <p className="text-xs text-destructive">
+          Prazo de sinal vencido — envie o comprovante o quanto antes.
+        </p>
+      ) : null}
       {reservation.kanban_column === 'pre_reservation' && reservation.expires_at ? (
         <ReservationHoldCountdown
           createdAt={reservation.created_at}

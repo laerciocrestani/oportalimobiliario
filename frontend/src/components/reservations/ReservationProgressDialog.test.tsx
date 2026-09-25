@@ -71,9 +71,11 @@ describe('ReservationProgressDialog', () => {
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: 'Andamento da reserva' })).toBeInTheDocument()
       expect(screen.getByText('Proposta em análise')).toBeInTheDocument()
-      expect(screen.getByText('Decisão do gestor')).toBeInTheDocument()
     })
 
+    expect(screen.getByText('101')).toBeInTheDocument()
+    expect(screen.queryByText('João Silva')).not.toBeInTheDocument()
+    expect(screen.queryByText('Decisão do gestor')).not.toBeInTheDocument()
     expect(screen.getByText('Diálogo')).toBeInTheDocument()
     expect(screen.getByText('Arquivos da reserva')).toBeInTheDocument()
     expect(screen.getByText('Nenhum arquivo enviado ainda')).toBeInTheDocument()

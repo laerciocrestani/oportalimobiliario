@@ -50,6 +50,8 @@
 | building-wizard-redesign | done | done | done | done |
 | reservation-garage-spots | done | done | done | done |
 | reservation-kanban-queue | done | done | done | done |
+| reservation-kanban-post-proposal | done | done | done | done |
+| reservation-witness-permission | done | — | done | done |
 
 ## Próximos passos (pós-MVP v1)
 
@@ -57,6 +59,8 @@
 - ~~**`building-wizard-redesign`**~~ **done** (3 steps, pilha de andares, subsolo/garagem, térreo 0, clone com exceção)
 - ~~**`reservation-garage-spots`**~~ **done** (vínculo 0..N vagas na reserva; seeds; picker corretor)
 - **`reservation-kanban-queue`:** fila vs mensagem no Kanban até proposta **done**
+- **`reservation-kanban-post-proposal`:** dono da bola Formalização → Vendida (matriz H–S) **done**
+- **`reservation-witness-permission`:** elegibilidade `reservations.witness` + slot por reserva **done**
 - **`builder-contracts`:** catálogo + emissão PDF **done**; GOV / upload assinado / `sold` na timeline **done**
 - ~~**`reservation-timeline` Fase A:**~~ migrations + GET timeline + componente UI
 - ~~**`reservation-timeline` Fase B:**~~ proposta (form corretor + decisão gestor); `PATCH confirm` alias de `POST /proposal`; TTL 48h após aceite; recusa soft

@@ -10,7 +10,9 @@ use App\Models\Reservation;
 use App\Models\ReservationAttachment;
 use App\Models\Unit;
 use App\Models\User;
+use App\Support\BuilderPermissions;
 use Illuminate\Http\UploadedFile;
+use Spatie\Permission\PermissionRegistrar;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -287,17 +289,25 @@ class ReservationContractCompletionService
      */
     public function witnessCandidates(Reservation $reservation): array
     {
-        return User::query()
+        $registrar = app(PermissionRegistrar::class);
+        $registrar->setPermissionsTeamId($reservation->tenant_id);
+
+        $candidates = User::query()
             ->where('tenant_id', $reservation->tenant_id)
             ->where('role', 'builder')
             ->orderBy('name')
             ->get(['id', 'name'])
+            ->filter(fn (User $member) => $member->hasPermissionTo(BuilderPermissions::WITNESS))
             ->map(fn (User $member) => [
                 'id' => $member->id,
                 'name' => $member->name,
             ])
             ->values()
             ->all();
+
+        $registrar->setPermissionsTeamId(null);
+
+        return $candidates;
     }
 
     private function syncWitnesses(
@@ -351,6 +361,15 @@ class ReservationContractCompletionService
 
         if ($member === null) {
             abort(422, 'Testemunha deve ser um membro da equipe desta construtora.');
+        }
+
+        $registrar = app(PermissionRegistrar::class);
+        $registrar->setPermissionsTeamId($reservation->tenant_id);
+        $eligible = $member->hasPermissionTo(BuilderPermissions::WITNESS);
+        $registrar->setPermissionsTeamId(null);
+
+        if (! $eligible) {
+            abort(422, 'Este membro da equipe não pode ser testemunha.');
         }
 
         return $member;

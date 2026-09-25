@@ -314,4 +314,60 @@ describe('ReservationKanbanBoard', () => {
 
     expect(screen.queryByLabelText(/mensagens não lidas/)).not.toBeInTheDocument()
   })
+
+  it('shows the overdue deposit alert on docs and deposit cards', () => {
+    render(
+      <ReservationKanbanBoard
+        profile="broker"
+        reservations={[
+          {
+            ...reservation,
+            status: 'deposit_pending',
+            needs_action: true,
+            pending_action: 'submit_deposit_proof',
+            deposit_overdue: true,
+            kanban_column: 'docs_deposit',
+            situation: {
+              ...reservation.situation,
+              current: {
+                ...reservation.situation.current,
+                key: 'deposit_window',
+                waiting_on: 'broker',
+              },
+            },
+          },
+        ]}
+        cancellingId={null}
+        canCancel
+        onOpen={() => {}}
+        onCancel={() => {}}
+        onMove={() => {}}
+        onProcessRequired={() => {}}
+      />,
+    )
+
+    expect(
+      screen.getByText('Prazo de sinal vencido — envie o comprovante o quanto antes.'),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Anexar' })).toBeInTheDocument()
+  })
+
+  it('hides the overdue deposit alert outside docs and deposit', () => {
+    render(
+      <ReservationKanbanBoard
+        profile="builder"
+        reservations={[{ ...reservation, deposit_overdue: true }]}
+        cancellingId={null}
+        canCancel
+        onOpen={() => {}}
+        onCancel={() => {}}
+        onMove={() => {}}
+        onProcessRequired={() => {}}
+      />,
+    )
+
+    expect(
+      screen.queryByText('Prazo de sinal vencido — envie o comprovante o quanto antes.'),
+    ).not.toBeInTheDocument()
+  })
 })

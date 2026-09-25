@@ -3,6 +3,10 @@
 /**
  * @see REQ-RPF-013
  * @see REQ-RPF-014
+ * @see REQ-WIT-001
+ * @see REQ-WIT-002
+ * @see REQ-WIT-003
+ * @see REQ-WIT-004
  */
 use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
@@ -58,6 +62,7 @@ it('rejects a witness from another tenant', function () {
     $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
     $localWitness = User::factory()->builder()->withBuilderPermissions([
         BuilderPermissions::VIEW_BUILDINGS,
+        BuilderPermissions::WITNESS,
     ])->for($tenant)->create();
     $foreignWitness = User::factory()->builder()->withBuilderPermissions([
         BuilderPermissions::VIEW_BUILDINGS,
@@ -223,10 +228,14 @@ it('lists witness candidates from the same tenant team', function () {
     $broker = User::factory()->broker()->create();
     $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
     [$witness1] = createWitnesses($tenant);
+    User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::VIEW_BUILDINGS,
+    ])->for($tenant)->create(['name' => 'Comercial Sem Permissão']);
 
     $otherTenant = Tenant::factory()->create();
     User::factory()->builder()->withBuilderPermissions([
         BuilderPermissions::VIEW_BUILDINGS,
+        BuilderPermissions::WITNESS,
     ])->for($otherTenant)->create(['name' => 'Estrangeiro']);
 
     $reservation = Reservation::factory()->contractUploaded()->create([
@@ -239,7 +248,58 @@ it('lists witness candidates from the same tenant team', function () {
 
     $this->getJson("/api/builder/reservations/{$reservation->id}/contract/witness-candidates")
         ->assertOk()
-        ->assertJsonFragment(['id' => $builder->id, 'name' => 'Gestor Alpha'])
         ->assertJsonFragment(['id' => $witness1->id, 'name' => 'Testemunha Um'])
+        ->assertJsonMissing(['name' => 'Gestor Alpha'])
+        ->assertJsonMissing(['name' => 'Comercial Sem Permissão'])
         ->assertJsonMissing(['name' => 'Estrangeiro']);
+});
+
+it('rejects assigning a teammate without reservations.witness', function () {
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create();
+    $broker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+    [$eligible] = createWitnesses($tenant);
+    $ineligible = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::VIEW_BUILDINGS,
+        BuilderPermissions::CANCEL_RESERVATIONS,
+        BuilderPermissions::MANAGE_CONTRACTS,
+    ])->for($tenant)->create();
+
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = createContractIssuedReservation($tenant, $broker, $unit);
+
+    Sanctum::actingAs($broker);
+    $this->postJson("/api/broker/reservations/{$reservation->id}/contract/gov")->assertOk();
+    $this->post("/api/broker/reservations/{$reservation->id}/contract/signed", [
+        'file' => UploadedFile::fake()->create('contrato-comprador.pdf', 120, 'application/pdf'),
+    ])->assertCreated();
+
+    Sanctum::actingAs($builder);
+
+    $this->post("/api/builder/reservations/{$reservation->id}/contract/signed", [
+        'file' => UploadedFile::fake()->create('contrato-construtora.pdf', 120, 'application/pdf'),
+        'witness_1_user_id' => $eligible->id,
+        'witness_2_user_id' => $ineligible->id,
+    ])->assertUnprocessable();
+});
+
+it('lets an assigned witness sign after reservations.witness is revoked', function () {
+    [
+        'witness1' => $witness1,
+        'reservation' => $reservation,
+    ] = witnessFlowSetup();
+
+    BuilderPermissions::assign($witness1, [
+        BuilderPermissions::VIEW_BUILDINGS,
+    ]);
+
+    Sanctum::actingAs($witness1);
+    $this->postJson("/api/builder/reservations/{$reservation->id}/contract/witnesses/1/sign")
+        ->assertOk();
 });

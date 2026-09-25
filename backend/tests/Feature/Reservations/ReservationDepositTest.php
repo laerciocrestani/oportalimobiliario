@@ -6,6 +6,7 @@
  * @see REQ-RTL-015
  * @see REQ-RTL-016
  */
+use App\Enums\ReservationAttachmentKind;
 use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
 use App\Enums\UnitStatus;
@@ -38,6 +39,11 @@ it('submits deposit proof from deposit pending reservation', function () {
         'expires_at' => now()->addHours(24),
     ]);
 
+    ReservationAttachment::factory()->proposalSignedBoth()->create([
+        'reservation_id' => $reservation->id,
+        'uploaded_by' => $broker->id,
+    ]);
+
     Sanctum::actingAs($broker);
 
     $file = UploadedFile::fake()->create('comprovante.pdf', 100, 'application/pdf');
@@ -50,7 +56,7 @@ it('submits deposit proof from deposit pending reservation', function () {
         ->assertJsonPath('attachment.original_name', 'comprovante.pdf');
 
     expect($reservation->fresh()->status)->toBe(ReservationStatus::DepositProofPending);
-    expect(ReservationAttachment::query()->count())->toBe(1);
+    expect(ReservationAttachment::query()->where('kind', ReservationAttachmentKind::DepositProof)->count())->toBe(1);
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::DepositProofSubmitted)->exists())->toBeTrue();
     assertUserActivity($broker, UserActivityAction::ReservationDepositProofSubmitted, 'comprovante.pdf');
 });

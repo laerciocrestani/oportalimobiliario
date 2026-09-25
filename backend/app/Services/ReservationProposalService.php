@@ -159,12 +159,12 @@ class ReservationProposalService
 
     /**
      * @see REQ-RPF-012
+     * @see REQ-RKP-002
      */
     public function returnSigned(
         User $broker,
         Reservation $reservation,
         UploadedFile $signedFile,
-        ?UploadedFile $depositProof = null,
     ): Reservation {
         if ($reservation->broker_id !== $broker->id) {
             abort(403, 'Forbidden.');
@@ -176,11 +176,7 @@ class ReservationProposalService
 
         $this->validateSignedPdf($signedFile);
 
-        if ($depositProof !== null && ! $reservation->canSubmitDepositProof()) {
-            abort(422, 'Reservation is not open for deposit proof submission.');
-        }
-
-        return DB::transaction(function () use ($broker, $reservation, $signedFile, $depositProof) {
+        return DB::transaction(function () use ($broker, $reservation, $signedFile) {
             $path = $this->storeFile($reservation, $signedFile);
 
             $attachment = $reservation->attachments()->create([
@@ -198,10 +194,6 @@ class ReservationProposalService
                 $broker,
                 ['attachment_id' => $attachment->id],
             );
-
-            if ($depositProof !== null) {
-                return app(ReservationDepositService::class)->submitProof($broker, $reservation->fresh(), $depositProof);
-            }
 
             return $reservation->fresh(['unit', 'attachments', 'proposals']);
         });

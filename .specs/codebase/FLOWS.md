@@ -232,12 +232,13 @@ Resposta: `current_stage`, `expires_at`, `steps[]` com status `completed` | `cur
 | PDF para o corretor | Somente leitura/download no andamento da reserva |
 | Emissão de proposta | Gestor escolhe modelo ativo, preenche variáveis; gera PDF (`proposal_pdf`). CRUD dos modelos: `proposals.manage`; emitir: `reservations.cancel` |
 | Aceite com PDF assinado | Gestor envia `proposal_signed_builder` no aceite; sem arquivo a API recusa (422) |
-| Devolução da proposta | Corretor envia `proposal_signed_both` + comprovante de sinal opcional num único POST |
+| Devolução da proposta | Corretor envia só `proposal_signed_both`. Comprovante de sinal **não** vai neste POST; o card só sai de Formalização depois do PDF de ambos. |
 | Contrato sequencial | Comprador assina → corretor envia PDF → construtora assina e escolhe 2 testemunhas da equipe → testemunha 1 → testemunha 2 → gestor marca `sold` |
-| Testemunhas | Users builder do mesmo tenant, escolhidas **por reserva** (`reservation_witnesses`). Assinatura é registro in-app (sem gov.br / e-mail). Sem `reservations.cancel` só para assinar |
+| Testemunhas | Elegibilidade: permission `reservations.witness` (checkbox na Equipe). Atribuição: 2 slots por reserva (`reservation_witnesses`). Assinatura: registro in-app pelo slot (sem gov.br / e-mail), mesmo se a permission for revogada depois. `reservations.cancel` / `contracts.manage` **não** implicam testemunha. |
 | Venda (`sold`) | Só o gestor (`reservations.cancel`). 422 se faltar PDF do comprador, da construtora ou assinatura de alguma testemunha |
 | Aviso pendente | In-app: `pending_action` no card do Kanban + contador `pending-actions-count` no menu Reservas (não perde o badge de reply) |
 | Fila vs mensagem (até proposta) | CTA do card usa `situation.current.waiting_on`. Badge de chat usa `unread_messages_count` (por usuário). Abrir o andamento (`GET .../timeline`) marca leitura. `pending_action=reply` só na pré-reserva. Recusa → cancelada; devolução permanece em Proposta em análise com bola no corretor. |
+| Fila pós-proposta (H–S) | `waiting_on`: `broker` \| `builder` \| `witness`. Formalização: só devolver PDF. Docs & Sinal sequencial (anexar → analisar → dados → **emitir**, card ainda em `docs_deposit`). Sinal atrasado: bola permanece no corretor + alerta. Testemunha da vez: gestor não-T vê “Aguardando testemunha”. Vendida/Cancelada sem CTA de fila. |
 | Kanban | 7 colunas derivadas de `status` + anexos (`kanban_column`). `PATCH .../kanban` chama o mesmo service da transição; movimento que precisa de upload/formulário devolve 422 `action_required` e o UI abre o dialog central |
 
 ### 4.4 Alinhamento com v2 atual
@@ -285,7 +286,7 @@ flowchart LR
     E --> F[Controller action]
 ```
 
-- Catálogo: `BuilderPermissions.php` (8 permissions).
+- Catálogo: `BuilderPermissions.php` (12 permissions, incluindo `reservations.witness`).
 - Atribuição: `TeamMemberController` ou `UserSeeder` (perfis demo).
 - FE: `GET /api/auth/me` retorna `permissions[]` → `use-builder-permissions.ts`.
 

@@ -51,10 +51,10 @@ describe('ReservationWaitingStatus', () => {
 
   it('does not mark the manager as waiting when the pending action belongs to a witness', () => {
     render(
-      <ReservationWaitingStatus waitingOn="builder" profile="builder" needsAction={false} />,
+      <ReservationWaitingStatus waitingOn="witness" profile="builder" needsAction={false} />,
     )
 
-    expect(screen.getByText('Aguardando construtora')).toBeInTheDocument()
+    expect(screen.getByText('Aguardando testemunha')).toBeInTheDocument()
     expect(screen.queryByText('Aguardando você')).not.toBeInTheDocument()
   })
 })

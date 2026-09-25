@@ -80,6 +80,58 @@ describe('ReservationTimeline', () => {
     expect(screen.getByText('pix.pdf')).toBeInTheDocument()
   })
 
+  it('compacts proposal review info and keeps files in the remaining space', () => {
+    render(
+      <ReservationTimeline
+        timeline={{
+          ...sampleTimeline,
+          current_stage: 'proposal_pending',
+          client: { id: 2, name: 'Ana Silva', phone: '11999999999', email: null },
+          current_proposal: {
+            id: 1,
+            version: 2,
+            client_name: 'Ana Silva',
+            client_phone: '11999999999',
+            payment_terms: 'Entrada de R$ 50.000 + 24x de R$ 5.000',
+            decision: null,
+            decision_note: null,
+            submitted_by: 2,
+            decided_by: null,
+            decided_at: null,
+            created_at: '2026-08-22T11:00:00.000Z',
+            client_email: '',
+            client_cpf: '',
+            address: '',
+            city: '',
+            state: '',
+            zip: '',
+            marital_status: '',
+            nationality: '',
+            land_value: 0,
+          },
+          steps: [
+            {
+              key: 'proposal_decision',
+              label: 'Decisão do gestor',
+              status: 'current',
+              occurred_at: null,
+              due_at: null,
+              actor: null,
+              actions: [],
+            },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByText('101')).toBeInTheDocument()
+    expect(screen.getByText(/Proposta v2/)).toBeInTheDocument()
+    expect(screen.getByText('Entrada de R$ 50.000 + 24x de R$ 5.000')).toBeInTheDocument()
+    expect(screen.queryByText('Ana Silva')).not.toBeInTheDocument()
+    expect(screen.queryByText('Decisão do gestor')).not.toBeInTheDocument()
+    expect(screen.getByText('Arquivos da reserva')).toBeInTheDocument()
+  })
+
   it('lists proposal attachments in the historic group', () => {
     render(
       <ReservationTimeline
@@ -247,7 +299,7 @@ describe('ReservationTimeline', () => {
       <ReservationTimeline
         timeline={{
           ...sampleTimeline,
-          current_stage: 'contract_issued',
+          current_stage: 'contract_data_pending',
           attachments: [
             {
               id: 11,
@@ -276,7 +328,7 @@ describe('ReservationTimeline', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Reemitir contrato' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Baixar PDF' })).toBeInTheDocument()
+    expect(screen.getByText('contrato.pdf')).toBeInTheDocument()
   })
 
   it('does not render upcoming steps from other columns', () => {

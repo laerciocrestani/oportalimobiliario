@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { ReservationAttachmentPreview } from '@/components/reservations/ReservationAttachmentPreview'
+import { Textarea } from '@/components/ui/textarea'
 import {
   ReservationAttachmentField,
   type ReservationFileItem,
@@ -30,28 +30,8 @@ type BuilderProposalDecisionPanelProps = {
   onDecided: () => void
 }
 
-function hasText(value: string | null | undefined): boolean {
-  return Boolean(value?.trim())
-}
-
-function ProposalAttachments({ attachments }: { attachments?: ReservationAttachment[] }) {
-  if (!attachments?.length) {
-    return null
-  }
-
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm text-muted-foreground">Anexos da proposta</p>
-      {attachments.map((attachment) => (
-        <ReservationAttachmentPreview key={attachment.id} attachment={attachment} />
-      ))}
-    </div>
-  )
-}
-
 export function BuilderProposalDecisionPanel({
   reservationId,
-  proposal,
   attachments = [],
   onDecided,
 }: BuilderProposalDecisionPanelProps) {
@@ -172,59 +152,51 @@ export function BuilderProposalDecisionPanel({
   }
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border p-4">
-      <div>
-        <p className="text-sm font-medium">Proposta v{proposal.version}</p>
-        <p className="text-sm text-muted-foreground">
-          {proposal.client_name}
-          {hasText(proposal.client_phone) ? ` · ${proposal.client_phone}` : ''}
-        </p>
-      </div>
-
-      <dl className="grid gap-2 text-sm">
-        <div>
-          <dt className="text-muted-foreground">Proposta</dt>
-          <dd className="whitespace-pre-wrap">{proposal.payment_terms}</dd>
-        </div>
-      </dl>
-
-      <ProposalAttachments attachments={proposal.attachments} />
-
+    <FieldGroup className="gap-3">
       {templates.length > 0 ? (
-        <div className="flex flex-col gap-3 rounded-md border p-3">
-          <p className="text-sm font-medium">Gerar PDF da proposta</p>
-          <div className="space-y-2">
-            <Label>Modelo</Label>
-            <Select
-              value={templateId === '' ? null : templateId}
-              onValueChange={(value) => {
-                if (value === null) {
-                  return
-                }
-                setTemplateId(value)
-              }}
+        <>
+          <div className="flex items-end gap-2">
+            <Field className="flex-1">
+              <FieldLabel>Modelo</FieldLabel>
+              <Select
+                value={templateId === '' ? null : templateId}
+                onValueChange={(value) => {
+                  if (value === null) {
+                    return
+                  }
+                  setTemplateId(value)
+                }}
+              >
+                <SelectTrigger className="w-full" aria-label="Modelo de proposta">
+                  <SelectValue placeholder="Selecione um modelo">
+                    {templates.find((template) => String(template.id) === templateId)?.name || null}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((template) => (
+                    <SelectItem key={template.id} value={String(template.id)}>
+                      {template.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={submitting !== null || templateId === ''}
+              onClick={() => void handleIssue()}
             >
-              <SelectTrigger className="w-full" aria-label="Modelo de proposta">
-                <SelectValue placeholder="Selecione um modelo">
-                  {templates.find((template) => String(template.id) === templateId)?.name || null}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {templates.map((template) => (
-                  <SelectItem key={template.id} value={String(template.id)}>
-                    {template.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {submitting === 'issue' ? 'Gerando...' : generatedPdf ? 'Reemitir PDF' : 'Gerar PDF'}
+            </Button>
           </div>
 
           {requiredSlugs.map((slug) => {
             const label = preview?.custom_variables.find((variable) => variable.slug === slug)?.label ?? slug
 
             return (
-              <div key={slug} className="space-y-2">
-                <Label htmlFor={`proposal-value-${slug}`}>{label}</Label>
+              <Field key={slug}>
+                <FieldLabel htmlFor={`proposal-value-${slug}`}>{label}</FieldLabel>
                 <Input
                   id={`proposal-value-${slug}`}
                   value={values[slug] ?? ''}
@@ -232,25 +204,14 @@ export function BuilderProposalDecisionPanel({
                     setValues((current) => ({ ...current, [slug]: event.target.value }))
                   }
                 />
-              </div>
+              </Field>
             )
           })}
-
-          {generatedPdf ? <ReservationAttachmentPreview attachment={generatedPdf} /> : null}
-
-          <Button
-            type="button"
-            variant="outline"
-            disabled={submitting !== null || templateId === ''}
-            onClick={() => void handleIssue()}
-          >
-            {submitting === 'issue' ? 'Gerando...' : generatedPdf ? 'Reemitir PDF' : 'Gerar PDF'}
-          </Button>
-        </div>
+        </>
       ) : null}
 
-      <div className="flex flex-col gap-2">
-        <Label>PDF assinado pela construtora</Label>
+      <Field>
+        <FieldLabel>PDF assinado pela construtora</FieldLabel>
         <ReservationAttachmentField
           files={signedFiles}
           onFilesChange={setSignedFiles}
@@ -258,18 +219,18 @@ export function BuilderProposalDecisionPanel({
           disabled={submitting !== null}
           emptyLabel="Selecionar PDF assinado"
         />
-      </div>
+      </Field>
 
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="decision-note">Observação da decisão</Label>
-        <textarea
+      <Field>
+        <FieldLabel htmlFor="decision-note">Observação da decisão</FieldLabel>
+        <Textarea
           id="decision-note"
-          className="flex min-h-20 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          className="min-h-16"
           value={decisionNote}
           onChange={(e) => setDecisionNote(e.target.value)}
-          placeholder="Obrigatório para devolução ou recusa. O texto entra no diálogo com o corretor."
+          placeholder="Obrigatório para devolução ou recusa."
         />
-      </div>
+      </Field>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
@@ -298,6 +259,6 @@ export function BuilderProposalDecisionPanel({
           {submitting === 'rejected' ? 'Processando...' : 'Recusar'}
         </Button>
       </div>
-    </div>
+    </FieldGroup>
   )
 }

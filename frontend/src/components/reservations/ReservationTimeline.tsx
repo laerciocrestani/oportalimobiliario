@@ -163,6 +163,7 @@ export function ReservationTimeline({ timeline, onAction, className }: Reservati
 
   const skipCurrentStep =
     column === 'cancelled' ||
+    column === 'proposal_review' ||
     (column === 'pre_reservation' &&
       (currentStep?.key === 'pre_hold_created' ||
         currentStep?.key === 'dialogue' ||
@@ -175,8 +176,19 @@ export function ReservationTimeline({ timeline, onAction, className }: Reservati
           <p>
             <span className="text-muted-foreground">Unidade:</span>{' '}
             <span className="font-medium">{timeline.unit.code}</span>
+            {column === 'proposal_review' && timeline.current_proposal ? (
+              <span className="text-muted-foreground">
+                {' '}
+                · Proposta v{timeline.current_proposal.version}
+              </span>
+            ) : null}
           </p>
-          {timeline.client ? (
+          {column === 'proposal_review' && timeline.current_proposal?.payment_terms ? (
+            <p className="mt-1 line-clamp-2 text-muted-foreground">
+              {timeline.current_proposal.payment_terms}
+            </p>
+          ) : null}
+          {column !== 'proposal_review' && timeline.client ? (
             <p className="mt-1">
               <span className="text-muted-foreground">Cliente:</span>{' '}
               <span className="font-medium">{timeline.client.name}</span>

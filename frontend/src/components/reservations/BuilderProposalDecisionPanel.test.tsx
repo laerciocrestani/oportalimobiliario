@@ -64,7 +64,8 @@ describe('BuilderProposalDecisionPanel', () => {
       <BuilderProposalDecisionPanel reservationId={10} proposal={proposal} onDecided={() => {}} />,
     )
 
-    expect(screen.getByText('proposta.pdf')).toBeInTheDocument()
+    expect(screen.queryByText('Maria Silva')).not.toBeInTheDocument()
+    expect(screen.queryByText('proposta.pdf')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Devolver' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Recusar' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Aceitar' })).toBeDisabled()

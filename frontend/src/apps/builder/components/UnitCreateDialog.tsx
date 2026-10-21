@@ -201,6 +201,7 @@ export function UnitCreateDialog({
             amenities={amenities}
             buildingAmenityIds={buildingAmenityIds}
             defaults={defaults}
+            priceMode={building?.price_mode ?? 'incc'}
             disabled={!hasTowers}
             onChange={setSpec}
           />

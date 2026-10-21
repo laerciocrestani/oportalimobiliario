@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Builder;
 
+use App\Enums\BuildingCategory;
 use App\Enums\CeilingType;
 use App\Enums\FlooringType;
 use App\Enums\OpeningType;
@@ -54,6 +55,7 @@ class BuildingController extends Controller
 
         return [
             'name' => [$building === null ? 'required' : 'sometimes', 'string', 'max:255'],
+            'category' => ['sometimes', Rule::enum(BuildingCategory::class)],
             'slug' => ['nullable', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slugUnique],
             'zip' => ['nullable', 'string', 'regex:/^\d{8}$/'],
             'street' => ['nullable', 'string', 'max:255'],

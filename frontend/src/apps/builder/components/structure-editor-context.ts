@@ -15,6 +15,7 @@ export type StructureEditorActions = {
   selectTower: (index: number) => void
   selectFloor: (number: number) => void
   updateUnit: (unitKey: string, patch: Partial<StackUnit>) => void
+  updateTower: (tower: StackTower) => void
   setMirror: (patch: Partial<MirrorDraft>) => void
   cloneMirror: () => void
 }
@@ -23,6 +24,7 @@ export type StructureEditorMeta = {
   selectedTower: StackTower | null
   selectedFloor: StackFloor | null
   priceMode?: 'incc' | 'fixed'
+  singleTower?: boolean
 }
 
 export type StructureEditorContextValue = {

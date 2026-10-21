@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\BuildingMediaCategory;
+use App\Enums\BuildingCategory;
 use App\Enums\CeilingType;
 use App\Enums\FlooringType;
 use App\Enums\OpeningType;
@@ -26,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'tenant_id',
     'name',
+    'category',
     'slug',
     'zip',
     'street',
@@ -53,6 +55,7 @@ class Building extends Model
     use BelongsToTenant, ComputesUnitsSummary, HasFactory, HasUuids;
 
     protected $attributes = [
+        'category' => 'residential',
         'price_mode' => 'incc',
     ];
 
@@ -60,6 +63,7 @@ class Building extends Model
     {
         return [
             'published' => 'boolean',
+            'category' => BuildingCategory::class,
             'price_mode' => PriceMode::class,
             'wizard_step' => 'integer',
             'wizard_completed_at' => 'datetime',

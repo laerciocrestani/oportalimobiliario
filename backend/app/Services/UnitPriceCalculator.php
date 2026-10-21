@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\PriceMode;
 use App\Models\InccIndex;
 use App\Models\Unit;
 use Carbon\CarbonInterface;
@@ -53,6 +54,17 @@ class UnitPriceCalculator
             return [
                 'price' => $this->money($unit->frozen_price_brl),
                 'price_incc_current' => $currentValue,
+            ];
+        }
+
+        $unit->loadMissing('building');
+
+        if ($unit->building?->price_mode === PriceMode::Fixed) {
+            $fixed = $unit->price_base ?? $unit->getRawOriginal('price');
+
+            return [
+                'price' => $fixed === null ? null : $this->money($fixed),
+                'price_incc_current' => null,
             ];
         }
 

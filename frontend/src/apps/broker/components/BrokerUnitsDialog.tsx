@@ -379,10 +379,13 @@ export function BrokerUnitsDialog({
                   </p>
                   {spec ? <p className="text-xs text-muted-foreground">{spec}</p> : null}
                   {amenities ? <p className="text-xs text-muted-foreground">{amenities}</p> : null}
-                  {unit.price && competence ? (
+                  {unit.price && competence && building?.price_mode !== 'fixed' ? (
                     <p className="text-xs text-muted-foreground">
                       Corrigido pelo INCC-M · competência {competence}
                     </p>
+                  ) : null}
+                  {building?.price_mode === 'fixed' && unit.price ? (
+                    <p className="text-xs text-muted-foreground">Valor fixo</p>
                   ) : null}
                 </div>
                 <UnitRowActions

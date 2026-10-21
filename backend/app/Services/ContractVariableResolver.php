@@ -96,6 +96,7 @@ class ContractVariableResolver
             'andar_unidade' => $unit?->floor !== null ? (string) $unit->floor : '',
             'area_unidade' => $this->formatArea($unit?->area_m2),
             'nome_empreendimento' => $this->string($unit?->building?->name),
+            'correcao_modo' => $unit?->building?->price_mode?->value ?? 'incc',
             'preco_final' => $this->formatMoney($price),
             'valor_terreno' => $this->formatMoney($proposal?->land_value),
             'condicoes_pagamento' => $this->string($proposal?->payment_terms),

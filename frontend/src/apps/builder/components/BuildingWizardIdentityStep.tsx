@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label'
 
 export type BuildingIdentityForm = {
   name: string
+  category: 'residential' | 'commercial' | 'mixed'
   priceMode: 'incc' | 'fixed'
   zip: string
   street: string
@@ -16,6 +17,7 @@ export type BuildingIdentityForm = {
 
 export const emptyIdentityForm: BuildingIdentityForm = {
   name: '',
+  category: 'residential',
   priceMode: 'incc',
   zip: '',
   street: '',
@@ -65,6 +67,31 @@ export function BuildingWizardIdentityStep({
           onChange={(e) => onChange({ ...form, name: e.target.value })}
           required
         />
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="space-y-2">
+          <Label htmlFor="wizard-building-category">Tipo de empreendimento</Label>
+          <select
+            id="wizard-building-category"
+            className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none"
+            value={form.category}
+            onChange={(event) =>
+              onChange({
+                ...form,
+                category: event.target.value as BuildingIdentityForm['category'],
+              })
+            }
+          >
+            <option value="residential">Residencial</option>
+            <option value="commercial">Comercial</option>
+            <option value="mixed">Misto</option>
+          </select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="wizard-building-organization">Organização da estrutura</Label>
+          <Input id="wizard-building-organization" value="Torre única" readOnly />
+        </div>
       </div>
 
       <fieldset className="space-y-2" disabled={priceModeLocked}>

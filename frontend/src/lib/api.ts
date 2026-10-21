@@ -214,6 +214,7 @@ export type Building = {
   id: string
   slug: string
   name: string
+  category?: 'residential' | 'commercial' | 'mixed'
   description: string | null
   zip?: string | null
   street?: string | null

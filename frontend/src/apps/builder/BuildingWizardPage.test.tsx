@@ -88,6 +88,7 @@ describe('BuildingWizardPage', () => {
     await waitFor(() => {
       expect(api.builderApi.createBuilding).toHaveBeenCalledWith({
         name: 'Residencial Aurora',
+        category: 'residential',
         zip: '01310100',
         street: 'Avenida Paulista',
         number: '1000',
@@ -339,7 +340,7 @@ describe('BuildingWizardPage', () => {
     await user.click(screen.getByRole('button', { name: 'Publicar' }))
 
     expect(
-      await screen.findByText('Não é possível publicar: unidades à venda precisam ter preço.'),
+      await screen.findByText('Cannot publish while available units have no price.'),
     ).toBeInTheDocument()
   })
 

@@ -31,6 +31,7 @@ export type WizardActions = {
   setSkeleton: (patch: Partial<SkeletonInput>) => void
   generateSkeleton: () => void
   updateStackUnit: (unitKey: string, patch: Partial<StackUnit>) => void
+  updateSelectedTower: (tower: StackTower) => void
   setMirror: (patch: Partial<MirrorDraft>) => void
   cloneMirror: () => void
   setSelectedTowerIndex: (index: number) => void

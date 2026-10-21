@@ -1,5 +1,6 @@
 import { useBuildingWizard } from '@/apps/builder/components/building-wizard-context'
 import { floorKindLabel, floorLabel, type StackFloor } from '@/apps/builder/lib/floor-stack'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 function floorOrigin(floor: StackFloor, referenceFloor: number | null): string {
@@ -15,7 +16,7 @@ function floorOrigin(floor: StackFloor, referenceFloor: number | null): string {
 }
 
 export function WizardReviewStep() {
-  const { state } = useBuildingWizard()
+  const { state, actions } = useBuildingWizard()
   const towers = state.stackTowers
   const floors = towers.flatMap((tower) => tower.floors)
   const residential = floors
@@ -28,10 +29,23 @@ export function WizardReviewStep() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-base font-semibold">Revisão estrutural</h2>
-        <p className="text-sm text-muted-foreground">
-          {state.form.name || 'Empreendimento'} · {state.form.priceMode === 'fixed' ? 'Valor fixo' : 'INCC'}
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Revisão estrutural</h2>
+            <p className="text-sm text-muted-foreground">
+              {state.form.name || 'Empreendimento'} · Torre única ·{' '}
+              {state.form.priceMode === 'fixed' ? 'Valor fixo' : 'INCC'}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => actions.setCurrentStep(1)}>
+              Editar dados básicos
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => actions.setCurrentStep(2)}>
+              Editar estrutura
+            </Button>
+          </div>
+        </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <Card size="sm">
@@ -84,6 +98,16 @@ export function WizardReviewStep() {
           </section>
         ))
       )}
+      <Card size="sm">
+        <CardHeader>
+          <CardTitle>Endereço</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          {[state.form.street, state.form.number].filter(Boolean).join(', ') || 'Endereço ainda não informado'}
+          <br />
+          {[state.form.neighborhood, state.form.city, state.form.state].filter(Boolean).join(' · ')}
+        </CardContent>
+      </Card>
     </div>
   )
 }

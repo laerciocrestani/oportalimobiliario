@@ -52,6 +52,22 @@ it('expands filled module rows and omits blank ones', function () {
 MD);
 });
 
+it('uses a fixed-price clause when correcao_modo is fixed', function () {
+    $expanded = ProposalModuleMarkdown::expand(
+        "{bloco_preco_unidade}\n\n{correcao_parcelas}\n\n{correcao_reforcos}",
+        [
+            'correcao_modo' => 'fixed',
+            'preco_unidade_corrigido' => '250.000,00',
+            'preco_unidade_original' => '200.000,00',
+        ],
+    );
+
+    expect($expanded)->toContain('**Valor da unidade:** R$ 250.000,00')
+        ->and($expanded)->not->toContain('original')
+        ->and($expanded)->toContain('sem correção pelo INCC')
+        ->and($expanded)->not->toContain('saldo positivo do INCC');
+});
+
 it('drops the fixed slugs from the custom variable list', function () {
     $variables = ProposalModuleMarkdown::withoutFixedVariables([
         ['slug' => 'valor_entrada', 'label' => 'Valor de entrada'],

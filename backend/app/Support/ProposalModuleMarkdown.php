@@ -28,6 +28,31 @@ final class ProposalModuleMarkdown
      */
     public static function expand(string $markdown, array $values): string
     {
+        $fixed = ($values['correcao_modo'] ?? 'incc') === 'fixed';
+        $markdown = str_replace('{bloco_preco_unidade}', self::priceBlock(
+            $fixed ? 'Valor da unidade' : 'Valor corrigido da unidade',
+            $values['preco_unidade_corrigido'] ?? '',
+            $fixed ? '' : ($values['preco_unidade_original'] ?? ''),
+        ), $markdown);
+        $markdown = str_replace('{bloco_preco_vaga}', self::priceBlock(
+            $fixed ? 'Valor da vaga' : 'Valor corrigido da vaga',
+            $values['preco_vaga_corrigido'] ?? '',
+            $fixed ? '' : ($values['preco_vaga_original'] ?? ''),
+        ), $markdown);
+        $markdown = str_replace(
+            '{correcao_parcelas}',
+            $fixed
+                ? '> As parcelas permanecem no valor contratado, sem correção pelo INCC.'
+                : '> As parcelas serão corrigidas mensalmente pelo saldo positivo do INCC a partir da data de assinatura do contrato.',
+            $markdown,
+        );
+        $markdown = str_replace(
+            '{correcao_reforcos}',
+            $fixed
+                ? '> Os reforços permanecem no valor contratado, sem correção pelo INCC.'
+                : '> Os reforços serão corrigidos mensalmente pelo saldo positivo do INCC a partir da data de assinatura do contrato.',
+            $markdown,
+        );
         $markdown = str_replace('{reforcos}', self::reinforcementBlock($values), $markdown);
 
         return str_replace('{dacoes}', self::dationBlock($values), $markdown);
@@ -58,6 +83,20 @@ final class ProposalModuleMarkdown
             $variables,
             fn (array $variable): bool => ! in_array($variable['slug'] ?? '', self::FIXED_SLUGS, true),
         ));
+    }
+
+    private static function priceBlock(string $label, mixed $amount, mixed $original): string
+    {
+        $amountText = self::plain($amount);
+
+        if ($amountText === '') {
+            return '';
+        }
+
+        $originalText = self::plain($original);
+        $suffix = $originalText === '' ? '' : " (original R$ {$originalText})";
+
+        return "**{$label}:** R$ {$amountText}{$suffix}";
     }
 
     /**

@@ -3959,6 +3959,9 @@ components:
         price_mode:
           type: string
           enum: [incc, fixed]
+        category:
+          type: string
+          enum: [residential, commercial, mixed]
         wizard_step:
           type: integer
           nullable: true

@@ -47,9 +47,9 @@ class CommercialProposalTemplate
 
 **Valor total:** R$ {{preco_final}}
 
-**Valor corrigido da unidade:** R$ {{preco_unidade_corrigido?}} (original R$ {{preco_unidade_original?}})
+{bloco_preco_unidade}
 
-**Valor corrigido da vaga:** {{preco_vaga_corrigido?}} (original {{preco_vaga_original?}})
+{bloco_preco_vaga}
 
 **Valor de entrada:** R$ {{valor_entrada}} · **Venc.:** {{vencimento_entrada?}}
 
@@ -57,7 +57,7 @@ class CommercialProposalTemplate
 
 **Primeiro venc.:** {{primeiro_vencimento?}}
 
-> As parcelas serão corrigidas mensalmente pelo saldo positivo do INCC a partir da data de assinatura do contrato.
+{correcao_parcelas}
 
 ### Reforços
 
@@ -65,7 +65,7 @@ class CommercialProposalTemplate
 
 **Total:** R$ {{reforcos_total?}}
 
-> Os reforços serão corrigidos mensalmente pelo saldo positivo do INCC a partir da data de assinatura do contrato.
+{correcao_reforcos}
 
 {dacoes}
 

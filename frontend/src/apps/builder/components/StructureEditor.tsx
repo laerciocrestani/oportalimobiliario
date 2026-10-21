@@ -1,10 +1,17 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import {
+  clonePreview,
+  addFloor,
+  removeFloor,
+  removeUnit,
   floorKindLabel,
   floorLabel,
   floorsTopToBottom,
+  resizeFloorUnits,
+  setFloorKind,
   type SkeletonInput,
 } from '@/apps/builder/lib/floor-stack'
+import type { FloorKind } from '@/lib/api'
 import {
   StructureEditorContext,
   useStructureEditor,
@@ -21,6 +28,8 @@ import {
   SOLAR_OPTIONS,
   SUN_PERIOD_OPTIONS,
 } from '@/apps/builder/lib/unit-spec'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -52,7 +61,7 @@ function clampCount(value: number, min: number, max: number): number {
 }
 
 function StructureEditorSkeleton() {
-  const { state, actions } = useStructureEditor()
+  const { state, actions, meta } = useStructureEditor()
 
   function update(field: keyof SkeletonInput, min: number, max: number, raw: string) {
     actions.setSkeleton({ [field]: clampCount(Number(raw), min, max) })
@@ -64,18 +73,20 @@ function StructureEditorSkeleton() {
         <CardTitle>Esqueleto do prédio</CardTitle>
       </CardHeader>
       <CardContent>
-        <FieldGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <Field>
-            <FieldLabel htmlFor="structure-tower-count">Torres</FieldLabel>
-            <Input
-              id="structure-tower-count"
-              type="number"
-              min={1}
-              max={26}
-              value={state.skeleton.towerCount}
-              onChange={(event) => update('towerCount', 1, 26, event.target.value)}
-            />
-          </Field>
+        <FieldGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {meta.singleTower ? null : (
+            <Field>
+              <FieldLabel htmlFor="structure-tower-count">Torres</FieldLabel>
+              <Input
+                id="structure-tower-count"
+                type="number"
+                min={1}
+                max={26}
+                value={state.skeleton.towerCount}
+                onChange={(event) => update('towerCount', 1, 26, event.target.value)}
+              />
+            </Field>
+          )}
           <Field>
             <FieldLabel htmlFor="structure-floors-above">Andares acima</FieldLabel>
             <Input
@@ -163,7 +174,7 @@ function StructureEditorFloorRow({
   onSelect,
 }: {
   number: number
-  kind: 'residential' | 'commercial' | 'garage'
+  kind: 'residential' | 'commercial' | 'garage' | 'hall'
   customized: boolean
   unitCount: number
   selected: boolean
@@ -299,6 +310,31 @@ function StructureEditorMirrorPanel() {
   )
 }
 
+function RemoveUnitButton({ unitKey }: { unitKey: string }) {
+  const { actions, meta } = useStructureEditor()
+  const floor = meta.selectedFloor
+  const tower = meta.selectedTower
+
+  if (!floor || !tower) {
+    return null
+  }
+
+  const isSpot = floor.kind === 'garage'
+  const blocked = floor.kind !== 'hall' && floor.units.length <= 1
+
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      disabled={blocked}
+      onClick={() => actions.updateTower(removeUnit(tower, floor.number, unitKey))}
+    >
+      Remover {isSpot ? 'vaga' : 'unidade'}
+    </Button>
+  )
+}
+
 function UnitPriceFields({
   unitKey,
   code,
@@ -357,6 +393,9 @@ function StructureEditorUnitEditor() {
       <CardContent className="flex flex-col gap-4">
         {floor.units.map((unit) => (
           <div key={unit.key} className="grid gap-3 rounded-lg border p-3 md:grid-cols-3 xl:grid-cols-6">
+            <div className="md:col-span-3 xl:col-span-6">
+              <RemoveUnitButton unitKey={unit.key} />
+            </div>
             <Field>
               <FieldLabel htmlFor={`unit-code-${unit.key}`}>Código</FieldLabel>
               <Input id={`unit-code-${unit.key}`} value={unit.code} readOnly />
@@ -493,6 +532,7 @@ function StructureEditorGaragePanel() {
       <CardContent className="flex flex-col gap-6">
         {floor.units.map((unit) => (
           <FieldGroup key={unit.key} className="rounded-lg border p-3">
+            <RemoveUnitButton unitKey={unit.key} />
             <Field>
               <FieldLabel htmlFor={`spot-code-${unit.key}`}>Código {unit.code}</FieldLabel>
               <Input id={`spot-code-${unit.key}`} value={unit.code} readOnly />
@@ -518,11 +558,281 @@ function StructureEditorGaragePanel() {
   )
 }
 
+function unitTypeLabel(kind: FloorKind): string {
+  if (kind === 'garage') {
+    return 'Vaga'
+  }
+
+  if (kind === 'commercial') {
+    return 'Loja'
+  }
+
+  if (kind === 'hall') {
+    return 'Área comum'
+  }
+
+  return 'Apartamento'
+}
+
+function floorKindChoices(number: number): FloorKind[] {
+  if (number < 0) {
+    return ['garage']
+  }
+
+  return ['residential', 'commercial', 'hall']
+}
+
+function StructureEditorFloorWorkspace() {
+  const { state, actions, meta } = useStructureEditor()
+  const floor = meta.selectedFloor
+  const tower = meta.selectedTower
+  const [editing, setEditing] = useState(false)
+  const [cloning, setCloning] = useState(false)
+  const preview = tower ? clonePreview(tower, state.mirror.referenceNumber, state.mirror) : []
+
+  function remove() {
+    if (!tower || !floor || tower.floors.length <= 1) {
+      return
+    }
+
+    const next = removeFloor(tower, floor.number)
+    actions.updateTower(next)
+    const fallback = next.floors[next.floors.length - 1]
+
+    if (fallback) {
+      actions.selectFloor(fallback.number)
+    }
+  }
+
+  function add(where: 'above' | 'basement') {
+    if (!tower) {
+      return
+    }
+
+    const next = addFloor(tower, where)
+    actions.updateTower(next)
+    const created = next.floors.find((item) => !tower.floors.some((current) => current.number === item.number))
+
+    if (created) {
+      actions.selectFloor(created.number)
+    }
+  }
+
+  function chooseKind(kind: FloorKind) {
+    if (!tower || !floor) {
+      return
+    }
+
+    actions.updateTower(setFloorKind(tower, floor.number, kind))
+  }
+
+  function changeCount(delta: number) {
+    if (!tower || !floor) {
+      return
+    }
+
+    actions.updateTower(resizeFloorUnits(tower, floor.number, floor.units.length + delta))
+  }
+
+  function setCloneQuantity(quantity: number) {
+    if (!tower) {
+      return
+    }
+
+    const reference = tower.floors.find((item) => item.number === state.mirror.referenceNumber)
+
+    if (!reference) {
+      return
+    }
+
+    const candidates = tower.floors
+      .filter(
+        (item) =>
+          item.kind === reference.kind &&
+          (state.mirror.direction === 'up'
+            ? item.number > reference.number
+            : item.number < reference.number),
+      )
+      .toSorted((left, right) =>
+        state.mirror.direction === 'up' ? left.number - right.number : right.number - left.number,
+      )
+      .slice(0, Math.max(1, quantity))
+
+    if (candidates.length === 0) {
+      return
+    }
+
+    const numbers = candidates.map((item) => item.number)
+    actions.setMirror({ from: Math.min(...numbers), to: Math.max(...numbers) })
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,18rem)_1fr]">
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!tower}
+            onClick={() => add('above')}
+          >
+            Adicionar andar
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={!tower}
+            onClick={() => add('basement')}
+          >
+            Adicionar subsolo
+          </Button>
+        </div>
+        <StructureEditorFloorStack />
+      </div>
+      <Card size="sm">
+        <CardHeader>
+          <CardTitle>{floor ? floorLabel(floor.number) : 'Pavimento'}</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {floor ? (
+            <p className="text-sm text-muted-foreground">
+              {floorKindLabel(floor.kind)} · {floor.units.length}{' '}
+              {floor.kind === 'garage' ? 'vagas' : 'unidades'}
+              {floor.customized ? ' · exceção' : ''}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">Gere o esqueleto e escolha um pavimento.</p>
+          )}
+          {floor && floor.units.length > 0 ? (
+            <table className="w-full text-sm">
+              <thead className="text-left text-muted-foreground">
+                <tr>
+                  <th className="py-1 font-medium">Código</th>
+                  <th className="py-1 font-medium">Tipo</th>
+                  <th className="py-1 font-medium">Área</th>
+                  {floor.kind === 'garage' ? null : <th className="py-1 font-medium">Dormitórios</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {floor.units.map((unit) => (
+                  <tr key={unit.key} className="border-t">
+                    <td className="py-1">{unit.code}</td>
+                    <td className="py-1">{unitTypeLabel(floor.kind)}</td>
+                    <td className="py-1">{unit.areaM2 || '—'}</td>
+                    {floor.kind === 'garage' ? null : <td className="py-1">{unit.bedrooms || '—'}</td>}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" disabled={!floor} onClick={() => setEditing(true)}>
+              Editar pavimento
+            </Button>
+            <Button type="button" disabled={!floor} onClick={() => setCloning(true)}>
+              Clonar pavimento
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!floor || (tower?.floors.length ?? 0) <= 1}
+              onClick={() => remove()}
+            >
+              Remover pavimento
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      <Sheet open={editing} onOpenChange={setEditing}>
+        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
+          <SheetHeader>
+            <SheetTitle>Editar pavimento</SheetTitle>
+          </SheetHeader>
+          {floor ? (
+            <div className="flex flex-col gap-4 px-4">
+              <fieldset className="space-y-2">
+                <legend className="text-sm font-medium">Tipo de pavimento</legend>
+                <div className="flex flex-wrap gap-3">
+                  {floorKindChoices(floor.number).map((kind) => (
+                    <label key={kind} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name={`floor-kind-${floor.number}`}
+                        checked={floor.kind === kind}
+                        onChange={() => chooseKind(kind)}
+                      />
+                      {floorKindLabel(kind)}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              {floor.kind === 'hall' ? (
+                <p className="text-sm text-muted-foreground">Hall não tem unidades privadas.</p>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm font-medium">
+                    {floor.kind === 'garage' ? 'Vagas' : 'Unidades'}
+                  </span>
+                  <Button type="button" variant="outline" size="sm" onClick={() => changeCount(-1)}>
+                    −
+                  </Button>
+                  <span className="w-6 text-center text-sm">{floor.units.length}</span>
+                  <Button type="button" variant="outline" size="sm" onClick={() => changeCount(1)}>
+                    +
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : null}
+          <StructureEditorUnitEditor />
+          <StructureEditorGaragePanel />
+        </SheetContent>
+      </Sheet>
+      <Dialog open={cloning} onOpenChange={setCloning}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Clonar pavimento</DialogTitle>
+          </DialogHeader>
+          <StructureEditorMirrorPanel />
+          {preview.length > 0 ? (
+            <table className="w-full text-sm">
+              <thead className="text-left text-muted-foreground">
+                <tr>
+                  <th className="py-1 font-medium">Pavimento</th>
+                  <th className="py-1 font-medium">Numeração</th>
+                  <th className="py-1 font-medium">Situação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {preview.map((row) => (
+                  <tr key={row.number} className="border-t">
+                    <td className="py-1">{floorLabel(row.number)}</td>
+                    <td className="py-1">{row.codes}</td>
+                    <td className="py-1">{row.situation}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nenhum destino nessa faixa.</p>
+          )}
+          <Button type="button" variant="outline" onClick={() => setCloneQuantity(preview.length + 1)}>
+            Incluir mais um destino
+          </Button>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
 export const StructureEditor = {
   Provider: StructureEditorProvider,
   Skeleton: StructureEditorSkeleton,
   TowerTabs: StructureEditorTowerTabs,
   FloorStack: StructureEditorFloorStack,
+  FloorWorkspace: StructureEditorFloorWorkspace,
   FloorRow: StructureEditorFloorRow,
   MirrorPanel: StructureEditorMirrorPanel,
   UnitEditor: StructureEditorUnitEditor,

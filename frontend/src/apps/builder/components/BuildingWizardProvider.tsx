@@ -62,6 +62,16 @@ function identityPayload(form: BuildingIdentityForm) {
   }
 }
 
+function messageFromError(err: unknown): string | null {
+  if (!(err instanceof ApiRequestError)) {
+    return null
+  }
+
+  const details = err.errors ? Object.values(err.errors).flat() : []
+
+  return details[0] ?? err.message ?? null
+}
+
 function stepErrorMessage(step: number) {
   if (step === 1) {
     return 'Não foi possível salvar o empreendimento.'
@@ -157,11 +167,17 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
   }
 
   function generateSkeleton() {
-    const next = buildSkeleton(skeleton)
+    const next = buildSkeleton({ ...skeleton, towerCount: 1 })
     setStackTowers(next)
     setSelectedTowerIndex(0)
     setSelectedFloor(preferredFloorNumber(next))
     setMirrorState(mirrorDraftFromTower(next[0]))
+  }
+
+  function updateSelectedTower(tower: StackTower) {
+    setStackTowers((current) =>
+      current.map((item, index) => (index === selectedTowerIndex ? tower : item)),
+    )
   }
 
   function setSelectedTowerIndexAndMirror(index: number) {
@@ -318,12 +334,7 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
     try {
       await persistStep(currentStep)
     } catch (err) {
-      if (currentStep === WIZARD_LAST_STEP && err instanceof ApiRequestError && err.status === 422) {
-        setError('Não é possível publicar: unidades à venda precisam ter preço.')
-        return
-      }
-
-      setError(stepErrorMessage(currentStep))
+      setError(messageFromError(err) ?? stepErrorMessage(currentStep))
     } finally {
       setSaving(false)
     }
@@ -364,6 +375,7 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       setSkeleton,
       generateSkeleton,
       updateStackUnit,
+      updateSelectedTower,
       setMirror,
       cloneMirror: cloneSelectedMirror,
       setSelectedTowerIndex: setSelectedTowerIndexAndMirror,

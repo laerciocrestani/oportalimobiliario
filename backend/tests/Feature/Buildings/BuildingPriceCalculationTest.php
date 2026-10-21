@@ -25,6 +25,28 @@ function seedInccCurve(): void
     InccIndex::factory()->create(['competence' => '2026-07-01', 'value' => '1020.500000']);
 }
 
+it('keeps the stored amount when the building uses a fixed price', function () {
+    seedInccCurve();
+
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create(['price_mode' => 'fixed']);
+    Unit::factory()->for($tenant)->for($building)->create([
+        'code' => '101',
+        'price' => 100000,
+        'price_base' => 100000,
+        'price_competence' => '2026-02-01',
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->getJson("/api/builder/buildings/{$building->id}/units")
+        ->assertOk()
+        ->assertJsonPath('0.price', '100000.00')
+        ->assertJsonPath('0.price_base', '100000.00')
+        ->assertJsonPath('0.price_incc_current', null);
+});
+
 it('serializes the calculated price on builder unit endpoints', function () {
     seedInccCurve();
 

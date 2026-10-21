@@ -64,6 +64,11 @@ function StructureEditorHarness({ initialTowers = [] }: { initialTowers?: StackT
             ),
           )
         },
+        updateTower: (tower) => {
+          setTowers((current) =>
+            current.map((item, index) => (index === selectedTowerIndex ? tower : item)),
+          )
+        },
         setMirror: (patch) => setMirror((current) => ({ ...current, ...patch })),
         cloneMirror: () => {
           setTowers((current) =>

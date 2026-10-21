@@ -26,6 +26,57 @@ export function isValidCpf(value: string): boolean {
   return checkDigit(9) === Number(digits[9]) && checkDigit(10) === Number(digits[10])
 }
 
+export function cnpjDigits(value: string): string {
+  return value.replace(/\D/g, '').slice(0, 14)
+}
+
+export function isValidCnpj(value: string): boolean {
+  const digits = cnpjDigits(value)
+
+  if (digits.length !== 14 || /^(\d)\1{13}$/.test(digits)) {
+    return false
+  }
+
+  const checkDigit = (length: number): number => {
+    const factors = length === 12
+      ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+      : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    let sum = 0
+
+    for (let index = 0; index < length; index++) {
+      sum += Number(digits[index]) * factors[index]
+    }
+
+    const rest = sum % 11
+
+    return rest < 2 ? 0 : 11 - rest
+  }
+
+  return checkDigit(12) === Number(digits[12]) && checkDigit(13) === Number(digits[13])
+}
+
+export function formatCnpj(value: string): string {
+  const digits = cnpjDigits(value)
+
+  if (digits.length <= 2) {
+    return digits
+  }
+
+  if (digits.length <= 5) {
+    return `${digits.slice(0, 2)}.${digits.slice(2)}`
+  }
+
+  if (digits.length <= 8) {
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`
+  }
+
+  if (digits.length <= 12) {
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`
+  }
+
+  return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12)}`
+}
+
 export function formatCpf(value: string): string {
   const digits = cpfDigits(value)
 

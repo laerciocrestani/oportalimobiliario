@@ -9,6 +9,7 @@ import {
   AttachmentGroup,
   AttachmentMedia,
   AttachmentTitle,
+  AttachmentTrigger,
 } from '@/components/ui/attachment'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -29,6 +30,7 @@ type ReservationAttachmentFieldProps = {
   disabled?: boolean
   className?: string
   emptyLabel?: string
+  variant?: 'field' | 'panel'
 }
 
 function formatFileMeta(file: File): string {
@@ -51,6 +53,7 @@ export function ReservationAttachmentField({
   disabled = false,
   className,
   emptyLabel = 'Selecionar arquivo',
+  variant = 'field',
 }: ReservationAttachmentFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -78,6 +81,88 @@ export function ReservationAttachmentField({
     onFilesChange(files.filter((item) => item.id !== id))
   }
 
+  const fileList = files.length > 0 ? (
+    <AttachmentGroup
+      className={cn(
+        'w-full',
+        multiple && 'flex-col overflow-x-visible snap-none overscroll-auto',
+      )}
+    >
+      {files.map((item) => (
+        <Attachment key={item.id} state={item.state} className="w-full">
+          <AttachmentMedia variant={item.previewUrl ? 'image' : 'icon'}>
+            {item.state === 'uploading' ? (
+              <LoaderCircleIcon className="animate-spin" data-slot="spinner" />
+            ) : item.previewUrl ? (
+              <img src={item.previewUrl} alt={item.file.name} />
+            ) : isImageFile(item.file) ? (
+              <ImageIcon />
+            ) : (
+              <FileTextIcon />
+            )}
+          </AttachmentMedia>
+          <AttachmentContent>
+            <AttachmentTitle>{item.file.name}</AttachmentTitle>
+            <AttachmentDescription>
+              {item.state === 'error'
+                ? item.errorMessage ?? 'Falha no envio'
+                : item.state === 'uploading'
+                  ? 'Enviando...'
+                  : formatFileMeta(item.file)}
+            </AttachmentDescription>
+          </AttachmentContent>
+          <AttachmentActions>
+            <AttachmentAction
+              aria-label={`Remover ${item.file.name}`}
+              disabled={disabled || item.state === 'uploading'}
+              onClick={() => handleRemove(item.id)}
+            >
+              <XIcon />
+            </AttachmentAction>
+          </AttachmentActions>
+        </Attachment>
+      ))}
+    </AttachmentGroup>
+  ) : null
+
+  if (variant === 'panel') {
+    return (
+      <div className={cn('flex h-full min-h-0 flex-col gap-3', className)}>
+        <input
+          ref={inputRef}
+          type="file"
+          accept={accept}
+          multiple={multiple}
+          className="sr-only"
+          disabled={disabled}
+          onChange={(event) => {
+            handleSelect(event.target.files)
+            event.target.value = ''
+          }}
+        />
+        {fileList}
+        <Attachment
+          state="idle"
+          orientation="vertical"
+          className="h-full min-h-48 w-full! flex-1 items-center justify-center text-center has-data-[slot=attachment-content]:w-full!"
+        >
+          <AttachmentMedia className="size-12! w-12! group-data-[orientation=vertical]/attachment:w-12!">
+            <FileTextIcon />
+          </AttachmentMedia>
+          <AttachmentContent className="text-center">
+            <AttachmentTitle>{emptyLabel}</AttachmentTitle>
+            <AttachmentDescription>JPEG, PNG, WebP ou PDF, até 10MB</AttachmentDescription>
+          </AttachmentContent>
+          <AttachmentTrigger
+            aria-label={emptyLabel}
+            disabled={disabled}
+            onClick={() => inputRef.current?.click()}
+          />
+        </Attachment>
+      </div>
+    )
+  }
+
   return (
     <div className={cn('flex flex-col gap-3', className)}>
       <input
@@ -93,49 +178,7 @@ export function ReservationAttachmentField({
         }}
       />
 
-      {files.length > 0 ? (
-        <AttachmentGroup
-          className={cn(
-            'w-full',
-            multiple && 'flex-col overflow-x-visible snap-none overscroll-auto',
-          )}
-        >
-          {files.map((item) => (
-            <Attachment key={item.id} state={item.state} className="w-full">
-              <AttachmentMedia variant={item.previewUrl ? 'image' : 'icon'}>
-                {item.state === 'uploading' ? (
-                  <LoaderCircleIcon className="animate-spin" data-slot="spinner" />
-                ) : item.previewUrl ? (
-                  <img src={item.previewUrl} alt={item.file.name} />
-                ) : isImageFile(item.file) ? (
-                  <ImageIcon />
-                ) : (
-                  <FileTextIcon />
-                )}
-              </AttachmentMedia>
-              <AttachmentContent>
-                <AttachmentTitle>{item.file.name}</AttachmentTitle>
-                <AttachmentDescription>
-                  {item.state === 'error'
-                    ? item.errorMessage ?? 'Falha no envio'
-                    : item.state === 'uploading'
-                      ? 'Enviando...'
-                      : formatFileMeta(item.file)}
-                </AttachmentDescription>
-              </AttachmentContent>
-              <AttachmentActions>
-                <AttachmentAction
-                  aria-label={`Remover ${item.file.name}`}
-                  disabled={disabled || item.state === 'uploading'}
-                  onClick={() => handleRemove(item.id)}
-                >
-                  <XIcon />
-                </AttachmentAction>
-              </AttachmentActions>
-            </Attachment>
-          ))}
-        </AttachmentGroup>
-      ) : null}
+      {fileList}
 
       {files.length === 0 || multiple ? (
         <Button

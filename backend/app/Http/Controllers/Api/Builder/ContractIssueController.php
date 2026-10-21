@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ContractTemplate;
 use App\Models\Reservation;
 use App\Services\ContractIssueService;
+use App\Services\ContractSignatureService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -18,6 +19,7 @@ class ContractIssueController extends Controller
 {
     public function __construct(
         private readonly ContractIssueService $issueService,
+        private readonly ContractSignatureService $signatures,
     ) {}
 
     public function templates(Reservation $reservation): JsonResponse
@@ -62,5 +64,14 @@ class ContractIssueController extends Controller
         );
 
         return response()->json($result, 201);
+    }
+
+    public function resendSignatureLinks(Reservation $reservation): JsonResponse
+    {
+        $this->authorize('issueContract', $reservation);
+
+        return response()->json([
+            'notified' => $this->signatures->resendPendingLinks($reservation),
+        ]);
     }
 }

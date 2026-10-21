@@ -253,3 +253,34 @@ it('exposes floor_kind on broker unit listing', function () {
     expect($codes[$unit->code]['floor_kind'] ?? null)->toBeNull()
         ->and($codes[$garage->code]['floor_kind'])->toBe('garage');
 });
+
+it('includes the selected garage on the broker unit reservation', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $building = Building::factory()->for($tenant)->create();
+    $unit = Unit::factory()->for($tenant)->for($building)->create(['status' => UnitStatus::PreReserved]);
+    $garage = garageSpotFor($building, $tenant, 'S1-01', UnitStatus::PreReserved);
+
+    BuildingAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'building_id' => $building->id,
+    ]);
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+        'status' => ReservationStatus::ProposalDraft,
+        'draft_expires_at' => now()->addMinutes(20),
+        'client_id' => null,
+    ]);
+    $reservation->garageUnits()->attach($garage->id, ['tenant_id' => $tenant->id]);
+
+    Sanctum::actingAs($broker);
+
+    $listed = collect($this->getJson('/api/broker/units')->assertOk()->json())->keyBy('code');
+
+    expect($listed[$unit->code]['reservation']['garage_units'][0]['code'])->toBe('S1-01');
+});

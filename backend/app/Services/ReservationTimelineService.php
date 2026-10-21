@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\DepositKind;
 use App\Enums\ReservationAttachmentKind;
 use App\Enums\ReservationTimelineEventType;
 use App\Models\Reservation;
@@ -109,7 +110,7 @@ class ReservationTimelineService
      */
     public function build(Reservation $reservation, User $viewer): array
     {
-        $reservation->loadMissing(['unit', 'broker', 'client', 'timelineEvents.actor', 'proposals', 'attachments', 'witnesses.user']);
+        $reservation->loadMissing(['unit.building', 'broker', 'client', 'timelineEvents.actor', 'proposals', 'attachments', 'witnesses.user']);
 
         $events = $reservation->timelineEvents->sortBy('created_at');
         $messagesCount = $reservation->messages()->count();
@@ -149,6 +150,8 @@ class ReservationTimelineService
                 'id' => $reservation->unit->id,
                 'code' => $reservation->unit->code,
                 'status' => $reservation->unit->status->value,
+                'price' => $reservation->unit->price,
+                'building_name' => $reservation->unit->building?->name,
             ],
             'client' => $reservation->client === null ? null : [
                 'id' => $reservation->client->id,
@@ -316,6 +319,10 @@ class ReservationTimelineService
             return 'proposal_submitted';
         }
 
+        if ($reservation->isContractSigning()) {
+            return $reservation->hasSignedContract() ? 'contract_validate' : 'contract_issue';
+        }
+
         if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::ContractValidated)
             || $reservation->isSold()) {
             return 'sold';
@@ -369,6 +376,10 @@ class ReservationTimelineService
             return 'deposit_proof';
         }
 
+        if ($reservation->isProposalSigning()) {
+            return 'proposal_decision';
+        }
+
         if ($reservation->isDepositPending()) {
             return 'deposit_window';
         }
@@ -406,6 +417,10 @@ class ReservationTimelineService
             return 'contract_uploaded';
         }
 
+        if ($reservation->isContractSigning()) {
+            return 'contract_signing';
+        }
+
         if ($reservation->isContractIssued()) {
             return 'contract_issued';
         }
@@ -416,6 +431,10 @@ class ReservationTimelineService
 
         if ($reservation->isDepositProofPending()) {
             return 'deposit_proof_pending';
+        }
+
+        if ($reservation->isProposalSigning()) {
+            return 'proposal_signing';
         }
 
         if ($reservation->isDepositPending()) {
@@ -502,6 +521,10 @@ class ReservationTimelineService
         }
 
         if ($reservation->isCancelled() && $index > $currentIndex) {
+            return 'skipped';
+        }
+
+        if (in_array($stepKey, ['deposit_window', 'deposit_proof'], true) && $this->skipsDepositValue($reservation)) {
             return 'skipped';
         }
 
@@ -758,6 +781,10 @@ class ReservationTimelineService
      */
     private function resolveActions(string $stepKey, User $viewer, Reservation $reservation): array
     {
+        if ($reservation->isContractSigning() && ! $reservation->hasSignedContract()) {
+            return [];
+        }
+
         $isBroker = $viewer->role === 'broker';
 
         return match ($stepKey) {
@@ -831,6 +858,15 @@ class ReservationTimelineService
         }
 
         return ['approve_deposit_proof'];
+    }
+
+    private function skipsDepositValue(Reservation $reservation): bool
+    {
+        $reservation->loadMissing('proposals');
+
+        $proposal = $reservation->proposals->sortByDesc('version')->first();
+
+        return $proposal?->deposit_kind === DepositKind::Asset;
     }
 
     private function stepIndex(string $key): int
@@ -937,6 +973,14 @@ class ReservationTimelineService
      */
     private function resolveWaitingOn(string $currentKey, string $currentStatus, Reservation $reservation): ?string
     {
+        if ($reservation->isProposalSigning()) {
+            return null;
+        }
+
+        if ($reservation->isContractSigning() && ! $reservation->hasSignedContract()) {
+            return null;
+        }
+
         if ($currentStatus === 'completed') {
             return null;
         }

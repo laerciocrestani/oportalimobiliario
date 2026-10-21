@@ -19,6 +19,14 @@ docker compose exec backend php artisan migrate
 
 O Compose sobe também `queue` (`queue:work`) e `scheduler` (`schedule:work`) — pré-reserva, sinal e reservas expiradas rodam sozinhos no ambiente local. Em produção: o mesmo `schedule:work` como processo, ou cron `* * * * * php artisan schedule:run`.
 
+Para a ZapSign devolver o webhook nesta máquina, suba o túnel no host (deixe o terminal aberto):
+
+```bash
+./scripts/start-zapsign-tunnel.sh
+```
+
+A URL pública é `https://hooks-dev.oportalimobiliario.com.br/api/webhooks/zapsign`, encaminhada para `http://127.0.0.1:8000`. Pare com `Ctrl+C`.
+
 ### URLs
 
 | Portal | URL |

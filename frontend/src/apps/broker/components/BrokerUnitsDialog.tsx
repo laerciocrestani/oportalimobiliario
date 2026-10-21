@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import type { BuildingWithUnits } from '@/apps/broker/lib/group-units-by-building'
-import { brokerApi, ApiRequestError, type Unit } from '@/lib/api'
+import { brokerApi, ApiRequestError, type GarageUnit, type Unit } from '@/lib/api'
 import {
   formatAmenityNames,
   formatListedPrice,
@@ -94,12 +94,12 @@ function UnitRowActions({
           disabled={holdingUnitId === unit.id}
           onClick={() => onContinueReservation(unit)}
         >
-          {holdingUnitId === unit.id ? 'Pré-reservando...' : 'Continuar reserva'}
+          {holdingUnitId === unit.id ? 'Reservando...' : 'Continuar reserva'}
         </Button>
       )
     }
 
-    return <p className="text-sm text-muted-foreground">Pré-reservada</p>
+    return <p className="text-sm text-muted-foreground">Reservada</p>
   }
 
   if (unit.status === 'available') {
@@ -109,7 +109,7 @@ function UnitRowActions({
         disabled={holdingUnitId === unit.id}
         onClick={() => onPreReserve(unit)}
       >
-        {holdingUnitId === unit.id ? 'Pré-reservando...' : 'Pré-reservar'}
+        {holdingUnitId === unit.id ? 'Reservando...' : 'Reservar'}
       </Button>
     )
   }
@@ -129,6 +129,7 @@ export function BrokerUnitsDialog({
   const [preHoldExpiresAt, setPreHoldExpiresAt] = useState<string | null>(null)
   const [preHoldFormOpen, setPreHoldFormOpen] = useState(false)
   const [proposalOpen, setProposalOpen] = useState(false)
+  const [proposalGarageUnits, setProposalGarageUnits] = useState<GarageUnit[]>([])
   const [messagesReservationId, setMessagesReservationId] = useState<number | null>(null)
   const [messagesOpen, setMessagesOpen] = useState(false)
   const [cancellingUnitId, setCancellingUnitId] = useState<number | null>(null)
@@ -189,7 +190,7 @@ export function BrokerUnitsDialog({
         if (toastTarget) {
           toastShownForRef.current.add(toastTarget.unitId)
           toast.message(
-            `Unidade ${toastTarget.unitCode} acaba de ser pré-reservada por outro corretor.`,
+            `Unidade ${toastTarget.unitCode} acaba de ser reservada por outro corretor.`,
           )
         }
 
@@ -216,8 +217,14 @@ export function BrokerUnitsDialog({
     setPreHoldFormOpen(true)
   }
 
-  function openProposalForm(unit: Unit, reservationId: number, expiresAt: string | null) {
+  function openProposalForm(
+    unit: Unit,
+    reservationId: number,
+    expiresAt: string | null,
+    garageUnits: GarageUnit[] = [],
+  ) {
     setSelectedUnit(unit)
+    setProposalGarageUnits(garageUnits)
     setPreHoldReservationId(reservationId)
     setPreHoldExpiresAt(expiresAt)
     setProposalOpen(true)
@@ -236,21 +243,26 @@ export function BrokerUnitsDialog({
       return
     }
 
-    void submitPreHold(unit, [])
+    void submitDraft(unit, [])
   }
 
-  async function submitPreHold(unit: Unit, garageUnitIds: number[]) {
+  async function submitDraft(unit: Unit, garageUnitIds: number[]) {
     setHoldingUnitId(unit.id)
     setGaragePickerUnit(null)
 
     try {
-      const reservation = await brokerApi.createPreHold(unit.id, garageUnitIds)
-      openPreHoldForm(unit, reservation.id, reservation.expires_at)
+      const reservation = await brokerApi.createDraft(unit.id, garageUnitIds)
+      openProposalForm(
+        unit,
+        reservation.id,
+        reservation.draft_expires_at ?? reservation.expires_at,
+        reservation.garage_units ?? [],
+      )
     } catch (err) {
       const message =
         err instanceof ApiRequestError && err.status === 422
           ? err.message
-          : 'Não foi possível pré-reservar a unidade.'
+          : 'Não foi possível reservar a unidade.'
 
       toast.error(message)
       setError(message)
@@ -268,8 +280,12 @@ export function BrokerUnitsDialog({
       return
     }
 
-    if (reservationStatus === 'proposal_pending' || reservationStatus === 'proposal_returned') {
-      openProposalForm(unit, reservationId, expiresAt)
+    if (
+      reservationStatus === 'proposal_draft' ||
+      reservationStatus === 'proposal_pending' ||
+      reservationStatus === 'proposal_returned'
+    ) {
+      openProposalForm(unit, reservationId, expiresAt, unit.reservation?.garage_units ?? [])
       return
     }
 
@@ -333,7 +349,7 @@ export function BrokerUnitsDialog({
           <DialogHeader>
             <DialogTitle>{building?.name ?? 'Unidades'}</DialogTitle>
             <DialogDescription>
-              Selecione uma unidade disponível para iniciar a pré-reserva. Vagas de garagem só podem
+              Selecione uma unidade disponível para reservar. Vagas de garagem só podem
               ser atreladas à reserva da unidade.
             </DialogDescription>
           </DialogHeader>
@@ -452,11 +468,11 @@ export function BrokerUnitsDialog({
               disabled={garagePickerUnit === null || holdingUnitId !== null}
               onClick={() => {
                 if (garagePickerUnit) {
-                  void submitPreHold(garagePickerUnit, selectedGarageIds)
+                  void submitDraft(garagePickerUnit, selectedGarageIds)
                 }
               }}
             >
-              {holdingUnitId !== null ? 'Pré-reservando...' : 'Continuar'}
+              {holdingUnitId !== null ? 'Reservando...' : 'Continuar'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -490,11 +506,14 @@ export function BrokerUnitsDialog({
           if (!nextOpen) {
             setPreHoldReservationId(null)
             setPreHoldExpiresAt(null)
+            setProposalGarageUnits([])
           }
         }}
         unit={selectedUnit}
+        garageUnits={proposalGarageUnits}
         reservationId={preHoldReservationId}
         expiresAt={preHoldExpiresAt}
+        releaseHoldOnClose={false}
         client={selectedUnit?.reservation?.client ?? null}
         onReserved={() => {
           setProposalOpen(false)

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ReservationAttachmentKind;
 use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
+use App\Jobs\SendContractToZapSign;
 use App\Models\ContractTemplate;
 use App\Models\Reservation;
 use App\Models\ReservationAttachment;
@@ -76,11 +77,12 @@ class ContractIssueService
     {
         $this->assertTemplateForReservation($reservation, $template);
         $this->assertCanIssue($reservation);
+        $this->assertClientSnapshot($reservation);
 
         $merged = $this->resolver->mergeValues($reservation, $template, $values, $finalPriceBrl);
         $this->assertRequiredValues($template, $merged);
 
-        return DB::transaction(function () use ($actor, $reservation, $template, $merged, $finalPriceBrl) {
+        $result = DB::transaction(function () use ($actor, $reservation, $template, $merged, $finalPriceBrl) {
             $reservation->loadMissing('unit');
             $pdf = $this->renderer->render($template->body_markdown, $merged);
             $this->replacePreviousPdf($reservation);
@@ -128,6 +130,10 @@ class ContractIssueService
                 'attachment' => $attachment->toApiArray("/builder/reservations/{$reservation->id}/attachments"),
             ];
         });
+
+        SendContractToZapSign::dispatch($reservation->id);
+
+        return $result;
     }
 
     private function assertTemplateForReservation(Reservation $reservation, ContractTemplate $template): void
@@ -140,6 +146,24 @@ class ContractIssueService
             throw ValidationException::withMessages([
                 'contract_template_id' => 'O modelo de contrato está inativo.',
             ]);
+        }
+    }
+
+    private function assertClientSnapshot(Reservation $reservation): void
+    {
+        $proposal = $reservation->proposals()->latest('version')->first();
+        $missing = [];
+
+        if (trim((string) $proposal?->client_cpf) === '') {
+            $missing['client_cpf'][] = 'Informe o CPF do cliente antes de emitir o contrato.';
+        }
+
+        if (trim((string) $proposal?->address) === '') {
+            $missing['address'][] = 'Informe o endereço do cliente antes de emitir o contrato.';
+        }
+
+        if ($missing !== []) {
+            throw ValidationException::withMessages($missing);
         }
     }
 

@@ -13,13 +13,11 @@ use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
 use App\Enums\UnitStatus;
 use App\Enums\UserActivityAction;
-use App\Models\BrokerClient;
-use App\Models\Building;
 use App\Models\Reservation;
+use App\Models\ReservationAttachment;
 use App\Models\ReservationMessage;
 use App\Models\ReservationProposal;
 use App\Models\ReservationTimelineEvent;
-use App\Models\ReservationAttachment;
 use App\Models\Tenant;
 use App\Models\Unit;
 use App\Models\UnitAccess;
@@ -68,7 +66,7 @@ it('submits proposal from pre-hold', function () {
     assertUserActivity($broker, UserActivityAction::ReservationProposalSubmitted, 'Maria Silva');
 });
 
-it('submits proposal with only client name, phone, commercial terms and attachments', function () {
+it('rejects a proposal without the buyer identity', function () {
     Storage::fake('local');
 
     $tenant = Tenant::factory()->create();
@@ -98,20 +96,136 @@ it('submits proposal with only client name, phone, commercial terms and attachme
         'client_name' => 'Maria Silva',
         'client_phone' => '11999999999',
         'payment_terms' => 'Entrada de R$ 50.000 + 24x de R$ 5.000',
+        'deposit_kind' => 'pix',
         'files' => [$pdf, $photo],
     ])
-        ->assertCreated()
-        ->assertJsonPath('status', ReservationStatus::ProposalPending->value)
-        ->assertJsonPath('proposal.client_name', 'Maria Silva')
-        ->assertJsonPath('proposal.client_phone', '11999999999')
-        ->assertJsonPath('proposal.payment_terms', 'Entrada de R$ 50.000 + 24x de R$ 5.000')
-        ->assertJsonPath('proposal.client_cpf', '')
-        ->assertJsonPath('proposal.land_value', 0)
-        ->assertJsonPath('proposal.attachments.0.original_name', 'proposta.pdf')
-        ->assertJsonPath('proposal.attachments.1.original_name', 'simulacao.jpg');
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['party_kind', 'client_cpf', 'address', 'city', 'state', 'zip']);
+});
 
-    expect(ReservationProposal::query()->count())->toBe(1);
-    expect(ReservationAttachment::query()->where('kind', ReservationAttachmentKind::Proposal)->count())->toBe(2);
+it('stores a company buyer on the proposal', function () {
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+
+    UnitAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'unit_id' => $unit->id,
+    ]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = Reservation::factory()->preHold()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+
+    $this->post("/api/broker/reservations/{$reservation->id}/proposal", validProposalRequest([
+        'party_kind' => 'company',
+        'client_name' => 'Aurora Empreendimentos Ltda',
+        'client_cpf' => '11222333000181',
+        'client_rg' => null,
+        'marital_status' => null,
+        'nationality' => null,
+        'profession' => null,
+    ]))
+        ->assertCreated()
+        ->assertJsonPath('proposal.party_kind', 'company')
+        ->assertJsonPath('proposal.client_cpf', '11222333000181')
+        ->assertJsonPath('proposal.profession', null);
+});
+
+it('stores reinforcements and dations as json on the proposal', function () {
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+
+    UnitAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'unit_id' => $unit->id,
+    ]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = Reservation::factory()->preHold()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+
+    $this->post("/api/broker/reservations/{$reservation->id}/proposal", validProposalRequest([
+        'commercial_terms' => [
+            'reinforcements' => [
+                ['amount' => '10.000,00', 'due_on' => '10/11/2026'],
+                ['amount' => '', 'due_on' => ''],
+                ['amount' => '5.000,00', 'due_on' => ''],
+            ],
+            'dations' => ['Apartamento na rua A', ''],
+        ],
+    ]))
+        ->assertCreated()
+        ->assertJsonPath('proposal.commercial_terms.reinforcements.0.amount', '10000.00')
+        ->assertJsonPath('proposal.commercial_terms.reinforcements.0.due_on', '2026-11-10')
+        ->assertJsonPath('proposal.commercial_terms.reinforcements.1.amount', '5000.00')
+        ->assertJsonPath('proposal.commercial_terms.reinforcements.1.due_on', null)
+        ->assertJsonPath('proposal.commercial_terms.dations.0', 'Apartamento na rua A');
+
+    expect($reservation->proposals()->first()?->commercial_terms)->toBe([
+        'reinforcements' => [
+            ['amount' => '10000.00', 'due_on' => '2026-11-10'],
+            ['amount' => '5000.00', 'due_on' => null],
+        ],
+        'dations' => ['Apartamento na rua A'],
+    ]);
+});
+
+it('rejects a reinforcement with an invalid amount or date', function () {
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+
+    UnitAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'unit_id' => $unit->id,
+    ]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = Reservation::factory()->preHold()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+
+    $this->post("/api/broker/reservations/{$reservation->id}/proposal", validProposalRequest([
+        'commercial_terms' => [
+            'reinforcements' => [
+                ['amount' => 'abc', 'due_on' => '32/13/2026'],
+            ],
+            'dations' => [],
+        ],
+    ]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'commercial_terms.reinforcements.0.amount',
+            'commercial_terms.reinforcements.0.due_on',
+        ]);
 });
 
 it('rejects proposal without attachments', function () {
@@ -172,9 +286,9 @@ it('accepts proposal without opening a deposit TTL', function () {
         'signed_file' => signedProposalPdf(),
     ])
         ->assertOk()
-        ->assertJsonPath('status', ReservationStatus::DepositPending->value);
+        ->assertJsonPath('status', ReservationStatus::ProposalSigning->value);
 
-    expect($unit->fresh()->status)->toBe(UnitStatus::Reserved);
+    expect($unit->fresh()->status)->toBe(UnitStatus::PreReserved);
     expect($reservation->fresh()->client_id)->not->toBeNull();
     expect($reservation->fresh()->expires_at)->toBeNull();
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::DepositWindowOpened)->exists())->toBeFalse();
@@ -267,7 +381,7 @@ it('allows a new pre-hold after proposal rejection', function () {
     expect(Reservation::query()->count())->toBe(2);
 });
 
-it('returns proposal to broker for revision', function () {
+it('refuses to return a proposal for revision', function () {
     $tenant = Tenant::factory()->create();
     $builder = User::factory()->builder()->withBuilderPermissions([
         BuilderPermissions::CANCEL_RESERVATIONS,
@@ -292,12 +406,12 @@ it('returns proposal to broker for revision', function () {
         'decision' => ProposalDecision::Returned->value,
         'decision_note' => 'Ajustar condições de pagamento.',
     ])
-        ->assertOk()
-        ->assertJsonPath('status', ReservationStatus::ProposalReturned->value);
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'A proposta não é devolvida. O diálogo fica nas mensagens; a construtora aceita ou recusa.');
 
-    expect($unit->fresh()->status)->toBe(UnitStatus::PreReserved);
-    expect(ReservationMessage::query()->where('reservation_id', $reservation->id)->sole()->body)
-        ->toBe('Proposta devolvida: Ajustar condições de pagamento.');
+    expect($reservation->fresh()->status)->toBe(ReservationStatus::ProposalPending)
+        ->and($unit->fresh()->status)->toBe(UnitStatus::PreReserved)
+        ->and(ReservationMessage::query()->where('reservation_id', $reservation->id)->count())->toBe(0);
 });
 
 it('requires a note to return or reject a proposal', function (string $decision) {

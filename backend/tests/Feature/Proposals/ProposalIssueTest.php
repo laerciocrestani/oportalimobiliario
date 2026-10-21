@@ -62,7 +62,12 @@ it('issues a proposal pdf from an active template', function () {
 
     $this->postJson("/api/builder/reservations/{$reservation->id}/proposal/issue", [
         'proposal_template_id' => $template->id,
-        'values' => ['nome_cliente' => 'Maria Silva'],
+        'values' => [
+            'nome_cliente' => 'Maria Silva',
+            'valor_entrada' => '50000',
+            'parcelas_quantidade' => '24',
+            'parcela_valor' => '10000',
+        ],
     ])
         ->assertCreated()
         ->assertJsonPath('attachment.kind', ReservationAttachmentKind::ProposalPdf->value);
@@ -80,7 +85,7 @@ it('lists only active proposal templates of the tenant', function () {
     $broker = User::factory()->broker()->create();
     $reservation = createPendingProposalReservation($tenant, $broker);
 
-    ProposalTemplate::factory()->for($tenant)->create(['name' => 'Ativo']);
+    ProposalTemplate::factory()->for($tenant)->create(['name' => 'Personalizada']);
     ProposalTemplate::factory()->inactive()->for($tenant)->create(['name' => 'Inativo']);
     ProposalTemplate::factory()->for($other)->create(['name' => 'Outro tenant']);
 
@@ -89,24 +94,35 @@ it('lists only active proposal templates of the tenant', function () {
     $this->getJson("/api/builder/reservations/{$reservation->id}/proposal/templates")
         ->assertOk()
         ->assertJsonCount(1)
-        ->assertJsonPath('0.name', 'Ativo');
+        ->assertJsonPath('0.name', 'Proposta comercial padrão');
 });
 
-it('rejects issuing from an inactive template', function () {
+it('issues the commercial proposal when the tenant only had a custom template', function () {
     Storage::fake('local');
 
     $tenant = Tenant::factory()->create();
     $builder = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
     $broker = User::factory()->broker()->create();
     $reservation = createPendingProposalReservation($tenant, $broker);
-    $template = ProposalTemplate::factory()->inactive()->for($tenant)->create();
+    $template = ProposalTemplate::factory()->inactive()->for($tenant)->create([
+        'name' => 'Personalizada',
+        'body_markdown' => 'Texto livre',
+    ]);
 
     Sanctum::actingAs($builder);
 
     $this->postJson("/api/builder/reservations/{$reservation->id}/proposal/issue", [
         'proposal_template_id' => $template->id,
-        'values' => [],
-    ])->assertUnprocessable();
+        'values' => [
+            'valor_entrada' => '50000',
+            'parcelas_quantidade' => '24',
+            'parcela_valor' => '10000',
+        ],
+    ])->assertCreated();
+
+    expect($template->fresh()->name)->toBe('Proposta comercial padrão')
+        ->and($template->fresh()->is_active)->toBeTrue()
+        ->and($template->fresh()->body_markdown)->toContain('{reforcos}');
 });
 
 it('isolates proposal issue templates by tenant', function () {
@@ -141,7 +157,9 @@ it('forbids issuing a proposal pdf without reservations.cancel', function () {
         ->assertForbidden();
 });
 
-it('rejects accept without the builder-signed pdf', function () {
+it('accepts without an uploaded signed pdf and waits for ZapSign', function () {
+    Storage::fake('local');
+
     $tenant = Tenant::factory()->create();
     $builder = User::factory()->builder()->withBuilderPermissions([
         BuilderPermissions::CANCEL_RESERVATIONS,
@@ -154,10 +172,11 @@ it('rejects accept without the builder-signed pdf', function () {
     $this->patchJson("/api/builder/reservations/{$reservation->id}/proposal/decision", [
         'decision' => ProposalDecision::Accepted->value,
     ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['signed_file']);
+        ->assertOk()
+        ->assertJsonPath('status', ReservationStatus::ProposalSigning->value);
 
-    expect($reservation->fresh()->status)->toBe(ReservationStatus::ProposalPending);
+    expect($reservation->unit->fresh()->status)->toBe(UnitStatus::PreReserved);
+    expect(ReservationAttachment::query()->where('kind', ReservationAttachmentKind::ProposalPdf)->count())->toBe(1);
 });
 
 it('accepts a proposal only with the builder-signed pdf', function () {
@@ -178,11 +197,12 @@ it('accepts a proposal only with the builder-signed pdf', function () {
         'signed_file' => signedProposalPdf(),
     ])
         ->assertOk()
-        ->assertJsonPath('status', ReservationStatus::DepositPending->value);
+        ->assertJsonPath('status', ReservationStatus::ProposalSigning->value);
 
-    expect($unit->fresh()->status)->toBe(UnitStatus::Reserved);
+    expect($unit->fresh()->status)->toBe(UnitStatus::PreReserved);
     expect($reservation->fresh()->expires_at)->toBeNull();
-    expect(ReservationAttachment::query()->where('kind', ReservationAttachmentKind::ProposalSignedBuilder)->count())->toBe(1);
+    expect(ReservationAttachment::query()->where('kind', ReservationAttachmentKind::ProposalPdf)->count())->toBe(1);
+    expect(ReservationAttachment::query()->where('kind', ReservationAttachmentKind::ProposalSignedBuilder)->count())->toBe(0);
     expect(ReservationTimelineEvent::query()->where('type', ReservationTimelineEventType::ProposalAccepted)->exists())->toBeTrue();
     assertUserActivity($builder, UserActivityAction::ReservationProposalAccepted, '101');
 });

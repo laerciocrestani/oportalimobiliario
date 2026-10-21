@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\DepositKind;
+use App\Enums\PartyKind;
 use App\Enums\ProposalDecision;
 use Database\Factories\ReservationProposalFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -15,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'client_name',
     'client_email',
     'client_phone',
+    'party_kind',
     'client_cpf',
     'client_rg',
     'address',
@@ -23,6 +26,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'zip',
     'marital_status',
     'nationality',
+    'profession',
     'spouse_name',
     'spouse_phone',
     'spouse_email',
@@ -31,6 +35,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'spouse_nationality',
     'land_value',
     'payment_terms',
+    'commercial_terms',
+    'deposit_kind',
     'decision',
     'decision_note',
     'submitted_by',
@@ -46,6 +52,9 @@ class ReservationProposal extends Model
     {
         return [
             'land_value' => 'decimal:2',
+            'commercial_terms' => 'array',
+            'party_kind' => PartyKind::class,
+            'deposit_kind' => DepositKind::class,
             'decision' => ProposalDecision::class,
             'decided_at' => 'datetime',
         ];
@@ -82,7 +91,9 @@ class ReservationProposal extends Model
             'client_name' => $this->client_name,
             'client_email' => $this->client_email,
             'client_phone' => $this->client_phone,
+            'party_kind' => $this->party_kind?->value ?? PartyKind::Individual->value,
             'client_cpf' => $this->client_cpf,
+            'profession' => $this->profession,
             'client_rg' => $this->client_rg,
             'address' => $this->address,
             'city' => $this->city,
@@ -98,6 +109,8 @@ class ReservationProposal extends Model
             'spouse_nationality' => $this->spouse_nationality,
             'land_value' => (float) $this->land_value,
             'payment_terms' => $this->payment_terms,
+            'commercial_terms' => $this->commercial_terms,
+            'deposit_kind' => $this->deposit_kind?->value ?? DepositKind::Pix->value,
             'decision' => $this->decision?->value,
             'decision_note' => $this->decision_note,
             'submitted_by' => $this->submitted_by,

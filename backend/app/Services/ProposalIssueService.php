@@ -7,7 +7,10 @@ use App\Enums\ReservationTimelineEventType;
 use App\Models\ProposalTemplate;
 use App\Models\Reservation;
 use App\Models\ReservationAttachment;
+use App\Models\ReservationProposal;
 use App\Models\User;
+use App\Support\CommercialProposalTemplate;
+use App\Support\ContractSystemVariables;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -51,23 +54,125 @@ class ProposalIssueService
     }
 
     /**
+     * Modelos ativos da construtora dona da reserva, para o corretor preencher no envio.
+     *
+     * @return list<array{id: int, name: string, body_markdown: string, variables: list<array{slug: string, label: string}>, prefill: object}>
+     */
+    public function listForBroker(Reservation $reservation): array
+    {
+        $reservation->loadMissing(['client']);
+        CommercialProposalTemplate::sync((int) $reservation->tenant_id);
+
+        $systemValues = $this->resolver->systemValues($reservation);
+        $catalog = collect(ContractSystemVariables::catalog())->keyBy('slug');
+        $autoSlugs = [
+            'nome_cliente',
+            'telefone_cliente',
+            'email_cliente',
+            'codigo_unidade',
+            'nome_empreendimento',
+            'box',
+            'preco_final',
+            'nome_corretor',
+            'data_emissao',
+        ];
+        $contextSlugs = [
+            'nome_empreendimento',
+            'codigo_unidade',
+            'box',
+            'imobiliaria',
+            'nome_corretor',
+            'data_emissao',
+            'preco_final',
+            'preco_unidade_original',
+            'preco_unidade_corrigido',
+            'preco_vaga_original',
+            'preco_vaga_corrigido',
+        ];
+
+        return ProposalTemplate::query()
+            ->withoutGlobalScope('tenant')
+            ->where('tenant_id', $reservation->tenant_id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get()
+            ->map(function (ProposalTemplate $template) use ($systemValues, $catalog, $autoSlugs, $contextSlugs): array {
+                $optional = array_flip($this->resolver->optionalPlaceholderSlugs($template->body_markdown));
+                $customLabels = collect($template->custom_variables ?? [])
+                    ->mapWithKeys(function (mixed $variable): array {
+                        if (! is_array($variable)) {
+                            return [];
+                        }
+
+                        $slug = (string) ($variable['slug'] ?? '');
+
+                        return $slug === '' ? [] : [$slug => (string) ($variable['label'] ?? '')];
+                    });
+
+                $variables = [];
+                $prefill = [];
+
+                foreach ($this->resolver->extractPlaceholders($template->body_markdown) as $slug) {
+                    if (in_array($slug, $autoSlugs, true)) {
+                        $value = trim((string) ($systemValues[$slug] ?? ''));
+
+                        if ($value !== '') {
+                            $prefill[$slug] = $value;
+                        }
+                    }
+
+                    if (in_array($slug, $contextSlugs, true)) {
+                        continue;
+                    }
+
+                    $customLabel = $customLabels->get($slug);
+                    $catalogEntry = $catalog->get($slug);
+                    $catalogLabel = is_array($catalogEntry) ? ($catalogEntry['label'] ?? null) : null;
+                    $variables[] = [
+                        'slug' => $slug,
+                        'label' => (is_string($customLabel) && $customLabel !== '')
+                            ? $customLabel
+                            : (is_string($catalogLabel) && $catalogLabel !== '' ? $catalogLabel : str_replace('_', ' ', $slug)),
+                        'required' => ! isset($optional[$slug]),
+                    ];
+                }
+
+                return [
+                    'id' => $template->id,
+                    'name' => $template->name,
+                    'body_markdown' => $template->body_markdown,
+                    'variables' => $variables,
+                    'prefill' => (object) $prefill,
+                ];
+            })
+            ->all();
+    }
+
+    /**
      * @return list<array{id: int, name: string}>
      */
     public function activeTemplates(Reservation $reservation): array
     {
         $this->assertCanIssue($reservation);
 
-        return ProposalTemplate::query()
-            ->where('tenant_id', $reservation->tenant_id)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (ProposalTemplate $template) => [
-                'id' => $template->id,
-                'name' => $template->name,
-            ])
-            ->values()
-            ->all();
+        $template = CommercialProposalTemplate::sync((int) $reservation->tenant_id);
+
+        return [[
+            'id' => $template->id,
+            'name' => $template->name,
+        ]];
+    }
+
+    public function resolve(Reservation $reservation, int $templateId): ProposalTemplate
+    {
+        $commercial = CommercialProposalTemplate::sync((int) $reservation->tenant_id);
+        $template = ProposalTemplate::query()->withoutGlobalScope('tenant')->find($templateId);
+
+        if ($template === null || (int) $template->id !== (int) $commercial->id) {
+            abort(404);
+        }
+
+        return $commercial;
     }
 
     /**
@@ -116,6 +221,55 @@ class ProposalIssueService
                 'attachment' => $attachment->toApiArray("/builder/reservations/{$reservation->id}/attachments"),
             ];
         });
+    }
+
+    public function storeAcceptancePdf(User $actor, Reservation $reservation, ReservationProposal $proposal): ReservationAttachment
+    {
+        $existing = $reservation->attachments()
+            ->where('kind', ReservationAttachmentKind::ProposalPdf)
+            ->latest('id')
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        $pdf = $this->renderer->render(
+            $this->acceptanceMarkdown($reservation),
+            $this->resolver->systemValues($reservation),
+        );
+
+        $path = sprintf(
+            'reservations/%d/%d/%s.pdf',
+            $reservation->tenant_id,
+            $reservation->id,
+            Str::uuid(),
+        );
+        Storage::disk('local')->put($path, $pdf);
+
+        $attachment = ReservationAttachment::query()->create([
+            'reservation_id' => $reservation->id,
+            'kind' => ReservationAttachmentKind::ProposalPdf,
+            'path' => $path,
+            'original_name' => 'proposta.pdf',
+            'mime_type' => 'application/pdf',
+            'size_bytes' => strlen($pdf),
+            'uploaded_by' => $actor->id,
+        ]);
+
+        $this->timelineService->record(
+            $reservation,
+            ReservationTimelineEventType::ProposalPdfIssued,
+            $actor,
+            ['attachment_id' => $attachment->id],
+        );
+
+        return $attachment;
+    }
+
+    private function acceptanceMarkdown(Reservation $reservation): string
+    {
+        return CommercialProposalTemplate::sync((int) $reservation->tenant_id)->body_markdown;
     }
 
     private function assertTemplateForReservation(Reservation $reservation, ProposalTemplate $template): void

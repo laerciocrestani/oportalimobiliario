@@ -46,6 +46,7 @@ class UnitController extends Controller
                 'amenities' => fn ($query) => $query->orderBy('name'),
                 'floorRecord',
                 'reservation.client',
+                'reservation.garageUnits',
             ])
             ->where(function ($query) use ($buildingIds, $legacyUnitIds): void {
                 if ($buildingIds->isNotEmpty()) {

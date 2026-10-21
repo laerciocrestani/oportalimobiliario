@@ -10,6 +10,7 @@ use App\Models\Reservation;
 use App\Models\Unit;
 use App\Services\BrokerUnitAccessService;
 use App\Services\PreReservationService;
+use App\Services\ProposalDraftService;
 use App\Services\ReservationCancellationService;
 use App\Services\ReservationGarageService;
 use App\Services\ReservationPendingReplyService;
@@ -34,6 +35,7 @@ class ReservationController extends Controller
     public function __construct(
         private readonly BrokerUnitAccessService $brokerUnitAccessService,
         private readonly PreReservationService $preReservationService,
+        private readonly ProposalDraftService $proposalDraftService,
         private readonly ReservationCancellationService $cancellationService,
         private readonly ReservationPendingReplyService $reservationPendingReplyService,
         private readonly ReservationProposalService $proposalService,
@@ -108,6 +110,45 @@ class ReservationController extends Controller
 
         return response()->json(
             ReservationGaragePresenter::fromReservation($reservation->load(['unit', 'garageUnits'])),
+            201,
+        );
+    }
+
+    public function draft(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'unit_id' => ['required', 'integer', 'exists:units,id'],
+            'garage_unit_ids' => ['sometimes', 'array'],
+            'garage_unit_ids.*' => ['integer', 'distinct', 'exists:units,id'],
+        ]);
+
+        $broker = $request->user();
+        $unit = Unit::query()
+            ->withoutGlobalScope('tenant')
+            ->with('floorRecord')
+            ->findOrFail($data['unit_id']);
+
+        $access = $this->brokerUnitAccessService->resolveAccess($broker, $unit);
+
+        if ($access === null) {
+            return response()->json(['message' => 'No access to this unit.'], 403);
+        }
+
+        if ($unit->status !== UnitStatus::Available) {
+            return response()->json([
+                'message' => 'Esta unidade acaba de ser reservada por outro corretor.',
+            ], 422);
+        }
+
+        $reservation = $this->proposalDraftService->create(
+            $broker,
+            $unit,
+            $access,
+            $data['garage_unit_ids'] ?? [],
+        );
+
+        return response()->json(
+            ReservationGaragePresenter::fromReservation($reservation),
             201,
         );
     }

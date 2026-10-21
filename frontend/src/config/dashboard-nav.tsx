@@ -6,7 +6,6 @@ import {
   HandshakeIcon,
   LayersIcon,
   LayoutDashboardIcon,
-  ScrollTextIcon,
   Settings2Icon,
   ShieldIcon,
   TrendingUpIcon,
@@ -62,11 +61,6 @@ export const dashboardNav: Record<DashboardRole, DashboardNavConfig> = {
         title: 'Contratos',
         url: '/contracts',
         icon: <FileTextIcon />,
-      },
-      {
-        title: 'Propostas',
-        url: '/proposals',
-        icon: <ScrollTextIcon />,
       },
       {
         title: 'Convites',

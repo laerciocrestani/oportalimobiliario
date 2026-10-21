@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\ProposalModuleMarkdown;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 
@@ -12,13 +13,15 @@ class ContractPdfRenderer
      */
     public function render(string $markdown, array $values): string
     {
+        $markdown = ProposalModuleMarkdown::expand($markdown, $values);
+
         $html = Str::markdown($markdown, [
             'html_input' => 'strip',
             'allow_unsafe_links' => false,
         ]);
 
         $html = preg_replace_callback(
-            '/\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/',
+            '/\{\{\s*([a-z][a-z0-9_]*)\s*\??\s*\}\}/',
             function (array $matches) use ($values): string {
                 return e($values[$matches[1]] ?? '');
             },

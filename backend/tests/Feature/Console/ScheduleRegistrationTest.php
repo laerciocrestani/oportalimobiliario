@@ -18,6 +18,9 @@ it('registers reservation and deposit schedule commands', function (string $comm
 })->with([
     'expire reservations hourly' => ['opim:expire-reservations', '0 * * * *'],
     'expire pre-reservations every minute' => ['opim:expire-pre-reservations', '* * * * *'],
+    'expire proposal drafts every minute' => ['opim:expire-proposal-drafts', '* * * * *'],
+    'expire proposal reviews every minute' => ['opim:expire-proposal-reviews', '* * * * *'],
     'check deposit windows hourly' => ['opim:check-deposit-windows', '0 * * * *'],
+    'remind proposal signatures daily' => ['opim:remind-proposal-signatures', '0 8 * * *'],
     'purge user activity daily' => ['opim:purge-user-activity', '0 3 * * *'],
 ]);

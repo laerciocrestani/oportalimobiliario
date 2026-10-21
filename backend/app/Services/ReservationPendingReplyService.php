@@ -138,6 +138,7 @@ class ReservationPendingReplyService
             'status' => $reservation->status->value,
             'created_at' => $reservation->created_at,
             'expires_at' => $reservation->expires_at,
+            'review_deadline_at' => $reservation->review_deadline_at,
             'messages_count' => $reservation->messages_count ?? $reservation->messages()->count(),
             'unread_messages_count' => $unreadMessagesCount,
             'needs_reply' => $unreadMessagesCount > 0,
@@ -254,7 +255,8 @@ class ReservationPendingReplyService
             return 'builder_contract_sign';
         }
 
-        if ($reservation->isContractBuilderSigned() && $reservation->hasAllWitnessSignatures()) {
+        if ($reservation->hasSignedContract()
+            || ($reservation->isContractBuilderSigned() && $reservation->hasAllWitnessSignatures())) {
             return 'sold_validation';
         }
 

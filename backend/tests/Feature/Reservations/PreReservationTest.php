@@ -23,6 +23,33 @@ use App\Services\PreReservationService;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
+it('cancels existing pre-holds and leaves submitted proposals in place', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $heldUnit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+    $pendingUnit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+
+    $preHold = Reservation::factory()->preHold()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $heldUnit->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    $pending = Reservation::factory()->proposalPending()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $pendingUnit->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    $count = app(PreReservationService::class)->cancelLegacyPreHolds();
+
+    expect($count)->toBe(1)
+        ->and($preHold->fresh()->status)->toBe(ReservationStatus::Cancelled)
+        ->and($heldUnit->fresh()->status)->toBe(UnitStatus::Available)
+        ->and($pending->fresh()->status)->toBe(ReservationStatus::ProposalPending)
+        ->and($pendingUnit->fresh()->status)->toBe(UnitStatus::PreReserved);
+});
+
 it('creates pre-hold for available unit', function () {
     $tenant = Tenant::factory()->create();
     $broker = User::factory()->broker()->create();

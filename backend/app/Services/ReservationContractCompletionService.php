@@ -12,10 +12,10 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Support\BuilderPermissions;
 use Illuminate\Http\UploadedFile;
-use Spatie\Permission\PermissionRegistrar;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * @see REQ-RTL-020
@@ -228,6 +228,10 @@ class ReservationContractCompletionService
 
     public function validate(User $builder, Reservation $reservation, ?string $note = null): Reservation
     {
+        if ($reservation->isContractSigning()) {
+            return $this->markSoldAfterContractSignatures($builder, $reservation, $note);
+        }
+
         if (! $reservation->canValidateContract()) {
             abort(422, 'Reservation has no builder-signed contract pending confirmation.');
         }
@@ -281,6 +285,55 @@ class ReservationContractCompletionService
             );
 
             return $reservation->fresh(['unit', 'attachments', 'witnesses.user']);
+        });
+    }
+
+    private function markSoldAfterContractSignatures(User $builder, Reservation $reservation, ?string $note): Reservation
+    {
+        if (! $reservation->hasSignedContract()) {
+            abort(422, 'O contrato ainda não foi assinado por todos.');
+        }
+
+        return DB::transaction(function () use ($builder, $reservation, $note) {
+            $unit = Unit::query()
+                ->withoutGlobalScope('tenant')
+                ->lockForUpdate()
+                ->findOrFail($reservation->unit_id);
+
+            if ($unit->status !== UnitStatus::Reserved) {
+                abort(422, 'Unidade não está reservada.');
+            }
+
+            $unit->update(['status' => UnitStatus::Sold]);
+            $this->garageService->syncStatus($reservation, UnitStatus::Sold);
+
+            $reservation->update([
+                'status' => ReservationStatus::Sold,
+                'expires_at' => null,
+            ]);
+
+            $pdf = $reservation->attachments()
+                ->where('kind', ReservationAttachmentKind::ContractPdf)
+                ->latest('id')
+                ->first();
+
+            $this->timelineService->record(
+                $reservation,
+                ReservationTimelineEventType::ContractValidated,
+                $builder,
+                [
+                    'attachment_id' => $pdf?->id,
+                    'note' => $note,
+                ],
+            );
+            $this->timelineService->record(
+                $reservation,
+                ReservationTimelineEventType::Sold,
+                $builder,
+                ['unit_id' => $unit->id],
+            );
+
+            return $reservation->fresh(['unit']);
         });
     }
 

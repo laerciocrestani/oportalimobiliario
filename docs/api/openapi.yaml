@@ -1239,6 +1239,65 @@ paths:
           description: Builder users of the current tenant
         '403':
           description: Missing audit.view permission
+  /api/builder/signature-settings:
+    get:
+      summary: Read the tenant signature configuration
+      description: |
+        Returns the proposal signer and the contract witness slots for the
+        authenticated builder's tenant. Another tenant never sees this row.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current configuration, or empty slots when unset
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Missing team.manage permission
+    put:
+      summary: Save the tenant signature configuration
+      description: |
+        Stores who signs the proposal for the builder and N contract witness
+        slots. Each slot is a team member or the selling-broker slot, resolved
+        later on the reservation. N=3 may be two team members plus that slot.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - proposal_signer_user_id
+                - witness_slots
+              properties:
+                proposal_signer_user_id:
+                  type: integer
+                witness_slots:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    required:
+                      - kind
+                    properties:
+                      kind:
+                        type: string
+                        enum: [team_user, selling_broker]
+                      user_id:
+                        type: integer
+                        nullable: true
+      responses:
+        '200':
+          description: Configuration saved
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Missing team.manage permission
+        '422':
+          description: Invalid signer, slot, or a user from another tenant
   /api/builder/team:
     get:
       summary: List builder team members
@@ -1376,98 +1435,6 @@ paths:
         - bearerAuth: []
       parameters:
         - name: contractTemplate
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '204':
-          description: Deleted
-        '403':
-          description: Forbidden
-        '404':
-          description: Not found in tenant
-  /api/builder/proposal-variables:
-    get:
-      summary: List closed-catalog proposal template variables
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: System variable legend (slug, label, group) — same catalog as contracts
-        '403':
-          description: Missing proposals.manage permission
-  /api/builder/proposal-templates:
-    get:
-      summary: List proposal templates (builder)
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Templates for the current tenant
-        '403':
-          description: Missing proposals.manage permission
-    post:
-      summary: Create proposal template
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [name, body_markdown]
-              properties:
-                name:
-                  type: string
-                body_markdown:
-                  type: string
-                custom_variables:
-                  type: array
-                  items:
-                    type: object
-                    required: [slug, label]
-                    properties:
-                      slug:
-                        type: string
-                      label:
-                        type: string
-                is_active:
-                  type: boolean
-      responses:
-        '201':
-          description: Created
-        '403':
-          description: Missing proposals.manage permission
-        '422':
-          description: Validation error
-  /api/builder/proposal-templates/{proposalTemplate}:
-    patch:
-      summary: Update proposal template
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: proposalTemplate
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Updated
-        '403':
-          description: Forbidden
-        '404':
-          description: Not found in tenant
-        '422':
-          description: Validation error
-    delete:
-      summary: Delete proposal template
-      security:
-        - bearerAuth: []
-      parameters:
-        - name: proposalTemplate
           in: path
           required: true
           schema:
@@ -1728,8 +1695,12 @@ paths:
     patch:
       summary: Decide on reservation proposal (builder)
       description: |
-        Accept, reject, or return the pending proposal. Accept requires multipart
-        `signed_file` (PDF signed by the builder). Reject/return remain JSON and require `decision_note`.
+        Accept or reject the pending proposal. `returned` is refused with 422.
+        Accept does not require an uploaded PDF. The platform generates the proposal
+        PDF and sends it to ZapSign. The reservation stays `proposal_signing` with the
+        unit pre-reserved until the buyer, the configured builder signer, and the
+        selling broker have signed.
+        Reject remains JSON and requires `decision_note`.
       security:
         - bearerAuth: []
       parameters:
@@ -1760,7 +1731,6 @@ paths:
               type: object
               required:
                 - decision
-                - signed_file
               properties:
                 decision:
                   type: string
@@ -1770,17 +1740,17 @@ paths:
                 signed_file:
                   type: string
                   format: binary
-                  description: PDF signed by the builder. Required when decision is accepted.
+                  description: Ignored. Acceptance generates the PDF and sends it to ZapSign.
       responses:
         '200':
           description: Decision recorded
         '403':
           description: Forbidden
         '422':
-          description: Invalid stage, missing signed PDF on accept, or validation error
+          description: Invalid stage, returned decision, or validation error
     post:
-      summary: Accept proposal with builder-signed PDF (multipart)
-      description: Same handler as PATCH decision. Use POST multipart for `signed_file` on accept.
+      summary: Accept proposal (multipart)
+      description: Same handler as PATCH decision. Acceptance generates the PDF and sends it to ZapSign.
       security:
         - bearerAuth: []
       parameters:
@@ -1795,7 +1765,7 @@ paths:
           multipart/form-data:
             schema:
               type: object
-              required: [decision, signed_file]
+              required: [decision]
               properties:
                 decision:
                   type: string
@@ -1811,7 +1781,120 @@ paths:
         '403':
           description: Forbidden
         '422':
-          description: Missing signed PDF or invalid stage
+          description: Invalid stage
+  /api/webhooks/zapsign:
+    post:
+      summary: ZapSign signature webhook
+      description: |
+        Platform webhook. Header `X-ZapSign-Token` must match the platform secret.
+        Updates one signer. Three signed proposal signers move the reservation to
+        `deposit_pending` and reserve the unit. A refusal does not release the unit.
+        Repeating the same signer status is a no-op.
+      parameters:
+        - name: X-ZapSign-Token
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token:
+                  type: string
+                external_id:
+                  type: string
+                signer_who_signed:
+                  type: object
+                  properties:
+                    token:
+                      type: string
+                    status:
+                      type: string
+                      enum: [signed, refused]
+      responses:
+        '200':
+          description: Signer updated or already in that status
+        '401':
+          description: Invalid webhook token
+        '404':
+          description: Unknown document
+        '422':
+          description: Unknown signer or status
+  /api/builder/reservations/{reservation}/proposal/signature-links:
+    post:
+      summary: Resend proposal signature links (builder)
+      description: |
+        Resends the WhatsApp and e-mail link to every signer who has not signed
+        or refused. When the signer has no e-mail, only WhatsApp is sent.
+        The reservation must be `proposal_signing` and the ZapSign document `sent`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Links resent
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - notified
+                properties:
+                  notified:
+                    type: integer
+                    description: How many pending signers received at least one channel
+        '403':
+          description: Missing decide permission
+        '404':
+          description: Reservation not found for this tenant
+        '422':
+          description: Proposal is not waiting for signatures or there is nobody pending
+  /api/builder/reservations/{reservation}/proposal/extend:
+    patch:
+      summary: Add business hours to the proposal review deadline
+      description: |
+        Adds X business hours on top of the current `review_deadline_at`, including
+        when the request happens on a weekend or national holiday. The reservation
+        must be `proposal_pending` with a deadline already set.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - hours
+              properties:
+                hours:
+                  type: integer
+                  minimum: 1
+                  maximum: 168
+      responses:
+        '200':
+          description: Deadline extended
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Missing permission
+        '422':
+          description: Reservation is not in review, or hours are invalid
   /api/builder/reservations/{reservation}/proposal/templates:
     get:
       summary: List active proposal templates for issue dialog
@@ -1952,6 +2035,17 @@ paths:
   /api/builder/reservations/{reservation}/contract/issue:
     post:
       summary: Issue contract PDF from a template (builder)
+      description: |
+        Requires the latest proposal snapshot to have client CPF and address.
+        Missing either field returns 422 and does not generate the PDF.
+        After the local PDF is stored, a job sends it to ZapSign with the buyer,
+        the configured builder signer, and the witness slots resolved on this
+        reservation. A selling-broker slot uses this reservation's broker.
+        Signers are copied onto the signature document at send time. A later
+        change to the signature settings does not rewrite a document already sent.
+        ZapSign failure keeps the reservation at `contract_issued`. Success moves
+        it to `contract_signing`. The HTTP response still reports `contract_issued`
+        because the send runs after the PDF is stored.
       security:
         - bearerAuth: []
       parameters:
@@ -1982,7 +2076,41 @@ paths:
         '403':
           description: Forbidden
         '422':
-          description: Invalid stage, inactive template, or missing required values
+          description: Invalid stage, inactive template, missing required values, or missing client CPF or address
+  /api/builder/reservations/{reservation}/contract/signature-links:
+    post:
+      summary: Resend contract signature links (builder)
+      description: |
+        Resends the WhatsApp and e-mail link to every contract signer who has not
+        signed or refused. When the signer has no e-mail, only WhatsApp is sent.
+        The reservation must be `contract_signing` and the ZapSign document `sent`.
+        The daily 08:00 reminder uses the same rule and does not block this button.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Links resent
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - notified
+                properties:
+                  notified:
+                    type: integer
+        '403':
+          description: Missing contract issue permission
+        '404':
+          description: Reservation not found for this tenant
+        '422':
+          description: Contract is not waiting for signatures or there is nobody pending
   /api/builder/reservations/{reservation}/contract/signed:
     post:
       summary: Upload builder-signed contract PDF
@@ -2103,8 +2231,11 @@ paths:
     patch:
       summary: Confirm sale after all contract signatures (builder)
       description: |
-        Manager confirms the unit is sold only after buyer PDF, builder PDF, and both
-        witness signatures exist. Optional `note`. Marks the unit sold. 422 if any signature is missing.
+        Manager confirms the unit is sold. On the ZapSign path the reservation is
+        `contract_signing` and every signer on the sent contract has signed.
+        The older path still requires the buyer PDF, the builder PDF, and both
+        in-app witness signatures. Optional `note`. Marks the unit sold.
+        A missing or refused signature returns 422 and does not release the unit.
       security:
         - bearerAuth: []
       parameters:
@@ -2187,8 +2318,20 @@ paths:
   /api/broker/clients:
     get:
       summary: List broker clients
+      description: >
+        Without `q`, returns every client of the authenticated broker.
+        With `q` of at least 3 characters, returns up to 15 name matches
+        (case- and accent-insensitive). A shorter `q` returns an empty list.
       security:
         - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 255
+          description: Name fragment. Search runs from the third character.
       responses:
         '200':
           description: Clients list
@@ -2269,6 +2412,40 @@ paths:
       responses:
         '200':
           description: Media file stream
+  /api/broker/reservations/draft:
+    post:
+      summary: Start a 20-minute proposal draft and lock the unit
+      description: |
+        Locks the unit for the broker while the proposal is filled.
+        The draft is hidden from the builder reservation list.
+        If it is not submitted within 20 wall-clock minutes, the command
+        `opim:expire-proposal-drafts` discards it and releases the unit.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - unit_id
+              properties:
+                unit_id:
+                  type: integer
+                garage_unit_ids:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '201':
+          description: Draft created. status is proposal_draft. draft_expires_at is set.
+        '401':
+          description: Unauthenticated
+        '403':
+          description: Broker has no access to the unit
+        '422':
+          description: Unit is no longer available
   /api/broker/reservations/pre-hold:
     post:
       summary: Create pre-hold reservation (10 min TTL)
@@ -2573,14 +2750,42 @@ paths:
                 $ref: '#/components/schemas/ReservationTimeline'
         '403':
           description: Not the reservation owner
+  /api/broker/reservations/{reservation}/proposal/templates:
+    get:
+      summary: List proposal templates for the reservation's builder
+      description: |
+        Active proposal templates of the construction company that owns the building.
+        Each item includes the markdown body, the placeholders used in it, and a prefill
+        for client name, phone and email when those values exist.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Active templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BrokerProposalTemplate'
+        '403':
+          description: Not the reservation owner
   /api/broker/reservations/{reservation}/proposal:
     post:
       summary: Submit reservation proposal (broker)
       description: |
-        Sends client name, phone, commercial proposal terms and one or more
-        attachments for the manager to review before accepting, returning or rejecting.
+        Sends client name and phone, commercial proposal terms and one or more
+        attachments. Accepts a proposal draft or a returned proposal.
+        Name or phone missing responds 422. On success the reservation becomes
+        proposal_pending and review_deadline_at is set to 48 business hours
+        ahead (America/Sao_Paulo, skipping weekends and national holidays).
         Remaining client data is collected later in contract-data.
-        Replaces the legacy meaning of PATCH confirm (Fase B).
       security:
         - bearerAuth: []
       parameters:
@@ -2602,6 +2807,68 @@ paths:
           description: Not the reservation owner
         '422':
           description: Invalid stage or validation error
+  /api/broker/reservations/{reservation}/proposal/signature-links:
+    post:
+      summary: Resend proposal signature links (broker)
+      description: |
+        Resends the WhatsApp and e-mail link to every signer who has not signed
+        or refused. When the signer has no e-mail, only WhatsApp is sent.
+        Only the selling broker of the reservation can call this.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Links resent
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - notified
+                properties:
+                  notified:
+                    type: integer
+        '403':
+          description: Not the reservation owner
+        '422':
+          description: Proposal is not waiting for signatures or there is nobody pending
+  /api/broker/reservations/{reservation}/contract/signature-links:
+    post:
+      summary: Resend contract signature links (broker)
+      description: |
+        Resends the WhatsApp and e-mail link to every contract signer who has not
+        signed or refused. Only the selling broker of the reservation can call this.
+        The reservation must be `contract_signing` and the ZapSign document `sent`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Links resent
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - notified
+                properties:
+                  notified:
+                    type: integer
+        '403':
+          description: Not the reservation owner
+        '422':
+          description: Contract is not waiting for signatures or there is nobody pending
   /api/broker/reservations/{reservation}/proposal/signed:
     post:
       summary: Return proposal signed by both parties (broker)
@@ -4006,6 +4273,12 @@ components:
               type: string
             status:
               type: string
+            price:
+              type: string
+              nullable: true
+            building_name:
+              type: string
+              nullable: true
         current_proposal:
           nullable: true
           allOf:
@@ -4095,16 +4368,58 @@ components:
       required:
         - client_name
         - client_phone
+        - party_kind
+        - client_cpf
+        - address
+        - city
+        - state
+        - zip
         - payment_terms
+        - deposit_kind
       properties:
         client_name:
           type: string
         client_phone:
           type: string
+        party_kind:
+          type: string
+          enum: [individual, company]
+          description: individual asks for CPF, RG, marital status and profession. company asks for CNPJ.
         payment_terms:
           type: string
-          maxLength: 2000
-          description: Commercial proposal (down payment, installments, etc.)
+          maxLength: 20000
+          description: Commercial proposal text, including the filled template when the broker used one
+        commercial_terms:
+          type: object
+          nullable: true
+          description: Structured reinforcements and dations. payment_terms stays the readable text.
+          properties:
+            reinforcements:
+              type: array
+              maxItems: 30
+              items:
+                type: object
+                properties:
+                  amount:
+                    type: string
+                    nullable: true
+                    description: Decimal amount, stored as 10000.00. The form may send 10.000,00.
+                  due_on:
+                    type: string
+                    nullable: true
+                    format: date
+                    description: Due date, stored as YYYY-MM-DD. The form may send dd/mm/aaaa.
+            dations:
+              type: array
+              maxItems: 30
+              items:
+                type: string
+        deposit_kind:
+          type: string
+          enum: [pix, asset]
+          description: |
+            pix asks for a payment proof after all proposal signatures.
+            asset is already described in the proposal and skips the PIX step.
         client_email:
           type: string
         client_cpf:
@@ -4121,9 +4436,45 @@ components:
           type: string
         nationality:
           type: string
+        profession:
+          type: string
+          description: Required when party_kind is individual
         land_value:
           type: number
           format: double
+    BrokerProposalTemplate:
+      type: object
+      required:
+        - id
+        - name
+        - body_markdown
+        - variables
+        - prefill
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        body_markdown:
+          type: string
+        variables:
+          type: array
+          items:
+            type: object
+            required: [slug, label, required]
+            properties:
+              slug:
+                type: string
+              label:
+                type: string
+              required:
+                type: boolean
+                description: False when the placeholder is written as {{slug?}}
+        prefill:
+          type: object
+          additionalProperties:
+            type: string
+          description: Client, unit, building, final price, broker and issue date when those placeholders are in the template and the values exist
     ReservationProposalSubmit:
       allOf:
         - $ref: '#/components/schemas/ReservationProposalInput'

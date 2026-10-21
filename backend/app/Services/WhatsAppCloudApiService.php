@@ -81,7 +81,7 @@ class WhatsAppCloudApiService
         }
 
         return $this->sendTemplateMessage(
-            $invite->phone,
+            $this->internationalPhone($invite->phone),
             $templateName,
             $languageCode,
             [
@@ -99,6 +99,38 @@ class WhatsAppCloudApiService
                 ],
             ],
         );
+    }
+
+    public function sendSignatureLink(string $phone, string $recipientName, string $signUrl): string
+    {
+        $templateName = (string) config('services.whatsapp.templates.signature_link');
+        $languageCode = (string) config('services.whatsapp.template_language', 'pt_BR');
+
+        if ($templateName === '') {
+            throw new WhatsAppApiException('Modelo de WhatsApp da assinatura não configurado.');
+        }
+
+        return $this->sendTemplateMessage(
+            $this->internationalPhone($phone),
+            $templateName,
+            $languageCode,
+            [$recipientName, $signUrl],
+        );
+    }
+
+    private function internationalPhone(string $phone): string
+    {
+        $digits = preg_replace('/\D+/', '', $phone) ?? '';
+
+        if ($digits === '') {
+            throw new WhatsAppApiException('Telefone do signatário não informado.');
+        }
+
+        if (! str_starts_with($digits, '55') && strlen($digits) <= 11) {
+            $digits = '55'.$digits;
+        }
+
+        return $digits;
     }
 
     private function messagesUrl(): string

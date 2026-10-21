@@ -14,9 +14,34 @@ class ContractVariableResolver
      */
     public function extractPlaceholders(string $markdown): array
     {
-        preg_match_all('/\{\{\s*([a-z][a-z0-9_]*)\s*\}\}/', $markdown, $matches);
+        preg_match_all('/\{\{\s*([a-z][a-z0-9_]*)\s*\??\s*\}\}/', $markdown, $matches);
 
         return array_values(array_unique($matches[1] ?? []));
+    }
+
+    /**
+     * Placeholders written as {{slug?}} are optional. A slug used without ? stays required.
+     *
+     * @return list<string>
+     */
+    public function optionalPlaceholderSlugs(string $markdown): array
+    {
+        preg_match_all('/\{\{\s*([a-z][a-z0-9_]*)\s*(\?)?\s*\}\}/', $markdown, $matches, PREG_SET_ORDER);
+
+        $required = [];
+        $optional = [];
+
+        foreach ($matches as $match) {
+            $slug = $match[1];
+
+            if (($match[2] ?? '') === '?') {
+                $optional[$slug] = true;
+            } else {
+                $required[$slug] = true;
+            }
+        }
+
+        return array_values(array_keys(array_diff_key($optional, $required)));
     }
 
     /**
@@ -38,7 +63,7 @@ class ContractVariableResolver
      */
     public function systemValues(Reservation $reservation, ?string $finalPriceBrl = null): array
     {
-        $reservation->loadMissing(['unit.building', 'broker', 'client', 'proposals']);
+        $reservation->loadMissing(['unit.building', 'broker', 'client', 'proposals', 'garageUnits']);
         $proposal = $reservation->proposals->sortByDesc('version')->first();
         $unit = $reservation->unit;
         $price = $finalPriceBrl ?? $unit?->frozen_price_brl ?? $unit?->price;
@@ -47,9 +72,10 @@ class ContractVariableResolver
             'nome_cliente' => $this->string($proposal?->client_name ?? $reservation->client?->name),
             'telefone_cliente' => $this->string($proposal?->client_phone ?? $reservation->client?->phone),
             'email_cliente' => $this->string($proposal?->client_email ?? $reservation->client?->email),
-            'cpf_cliente' => $this->formatCpf($proposal?->client_cpf),
+            'cpf_cliente' => $this->formatDocument($proposal?->client_cpf),
             'rg_cliente' => $this->string($proposal?->client_rg),
             'nacionalidade_cliente' => $this->string($proposal?->nationality),
+            'profissao_cliente' => $this->string($proposal?->profession),
             'estado_civil' => $this->string($proposal?->marital_status),
             'endereco_cliente' => $this->string($proposal?->address),
             'cidade_cliente' => $this->string($proposal?->city),
@@ -58,10 +84,15 @@ class ContractVariableResolver
             'nome_conjuge' => $this->string($proposal?->spouse_name),
             'telefone_conjuge' => $this->string($proposal?->spouse_phone),
             'email_conjuge' => $this->string($proposal?->spouse_email),
-            'cpf_conjuge' => $this->formatCpf($proposal?->spouse_cpf),
+            'cpf_conjuge' => $this->formatDocument($proposal?->spouse_cpf),
             'rg_conjuge' => $this->string($proposal?->spouse_rg),
             'nacionalidade_conjuge' => $this->string($proposal?->spouse_nationality),
             'codigo_unidade' => $this->string($unit?->code),
+            'box' => $reservation->garageUnits
+                ->pluck('code')
+                ->map(fn (mixed $code): string => trim((string) $code))
+                ->filter(fn (string $code): bool => $code !== '')
+                ->implode(', '),
             'andar_unidade' => $unit?->floor !== null ? (string) $unit->floor : '',
             'area_unidade' => $this->formatArea($unit?->area_m2),
             'nome_empreendimento' => $this->string($unit?->building?->name),
@@ -86,11 +117,15 @@ class ContractVariableResolver
 
         $used = $this->extractPlaceholders($markdown);
         $unknown = $this->unknownPlaceholders($markdown, $customSlugs);
+        $optional = array_flip($this->optionalPlaceholderSlugs($markdown));
 
-        return array_values(array_unique([
-            ...array_intersect($customSlugs, $used),
-            ...$unknown,
-        ]));
+        return array_values(array_unique(array_filter(
+            [
+                ...array_intersect($customSlugs, $used),
+                ...$unknown,
+            ],
+            fn (string $slug): bool => ! isset($optional[$slug]),
+        )));
     }
 
     /**
@@ -140,15 +175,19 @@ class ContractVariableResolver
         return trim((string) $value);
     }
 
-    private function formatCpf(mixed $value): string
+    private function formatDocument(mixed $value): string
     {
         $digits = preg_replace('/\D+/', '', $this->string($value)) ?? '';
 
-        if (strlen($digits) !== 11) {
-            return $this->string($value);
+        if (strlen($digits) === 11) {
+            return substr($digits, 0, 3).'.'.substr($digits, 3, 3).'.'.substr($digits, 6, 3).'-'.substr($digits, 9, 2);
         }
 
-        return substr($digits, 0, 3).'.'.substr($digits, 3, 3).'.'.substr($digits, 6, 3).'-'.substr($digits, 9, 2);
+        if (strlen($digits) === 14) {
+            return substr($digits, 0, 2).'.'.substr($digits, 2, 3).'.'.substr($digits, 5, 3).'/'.substr($digits, 8, 4).'-'.substr($digits, 12, 2);
+        }
+
+        return $this->string($value);
     }
 
     private function formatMoney(mixed $value): string

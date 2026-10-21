@@ -28,10 +28,12 @@ class ReservationKanbanService
             $reservation->isCancelled() => ReservationKanbanColumn::Cancelled,
             $reservation->isSold() => ReservationKanbanColumn::Sold,
             $reservation->isContractIssued(),
+            $reservation->isContractSigning(),
             $reservation->isContractUploaded(),
             $reservation->isContractBuilderSigned() => ReservationKanbanColumn::Contract,
             $reservation->isProposalPending(),
             $reservation->isProposalReturned() => ReservationKanbanColumn::ProposalReview,
+            $reservation->isProposalSigning() => ReservationKanbanColumn::ProposalFormalization,
             $reservation->isPreHold() => ReservationKanbanColumn::PreReservation,
             $this->isFormalizing($reservation) => ReservationKanbanColumn::ProposalFormalization,
             default => ReservationKanbanColumn::DocsDeposit,
@@ -124,7 +126,7 @@ class ReservationKanbanService
                 $moves[] = ReservationKanbanColumn::Contract;
             }
 
-            if ($reservation->canValidateContract()) {
+            if ($reservation->canValidateContract() || $reservation->hasSignedContract()) {
                 $moves[] = ReservationKanbanColumn::Sold;
             }
         }

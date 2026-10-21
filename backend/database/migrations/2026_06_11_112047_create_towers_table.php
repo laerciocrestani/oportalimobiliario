@@ -9,9 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('towers', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('building_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('building_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->unsignedSmallInteger('sort_order')->default(0);
             $table->timestamps();

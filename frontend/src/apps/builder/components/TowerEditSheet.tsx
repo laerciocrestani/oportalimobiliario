@@ -13,7 +13,7 @@ import {
 import { builderApi, type Tower } from '@/lib/api'
 
 type TowerEditSheetProps = {
-  buildingId: number
+  buildingId: string
   tower: Tower | null
   open: boolean
   onOpenChange: (open: boolean) => void

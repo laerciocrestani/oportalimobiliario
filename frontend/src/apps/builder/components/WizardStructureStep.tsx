@@ -33,7 +33,11 @@ export function WizardStructureStep() {
           setMirror: actions.setMirror,
           cloneMirror: actions.cloneMirror,
         }}
-        meta={{ selectedTower, selectedFloor }}
+        meta={{
+          selectedTower,
+          selectedFloor,
+          priceMode: state.form.priceMode,
+        }}
       >
         <StructureEditor.Skeleton />
         <StructureEditor.TowerTabs />

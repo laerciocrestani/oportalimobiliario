@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('building_media', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('building_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('building_id')->constrained()->cascadeOnDelete();
             $table->string('category');
             $table->string('path');
             $table->string('original_name');

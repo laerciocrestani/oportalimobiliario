@@ -6,10 +6,12 @@
  * @see REQ-WZR-003
  */
 use App\Enums\FloorKind;
+use App\Enums\UnitStatus;
 use App\Models\Building;
 use App\Models\Floor;
 use App\Models\Tenant;
 use App\Models\Tower;
+use App\Models\Unit;
 use App\Models\User;
 use Laravel\Sanctum\Sanctum;
 
@@ -47,7 +49,7 @@ it('replaces towers and floors on a draft building', function () {
         ->and(Tower::query()->where('name', 'Antiga')->exists())->toBeFalse();
 });
 
-it('rejects structure replace on a published building', function () {
+it('replaces structure on a published building without a sale', function () {
     $tenant = Tenant::factory()->create();
     $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
     $building = Building::factory()->for($tenant)->published()->create();
@@ -58,16 +60,15 @@ it('rejects structure replace on a published building', function () {
         'towers' => [
             ['name' => 'Torre A', 'floors_count' => 2],
         ],
-    ])->assertConflict();
+    ])->assertOk()
+        ->assertJsonPath('towers.0.name', 'Torre A');
 });
 
-it('rejects structure replace when wizard is completed', function () {
+it('rejects structure replace when a unit is sold', function () {
     $tenant = Tenant::factory()->create();
     $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
-    $building = Building::factory()->for($tenant)->create([
-        'published' => false,
-        'wizard_completed_at' => now(),
-    ]);
+    $building = Building::factory()->for($tenant)->published()->create();
+    Unit::factory()->for($tenant)->for($building)->create(['status' => UnitStatus::Sold]);
 
     Sanctum::actingAs($user);
 
@@ -75,7 +76,8 @@ it('rejects structure replace when wizard is completed', function () {
         'towers' => [
             ['name' => 'Torre A', 'floors_count' => 2],
         ],
-    ])->assertConflict();
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['towers']);
 });
 
 it('validates structure payload', function () {

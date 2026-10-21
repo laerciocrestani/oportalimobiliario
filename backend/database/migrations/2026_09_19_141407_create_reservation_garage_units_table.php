@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
             $table->foreignId('reservation_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('unit_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('unit_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
 
             $table->unique('unit_id');

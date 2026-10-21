@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Enums\FloorKind;
+use App\Enums\ReservationStatus;
+use App\Enums\UnitStatus;
 use App\Models\Building;
 use App\Models\Tower;
 use Illuminate\Support\Facades\DB;
@@ -25,8 +27,10 @@ class BuildingStructureService
      */
     public function replace(Building $building, array $towers): Building
     {
-        if ($building->published || $building->wizard_completed_at !== null) {
-            abort(409, 'Cannot replace structure of a published or completed building.');
+        if ($this->hasLockedUnit($building)) {
+            throw ValidationException::withMessages([
+                'towers' => 'Não é possível remontar a estrutura enquanto houver unidade em venda ou vendida.',
+            ]);
         }
 
         $this->assertValidStructure($towers);
@@ -152,5 +156,18 @@ class BuildingStructureService
         }
 
         return $floors;
+    }
+
+    private function hasLockedUnit(Building $building): bool
+    {
+        return $building->units()
+            ->where(function ($query): void {
+                $query->where('status', UnitStatus::Sold)
+                    ->orWhereHas(
+                        'reservation',
+                        fn ($reservation) => $reservation->where('status', '!=', ReservationStatus::Cancelled),
+                    );
+            })
+            ->exists();
     }
 }

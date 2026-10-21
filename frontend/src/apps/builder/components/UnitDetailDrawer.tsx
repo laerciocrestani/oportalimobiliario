@@ -40,7 +40,7 @@ import { builderApi, type Amenity, type Building, type Tower, type Unit } from '
 
 type UnitDetailDrawerProps = {
   unit: Unit | null
-  buildingId: number
+  buildingId: string
   buildingName: string
   towers: Tower[]
   building?: Building | null

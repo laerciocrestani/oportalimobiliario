@@ -284,3 +284,29 @@ it('includes the selected garage on the broker unit reservation', function () {
 
     expect($listed[$unit->code]['reservation']['garage_units'][0]['code'])->toBe('S1-01');
 });
+
+it('rejects a reservation when the unit has no price', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $building = Building::factory()->for($tenant)->create();
+    $unit = Unit::factory()->for($tenant)->for($building)->create([
+        'status' => UnitStatus::Available,
+        'price' => null,
+        'price_base' => null,
+    ]);
+
+    BuildingAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'building_id' => $building->id,
+    ]);
+    linkBrokerToTenant($broker, $tenant);
+
+    Sanctum::actingAs($broker);
+
+    $this->postJson('/api/broker/reservations/pre-hold', ['unit_id' => $unit->id])
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'Unidade sem preço não pode ser reservada.');
+
+    expect($unit->fresh()->status)->toBe(UnitStatus::Available);
+});

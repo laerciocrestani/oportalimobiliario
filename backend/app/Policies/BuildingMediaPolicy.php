@@ -70,7 +70,7 @@ class BuildingMediaPolicy
             && $media->published;
     }
 
-    protected function brokerHasBuildingAccess(User $user, int $buildingId): bool
+    protected function brokerHasBuildingAccess(User $user, string $buildingId): bool
     {
         return BuildingAccess::query()
             ->withoutGlobalScope('tenant')

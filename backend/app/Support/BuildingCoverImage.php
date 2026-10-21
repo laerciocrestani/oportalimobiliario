@@ -9,7 +9,7 @@ class BuildingCoverImage
     /**
      * @return array{id: int, url: string}|null
      */
-    public static function serialize(?BuildingMedia $media, int $buildingId, string $prefix): ?array
+    public static function serialize(?BuildingMedia $media, string $buildingId, string $prefix): ?array
     {
         if ($media === null) {
             return null;

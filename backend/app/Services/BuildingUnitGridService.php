@@ -3,11 +3,15 @@
 namespace App\Services;
 
 use App\Enums\FloorKind;
+use App\Enums\ReservationStatus;
+use App\Enums\UnitStatus;
 use App\Models\Building;
 use App\Models\Floor;
 use App\Models\Tower;
+use App\Models\Unit;
 use App\Support\AmenityPresentation;
 use App\Support\UnitCode;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -29,20 +33,24 @@ class BuildingUnitGridService
      */
     public function replace(Building $building, array $towers): Building
     {
-        if ($building->published || $building->wizard_completed_at !== null) {
-            abort(409, 'Cannot replace unit grid of a published or completed building.');
-        }
-
         DB::transaction(function () use ($building, $towers): void {
             $building->load(['towers.floors', 'amenities']);
 
             $towers = $this->fillUnitCodes($towers);
             $this->assertCompleteGrid($building, $towers);
+            $locked = $this->lockedUnits($building);
+            $this->assertLockedUnitsKept($locked, $towers);
 
-            $building->units()->delete();
+            $deletable = $building->units();
+
+            if ($locked->isNotEmpty()) {
+                $deletable->whereNotIn('id', $locked->modelKeys());
+            }
+
+            $deletable->delete();
 
             foreach ($towers as $towerData) {
-                $tower = $building->towers->firstWhere('id', (int) $towerData['id']);
+                $tower = $building->towers->firstWhere('id', (string) $towerData['id']);
 
                 if ($tower === null) {
                     continue;
@@ -72,6 +80,10 @@ class BuildingUnitGridService
                     ]);
 
                     foreach ($floorData['units'] as $unitData) {
+                        if ($locked->contains(fn (Unit $unit): bool => $unit->code === (string) $unitData['code'])) {
+                            continue;
+                        }
+
                         $unit = $building->units()->create(
                             $this->unitAttributes($unitData, $tower->id, $floor->id, $number),
                         );
@@ -106,7 +118,7 @@ class BuildingUnitGridService
      * @param  array<string, mixed>  $unitData
      * @return array<string, mixed>
      */
-    private function unitAttributes(array $unitData, int $towerId, int $floorId, int $number): array
+    private function unitAttributes(array $unitData, string $towerId, string $floorId, int $number): array
     {
         $area = $this->blankToNull($unitData['area_m2'] ?? null);
         $private = $this->blankToNull($unitData['private_area_m2'] ?? null) ?? $area;
@@ -161,7 +173,7 @@ class BuildingUnitGridService
         $seenTowerIds = [];
 
         foreach ($towers as $towerIndex => $towerData) {
-            $towerId = (int) $towerData['id'];
+            $towerId = (string) $towerData['id'];
 
             if (in_array($towerId, $seenTowerIds, true)) {
                 throw ValidationException::withMessages([
@@ -209,6 +221,7 @@ class BuildingUnitGridService
 
             foreach ($towerData['floors'] as $floorIndex => $floorData) {
                 $this->assertFloorKind((int) $floorData['number'], $floorData['kind'], $towerIndex, $floorIndex);
+                $this->assertFloorUnitCount($floorData, $towerIndex, $floorIndex);
             }
         }
 
@@ -269,6 +282,74 @@ class BuildingUnitGridService
             throw ValidationException::withMessages([
                 "towers.{$towerIndex}.floors.{$floorIndex}.kind" => 'Negative floors must be garage.',
             ]);
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $floorData
+     */
+    private function assertFloorUnitCount(array $floorData, int $towerIndex, int $floorIndex): void
+    {
+        $kind = $floorData['kind'] instanceof FloorKind
+            ? $floorData['kind']
+            : FloorKind::from((string) $floorData['kind']);
+        $count = count($floorData['units'] ?? []);
+
+        if ($kind === FloorKind::Hall) {
+            return;
+        }
+
+        if ($count < 1) {
+            throw ValidationException::withMessages([
+                "towers.{$towerIndex}.floors.{$floorIndex}.units" => 'Este pavimento precisa de ao menos uma unidade.',
+            ]);
+        }
+    }
+
+    /**
+     * @return Collection<int, Unit>
+     */
+    private function lockedUnits(Building $building): Collection
+    {
+        return $building->units()
+            ->where(function ($query): void {
+                $query->where('status', UnitStatus::Sold)
+                    ->orWhereHas(
+                        'reservation',
+                        fn ($reservation) => $reservation->where('status', '!=', ReservationStatus::Cancelled),
+                    );
+            })
+            ->get();
+    }
+
+    /**
+     * @param  Collection<int, Unit>  $locked
+     * @param  list<array<string, mixed>>  $towers
+     */
+    private function assertLockedUnitsKept(Collection $locked, array $towers): void
+    {
+        if ($locked->isEmpty()) {
+            return;
+        }
+
+        $placed = [];
+
+        foreach ($towers as $tower) {
+            foreach ($tower['floors'] as $floor) {
+                foreach ($floor['units'] as $unit) {
+                    $placed[(string) $tower['id'].'|'.(int) $floor['number'].'|'.(string) $unit['code']] = true;
+                }
+            }
+        }
+
+        foreach ($locked as $unit) {
+            $key = (string) $unit->tower_id.'|'.(int) $unit->floor.'|'.$unit->code;
+
+            if (! isset($placed[$key])) {
+                throw ValidationException::withMessages([
+                    'towers' => "A unidade {$unit->code} está em venda ou vendida e não pode ser alterada.",
+                ]);
+            }
         }
     }
 }

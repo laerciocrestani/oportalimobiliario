@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('reservations', function (Blueprint $table) {
             $table->id();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('unit_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('unit_id')->constrained()->cascadeOnDelete();
             $table->foreignId('broker_id')->constrained('users')->cascadeOnDelete();
             $table->timestamp('expires_at');
             $table->timestamps();

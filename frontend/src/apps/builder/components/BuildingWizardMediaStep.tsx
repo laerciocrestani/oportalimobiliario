@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { BuildingMediaGallery } from '@/apps/builder/components/BuildingMediaGallery'
 
 type BuildingWizardMediaStepProps = {
-  buildingId: number
+  buildingId: string
   description: string
   isDraft: boolean
   generating: boolean
@@ -57,7 +57,7 @@ export function BuildingWizardMediaStep({
       </div>
       <p className="text-sm text-muted-foreground">
         Com o rascunho ligado, o empreendimento não aparece no portal e você pode retomar o cadastro.
-        Desligue para publicar — unidades à venda precisam ter preço.
+        Desligue para publicar. Unidade sem preço não entra na reserva.
       </p>
     </div>
   )

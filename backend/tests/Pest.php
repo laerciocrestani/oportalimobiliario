@@ -100,7 +100,7 @@ function signedProposalPdf(string $name = 'proposta-assinada.pdf'): UploadedFile
     return UploadedFile::fake()->create($name, 80, 'application/pdf');
 }
 
-function assertUserActivity(User $actor, UserActivityAction $action, string $messageContains, ?int $resourceId = null): UserActivityEvent
+function assertUserActivity(User $actor, UserActivityAction $action, string $messageContains, int|string|null $resourceId = null): UserActivityEvent
 {
     $query = UserActivityEvent::query()
         ->where('actor_user_id', $actor->id)

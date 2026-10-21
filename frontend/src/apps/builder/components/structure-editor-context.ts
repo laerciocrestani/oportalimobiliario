@@ -22,6 +22,7 @@ export type StructureEditorActions = {
 export type StructureEditorMeta = {
   selectedTower: StackTower | null
   selectedFloor: StackFloor | null
+  priceMode?: 'incc' | 'fixed'
 }
 
 export type StructureEditorContextValue = {

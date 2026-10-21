@@ -32,7 +32,7 @@ class BuildingAccessController extends Controller
         $data = $request->validate([
             'building_id' => [
                 'required',
-                'integer',
+                'uuid',
                 Rule::exists('buildings', 'id')->where('tenant_id', $request->user()->tenant_id),
             ],
         ]);

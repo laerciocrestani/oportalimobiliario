@@ -1,9 +1,10 @@
-export const WIZARD_LAST_STEP = 3
+export const WIZARD_LAST_STEP = 4
 
 export const WIZARD_STEPS = [
-  { id: 1, label: 'Identidade' },
+  { id: 1, label: 'Dados básicos' },
   { id: 2, label: 'Estrutura' },
-  { id: 3, label: 'Mídia' },
+  { id: 3, label: 'Revisão estrutural' },
+  { id: 4, label: 'Fotos e descritivo' },
 ] as const
 
 export type WizardStepId = (typeof WIZARD_STEPS)[number]['id']
@@ -23,5 +24,5 @@ export function resumeWizardUiStep(
     return 2
   }
 
-  return WIZARD_LAST_STEP
+  return Math.min(saved, WIZARD_LAST_STEP)
 }

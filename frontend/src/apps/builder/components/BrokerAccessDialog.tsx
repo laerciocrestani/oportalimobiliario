@@ -55,7 +55,7 @@ export function BrokerAccessDialog({
     void load()
   }, [broker, open])
 
-  async function toggleBuildingAccess(buildingId: number, granted: boolean) {
+  async function toggleBuildingAccess(buildingId: string, granted: boolean) {
     if (!broker) {
       return
     }

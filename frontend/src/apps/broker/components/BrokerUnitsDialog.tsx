@@ -50,7 +50,7 @@ function UnitRowActions({
   cancelling,
 }: {
   unit: Unit
-  holdingUnitId: number | null
+  holdingUnitId: string | null
   onPreReserve: (unit: Unit) => void
   onContinueReservation: (unit: Unit) => void
   onCancelReservation: (unit: Unit) => void
@@ -132,9 +132,9 @@ export function BrokerUnitsDialog({
   const [proposalGarageUnits, setProposalGarageUnits] = useState<GarageUnit[]>([])
   const [messagesReservationId, setMessagesReservationId] = useState<number | null>(null)
   const [messagesOpen, setMessagesOpen] = useState(false)
-  const [cancellingUnitId, setCancellingUnitId] = useState<number | null>(null)
+  const [cancellingUnitId, setCancellingUnitId] = useState<string | null>(null)
   const [cancelUnit, setCancelUnit] = useState<Unit | null>(null)
-  const [holdingUnitId, setHoldingUnitId] = useState<number | null>(null)
+  const [holdingUnitId, setHoldingUnitId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [garagePickerUnit, setGaragePickerUnit] = useState<Unit | null>(null)
   const [selectedGarageIds, setSelectedGarageIds] = useState<number[]>([])

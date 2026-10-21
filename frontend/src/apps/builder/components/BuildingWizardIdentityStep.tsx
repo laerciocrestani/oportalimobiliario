@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label'
 
 export type BuildingIdentityForm = {
   name: string
+  priceMode: 'incc' | 'fixed'
   zip: string
   street: string
   number: string
@@ -15,6 +16,7 @@ export type BuildingIdentityForm = {
 
 export const emptyIdentityForm: BuildingIdentityForm = {
   name: '',
+  priceMode: 'incc',
   zip: '',
   street: '',
   number: '',
@@ -42,6 +44,7 @@ type BuildingWizardIdentityStepProps = {
   onLookupCep: () => void
   lookingUpCep: boolean
   cepHint: string | null
+  priceModeLocked?: boolean
 }
 
 export function BuildingWizardIdentityStep({
@@ -50,6 +53,7 @@ export function BuildingWizardIdentityStep({
   onLookupCep,
   lookingUpCep,
   cepHint,
+  priceModeLocked = false,
 }: BuildingWizardIdentityStepProps) {
   return (
     <div className="space-y-4">
@@ -62,6 +66,37 @@ export function BuildingWizardIdentityStep({
           required
         />
       </div>
+
+      <fieldset className="space-y-2" disabled={priceModeLocked}>
+        <legend className="text-sm font-medium">Valor das unidades</legend>
+        <div className="flex flex-wrap gap-4">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="wizard-price-mode"
+              value="incc"
+              checked={form.priceMode === 'incc'}
+              onChange={() => onChange({ ...form, priceMode: 'incc' })}
+            />
+            INCC
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="radio"
+              name="wizard-price-mode"
+              value="fixed"
+              checked={form.priceMode === 'fixed'}
+              onChange={() => onChange({ ...form, priceMode: 'fixed' })}
+            />
+            Valor fixo em reais
+          </label>
+        </div>
+        {priceModeLocked ? (
+          <p className="text-sm text-muted-foreground">
+            O modo de preço trava depois que uma unidade recebe valor.
+          </p>
+        ) : null}
+      </fieldset>
 
       <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
         <div className="space-y-2">

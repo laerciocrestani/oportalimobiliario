@@ -733,7 +733,8 @@ paths:
               required: [tower_id, code]
               properties:
                 tower_id:
-                  type: integer
+                  type: string
+                  format: uuid
                 code:
                   type: string
                 floor:
@@ -2432,7 +2433,8 @@ paths:
                 - unit_id
               properties:
                 unit_id:
-                  type: integer
+                  type: string
+                  format: uuid
                 garage_unit_ids:
                   type: array
                   items:
@@ -2461,7 +2463,8 @@ paths:
                 - unit_id
               properties:
                 unit_id:
-                  type: integer
+                  type: string
+                  format: uuid
                 garage_unit_ids:
                   type: array
                   description: Optional garage spot unit IDs from the same building (0..N).
@@ -2576,7 +2579,8 @@ paths:
                 - client_id
               properties:
                 unit_id:
-                  type: integer
+                  type: string
+                  format: uuid
                 client_id:
                   type: integer
                 observations:
@@ -3631,7 +3635,8 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
+          format: uuid
         code:
           type: string
         floor:
@@ -3639,7 +3644,8 @@ components:
           nullable: true
           description: Floor number. 0 = ground; negative = garage basement.
         floor_id:
-          type: integer
+          type: string
+          format: uuid
           nullable: true
         floor_kind:
           allOf:
@@ -3724,7 +3730,8 @@ components:
       type: object
       properties:
         tower_id:
-          type: integer
+          type: string
+          format: uuid
         code:
           type: string
         floor:
@@ -3917,7 +3924,8 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
+          format: uuid
         slug:
           type: string
         name:
@@ -3948,6 +3956,9 @@ components:
           nullable: true
         published:
           type: boolean
+        price_mode:
+          type: string
+          enum: [incc, fixed]
         wizard_step:
           type: integer
           nullable: true
@@ -3992,12 +4003,13 @@ components:
             $ref: '#/components/schemas/Tower'
     FloorKind:
       type: string
-      enum: [residential, commercial, garage]
+      enum: [residential, commercial, garage, hall]
     Floor:
       type: object
       properties:
         id:
-          type: integer
+          type: string
+          format: uuid
         number:
           type: integer
           description: 0 = ground floor; negative = garage basement.
@@ -4009,7 +4021,8 @@ components:
       type: object
       properties:
         id:
-          type: integer
+          type: string
+          format: uuid
         name:
           type: string
         floors_count:

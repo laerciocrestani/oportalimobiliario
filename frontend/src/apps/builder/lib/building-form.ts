@@ -8,6 +8,7 @@ import type { Building } from '@/lib/api'
 export function identityFromBuilding(building: Building): BuildingIdentityForm {
   return {
     name: building.name,
+    priceMode: building.price_mode ?? 'incc',
     zip: zipDigits(building.zip ?? ''),
     street: building.street ?? '',
     number: building.number ?? '',
@@ -21,6 +22,7 @@ export function identityFromBuilding(building: Building): BuildingIdentityForm {
 export function identityUpdatePayload(form: BuildingIdentityForm) {
   return {
     name: form.name,
+    price_mode: form.priceMode,
     zip: form.zip || null,
     street: form.street || null,
     number: form.number || null,

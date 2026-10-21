@@ -12,6 +12,15 @@ import {
   type StructureEditorMeta,
   type StructureEditorState,
 } from '@/apps/builder/components/structure-editor-context'
+import { BuildingWizardEnumSelect } from '@/apps/builder/components/BuildingWizardEnumSelect'
+import {
+  CEILING_OPTIONS,
+  FLOORING_OPTIONS,
+  OPENING_OPTIONS,
+  PROPERTY_POSITION_OPTIONS,
+  SOLAR_OPTIONS,
+  SUN_PERIOD_OPTIONS,
+} from '@/apps/builder/lib/unit-spec'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -290,6 +299,46 @@ function StructureEditorMirrorPanel() {
   )
 }
 
+function UnitPriceFields({
+  unitKey,
+  code,
+  priceBase,
+  priceCompetence,
+}: {
+  unitKey: string
+  code: string
+  priceBase: string
+  priceCompetence: string
+}) {
+  const { actions, meta } = useStructureEditor()
+  const fixed = meta.priceMode === 'fixed'
+
+  return (
+    <>
+      <Field>
+        <FieldLabel htmlFor={`unit-price-${unitKey}`}>{fixed ? `Valor (R$) ${code}` : `Valor-base INCC ${code}`}</FieldLabel>
+        <Input
+          id={`unit-price-${unitKey}`}
+          inputMode="decimal"
+          value={priceBase}
+          onChange={(event) => actions.updateUnit(unitKey, { priceBase: event.target.value })}
+        />
+      </Field>
+      {fixed ? null : (
+        <Field>
+          <FieldLabel htmlFor={`unit-competence-${unitKey}`}>Competência {code}</FieldLabel>
+          <Input
+            id={`unit-competence-${unitKey}`}
+            placeholder="AAAA-MM"
+            value={priceCompetence}
+            onChange={(event) => actions.updateUnit(unitKey, { priceCompetence: event.target.value })}
+          />
+        </Field>
+      )}
+    </>
+  )
+}
+
 function StructureEditorUnitEditor() {
   const { actions, meta } = useStructureEditor()
   const floor = meta.selectedFloor
@@ -305,11 +354,11 @@ function StructureEditorUnitEditor() {
           {floorLabel(floor.number)} · {floorKindLabel(floor.kind)}
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-6">
+      <CardContent className="flex flex-col gap-4">
         {floor.units.map((unit) => (
-          <FieldGroup key={unit.key} className="rounded-lg border p-3">
+          <div key={unit.key} className="grid gap-3 rounded-lg border p-3 md:grid-cols-3 xl:grid-cols-6">
             <Field>
-              <FieldLabel htmlFor={`unit-code-${unit.key}`}>Código {unit.code}</FieldLabel>
+              <FieldLabel htmlFor={`unit-code-${unit.key}`}>Código</FieldLabel>
               <Input id={`unit-code-${unit.key}`} value={unit.code} readOnly />
             </Field>
             <Field>
@@ -321,7 +370,7 @@ function StructureEditorUnitEditor() {
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor={`unit-bedrooms-${unit.key}`}>Quartos {unit.code}</FieldLabel>
+              <FieldLabel htmlFor={`unit-bedrooms-${unit.key}`}>Dormitórios {unit.code}</FieldLabel>
               <Input
                 id={`unit-bedrooms-${unit.key}`}
                 inputMode="numeric"
@@ -339,23 +388,87 @@ function StructureEditorUnitEditor() {
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor={`unit-price-${unit.key}`}>Preço-base {unit.code}</FieldLabel>
+              <FieldLabel htmlFor={`unit-suites-${unit.key}`}>Suítes {unit.code}</FieldLabel>
               <Input
-                id={`unit-price-${unit.key}`}
-                value={unit.priceBase}
-                onChange={(event) => actions.updateUnit(unit.key, { priceBase: event.target.value })}
+                id={`unit-suites-${unit.key}`}
+                inputMode="numeric"
+                value={unit.suites ?? ''}
+                onChange={(event) => actions.updateUnit(unit.key, { suites: event.target.value })}
+              />
+            </Field>
+            <UnitPriceFields
+              unitKey={unit.key}
+              code={unit.code}
+              priceBase={unit.priceBase}
+              priceCompetence={unit.priceCompetence}
+            />
+            <Field>
+              <FieldLabel htmlFor={`unit-powder-${unit.key}`}>Lavabos {unit.code}</FieldLabel>
+              <Input
+                id={`unit-powder-${unit.key}`}
+                inputMode="numeric"
+                value={unit.powderRooms}
+                onChange={(event) => actions.updateUnit(unit.key, { powderRooms: event.target.value })}
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor={`unit-competence-${unit.key}`}>Competência {unit.code}</FieldLabel>
+              <FieldLabel htmlFor={`unit-balconies-${unit.key}`}>Sacadas {unit.code}</FieldLabel>
               <Input
-                id={`unit-competence-${unit.key}`}
-                placeholder="AAAA-MM"
-                value={unit.priceCompetence}
-                onChange={(event) => actions.updateUnit(unit.key, { priceCompetence: event.target.value })}
+                id={`unit-balconies-${unit.key}`}
+                inputMode="numeric"
+                value={unit.balconies}
+                onChange={(event) => actions.updateUnit(unit.key, { balconies: event.target.value })}
               />
             </Field>
-          </FieldGroup>
+            <BuildingWizardEnumSelect
+              id={`unit-position-${unit.key}`}
+              label={`Posição ${unit.code}`}
+              value={unit.propertyPosition}
+              emptyLabel="Não informado"
+              options={PROPERTY_POSITION_OPTIONS}
+              onChange={(propertyPosition) => actions.updateUnit(unit.key, { propertyPosition })}
+            />
+            <BuildingWizardEnumSelect
+              id={`unit-solar-${unit.key}`}
+              label={`Sol ${unit.code}`}
+              value={unit.solarPosition}
+              emptyLabel="Não informado"
+              options={SOLAR_OPTIONS}
+              onChange={(solarPosition) => actions.updateUnit(unit.key, { solarPosition })}
+            />
+            <BuildingWizardEnumSelect
+              id={`unit-sun-${unit.key}`}
+              label={`Período ${unit.code}`}
+              value={unit.sunPeriod}
+              emptyLabel="Não informado"
+              options={SUN_PERIOD_OPTIONS}
+              onChange={(sunPeriod) => actions.updateUnit(unit.key, { sunPeriod })}
+            />
+            <BuildingWizardEnumSelect
+              id={`unit-ceiling-${unit.key}`}
+              label={`Forro ${unit.code}`}
+              value={unit.ceilingType}
+              emptyLabel="Não informado"
+              options={CEILING_OPTIONS}
+              onChange={(ceilingType) => actions.updateUnit(unit.key, { ceilingType })}
+            />
+            <BuildingWizardEnumSelect
+              id={`unit-opening-${unit.key}`}
+              label={`Aberturas ${unit.code}`}
+              value={unit.openingType}
+              emptyLabel="Não informado"
+              options={OPENING_OPTIONS}
+              onChange={(openingType) => actions.updateUnit(unit.key, { openingType })}
+            />
+            <BuildingWizardEnumSelect
+              id={`unit-flooring-${unit.key}`}
+              label={`Piso ${unit.code}`}
+              value={unit.flooringType}
+              emptyLabel="Não informado"
+              options={FLOORING_OPTIONS}
+              onChange={(flooringType) => actions.updateUnit(unit.key, { flooringType })}
+            />
+          </div>
         ))}
       </CardContent>
     </Card>
@@ -392,23 +505,12 @@ function StructureEditorGaragePanel() {
                 onChange={(event) => actions.updateUnit(unit.key, { areaM2: event.target.value })}
               />
             </Field>
-            <Field>
-              <FieldLabel htmlFor={`spot-price-${unit.key}`}>Preço-base {unit.code}</FieldLabel>
-              <Input
-                id={`spot-price-${unit.key}`}
-                value={unit.priceBase}
-                onChange={(event) => actions.updateUnit(unit.key, { priceBase: event.target.value })}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor={`spot-competence-${unit.key}`}>Competência {unit.code}</FieldLabel>
-              <Input
-                id={`spot-competence-${unit.key}`}
-                placeholder="AAAA-MM"
-                value={unit.priceCompetence}
-                onChange={(event) => actions.updateUnit(unit.key, { priceCompetence: event.target.value })}
-              />
-            </Field>
+            <UnitPriceFields
+              unitKey={unit.key}
+              code={unit.code}
+              priceBase={unit.priceBase}
+              priceCompetence={unit.priceCompetence}
+            />
           </FieldGroup>
         ))}
       </CardContent>

@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('tenant_id')->nullable()->constrained('tenants')->nullOnDelete();
             $table->string('action');
             $table->string('resource_type')->nullable();
-            $table->unsignedBigInteger('resource_id')->nullable();
+            $table->string('resource_id')->nullable();
             $table->text('message');
             $table->json('old_values')->nullable();
             $table->json('new_values')->nullable();

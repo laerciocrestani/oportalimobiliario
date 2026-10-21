@@ -78,9 +78,9 @@ class ReservationController extends Controller
     public function preHold(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'unit_id' => ['required', 'integer', 'exists:units,id'],
+            'unit_id' => ['required', 'uuid', 'exists:units,id'],
             'garage_unit_ids' => ['sometimes', 'array'],
-            'garage_unit_ids.*' => ['integer', 'distinct', 'exists:units,id'],
+            'garage_unit_ids.*' => ['uuid', 'distinct', 'exists:units,id'],
         ]);
 
         $broker = $request->user();
@@ -101,6 +101,12 @@ class ReservationController extends Controller
             ], 422);
         }
 
+        if (! $unit->hasPrice()) {
+            return response()->json([
+                'message' => 'Unidade sem preço não pode ser reservada.',
+            ], 422);
+        }
+
         $reservation = $this->preReservationService->createPreHold(
             $broker,
             $unit,
@@ -117,9 +123,9 @@ class ReservationController extends Controller
     public function draft(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'unit_id' => ['required', 'integer', 'exists:units,id'],
+            'unit_id' => ['required', 'uuid', 'exists:units,id'],
             'garage_unit_ids' => ['sometimes', 'array'],
-            'garage_unit_ids.*' => ['integer', 'distinct', 'exists:units,id'],
+            'garage_unit_ids.*' => ['uuid', 'distinct', 'exists:units,id'],
         ]);
 
         $broker = $request->user();
@@ -137,6 +143,12 @@ class ReservationController extends Controller
         if ($unit->status !== UnitStatus::Available) {
             return response()->json([
                 'message' => 'Esta unidade acaba de ser reservada por outro corretor.',
+            ], 422);
+        }
+
+        if (! $unit->hasPrice()) {
+            return response()->json([
+                'message' => 'Unidade sem preço não pode ser reservada.',
             ], 422);
         }
 
@@ -209,11 +221,11 @@ class ReservationController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'unit_id' => ['required', 'integer', 'exists:units,id'],
+            'unit_id' => ['required', 'uuid', 'exists:units,id'],
             'client_id' => ['required', 'integer', 'exists:broker_clients,id'],
             'observations' => ['nullable', 'string', 'max:2000'],
             'garage_unit_ids' => ['sometimes', 'array'],
-            'garage_unit_ids.*' => ['integer', 'distinct', 'exists:units,id'],
+            'garage_unit_ids.*' => ['uuid', 'distinct', 'exists:units,id'],
         ]);
 
         $broker = $request->user();
@@ -240,6 +252,12 @@ class ReservationController extends Controller
 
         if ($unit->status !== UnitStatus::Available) {
             return response()->json(['message' => 'Unit not available for reservation.'], 422);
+        }
+
+        if (! $unit->hasPrice()) {
+            return response()->json([
+                'message' => 'Unidade sem preço não pode ser reservada.',
+            ], 422);
         }
 
         $ttlHours = (int) config('opim.reservation_ttl_hours', 48);

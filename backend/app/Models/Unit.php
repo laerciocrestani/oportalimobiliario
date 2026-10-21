@@ -13,6 +13,7 @@ use App\Enums\UnitStatus;
 use App\Tenancy\Concerns\BelongsToTenant;
 use Database\Factories\UnitFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -50,7 +51,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Unit extends Model
 {
     /** @use HasFactory<UnitFactory> */
-    use BelongsToTenant, HasFactory;
+    use BelongsToTenant, HasFactory, HasUuids;
 
     protected $attributes = [
         'status' => 'available',
@@ -106,6 +107,11 @@ class Unit extends Model
         $this->loadMissing('floorRecord');
 
         return $this->floorRecord?->kind === FloorKind::Garage;
+    }
+
+    public function hasPrice(): bool
+    {
+        return $this->price_base !== null || $this->price !== null;
     }
 
     public function reservation(): HasOne

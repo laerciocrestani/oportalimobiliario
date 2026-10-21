@@ -110,10 +110,10 @@ describe('StructureEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: /Andar 1/ }))
     await user.type(screen.getByLabelText('Área privativa 101 (m²)'), '50')
-    await user.type(screen.getByLabelText('Quartos 101'), '2')
+    await user.type(screen.getByLabelText('Dormitórios 101'), '2')
 
     expect(screen.getByLabelText('Área privativa 101 (m²)')).toHaveValue('50')
-    expect(screen.getByLabelText('Quartos 101')).toHaveValue('2')
+    expect(screen.getByLabelText('Dormitórios 101')).toHaveValue('2')
   })
 
   it('marks the edited floor as an exception', async () => {
@@ -157,14 +157,14 @@ describe('StructureEditor', () => {
     await user.click(screen.getByRole('button', { name: /Subsolo 1/ }))
 
     expect(screen.getByText('Vagas · Subsolo 1')).toBeInTheDocument()
-    expect(screen.queryByLabelText('Quartos S1-01')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Dormitórios S1-01')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Área privativa S1-01 (m²)')).not.toBeInTheDocument()
 
     await user.type(screen.getByLabelText('Área S1-01 (m²)'), '12.5')
-    await user.type(screen.getByLabelText('Preço-base S1-01'), '45000')
+    await user.type(screen.getByLabelText('Valor-base INCC S1-01'), '45000')
 
     expect(screen.getByLabelText('Área S1-01 (m²)')).toHaveValue('12.5')
-    expect(screen.getByLabelText('Preço-base S1-01')).toHaveValue('45000')
+    expect(screen.getByLabelText('Valor-base INCC S1-01')).toHaveValue('45000')
     expect(screen.getByRole('button', { name: /Subsolo 1/ })).toHaveTextContent('Exceção')
   })
 

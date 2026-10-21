@@ -183,7 +183,7 @@ it('serializes calculated garage price and floor kind on the building dto', func
         ->assertJsonPath('units.0.price_base', '45000.00');
 });
 
-it('rejects publishing when an available garage spot has no price_base', function () {
+it('publishes a building when available units have no price', function () {
     $tenant = Tenant::factory()->create();
     $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
     $building = Building::factory()->for($tenant)->create(['published' => false]);
@@ -194,7 +194,7 @@ it('rejects publishing when an available garage spot has no price_base', functio
         'code' => 'S1-01',
         'floor' => -1,
         'status' => UnitStatus::Available,
-        'price' => 45000,
+        'price' => null,
         'price_base' => null,
     ]);
 
@@ -202,9 +202,33 @@ it('rejects publishing when an available garage spot has no price_base', functio
 
     $this->patchJson("/api/builder/buildings/{$building->id}", [
         'published' => true,
-    ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['published']);
+    ])->assertOk()
+        ->assertJsonPath('published', true);
 
-    expect($building->fresh()->published)->toBeFalse();
+    expect($building->fresh()->published)->toBeTrue();
+});
+
+it('stores price mode and locks it after a unit receives a price', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create();
+
+    Sanctum::actingAs($user);
+
+    $this->patchJson("/api/builder/buildings/{$building->id}", [
+        'price_mode' => 'fixed',
+    ])->assertOk()
+        ->assertJsonPath('price_mode', 'fixed');
+
+    Unit::factory()->for($tenant)->for($building)->create([
+        'price' => 250000,
+        'price_base' => 250000,
+    ]);
+
+    $this->patchJson("/api/builder/buildings/{$building->id}", [
+        'price_mode' => 'incc',
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['price_mode']);
+
+    expect($building->fresh()->price_mode->value)->toBe('fixed');
 });

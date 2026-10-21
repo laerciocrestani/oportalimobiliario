@@ -28,8 +28,17 @@ export type StackUnit = {
   areaM2: string
   bedrooms: string
   bathrooms: string
+  suites: string
+  powderRooms: string
+  balconies: string
   priceBase: string
   priceCompetence: string
+  propertyPosition: string
+  solarPosition: string
+  sunPeriod: string
+  ceilingType: string
+  openingType: string
+  flooringType: string
 }
 
 export type StackFloor = {
@@ -41,7 +50,7 @@ export type StackFloor = {
 
 export type StackTower = {
   key: string
-  id?: number
+  id?: string
   name: string
   referenceFloor: number | null
   floors: StackFloor[]
@@ -233,6 +242,10 @@ export function floorKindLabel(kind: FloorKind): string {
     return 'Comercial'
   }
 
+  if (kind === 'hall') {
+    return 'Hall'
+  }
+
   return 'Residencial'
 }
 
@@ -273,7 +286,7 @@ export function applySavedTowerIds(stack: StackTower[], saved: Building): StackT
 
 export function stacksFromBuilding(building: Building): StackTower[] {
   return (building.towers ?? [])
-    .filter((tower) => tower.id > 0)
+    .filter((tower) => tower.id.length > 0)
     .map((tower, index) => {
       const towerUnits = [
         ...(tower.units ?? []),
@@ -319,8 +332,17 @@ function unitFromApi(unit: Unit, floorNumber: number, index: number): StackUnit 
     areaM2: displayNumber(unit.private_area_m2 ?? unit.area_m2),
     bedrooms: unit.bedrooms != null ? String(unit.bedrooms) : '',
     bathrooms: unit.bathrooms != null ? String(unit.bathrooms) : '',
+    suites: unit.suites != null ? String(unit.suites) : '',
+    powderRooms: unit.powder_rooms != null ? String(unit.powder_rooms) : '',
+    balconies: unit.balconies != null ? String(unit.balconies) : '',
     priceBase: displayNumber(unit.price_base ?? unit.price),
     priceCompetence: displayCompetence(unit.price_competence),
+    propertyPosition: unit.property_position ?? '',
+    solarPosition: unit.solar_position ?? '',
+    sunPeriod: unit.sun_period ?? '',
+    ceilingType: unit.ceiling_type ?? '',
+    openingType: unit.opening_type ?? '',
+    flooringType: unit.flooring_type ?? '',
   }
 }
 
@@ -373,8 +395,17 @@ export function unitGridPayload(towers: StackTower[]): BuildingUnitGridPayload {
               private_area_m2: parseNumber(unit.areaM2),
               bedrooms: parseOptionalInt(unit.bedrooms),
               bathrooms: parseOptionalInt(unit.bathrooms),
+              suites: parseOptionalInt(unit.suites),
+              powder_rooms: parseOptionalInt(unit.powderRooms),
+              balconies: parseOptionalInt(unit.balconies),
               price_base: parseNumber(unit.priceBase),
               price_competence: parseCompetence(unit.priceCompetence),
+              property_position: blankText(unit.propertyPosition),
+              solar_position: blankText(unit.solarPosition),
+              sun_period: blankText(unit.sunPeriod),
+              ceiling_type: blankText(unit.ceilingType),
+              opening_type: blankText(unit.openingType),
+              flooring_type: blankText(unit.flooringType),
             })),
           })),
         },
@@ -399,8 +430,17 @@ function emptyUnit(floorNumber: number, position: number): StackUnit {
     areaM2: '',
     bedrooms: '',
     bathrooms: '',
+    suites: '',
+    powderRooms: '',
+    balconies: '',
     priceBase: '',
     priceCompetence: '',
+    propertyPosition: '',
+    solarPosition: '',
+    sunPeriod: '',
+    ceilingType: '',
+    openingType: '',
+    flooringType: '',
   }
 }
 
@@ -425,6 +465,12 @@ function inCloneRange(floorNumber: number, referenceNumber: number, range: Clone
 
 function draftKey(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function blankText(value: string): string | null {
+  const trimmed = value.trim()
+
+  return trimmed === '' ? null : trimmed
 }
 
 function parseNumber(value: string): number | null {

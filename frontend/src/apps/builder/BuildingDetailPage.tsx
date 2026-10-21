@@ -29,7 +29,7 @@ export function BuildingDetailPage() {
 
     try {
       setError(null)
-      setBuilding(await builderApi.getBuilding(Number(buildingId)))
+      setBuilding(await builderApi.getBuilding(buildingId))
     } catch {
       setError('Empreendimento não encontrado.')
     }

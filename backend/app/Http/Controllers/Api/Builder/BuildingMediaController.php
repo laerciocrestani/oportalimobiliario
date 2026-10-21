@@ -132,7 +132,7 @@ class BuildingMediaController extends Controller
 
     protected function ensureMediaBelongsToBuilding(Building $building, BuildingMedia $media): void
     {
-        if ((int) $media->building_id !== (int) $building->id) {
+        if ((string) $media->building_id !== (string) $building->id) {
             abort(404);
         }
     }

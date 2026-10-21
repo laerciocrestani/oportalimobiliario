@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Builder;
 use App\Enums\CeilingType;
 use App\Enums\FlooringType;
 use App\Enums\OpeningType;
+use App\Enums\PriceMode;
 use App\Enums\SolarPosition;
 use App\Enums\SunPeriod;
 use App\Enums\UnitStatus;
@@ -68,6 +69,7 @@ class BuildingController extends Controller
             'solar_position' => ['nullable', Rule::enum(SolarPosition::class)],
             'sun_period' => ['nullable', Rule::enum(SunPeriod::class)],
             'published' => ['sometimes', 'boolean'],
+            'price_mode' => ['sometimes', Rule::enum(PriceMode::class)],
             'wizard_step' => ['sometimes', 'integer', 'min:1', 'max:4'],
             'seo_title' => ['nullable', 'string', 'max:255'],
             'seo_description' => ['nullable', 'string', 'max:500'],
@@ -220,9 +222,12 @@ class BuildingController extends Controller
         $amenityIds = $this->pullAmenityIds($data);
 
         if (array_key_exists('published', $data) && filter_var($data['published'], FILTER_VALIDATE_BOOLEAN)) {
-            $this->assertCanPublish($building);
             $data['wizard_completed_at'] = now();
             $data['wizard_step'] = $data['wizard_step'] ?? 4;
+        }
+
+        if (array_key_exists('price_mode', $data) && $data['price_mode'] !== $building->price_mode->value) {
+            $this->assertPriceModeCanChange($building);
         }
 
         $wasPublished = (bool) $building->published;
@@ -254,16 +259,17 @@ class BuildingController extends Controller
         );
     }
 
-    private function assertCanPublish(Building $building): void
+    private function assertPriceModeCanChange(Building $building): void
     {
-        $availableWithoutPrice = $building->units()
-            ->where('status', UnitStatus::Available)
-            ->whereNull('price_base')
+        $pricedUnit = $building->units()
+            ->where(function ($query): void {
+                $query->whereNotNull('price_base')->orWhereNotNull('price');
+            })
             ->exists();
 
-        if ($availableWithoutPrice) {
+        if ($pricedUnit) {
             throw ValidationException::withMessages([
-                'published' => 'Cannot publish while available units have no price_base.',
+                'price_mode' => 'O modo de preço trava depois que uma unidade recebe valor.',
             ]);
         }
     }

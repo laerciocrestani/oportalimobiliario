@@ -38,7 +38,7 @@ class BuildingMediaController extends Controller
             abort(404);
         }
 
-        if ((int) $media->building_id !== (int) $building->id) {
+        if ((string) $media->building_id !== (string) $building->id) {
             abort(404);
         }
 

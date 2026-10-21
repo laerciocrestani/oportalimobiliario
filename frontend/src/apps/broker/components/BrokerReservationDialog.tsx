@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Building2Icon, CarIcon, FileTextIcon } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Building2Icon, CarIcon, FileTextIcon, PencilIcon } from 'lucide-react'
 import { ProposalPartyFields } from '@/apps/broker/components/ProposalPartyFields'
 import { ProposalTermsFields } from '@/apps/broker/components/ProposalTermsFields'
 import { draftSendProgress } from '@/apps/broker/lib/draft-send-progress'
@@ -16,6 +16,12 @@ import {
   partyDocumentDigits,
   type ProposalPartyForm,
 } from '@/apps/broker/lib/proposal-party'
+import {
+  appendAdjustedPrices,
+  buildPriceAdjustmentValues,
+  formatProposalAmount,
+  parseProposalAmount,
+} from '@/apps/broker/lib/proposal-price'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -27,7 +33,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Field, FieldDescription, FieldGroup, FieldLabel, FieldLegend, FieldSet } from '@/components/ui/field'
+import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import {
   Select,
@@ -93,9 +99,14 @@ export function BrokerReservationDialog({
   const [remainingTone, setRemainingTone] = useState<'green' | 'yellow' | 'red'>('green')
   const [expired, setExpired] = useState(false)
   const [party, setParty] = useState<ProposalPartyForm>(emptyProposalPartyForm)
+  const [buyerName, setBuyerName] = useState('')
+  const [buyerPhone, setBuyerPhone] = useState('')
+  const [buyerEmail, setBuyerEmail] = useState('')
   const [templates, setTemplates] = useState<BrokerProposalTemplate[] | null>(null)
   const [templateId, setTemplateId] = useState<number | null>(null)
   const [values, setValues] = useState<Record<string, string>>({})
+  const [unitPriceOverride, setUnitPriceOverride] = useState<number | null>(null)
+  const [garagePriceOverrides, setGaragePriceOverrides] = useState<Record<number, number>>({})
   const { files, setFiles } = useReservationFileItems()
 
   const clientName = client?.name.trim() ?? ''
@@ -116,21 +127,51 @@ export function BrokerReservationDialog({
       return []
     }
 
-    return [{ id: spot.id, code, price: spot.price ? formatListedPrice(spot.price) : null }]
+    const amount = spot.price != null && spot.price !== '' ? Number(spot.price) : null
+
+    return [{
+      id: spot.id,
+      code,
+      amount: amount != null && Number.isFinite(amount) ? amount : null,
+    }]
   })
   const boxLabel = garageLines.map((spot) => spot.code).join(', ')
     || selectedTemplate?.prefill.box
     || '—'
   const buildingLabel = buildingName || selectedTemplate?.prefill.nome_empreendimento || ''
   const unitCode = unit?.code.trim() ?? ''
-  const unitPrice = unit?.price ? formatListedPrice(unit.price) : null
+  const unitOriginal = unit?.price != null && unit.price !== '' && Number.isFinite(Number(unit.price))
+    ? Number(unit.price)
+    : null
+  const effectiveUnit = unitOriginal == null ? null : (unitPriceOverride ?? unitOriginal)
+  const pricedGarages = garageLines.map((spot) => ({
+    id: spot.id,
+    code: spot.code,
+    original: spot.amount,
+    amount: spot.amount == null ? null : (garagePriceOverrides[spot.id] ?? spot.amount),
+  }))
+  const garageAmount = pricedGarages.reduce((sum, spot) => sum + (spot.amount ?? 0), 0)
+  const proposalTotal = effectiveUnit != null && pricedGarages.some((spot) => spot.amount != null)
+    ? formatListedPrice(String(Math.round((effectiveUnit + garageAmount) * 100) / 100))
+    : null
+  const priceAdjustment = buildPriceAdjustmentValues({
+    unitOriginal,
+    unitAmount: effectiveUnit,
+    garages: pricedGarages,
+  })
+  const garageTotal = pricedGarages.some((spot) => spot.amount != null) ? garageAmount : 0
+  const proposalFinal = effectiveUnit == null
+    ? (selectedTemplate?.prefill.preco_final ?? '')
+    : formatProposalAmount(Math.round((effectiveUnit + garageTotal) * 100) / 100)
   const brokerName = selectedTemplate?.prefill.nome_corretor || '—'
   const brokerageName = selectedTemplate?.prefill.imobiliaria || '—'
   const mergedValues: Record<string, string> = {
     ...values,
-    nome_cliente: clientName,
-    telefone_cliente: clientPhone,
-    email_cliente: clientEmail,
+    ...priceAdjustment,
+    ...(proposalFinal !== '' ? { preco_final: proposalFinal } : {}),
+    nome_cliente: buyerName,
+    telefone_cliente: buyerPhone,
+    email_cliente: buyerEmail,
     cpf_cliente: party.document,
     rg_cliente: party.kind === 'individual' ? party.rg : '',
     estado_civil: party.kind === 'individual' ? party.maritalStatus : '',
@@ -143,6 +184,7 @@ export function BrokerReservationDialog({
     nome_empreendimento: buildingName,
     codigo_unidade: unit?.code.trim() ?? '',
     box: boxLabel === '—' ? '' : boxLabel,
+    imobiliaria: brokerageName === '—' ? '' : brokerageName,
     nome_corretor: brokerName === '—' ? '' : brokerName,
   }
   const fillableVariables = selectedTemplate?.variables.filter((variable) => !isHiddenProposalSlug(variable.slug)) ?? []
@@ -210,6 +252,16 @@ export function BrokerReservationDialog({
     }
   }, [open, reservationId, clientName, clientPhone, clientEmail, unit?.code, buildingName])
 
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+
+    setBuyerName(clientName)
+    setBuyerPhone(clientPhone)
+    setBuyerEmail(clientEmail)
+  }, [open, clientName, clientPhone, clientEmail])
+
   function resetState() {
     setPaymentTerms('')
     setDepositKind('pix')
@@ -219,10 +271,40 @@ export function BrokerReservationDialog({
     setRemainingPercent(100)
     setRemainingTone('green')
     setParty(emptyProposalPartyForm())
+    setBuyerName('')
+    setBuyerPhone('')
+    setBuyerEmail('')
     setTemplates(null)
     setTemplateId(null)
     setValues({})
+    setUnitPriceOverride(null)
+    setGaragePriceOverrides({})
     setFiles([])
+  }
+
+  function commitUnitPrice(next: number) {
+    if (unitOriginal == null || Math.round(next * 100) === Math.round(unitOriginal * 100)) {
+      setUnitPriceOverride(null)
+      return
+    }
+
+    setUnitPriceOverride(next)
+  }
+
+  function commitGaragePrice(id: number, next: number) {
+    const original = garageLines.find((spot) => spot.id === id)?.amount
+
+    setGaragePriceOverrides((current) => {
+      const copy = { ...current }
+
+      if (original == null || Math.round(next * 100) === Math.round(original * 100)) {
+        delete copy[id]
+        return copy
+      }
+
+      copy[id] = next
+      return copy
+    })
   }
 
   function selectTemplate(nextId: number) {
@@ -257,7 +339,7 @@ export function BrokerReservationDialog({
   }
 
   async function handleSubmit() {
-    if (!unit || !reservationId || expired || clientName === '' || clientPhone === '' || files.length === 0) {
+    if (!unit || !reservationId || expired || buyerName.trim() === '' || buyerPhone.trim() === '' || files.length === 0) {
       return
     }
 
@@ -270,20 +352,22 @@ export function BrokerReservationDialog({
       return
     }
 
+    const paymentTermsText = appendAdjustedPrices(terms, priceAdjustment)
+
     const married = party.kind === 'individual' && party.maritalStatus === MARRIED_STATUS
     const payload: ReservationProposalInput = {
-      client_name: clientName,
-      client_phone: clientPhone,
+      client_name: buyerName.trim(),
+      client_phone: buyerPhone.trim(),
       party_kind: party.kind,
       client_cpf: partyDocumentDigits(party),
       address: party.address.trim(),
       city: party.city.trim(),
       state: party.state.trim(),
       zip: party.zip.trim(),
-      payment_terms: terms,
+      payment_terms: paymentTermsText,
       ...(commercialTerms ? { commercial_terms: commercialTerms } : {}),
       deposit_kind: depositKind,
-      ...(clientEmail !== '' ? { client_email: clientEmail } : {}),
+      ...(buyerEmail.trim() !== '' ? { client_email: buyerEmail.trim() } : {}),
       ...(party.kind === 'individual'
         ? {
             client_rg: party.rg.trim(),
@@ -319,8 +403,8 @@ export function BrokerReservationDialog({
     }
   }
 
-  const canSubmit = clientName !== ''
-    && clientPhone !== ''
+  const canSubmit = buyerName.trim() !== ''
+    && buyerPhone.trim() !== ''
     && partyComplete
     && files.length > 0
     && (selectedTemplate ? templateComplete : paymentTerms.trim() !== '')
@@ -386,12 +470,19 @@ export function BrokerReservationDialog({
             <ProposalSubjectCard
               buildingName={buildingLabel}
               unitCode={unitCode}
-              unitPrice={unitPrice}
-              garageLines={garageLines}
+              unitAmount={effectiveUnit}
+              unitOriginal={unitOriginal}
+              proposalTotal={proposalTotal}
+              garageLines={pricedGarages}
+              disabled={expired}
+              onUnitPriceCommit={commitUnitPrice}
+              onGaragePriceCommit={commitGaragePrice}
             />
           </div>
 
-          <div className="flex min-h-0 flex-1">
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Separator />
+            <div className="flex min-h-0 flex-1">
             <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-6 py-4">
               {templates === null ? (
                 <div className="flex h-full flex-col gap-3" aria-busy="true" aria-label="Carregando proposta">
@@ -402,91 +493,96 @@ export function BrokerReservationDialog({
                 </div>
               ) : (
                 <FieldGroup>
-                  <FieldSet>
-                    <Field>
-                      <FieldLabel htmlFor="proposal-brokerage">Imobiliária</FieldLabel>
-                      <Input id="proposal-brokerage" readOnly className="bg-muted" value={brokerageName} />
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="proposal-broker">Corretor</FieldLabel>
-                      <Input id="proposal-broker" readOnly className="bg-muted" value={brokerName} />
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="proposal-client-name">Nome</FieldLabel>
-                      <Input id="proposal-client-name" readOnly className="bg-muted" value={clientName || '—'} />
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="proposal-client-phone">Telefone</FieldLabel>
-                      <Input id="proposal-client-phone" readOnly className="bg-muted" value={clientPhone || '—'} />
-                    </Field>
-                    <Field>
-                      <FieldLabel htmlFor="proposal-client-email">E-mail</FieldLabel>
-                      <Input id="proposal-client-email" readOnly className="bg-muted" value={clientEmail || '—'} />
-                    </Field>
-                  </FieldSet>
+                  <ProposalPartyFields
+                    form={party}
+                    contact={{ name: buyerName, phone: buyerPhone, email: buyerEmail }}
+                    disabled={expired}
+                    onChange={setParty}
+                    onContactChange={(contact) => {
+                      setBuyerName(contact.name)
+                      setBuyerPhone(contact.phone)
+                      setBuyerEmail(contact.email)
+                    }}
+                  />
 
-                  <ProposalPartyFields form={party} disabled={expired} onChange={setParty} />
-
-                  <FieldSet>
-                    <FieldLegend>Tipo de sinal</FieldLegend>
-                    <div className="flex flex-col gap-2">
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="radio"
-                          name="deposit-kind"
-                          value="pix"
-                          checked={depositKind === 'pix'}
+                  <fieldset className="flex flex-col gap-4" disabled={expired}>
+                    <legend className="text-base font-semibold">Condições de pagamento</legend>
+                    <p className="text-sm text-muted-foreground">
+                      Informe como o sinal será pago e as condições comerciais desta proposta.
+                    </p>
+                    <div className="flex flex-col gap-4 rounded-lg border bg-muted p-4 [&_input]:bg-background [&_textarea]:bg-background">
+                      <div className="flex flex-col gap-2">
+                        <p className="text-sm font-medium">Tipo de sinal</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <label
+                            className={cn(
+                              'flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm',
+                              depositKind === 'pix'
+                                ? 'border-primary bg-primary/10 dark:bg-primary/15'
+                                : 'border-input bg-background',
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name="deposit-kind"
+                              className="accent-primary"
+                              value="pix"
+                              checked={depositKind === 'pix'}
+                              onChange={() => setDepositKind('pix')}
+                            />
+                            PIX
+                          </label>
+                          <label
+                            className={cn(
+                              'flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm',
+                              depositKind === 'asset'
+                                ? 'border-primary bg-primary/10 dark:bg-primary/15'
+                                : 'border-input bg-background',
+                            )}
+                          >
+                            <input
+                              type="radio"
+                              name="deposit-kind"
+                              className="accent-primary"
+                              value="asset"
+                              checked={depositKind === 'asset'}
+                              onChange={() => setDepositKind('asset')}
+                            />
+                            Bem já descrito na proposta (<span className="font-bold">Dação</span>)
+                          </label>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          O PIX pede comprovante depois que todos assinarem. O bem segue para os dados do contrato.
+                        </p>
+                      </div>
+                      <Separator />
+                      {selectedTemplate ? (
+                        <ProposalTermsFields
+                          body={selectedTemplate.body_markdown}
+                          variables={fillableVariables}
+                          values={mergedValues}
                           disabled={expired}
-                          onChange={() => setDepositKind('pix')}
+                          onChange={(slug, value) => {
+                            setValues((current) => ({ ...current, [slug]: value }))
+                          }}
                         />
-                        PIX
-                      </label>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="radio"
-                          name="deposit-kind"
-                          value="asset"
-                          checked={depositKind === 'asset'}
-                          disabled={expired}
-                          onChange={() => setDepositKind('asset')}
-                        />
-                        Bem já descrito na proposta
-                      </label>
+                      ) : (
+                        <Field>
+                          <FieldLabel htmlFor="proposal-terms">Proposta *</FieldLabel>
+                          <Textarea
+                            id="proposal-terms"
+                            className="min-h-32"
+                            value={paymentTerms}
+                            onChange={(event) => setPaymentTerms(event.target.value)}
+                            placeholder="Ex: Entrada de R$ 50.000 + 24x de R$ 5.000"
+                          />
+                          <FieldDescription>
+                            Esta construtora ainda não publicou um modelo. Descreva a proposta comercial.
+                          </FieldDescription>
+                        </Field>
+                      )}
                     </div>
-                    <FieldDescription>
-                      O PIX pede comprovante depois que todos assinarem. O bem segue para os dados do contrato.
-                    </FieldDescription>
-                  </FieldSet>
-
-                  {selectedTemplate ? (
-                    <FieldSet>
-                      <FieldLegend>Condições</FieldLegend>
-                      <ProposalTermsFields
-                        body={selectedTemplate.body_markdown}
-                        variables={fillableVariables}
-                        values={mergedValues}
-                        disabled={expired}
-                        onChange={(slug, value) => {
-                          setValues((current) => ({ ...current, [slug]: value }))
-                        }}
-                      />
-                    </FieldSet>
-                  ) : (
-                    <Field>
-                      <FieldLabel htmlFor="proposal-terms">Proposta *</FieldLabel>
-                      <Textarea
-                        id="proposal-terms"
-                        className="min-h-32"
-                        value={paymentTerms}
-                        onChange={(event) => setPaymentTerms(event.target.value)}
-                        placeholder="Ex: Entrada de R$ 50.000 + 24x de R$ 5.000"
-                        disabled={expired}
-                      />
-                      <FieldDescription>
-                        Esta construtora ainda não publicou um modelo. Descreva a proposta comercial.
-                      </FieldDescription>
-                    </Field>
-                  )}
+                  </fieldset>
                 </FieldGroup>
               )}
             </div>
@@ -502,6 +598,7 @@ export function BrokerReservationDialog({
                 emptyLabel="Anexar documentos da proposta"
               />
             </aside>
+            </div>
           </div>
 
           {error ? <p className="px-6 text-sm text-destructive">{error}</p> : null}
@@ -552,15 +649,26 @@ export function BrokerReservationDialog({
 function ProposalSubjectCard({
   buildingName,
   unitCode,
-  unitPrice,
+  unitAmount,
+  unitOriginal,
+  proposalTotal,
   garageLines,
+  disabled,
+  onUnitPriceCommit,
+  onGaragePriceCommit,
 }: {
   buildingName: string
   unitCode: string
-  unitPrice: string | null
-  garageLines: { id: number; code: string; price: string | null }[]
+  unitAmount: number | null
+  unitOriginal: number | null
+  proposalTotal: string | null
+  garageLines: { id: number; code: string; amount: number | null; original: number | null }[]
+  disabled: boolean
+  onUnitPriceCommit: (amount: number) => void
+  onGaragePriceCommit: (id: number, amount: number) => void
 }) {
   const hasGarages = garageLines.length > 0
+  const pricedGarages = garageLines.filter((spot) => spot.amount != null && spot.original != null)
 
   return (
     <section className="overflow-hidden rounded-xl border bg-card" aria-label="Unidade da proposta">
@@ -578,33 +686,149 @@ function ProposalSubjectCard({
             </p>
           </div>
         </div>
-        {unitPrice ? (
+        {unitAmount != null && unitOriginal != null ? (
           <div className="shrink-0 text-right">
             <p className="text-xs text-muted-foreground">Valor da unidade</p>
-            <p className="text-lg font-semibold tabular-nums">{unitPrice}</p>
+            <EditableListedPrice
+              label="Valor da unidade"
+              amount={unitAmount}
+              original={unitOriginal}
+              disabled={disabled}
+              onCommit={onUnitPriceCommit}
+            />
           </div>
         ) : null}
       </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-t bg-muted/40 px-4 py-2.5 text-sm">
-        <CarIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-        <span className="font-medium">Vagas vinculadas</span>
-        {hasGarages ? (
-          garageLines.map((spot) => (
-            <span key={spot.id} className="inline-flex items-center gap-2">
-              <span className="font-medium">{spot.code}</span>
-              {spot.price ? <span className="tabular-nums text-muted-foreground">{spot.price}</span> : null}
-            </span>
-          ))
-        ) : (
-          <>
-            <Badge variant="secondary">Não informado</Badge>
-            <span className="h-4 w-px bg-border" aria-hidden />
-            <span className="text-muted-foreground">
-              A identificação das vagas não foi informada nesta proposta.
-            </span>
-          </>
-        )}
+      <div className="flex items-center justify-between gap-4 border-t bg-muted/40 px-4 py-2.5 text-sm">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+          <CarIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+          <span className="font-medium">Vagas vinculadas</span>
+          {hasGarages ? (
+            garageLines.map((spot) => (
+              <span key={spot.id} className="font-medium">{spot.code}</span>
+            ))
+          ) : (
+            <>
+              <Badge variant="secondary">Não informado</Badge>
+              <span className="h-4 w-px bg-border" aria-hidden />
+              <span className="text-muted-foreground">
+                A identificação das vagas não foi informada nesta proposta.
+              </span>
+            </>
+          )}
+        </div>
+        {pricedGarages.length > 0 ? (
+          <div className="flex shrink-0 flex-col items-end gap-1">
+            {pricedGarages.map((spot) => (
+              <EditableListedPrice
+                key={spot.id}
+                label={`Valor da vaga ${spot.code}`}
+                amount={spot.amount ?? 0}
+                original={spot.original ?? 0}
+                disabled={disabled}
+                onCommit={(amount) => onGaragePriceCommit(spot.id, amount)}
+              />
+            ))}
+          </div>
+        ) : null}
       </div>
+      {proposalTotal ? (
+        <div className="flex items-center justify-between gap-4 border-t px-4 py-2.5">
+          <p className="text-sm font-medium">Total da proposta</p>
+          <Badge className="h-auto px-3 py-1 text-sm font-medium tabular-nums">{proposalTotal}</Badge>
+        </div>
+      ) : null}
     </section>
+  )
+}
+
+function EditableListedPrice({
+  label,
+  amount,
+  original,
+  disabled,
+  onCommit,
+}: {
+  label: string
+  amount: number
+  original: number
+  disabled: boolean
+  onCommit: (amount: number) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const cancelRef = useRef(false)
+  const changed = Math.round(amount * 100) !== Math.round(original * 100)
+
+  function start() {
+    cancelRef.current = false
+    setDraft(formatProposalAmount(amount))
+    setEditing(true)
+  }
+
+  function commit(raw: string) {
+    if (cancelRef.current) {
+      cancelRef.current = false
+      setEditing(false)
+      return
+    }
+
+    const parsed = parseProposalAmount(raw)
+    setEditing(false)
+
+    if (parsed === null) {
+      return
+    }
+
+    onCommit(parsed)
+  }
+
+  return (
+    <div className="flex items-baseline justify-end gap-2">
+      {changed ? (
+        <span className="text-xs text-muted-foreground line-through tabular-nums">
+          {formatListedPrice(String(original))}
+        </span>
+      ) : null}
+      {editing ? (
+        <Input
+          autoFocus
+          aria-label={label}
+          inputMode="decimal"
+          className="h-8 w-40 bg-background text-right font-semibold tabular-nums md:text-base"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onFocus={(event) => event.currentTarget.select()}
+          onBlur={(event) => commit(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              event.currentTarget.blur()
+            }
+
+            if (event.key === 'Escape') {
+              event.preventDefault()
+              event.stopPropagation()
+              cancelRef.current = true
+              setEditing(false)
+            }
+          }}
+        />
+      ) : (
+        <p className="text-lg font-semibold tabular-nums">{formatListedPrice(String(amount))}</p>
+      )}
+      {editing ? null : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          disabled={disabled}
+          aria-label={`Editar ${label.charAt(0).toLowerCase()}${label.slice(1)}`}
+          onClick={start}
+        >
+          <PencilIcon />
+        </Button>
+      )}
+    </div>
   )
 }

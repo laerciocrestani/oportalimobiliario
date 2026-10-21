@@ -61,7 +61,8 @@ const buyerPayload = {
 async function fillIndividualBuyer(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('CPF'), '52998224725')
   await user.type(screen.getByLabelText('RG'), buyerPayload.client_rg)
-  await user.selectOptions(screen.getByLabelText('Estado civil'), buyerPayload.marital_status)
+  await user.click(screen.getByLabelText('Estado civil'))
+  await user.click(await screen.findByRole('option', { name: buyerPayload.marital_status }))
   await user.type(screen.getByLabelText('Profissão'), buyerPayload.profession)
   await user.type(screen.getByLabelText('CEP'), '01000000')
   await user.type(screen.getByLabelText('Endereço'), buyerPayload.address)
@@ -87,6 +88,7 @@ describe('BrokerReservationDialog', () => {
     expect(screen.getByText('Unidade 1201')).toBeInTheDocument()
     expect(screen.getByText('Não informado')).toBeInTheDocument()
     expect(screen.getByText('A identificação das vagas não foi informada nesta proposta.')).toBeInTheDocument()
+    expect(screen.queryByText('Total da proposta')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Enviar proposta' })).toBeDisabled()
     expect(screen.queryByLabelText('Cliente cadastrado')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Novo cliente' })).not.toBeInTheDocument()
@@ -210,7 +212,7 @@ describe('BrokerReservationDialog', () => {
 
     await user.type(screen.getByLabelText('Proposta *'), validProposal.payment_terms)
     await fillIndividualBuyer(user)
-    await user.click(screen.getByRole('radio', { name: 'Bem já descrito na proposta' }))
+    await user.click(screen.getByRole('radio', { name: /Bem já descrito na proposta/ }))
 
     const file = new File(['proposta'], 'proposta.pdf', { type: 'application/pdf' })
     await user.upload(document.querySelector('input[type="file"]') as HTMLInputElement, file)
@@ -371,16 +373,131 @@ describe('BrokerReservationDialog', () => {
       />,
     )
 
-    expect(await screen.findByDisplayValue('Danilo Reis')).toBeInTheDocument()
+    expect(await screen.findByLabelText('Valor de entrada')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Imobiliária')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Corretor')).not.toBeInTheDocument()
+    expect(screen.queryByDisplayValue('Danilo Reis')).not.toBeInTheDocument()
     expect(screen.getByText('Residencial Bosque')).toBeInTheDocument()
     expect(screen.getByText('Unidade 1201')).toBeInTheDocument()
     expect(screen.getByText('S1-01')).toBeInTheDocument()
     expect(screen.getByText((text) => text.replace(/\s/g, ' ') === formatListedPrice('450000').replace(/\s/g, ' '))).toBeInTheDocument()
     expect(screen.getByText((text) => text.replace(/\s/g, ' ') === formatListedPrice('45000').replace(/\s/g, ' '))).toBeInTheDocument()
+    expect(screen.getByText('Total da proposta')).toBeInTheDocument()
+    expect(screen.getByText((text) => text.replace(/\s/g, ' ') === formatListedPrice('495000').replace(/\s/g, ' '))).toBeInTheDocument()
     expect(screen.queryByLabelText('Empreendimento')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Vagas de garagem')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Box')).not.toBeInTheDocument()
     expect(screen.getByLabelText('Valor de entrada')).toBeInTheDocument()
+  })
+
+  it('saves a corrected unit and garage price beside the original', async () => {
+    const user = userEvent.setup()
+    const onReserved = vi.fn()
+    const listed = (value: string) => (text: string) => text.replace(/\s/g, ' ') === formatListedPrice(value).replace(/\s/g, ' ')
+
+    vi.mocked(brokerApi.listReservationProposalTemplates).mockResolvedValueOnce([
+      {
+        id: 7,
+        name: 'Proposta comercial padrão',
+        body_markdown: [
+          'Condições: {{condicoes_pagamento}}',
+          '',
+          '**Valor total:** R$ {{preco_final}}',
+          '',
+          '**Valor corrigido da unidade:** R$ {{preco_unidade_corrigido?}} (original R$ {{preco_unidade_original?}})',
+          '',
+          '**Valor corrigido da vaga:** {{preco_vaga_corrigido?}} (original {{preco_vaga_original?}})',
+        ].join('\n'),
+        variables: [
+          { slug: 'condicoes_pagamento', label: 'Condições de pagamento', required: true },
+          { slug: 'preco_final', label: 'Preço final (R$)', required: true },
+        ],
+        prefill: {},
+      },
+    ])
+    vi.mocked(brokerApi.submitReservationProposal).mockResolvedValue({
+      id: 55,
+      unit_id: 10,
+      client_id: 2,
+      broker_id: 1,
+      expires_at: null,
+      status: 'proposal_pending',
+    })
+
+    render(
+      <BrokerReservationDialog
+        open
+        onOpenChange={() => {}}
+        unit={unit}
+        garageUnits={[{ id: 30, code: 'S1-01', price: '45000', status: 'pre_reserved', floor_kind: 'garage' }]}
+        reservationId={55}
+        expiresAt="2099-01-01T12:00:00.000000Z"
+        client={attachedClient}
+        onReserved={onReserved}
+      />,
+    )
+
+    expect(await screen.findByRole('button', { name: 'Editar valor da unidade' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Editar valor da vaga S1-01' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Preço final (R$)')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Editar valor da unidade' }))
+    await user.clear(screen.getByRole('textbox', { name: 'Valor da unidade' }))
+    await user.type(screen.getByRole('textbox', { name: 'Valor da unidade' }), 'abc')
+    await user.tab()
+    expect(screen.queryByRole('textbox', { name: 'Valor da unidade' })).not.toBeInTheDocument()
+    expect(screen.getByText(listed('450000'))).not.toHaveClass('line-through')
+
+    await user.click(screen.getByRole('button', { name: 'Editar valor da unidade' }))
+    await user.clear(screen.getByRole('textbox', { name: 'Valor da unidade' }))
+    await user.type(screen.getByRole('textbox', { name: 'Valor da unidade' }), '400000')
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('textbox', { name: 'Valor da unidade' })).not.toBeInTheDocument()
+    expect(screen.getByText(listed('450000'))).not.toHaveClass('line-through')
+
+    await user.click(screen.getByRole('button', { name: 'Editar valor da unidade' }))
+    const unitInput = screen.getByRole('textbox', { name: 'Valor da unidade' })
+    await user.clear(unitInput)
+    await user.type(unitInput, '400000')
+    await user.tab()
+
+    await user.click(screen.getByRole('button', { name: 'Editar valor da vaga S1-01' }))
+    const garageInput = screen.getByRole('textbox', { name: 'Valor da vaga S1-01' })
+    await user.clear(garageInput)
+    await user.type(garageInput, '40000')
+    await user.click(screen.getByText('Total da proposta'))
+
+    expect(screen.getByText(listed('450000'))).toHaveClass('line-through')
+    expect(screen.getByText(listed('400000'))).toBeInTheDocument()
+    expect(screen.getByText(listed('45000'))).toHaveClass('line-through')
+    expect(screen.getByText(listed('40000'))).toBeInTheDocument()
+    expect(screen.getByText(listed('440000'))).toBeInTheDocument()
+    expect(screen.queryByLabelText('preco unidade corrigido')).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Condições de pagamento'), 'Entrada de R$ 50.000 + 24x')
+    await fillIndividualBuyer(user)
+    const file = new File(['proposta'], 'proposta.pdf', { type: 'application/pdf' })
+    await user.upload(document.querySelector('input[type="file"]') as HTMLInputElement, file)
+    await user.click(screen.getByRole('button', { name: 'Enviar proposta' }))
+
+    await waitFor(() => {
+      expect(brokerApi.submitReservationProposal).toHaveBeenCalledWith(
+        55,
+        expect.objectContaining({
+          payment_terms: [
+            'Condições: Entrada de R$ 50.000 + 24x',
+            '',
+            'Valor total: R$ 440.000,00',
+            '',
+            'Valor corrigido da unidade: R$ 400.000,00 (original R$ 450.000,00)',
+            '',
+            'Valor corrigido da vaga: R$ 40.000,00 (original R$ 45.000,00)',
+          ].join('\n'),
+        }),
+        [file],
+      )
+    })
+    expect(onReserved).toHaveBeenCalled()
   })
 
   it('paints the deadline green, yellow and red as time runs out', () => {

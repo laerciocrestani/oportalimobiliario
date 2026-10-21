@@ -7,8 +7,16 @@ import { emptyProposalPartyForm, type ProposalPartyForm } from '@/apps/broker/li
 
 function Harness() {
   const [form, setForm] = useState<ProposalPartyForm>(emptyProposalPartyForm())
+  const [contact, setContact] = useState({ name: 'Ana Silva', phone: '', email: '' })
 
-  return <ProposalPartyFields form={form} onChange={setForm} />
+  return (
+    <ProposalPartyFields
+      form={form}
+      contact={contact}
+      onChange={setForm}
+      onContactChange={setContact}
+    />
+  )
 }
 
 describe('ProposalPartyFields', () => {
@@ -26,7 +34,10 @@ describe('ProposalPartyFields', () => {
     expect(document).toHaveValue('111.111.111-11')
     expect(screen.getByText('CPF inválido.')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('radio', { name: 'Pessoa jurídica' }))
+    await user.click(screen.getByRole('radio', { name: 'Pessoa jurídica (PJ)' }))
+    expect(screen.getByLabelText('Razão social')).toBeEnabled()
+    expect(screen.queryByLabelText('RG')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Estado civil')).not.toBeInTheDocument()
     const cnpj = screen.getByLabelText('CNPJ')
     expect(cnpj).toHaveValue('')
     expect(screen.queryByText('CPF inválido.')).not.toBeInTheDocument()

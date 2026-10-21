@@ -1,4 +1,5 @@
 import type { BrokerProposalTemplate, ProposalCommercialTerms } from '@/lib/api'
+import { PROPOSAL_ADJUSTED_PRICE_SLUGS } from '@/apps/broker/lib/proposal-price'
 
 const PLACEHOLDER = /\{\{\s*([a-z][a-z0-9_]*)\s*\??\s*\}\}/g
 const LEGACY_REINFORCEMENT_LINE =
@@ -131,6 +132,7 @@ export const PROPOSAL_CONTEXT_SLUGS = new Set([
   'box',
   'imobiliaria',
   'nome_corretor',
+  'data_emissao',
 ])
 
 export const PROPOSAL_PARTY_SLUGS = new Set([
@@ -149,7 +151,10 @@ export const PROPOSAL_PARTY_SLUGS = new Set([
 ])
 
 export function isHiddenProposalSlug(slug: string): boolean {
-  return PROPOSAL_CONTEXT_SLUGS.has(slug) || PROPOSAL_PARTY_SLUGS.has(slug)
+  return PROPOSAL_CONTEXT_SLUGS.has(slug)
+    || PROPOSAL_PARTY_SLUGS.has(slug)
+    || PROPOSAL_ADJUSTED_PRICE_SLUGS.has(slug)
+    || slug === 'preco_final'
 }
 
 function placeholderSlugs(line: string): string[] {

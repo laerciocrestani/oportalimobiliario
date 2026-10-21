@@ -1,21 +1,45 @@
 import { useEffect, useRef, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { cnpjDigits, cpfDigits, formatCnpj, formatCpf, isValidCnpj, isValidCpf } from '@/lib/br-docs'
+import { formatBrazilianMobilePhone } from '@/lib/format-phone'
 import { formatCep, lookupCep } from '@/lib/viacep'
+import { cn } from '@/lib/utils'
 import {
   MARITAL_STATUS_OPTIONS,
   MARRIED_STATUS,
   type ProposalPartyForm,
 } from '@/apps/broker/lib/proposal-party'
 
-type ProposalPartyFieldsProps = {
-  form: ProposalPartyForm
-  disabled?: boolean
-  onChange: (form: ProposalPartyForm) => void
+export type ProposalContact = {
+  name: string
+  phone: string
+  email: string
 }
 
-export function ProposalPartyFields({ form, disabled = false, onChange }: ProposalPartyFieldsProps) {
+type ProposalPartyFieldsProps = {
+  form: ProposalPartyForm
+  contact: ProposalContact
+  disabled?: boolean
+  onChange: (form: ProposalPartyForm) => void
+  onContactChange: (contact: ProposalContact) => void
+}
+
+export function ProposalPartyFields({
+  form,
+  contact,
+  disabled = false,
+  onChange,
+  onContactChange,
+}: ProposalPartyFieldsProps) {
   const [cepError, setCepError] = useState<string | null>(null)
   const [documentTouched, setDocumentTouched] = useState(false)
   const [spouseTouched, setSpouseTouched] = useState(false)
@@ -71,48 +95,112 @@ export function ProposalPartyFields({ form, disabled = false, onChange }: Propos
     }
   }
 
+  const nameLabel = company ? 'Razão social' : 'Nome'
+
   return (
-    <fieldset className="flex flex-col gap-3" disabled={disabled}>
-      <legend className="text-sm font-medium">Comprador</legend>
-      <div className="flex gap-3 text-sm">
-        <label className="flex items-center gap-2">
-          <input
-            type="radio"
-            name="party-kind"
-            value="individual"
-            checked={form.kind === 'individual'}
-            onChange={() => {
-              setDocumentTouched(false)
-              update({ kind: 'individual', document: '' })
-            }}
-          />
-          Pessoa física
-        </label>
-        <label className="flex items-center gap-2">
-          <input
-            type="radio"
-            name="party-kind"
-            value="company"
-            checked={form.kind === 'company'}
-            onChange={() => {
-              setDocumentTouched(false)
-              update({
-                kind: 'company',
-                document: '',
-                rg: '',
-                maritalStatus: '',
-                profession: '',
-                spouseName: '',
-                spouseCpf: '',
-              })
-            }}
-          />
-          Pessoa jurídica
-        </label>
+    <fieldset className="flex flex-col gap-4" disabled={disabled}>
+      <legend className="text-base font-semibold">Dados do comprador</legend>
+      <p className="text-sm text-muted-foreground">
+        Informe os dados para identificar o comprador na proposta.
+      </p>
+      <div className="flex flex-col gap-4 rounded-lg border bg-muted p-4">
+      <div className="flex flex-col gap-2">
+        <p className="text-sm font-medium">Tipo de comprador</p>
+        <div className="grid grid-cols-2 gap-3">
+          <label
+            className={cn(
+              'flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm',
+              form.kind === 'individual'
+                ? 'border-primary bg-primary/10 dark:bg-primary/15'
+                : 'border-input bg-background',
+            )}
+          >
+            <input
+              type="radio"
+              name="party-kind"
+              className="accent-primary"
+              value="individual"
+              checked={form.kind === 'individual'}
+              onChange={() => {
+                setDocumentTouched(false)
+                update({ kind: 'individual', document: '' })
+              }}
+            />
+            Pessoa física (PF)
+          </label>
+          <label
+            className={cn(
+              'flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm',
+              form.kind === 'company'
+                ? 'border-primary bg-primary/10 dark:bg-primary/15'
+                : 'border-input bg-background',
+            )}
+          >
+            <input
+              type="radio"
+              name="party-kind"
+              className="accent-primary"
+              value="company"
+              checked={form.kind === 'company'}
+              onChange={() => {
+                setDocumentTouched(false)
+                update({
+                  kind: 'company',
+                  document: '',
+                  rg: '',
+                  maritalStatus: '',
+                  profession: '',
+                  spouseName: '',
+                  spouseCpf: '',
+                })
+              }}
+            />
+            Pessoa jurídica (PJ)
+          </label>
+        </div>
       </div>
 
-      <div className="space-y-1">
-        <Label htmlFor="party-document">{documentLabel}</Label>
+      <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3 [&_input]:bg-background [&_[data-slot=select-trigger]]:bg-background">
+        <div className="space-y-1">
+          <Label htmlFor="buyer-name">{nameLabel}</Label>
+          <Input
+            id="buyer-name"
+            aria-label={nameLabel}
+            autoComplete="name"
+            value={contact.name}
+            onChange={(event) => onContactChange({ ...contact, name: event.target.value })}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="buyer-phone">Telefone</Label>
+          <Input
+            id="buyer-phone"
+            aria-label="Telefone"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="(00) 00000-0000"
+            value={contact.phone}
+            onChange={(event) => onContactChange({
+              ...contact,
+              phone: formatBrazilianMobilePhone(event.target.value),
+            })}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor="buyer-email">E-mail</Label>
+          <Input
+            id="buyer-email"
+            aria-label="E-mail"
+            type="email"
+            autoComplete="email"
+            placeholder="nome@exemplo.com"
+            value={contact.email}
+            onChange={(event) => onContactChange({ ...contact, email: event.target.value })}
+          />
+        </div>
+
+        <div className="space-y-1">
+          <Label htmlFor="party-document">{documentLabel}</Label>
         <Input
           id="party-document"
           aria-label={documentLabel}
@@ -139,21 +227,30 @@ export function ProposalPartyFields({ form, disabled = false, onChange }: Propos
           </div>
           <div className="space-y-1">
             <Label htmlFor="party-marital">Estado civil</Label>
-            <select
-              id="party-marital"
-              aria-label="Estado civil"
-              className="h-8 w-full rounded-lg border border-input bg-transparent px-2 text-sm"
-              value={form.maritalStatus}
-              onChange={(event) => update({
-                maritalStatus: event.target.value,
-                ...(event.target.value === MARRIED_STATUS ? {} : { spouseName: '', spouseCpf: '' }),
-              })}
+            <Select
+              value={form.maritalStatus === '' ? null : form.maritalStatus}
+              onValueChange={(next) => {
+                if (next === null) {
+                  return
+                }
+
+                update({
+                  maritalStatus: next,
+                  ...(next === MARRIED_STATUS ? {} : { spouseName: '', spouseCpf: '' }),
+                })
+              }}
             >
-              <option value="">Selecione</option>
-              {MARITAL_STATUS_OPTIONS.map((option) => (
-                <option key={option} value={option}>{option}</option>
-              ))}
-            </select>
+              <SelectTrigger id="party-marital" className="w-full" aria-label="Estado civil">
+                <SelectValue placeholder="Selecione" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {MARITAL_STATUS_OPTIONS.map((option) => (
+                    <SelectItem key={option} value={option}>{option}</SelectItem>
+                  ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
             <Label htmlFor="party-nationality">Nacionalidade</Label>
@@ -204,32 +301,22 @@ export function ProposalPartyFields({ form, disabled = false, onChange }: Propos
         </>
       ) : null}
 
-      <div className="space-y-1">
-        <Label htmlFor="party-zip">CEP</Label>
-        <Input
-          id="party-zip"
-          aria-label="CEP"
-          value={form.zip}
-          onChange={(event) => {
-            const zip = formatCep(event.target.value)
-            update({ zip })
-            if (zip.replace(/\D/g, '').length === 8) {
-              void fillAddress(zip)
-            }
-          }}
-        />
-        {cepError ? <p className="text-xs text-destructive">{cepError}</p> : null}
-      </div>
-      <div className="space-y-1">
-        <Label htmlFor="party-address">Endereço</Label>
-        <Input
-          id="party-address"
-          aria-label="Endereço"
-          value={form.address}
-          onChange={(event) => update({ address: event.target.value })}
-        />
-      </div>
-      <div className="grid grid-cols-[1fr_4rem] gap-2">
+        <div className="space-y-1">
+          <Label htmlFor="party-zip">CEP</Label>
+          <Input
+            id="party-zip"
+            aria-label="CEP"
+            value={form.zip}
+            onChange={(event) => {
+              const zip = formatCep(event.target.value)
+              update({ zip })
+              if (zip.replace(/\D/g, '').length === 8) {
+                void fillAddress(zip)
+              }
+            }}
+          />
+          {cepError ? <p className="text-xs text-destructive">{cepError}</p> : null}
+        </div>
         <div className="space-y-1">
           <Label htmlFor="party-city">Cidade</Label>
           <Input
@@ -249,6 +336,16 @@ export function ProposalPartyFields({ form, disabled = false, onChange }: Propos
             onChange={(event) => update({ state: event.target.value.toUpperCase() })}
           />
         </div>
+        <div className="space-y-1 sm:col-span-3">
+          <Label htmlFor="party-address">Endereço</Label>
+          <Input
+            id="party-address"
+            aria-label="Endereço"
+            value={form.address}
+            onChange={(event) => update({ address: event.target.value })}
+          />
+        </div>
+      </div>
       </div>
     </fieldset>
   )

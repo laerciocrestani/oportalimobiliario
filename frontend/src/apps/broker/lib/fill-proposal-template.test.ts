@@ -72,15 +72,16 @@ describe('renderProposalPlainText', () => {
     ).toBe('Proposta\n\nCliente Ana Silva, (11) 88888-8888.\n\nCondições: Entrada de R$ 50.000.')
   })
 
-  it('leaves unit, box and broker out of the proposal text', () => {
+  it('leaves unit, box, broker and issue date out of the proposal text', () => {
     const text = renderProposalPlainText(
-      'Cliente {{nome_cliente}}\n\nEmpreendimento {{nome_empreendimento}}\n\nUnidade {{codigo_unidade}} · Box {{box}}\n\nCorretor {{nome_corretor}}\n\nEntrada {{valor_entrada}}',
+      'Data {{data_emissao}}\n\nCliente {{nome_cliente}}\n\nEmpreendimento {{nome_empreendimento}}\n\nUnidade {{codigo_unidade}} · Box {{box}}\n\nCorretor {{nome_corretor}}\n\nEntrada {{valor_entrada}}',
       {
         nome_cliente: 'Ana Silva',
         nome_empreendimento: 'Bosque',
         codigo_unidade: '1201',
         box: 'S1-01',
         nome_corretor: 'Danilo',
+        data_emissao: '21/10/2026',
         valor_entrada: '50000',
       },
     )
@@ -88,6 +89,7 @@ describe('renderProposalPlainText', () => {
     expect(text).toBe('Cliente Ana Silva\n\nEntrada 50000')
     expect(text).not.toContain('Bosque')
     expect(text).not.toContain('S1-01')
+    expect(text).not.toContain('21/10/2026')
   })
 
   it('expands reinforcement and dation modules and skips blank rows', () => {
@@ -106,6 +108,18 @@ describe('renderProposalPlainText', () => {
     expect(text).toBe(
       'Reforços\n\nValor: R$ 10000 · Venc.: 10/11/2026\nValor: R$ 5000 · Venc.: 10/12/2026\n\nTotal 15000\n\nDação 1: Apartamento',
     )
+  })
+
+  it('keeps a corrected price and drops the line when nothing was changed', () => {
+    const markdown = '**Valor total:** R$ {{preco_final}}\n\n**Valor corrigido da unidade:** R$ {{preco_unidade_corrigido?}} (original R$ {{preco_unidade_original?}})'
+
+    expect(renderProposalPlainText(markdown, {
+      preco_final: '400.000,00',
+      preco_unidade_corrigido: '400.000,00',
+      preco_unidade_original: '450.000,00',
+    })).toContain('Valor corrigido da unidade: R$ 400.000,00 (original R$ 450.000,00)')
+
+    expect(renderProposalPlainText(markdown, { preco_final: '450.000,00' })).not.toContain('Valor corrigido')
   })
 
   it('replaces the fixed reinforcement lines with the filled rows', () => {

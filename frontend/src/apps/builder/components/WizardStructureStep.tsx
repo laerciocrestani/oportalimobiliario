@@ -1,6 +1,9 @@
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { StructureEditor } from '@/apps/builder/components/StructureEditor'
 import { useBuildingWizard } from '@/apps/builder/components/building-wizard-context'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 export function WizardStructureStep() {
   const { state, actions } = useBuildingWizard()
@@ -17,8 +20,56 @@ export function WizardStructureStep() {
             Monte a estrutura de {state.form.name || 'o empreendimento'}. Crie um pavimento com suas unidades e replique o modelo para os demais andares.
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">Torre única</p>
+        {state.stackTowers.length > 0 ? (
+          <Button type="button" variant="outline" onClick={actions.addTowerCopy}>
+            Adicionar torre
+          </Button>
+        ) : null}
       </div>
+      {state.stackTowers.length > 0 ? (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2">
+            {state.stackTowers.map((tower, index) => (
+              <Button
+                key={tower.key}
+                type="button"
+                size="sm"
+                variant={index === state.selectedTowerIndex ? 'default' : 'outline'}
+                onClick={() => actions.setSelectedTowerIndex(index)}
+              >
+                {tower.name}
+              </Button>
+            ))}
+          </div>
+          {selectedTower ? (
+            <div className="flex max-w-xl flex-wrap items-end gap-3">
+              <div className="min-w-60 flex-1">
+                <Label htmlFor="wizard-tower-name">Nome da torre</Label>
+                <Input
+                  id="wizard-tower-name"
+                  value={selectedTower.name}
+                  onChange={(event) =>
+                    actions.updateSelectedTower({ ...selectedTower, name: event.target.value })
+                  }
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={state.stackTowers.length <= 1 || selectedTower.locked}
+                onClick={actions.removeSelectedTower}
+              >
+                Remover torre
+              </Button>
+            </div>
+          ) : null}
+          {selectedTower?.locked ? (
+            <p className="text-sm text-muted-foreground">
+              Esta torre tem unidade vendida ou em reserva e não pode ser removida.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       <Alert>
         <AlertTitle>Um pavimento-modelo. Vários andares prontos.</AlertTitle>
         <AlertDescription>

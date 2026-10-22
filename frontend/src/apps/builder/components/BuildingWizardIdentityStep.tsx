@@ -91,30 +91,24 @@ export function BuildingWizardIdentityStep({
                     required
                   />
                 </Field>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <Field>
-                    <FieldLabel htmlFor="wizard-building-category">Tipo de empreendimento *</FieldLabel>
-                    <select
-                      id="wizard-building-category"
-                      className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none"
-                      value={form.category}
-                      onChange={(event) =>
-                        onChange({
-                          ...form,
-                          category: event.target.value as BuildingIdentityForm['category'],
-                        })
-                      }
-                    >
-                      <option value="residential">Residencial</option>
-                      <option value="commercial">Comercial</option>
-                      <option value="mixed">Misto</option>
-                    </select>
-                  </Field>
-                  <Field>
-                    <FieldLabel htmlFor="wizard-building-organization">Organização da estrutura *</FieldLabel>
-                    <Input id="wizard-building-organization" value="Torre única" readOnly />
-                  </Field>
-                </div>
+                <Field>
+                  <FieldLabel htmlFor="wizard-building-category">Tipo de empreendimento *</FieldLabel>
+                  <select
+                    id="wizard-building-category"
+                    className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none"
+                    value={form.category}
+                    onChange={(event) =>
+                      onChange({
+                        ...form,
+                        category: event.target.value as BuildingIdentityForm['category'],
+                      })
+                    }
+                  >
+                    <option value="residential">Residencial</option>
+                    <option value="commercial">Comercial</option>
+                    <option value="mixed">Misto</option>
+                  </select>
+                </Field>
                 <FieldSet disabled={priceModeLocked}>
                   <legend className="text-sm font-medium">Valor das unidades</legend>
                   <div className="flex flex-wrap gap-4">

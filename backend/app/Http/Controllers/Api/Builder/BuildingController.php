@@ -197,9 +197,9 @@ class BuildingController extends Controller
         $building->load([
             'towers' => fn ($query) => $query->orderBy('sort_order')->orderBy('name'),
             'towers.floors' => fn ($query) => $query->orderBy('number'),
-            'towers.units' => fn ($query) => $query->orderByDesc('floor')->orderBy('code'),
+            'towers.units' => fn ($query) => $query->with('reservation')->orderByDesc('floor')->orderBy('code'),
             'units.tower:id,name,building_id',
-            'units' => fn ($query) => $query->orderByDesc('floor')->orderBy('code'),
+            'units' => fn ($query) => $query->with('reservation')->orderByDesc('floor')->orderBy('code'),
             ...AmenityPresentation::buildingEagerLoad(),
         ]);
 

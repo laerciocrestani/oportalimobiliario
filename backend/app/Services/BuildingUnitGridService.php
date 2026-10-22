@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Enums\FloorKind;
-use App\Enums\ReservationStatus;
 use App\Enums\UnitStatus;
 use App\Models\Building;
 use App\Models\Floor;
@@ -314,10 +313,7 @@ class BuildingUnitGridService
         return $building->units()
             ->where(function ($query): void {
                 $query->where('status', UnitStatus::Sold)
-                    ->orWhereHas(
-                        'reservation',
-                        fn ($reservation) => $reservation->where('status', '!=', ReservationStatus::Cancelled),
-                    );
+                    ->orWhereHas('reservation');
             })
             ->get();
     }

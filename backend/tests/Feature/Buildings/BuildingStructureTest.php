@@ -6,9 +6,11 @@
  * @see REQ-WZR-003
  */
 use App\Enums\FloorKind;
+use App\Enums\ReservationStatus;
 use App\Enums\UnitStatus;
 use App\Models\Building;
 use App\Models\Floor;
+use App\Models\Reservation;
 use App\Models\Tenant;
 use App\Models\Tower;
 use App\Models\Unit;
@@ -78,6 +80,61 @@ it('rejects structure replace when a unit is sold', function () {
         ],
     ])->assertUnprocessable()
         ->assertJsonValidationErrors(['towers']);
+});
+
+it('keeps a referenced tower and appends a new one', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->published()->create();
+    $unit = Unit::factory()->for($tenant)->for($building)->create(['status' => UnitStatus::Sold, 'code' => '101']);
+    $tower = Tower::query()->findOrFail($unit->tower_id);
+
+    Sanctum::actingAs($user);
+
+    $this->putJson("/api/builder/buildings/{$building->id}/structure", [
+        'towers' => [
+            [
+                'id' => $tower->id,
+                'name' => 'Torre A',
+                'floors' => [
+                    ['number' => (int) $unit->floor, 'kind' => 'residential'],
+                ],
+            ],
+            [
+                'name' => 'Torre B',
+                'floors' => [
+                    ['number' => 1, 'kind' => 'residential'],
+                ],
+            ],
+        ],
+    ])->assertOk()
+        ->assertJsonCount(2, 'towers');
+
+    expect($unit->fresh()->tower_id)->toBe($tower->id)
+        ->and(Tower::query()->where('building_id', $building->id)->where('name', 'Torre B')->exists())->toBeTrue();
+});
+
+it('rejects dropping a tower when a cancelled reservation still references a unit', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->published()->create();
+    $unit = Unit::factory()->for($tenant)->for($building)->create(['code' => '202']);
+    Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'status' => ReservationStatus::Cancelled,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->putJson("/api/builder/buildings/{$building->id}/structure", [
+        'towers' => [
+            ['name' => 'Torre Nova', 'floors_count' => 1],
+        ],
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['towers']);
+
+    expect(Unit::query()->whereKey($unit->id)->exists())->toBeTrue();
 });
 
 it('validates structure payload', function () {

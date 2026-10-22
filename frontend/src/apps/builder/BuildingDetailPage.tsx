@@ -161,12 +161,6 @@ export function BuildingDetailPage() {
 
               {canManageBuildings ? (
                 <TabsContent value="towers" className="mt-4 space-y-4">
-                  <div className="flex justify-end">
-                    <Button type="button" size="sm" onClick={() => openTowerEdit(null)}>
-                      Nova torre
-                    </Button>
-                  </div>
-
                   <div className="overflow-x-auto rounded-lg border">
                     <table className="w-full text-sm">
                       <thead className="border-b bg-muted/40 text-left">

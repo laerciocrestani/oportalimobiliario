@@ -3,10 +3,11 @@
 namespace App\Services;
 
 use App\Enums\FloorKind;
-use App\Enums\ReservationStatus;
 use App\Enums\UnitStatus;
 use App\Models\Building;
+use App\Models\Floor;
 use App\Models\Tower;
+use App\Models\Unit;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -20,6 +21,7 @@ class BuildingStructureService
     /**
      * @param  list<array{
      *     name: string,
+     *     id?: string|null,
      *     floors_count?: int,
      *     reference_floor?: int|null,
      *     floors?: list<array{number: int, kind: string|FloorKind}>
@@ -27,45 +29,49 @@ class BuildingStructureService
      */
     public function replace(Building $building, array $towers): Building
     {
-        if ($this->hasLockedUnit($building)) {
-            throw ValidationException::withMessages([
-                'towers' => 'Não é possível remontar a estrutura enquanto houver unidade em venda ou vendida.',
-            ]);
-        }
-
         $this->assertValidStructure($towers);
 
         DB::transaction(function () use ($building, $towers): void {
-            $building->towers->each(function (Tower $tower): void {
-                $tower->delete();
-            });
+            $building->load(['towers.floors', 'towers.units.reservation']);
+            $kept = [];
 
             foreach ($towers as $index => $towerData) {
                 $floors = $this->resolveFloors($towerData);
-                $floorsCount = count(array_filter(
-                    $floors,
-                    fn (array $floor): bool => (int) $floor['number'] > 0,
-                ));
+                $existing = $this->matchingTower($building, $towerData);
 
-                $tower = $building->towers()->create([
-                    'name' => $towerData['name'],
-                    'floors_count' => $floorsCount,
-                    'reference_floor' => $towerData['reference_floor'] ?? null,
-                    'sort_order' => $index,
-                ]);
+                if ($existing === null) {
+                    $tower = $building->towers()->create($this->towerAttributes($towerData, $floors, $index));
 
-                foreach ($floors as $floorData) {
-                    $tower->floors()->create([
-                        'number' => $floorData['number'],
-                        'kind' => $floorData['kind'] instanceof FloorKind
-                            ? $floorData['kind']
-                            : FloorKind::from($floorData['kind']),
-                    ]);
+                    foreach ($floors as $floorData) {
+                        $tower->floors()->create($this->floorAttributes($floorData));
+                    }
+
+                    $kept[] = (string) $tower->id;
+
+                    continue;
                 }
+
+                $this->assertLockedFloorsKept($existing, $floors);
+                $existing->update($this->towerAttributes($towerData, $floors, $index));
+                $this->syncFloors($existing, $floors);
+                $kept[] = (string) $existing->id;
             }
 
-            $wizardStep = max((int) $building->wizard_step, 2);
-            $building->update(['wizard_step' => $wizardStep]);
+            foreach ($building->towers as $tower) {
+                if (in_array((string) $tower->id, $kept, true)) {
+                    continue;
+                }
+
+                if ($this->towerHasReference($tower)) {
+                    throw ValidationException::withMessages([
+                        'towers' => 'Não é possível remover a torre enquanto houver unidade em venda ou vendida.',
+                    ]);
+                }
+
+                $tower->delete();
+            }
+
+            $building->update(['wizard_step' => max((int) $building->wizard_step, 2)]);
         });
 
         return $building->fresh([
@@ -158,16 +164,124 @@ class BuildingStructureService
         return $floors;
     }
 
-    private function hasLockedUnit(Building $building): bool
+    /**
+     * @param  array{id?: string|null, name: string, reference_floor?: int|null}  $towerData
+     */
+    private function matchingTower(Building $building, array $towerData): ?Tower
     {
-        return $building->units()
-            ->where(function ($query): void {
-                $query->where('status', UnitStatus::Sold)
-                    ->orWhereHas(
-                        'reservation',
-                        fn ($reservation) => $reservation->where('status', '!=', ReservationStatus::Cancelled),
-                    );
-            })
-            ->exists();
+        $id = $towerData['id'] ?? null;
+
+        if ($id === null || $id === '') {
+            return null;
+        }
+
+        $tower = $building->towers->firstWhere('id', (string) $id);
+
+        if ($tower === null) {
+            throw ValidationException::withMessages([
+                'towers' => 'Tower does not belong to this building.',
+            ]);
+        }
+
+        return $tower;
+    }
+
+    /**
+     * @param  array{name: string, reference_floor?: int|null}  $towerData
+     * @param  list<array{number: int, kind: string|FloorKind}>  $floors
+     * @return array{name: string, floors_count: int, reference_floor: int|null, sort_order: int}
+     */
+    private function towerAttributes(array $towerData, array $floors, int $index): array
+    {
+        return [
+            'name' => $towerData['name'],
+            'floors_count' => count(array_filter(
+                $floors,
+                fn (array $floor): bool => (int) $floor['number'] > 0,
+            )),
+            'reference_floor' => $towerData['reference_floor'] ?? null,
+            'sort_order' => $index,
+        ];
+    }
+
+    /**
+     * @param  array{number: int, kind: string|FloorKind}  $floorData
+     * @return array{number: int, kind: FloorKind}
+     */
+    private function floorAttributes(array $floorData): array
+    {
+        return [
+            'number' => (int) $floorData['number'],
+            'kind' => $floorData['kind'] instanceof FloorKind
+                ? $floorData['kind']
+                : FloorKind::from($floorData['kind']),
+        ];
+    }
+
+    /**
+     * @param  list<array{number: int, kind: string|FloorKind}>  $floors
+     */
+    private function assertLockedFloorsKept(Tower $tower, array $floors): void
+    {
+        $incoming = [];
+
+        foreach ($floors as $floor) {
+            $incoming[(int) $floor['number']] = true;
+        }
+
+        foreach ($tower->units as $unit) {
+            if (! $this->unitIsReferenced($unit)) {
+                continue;
+            }
+
+            if (! isset($incoming[(int) $unit->floor])) {
+                throw ValidationException::withMessages([
+                    'towers' => "A unidade {$unit->code} está em venda ou vendida e não pode ser alterada.",
+                ]);
+            }
+        }
+    }
+
+    /**
+     * @param  list<array{number: int, kind: string|FloorKind}>  $floors
+     */
+    private function syncFloors(Tower $tower, array $floors): void
+    {
+        $existing = $tower->floors->keyBy(fn (Floor $floor): int => (int) $floor->number);
+        $incoming = [];
+
+        foreach ($floors as $floorData) {
+            $attributes = $this->floorAttributes($floorData);
+            $incoming[$attributes['number']] = true;
+            $current = $existing->get($attributes['number']);
+
+            if ($current instanceof Floor) {
+                $current->update(['kind' => $attributes['kind']]);
+
+                continue;
+            }
+
+            $tower->floors()->create($attributes);
+        }
+
+        foreach ($existing as $number => $floor) {
+            if (! isset($incoming[(int) $number])) {
+                $floor->delete();
+            }
+        }
+    }
+
+    private function towerHasReference(Tower $tower): bool
+    {
+        return $tower->units->contains(fn (Unit $unit): bool => $this->unitIsReferenced($unit));
+    }
+
+    private function unitIsReferenced(Unit $unit): bool
+    {
+        if ($unit->status === UnitStatus::Sold) {
+            return true;
+        }
+
+        return $unit->reservation !== null;
     }
 }

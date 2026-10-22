@@ -73,7 +73,7 @@ export function WizardReviewStep() {
           <h2 className="text-base font-semibold">Revisão estrutural</h2>
           <p className="text-sm text-muted-foreground">Confira a estrutura antes de concluir</p>
           <p className="text-sm text-muted-foreground">
-            {state.form.name || 'Empreendimento'} · Torre única
+            {state.form.name || 'Empreendimento'} · {towers.length} {towers.length === 1 ? 'torre' : 'torres'}
             {place ? ` · ${place}` : ''}
             {state.form.priceMode === 'fixed' ? ' · Valor fixo' : ' · INCC'}
           </p>
@@ -133,7 +133,7 @@ export function WizardReviewStep() {
           {towers.map((tower) => (
             <section key={tower.key} className="overflow-hidden rounded-lg border">
               <div className="flex items-center justify-between gap-3 border-b px-3 py-2">
-                <h3 className="text-sm font-medium">Pavimentos e unidades</h3>
+                <h3 className="text-sm font-medium">{tower.name}</h3>
                 <Button type="button" variant="link" size="sm" onClick={() => actions.setCurrentStep(2)}>
                   Editar estrutura
                 </Button>
@@ -171,7 +171,7 @@ export function WizardReviewStep() {
               <CardTitle>{state.form.name || 'Empreendimento'}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-3 text-sm">
-              <p className="text-xs text-muted-foreground">Residencial · Torre única</p>
+              <p className="text-xs text-muted-foreground">{towers.length} {towers.length === 1 ? 'torre' : 'torres'}</p>
               <Separator />
               <div>
                 <p className="text-xs font-medium text-muted-foreground">Endereço</p>

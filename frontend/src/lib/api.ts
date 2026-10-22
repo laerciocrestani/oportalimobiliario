@@ -166,6 +166,7 @@ export type Tower = {
 
 export type BuildingStructurePayload = {
   towers: Array<{
+    id?: string
     name: string
     floors_count?: number
     reference_floor?: number | null

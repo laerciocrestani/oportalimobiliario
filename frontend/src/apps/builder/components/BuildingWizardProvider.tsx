@@ -21,6 +21,7 @@ import {
   applySavedTowerIds,
   buildSkeleton,
   cloneMirror,
+  copyTowerFromPrevious,
   DEFAULT_MIRROR,
   DEFAULT_SKELETON,
   isFloorStackValid,
@@ -179,6 +180,37 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
     setStackTowers((current) =>
       current.map((item, index) => (index === selectedTowerIndex ? tower : item)),
     )
+  }
+
+  function addTowerCopy() {
+    const next = copyTowerFromPrevious(stackTowers)
+    const index = next.length - 1
+    const created = next[index]
+
+    setStackTowers(next)
+
+    if (!created) {
+      return
+    }
+
+    setSelectedTowerIndex(index)
+    setSelectedFloor(preferredFloorNumber([created]))
+    setMirrorState(mirrorDraftFromTower(created))
+  }
+
+  function removeSelectedTower() {
+    if (stackTowers.length <= 1 || stackTowers[selectedTowerIndex]?.locked) {
+      return
+    }
+
+    const next = stackTowers.filter((_, index) => index !== selectedTowerIndex)
+    const index = Math.min(selectedTowerIndex, next.length - 1)
+    const selected = next[index]
+
+    setStackTowers(next)
+    setSelectedTowerIndex(index)
+    setSelectedFloor(preferredFloorNumber(selected ? [selected] : next))
+    setMirrorState(mirrorDraftFromTower(selected))
   }
 
   function setSelectedTowerIndexAndMirror(index: number) {
@@ -377,6 +409,8 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       generateSkeleton,
       updateStackUnit,
       updateSelectedTower,
+      addTowerCopy,
+      removeSelectedTower,
       setMirror,
       cloneMirror: cloneSelectedMirror,
       setSelectedTowerIndex: setSelectedTowerIndexAndMirror,

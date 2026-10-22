@@ -54,6 +54,7 @@ export type StackTower = {
   name: string
   referenceFloor: number | null
   floors: StackFloor[]
+  locked?: boolean
 }
 
 export const DEFAULT_UNITS_PER_FLOOR = 4
@@ -443,7 +444,9 @@ export function applySavedTowerIds(stack: StackTower[], saved: Building): StackT
   const savedTowers = saved.towers ?? []
 
   return stack.map((tower, index) => {
-    const match = savedTowers.find((item) => item.name === tower.name) ?? savedTowers[index]
+    const match = (tower.id ? savedTowers.find((item) => item.id === tower.id) : undefined)
+      ?? savedTowers.find((item) => item.name === tower.name)
+      ?? savedTowers[index]
 
     if (!match) {
       return tower
@@ -479,6 +482,7 @@ export function stacksFromBuilding(building: Building): StackTower[] {
         id: tower.id,
         name: tower.name,
         referenceFloor: tower.reference_floor ?? null,
+        locked: towerHasReference(uniqueUnits),
         floors: metas.map((meta) => {
           const existing = uniqueUnits
             .filter((unit) => unit.floor === meta.number)
@@ -535,9 +539,46 @@ function displayCompetence(value: string | null | undefined): string {
   return value.slice(0, 7)
 }
 
+export function towerHasReference(units: Array<{ status?: string | null; reservation?: unknown }>): boolean {
+  return units.some((unit) => unit.status === 'sold' || unit.reservation != null)
+}
+
+export function towerLetterName(index: number): string {
+  if (index >= 0 && index < 26) {
+    return `Torre ${String.fromCharCode(65 + index)}`
+  }
+
+  return `Torre ${index + 1}`
+}
+
+export function copyTowerFromPrevious(towers: StackTower[]): StackTower[] {
+  const source = towers[towers.length - 1]
+
+  if (!source) {
+    return towers
+  }
+
+  return [
+    ...towers,
+    {
+      key: draftKey('tower'),
+      name: towerLetterName(towers.length),
+      referenceFloor: source.referenceFloor,
+      floors: source.floors.map((floor) => ({
+        ...floor,
+        units: floor.units.map((unit) => ({
+          ...unit,
+          key: draftKey(`u-${floor.number}`),
+        })),
+      })),
+    },
+  ]
+}
+
 export function structurePayload(towers: StackTower[]): BuildingStructurePayload {
   return {
     towers: towers.map((tower) => ({
+      ...(tower.id ? { id: tower.id } : {}),
       name: tower.name,
       reference_floor: tower.referenceFloor,
       floors: tower.floors.map((item) => ({

@@ -27,7 +27,8 @@ class BuildingStructureController extends Controller
         $this->authorize('update', $building);
 
         $data = $request->validate([
-            'towers' => ['required', 'array', 'min:1', 'max:20'],
+            'towers' => ['required', 'array', 'min:1'],
+            'towers.*.id' => ['sometimes', 'nullable', 'uuid'],
             'towers.*.name' => ['required', 'string', 'max:255'],
             'towers.*.reference_floor' => ['nullable', 'integer', 'min:-20', 'max:80'],
             'towers.*.floors_count' => ['required_without:towers.*.floors', 'integer', 'min:1', 'max:80'],

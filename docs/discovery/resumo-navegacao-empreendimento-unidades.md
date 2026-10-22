@@ -68,7 +68,7 @@ Arquivo de referência: [Figma — cadastro do empreendimento](https://www.figma
 - Numeração residencial segue andar + sequência, como no Figma (101, 102, 201, 202).
 - Unidade com reserva não cancelada, da pré-reserva até o contrato, ou já vendida, fica bloqueada para edição, exclusão e troca de status neste fluxo.
 - Unidade livre pode ser incluída, editada e removida.
-- Marcar unidade como vendida não entra nesta leva. A construtora fará isso numa esteira de venda futura.
+- A construtora não marca unidade como vendida. A venda só acontece no fluxo que começa no corretor: reserva, proposta, sinal, contrato e testemunhas.
 - Publicar sem preço é permitido. O corretor não reserva unidade sem preço.
 - Foto e descritivo não são obrigatórios para publicar.
 - Uma torre só nesta leva.
@@ -103,7 +103,7 @@ Arquivo de referência: [Figma — cadastro do empreendimento](https://www.figma
 - A linha da unidade com a ficha inteira fica larga. A implementação precisa caber no editor de pavimento sem abrir outro fluxo.
 - Publicar sem preço só é seguro se a API de reserva do corretor recusar unidade sem valor.
 - A trava atual que impede alterar estrutura de empreendimento publicado sai para unidade livre. Unidade em venda ou vendida continua bloqueada.
-- A esteira que marca unidade como vendida ficou para depois. Este fluxo não grava `sold`.
+- Não haverá esteira de venda da construtora. A unidade só vira `sold` pelo fluxo do corretor.
 
 ## Lacunas / decisões pendentes
 

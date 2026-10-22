@@ -110,6 +110,21 @@ describe('renderProposalPlainText', () => {
     )
   })
 
+  it('writes a fixed price and drops the INCC clause', () => {
+    const text = renderProposalPlainText(
+      '{bloco_preco_unidade}\n\n{correcao_parcelas}',
+      {
+        correcao_modo: 'fixed',
+        preco_unidade_corrigido: '250.000,00',
+        preco_unidade_original: '200.000,00',
+      },
+    )
+
+    expect(text).toContain('Valor da unidade: R$ 250.000,00 (original R$ 200.000,00)')
+    expect(text).toContain('sem correção pelo INCC')
+    expect(text).not.toContain('saldo positivo do INCC')
+  })
+
   it('keeps a corrected price and drops the line when nothing was changed', () => {
     const markdown = '**Valor total:** R$ {{preco_final}}\n\n**Valor corrigido da unidade:** R$ {{preco_unidade_corrigido?}} (original R$ {{preco_unidade_original?}})'
 

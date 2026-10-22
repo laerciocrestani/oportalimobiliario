@@ -32,12 +32,13 @@ final class ProposalModuleMarkdown
         $markdown = str_replace('{bloco_preco_unidade}', self::priceBlock(
             $fixed ? 'Valor da unidade' : 'Valor corrigido da unidade',
             $values['preco_unidade_corrigido'] ?? '',
-            $fixed ? '' : ($values['preco_unidade_original'] ?? ''),
+            $values['preco_unidade_original'] ?? '',
         ), $markdown);
         $markdown = str_replace('{bloco_preco_vaga}', self::priceBlock(
             $fixed ? 'Valor da vaga' : 'Valor corrigido da vaga',
             $values['preco_vaga_corrigido'] ?? '',
-            $fixed ? '' : ($values['preco_vaga_original'] ?? ''),
+            $values['preco_vaga_original'] ?? '',
+            false,
         ), $markdown);
         $markdown = str_replace(
             '{correcao_parcelas}',
@@ -85,7 +86,7 @@ final class ProposalModuleMarkdown
         ));
     }
 
-    private static function priceBlock(string $label, mixed $amount, mixed $original): string
+    private static function priceBlock(string $label, mixed $amount, mixed $original, bool $currency = true): string
     {
         $amountText = self::plain($amount);
 
@@ -93,10 +94,12 @@ final class ProposalModuleMarkdown
             return '';
         }
 
+        $shown = $currency ? "R$ {$amountText}" : $amountText;
         $originalText = self::plain($original);
-        $suffix = $originalText === '' ? '' : " (original R$ {$originalText})";
+        $originalShown = $currency ? "R$ {$originalText}" : $originalText;
+        $suffix = $originalText === '' ? '' : " (original {$originalShown})";
 
-        return "**{$label}:** R$ {$amountText}{$suffix}";
+        return "**{$label}:** {$shown}{$suffix}";
     }
 
     /**

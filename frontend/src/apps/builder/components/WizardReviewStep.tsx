@@ -1,7 +1,12 @@
 import { useBuildingWizard } from '@/apps/builder/components/building-wizard-context'
-import { floorKindLabel, floorLabel, type StackFloor } from '@/apps/builder/lib/floor-stack'
+import { formatPrice } from '@/apps/builder/lib/format-price'
+import { floorKindLabel, floorLabel, type StackFloor, type StackUnit } from '@/apps/builder/lib/floor-stack'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+
+function unitPriceLabel(unit: StackUnit): string {
+  return formatPrice(unit.priceBase.trim() === '' ? null : unit.priceBase)
+}
 
 function floorOrigin(floor: StackFloor, referenceFloor: number | null): string {
   if (referenceFloor != null && floor.number === referenceFloor) {
@@ -25,6 +30,10 @@ export function WizardReviewStep() {
   const spots = floors
     .filter((floor) => floor.kind === 'garage')
     .reduce((total, floor) => total + floor.units.length, 0)
+  const unpriced = floors.flatMap((floor) =>
+    floor.units.filter((unit) => unit.priceBase.trim() === '').map((unit) => unit.code),
+  )
+  const priceColumn = state.form.priceMode === 'fixed' ? 'Valor' : 'Valor-base'
 
   return (
     <div className="space-y-4">
@@ -36,6 +45,11 @@ export function WizardReviewStep() {
               {state.form.name || 'Empreendimento'} · Torre única ·{' '}
               {state.form.priceMode === 'fixed' ? 'Valor fixo' : 'INCC'}
             </p>
+            {unpriced.length > 0 ? (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Sem valor, o corretor não reserva: {unpriced.join(', ')}.
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => actions.setCurrentStep(1)}>
@@ -79,6 +93,7 @@ export function WizardReviewStep() {
                   <th className="px-3 py-2 font-medium">Pavimento</th>
                   <th className="px-3 py-2 font-medium">Tipo</th>
                   <th className="px-3 py-2 font-medium">Unidades</th>
+                  <th className="px-3 py-2 font-medium">{priceColumn}</th>
                   <th className="px-3 py-2 font-medium">Origem</th>
                 </tr>
               </thead>
@@ -89,6 +104,9 @@ export function WizardReviewStep() {
                     <td className="px-3 py-2">{floorKindLabel(floor.kind)}</td>
                     <td className="px-3 py-2">
                       {floor.units.length === 0 ? 'Sem unidades' : floor.units.map((unit) => unit.code).join(', ')}
+                    </td>
+                    <td className="px-3 py-2">
+                      {floor.units.length === 0 ? '—' : floor.units.map((unit) => unitPriceLabel(unit)).join(', ')}
                     </td>
                     <td className="px-3 py-2">{floorOrigin(floor, tower.referenceFloor)}</td>
                   </tr>

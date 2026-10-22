@@ -137,6 +137,12 @@ class ProposalIssueService
                     ];
                 }
 
+                $mode = trim((string) ($systemValues['correcao_modo'] ?? ''));
+
+                if ($mode !== '') {
+                    $prefill['correcao_modo'] = $mode;
+                }
+
                 return [
                     'id' => $template->id,
                     'name' => $template->name,

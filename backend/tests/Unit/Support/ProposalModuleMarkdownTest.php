@@ -62,8 +62,7 @@ it('uses a fixed-price clause when correcao_modo is fixed', function () {
         ],
     );
 
-    expect($expanded)->toContain('**Valor da unidade:** R$ 250.000,00')
-        ->and($expanded)->not->toContain('original')
+    expect($expanded)->toContain('**Valor da unidade:** R$ 250.000,00 (original R$ 200.000,00)')
         ->and($expanded)->toContain('sem correção pelo INCC')
         ->and($expanded)->not->toContain('saldo positivo do INCC');
 });

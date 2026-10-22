@@ -186,6 +186,7 @@ export function BrokerReservationDialog({
     box: boxLabel === '—' ? '' : boxLabel,
     imobiliaria: brokerageName === '—' ? '' : brokerageName,
     nome_corretor: brokerName === '—' ? '' : brokerName,
+    correcao_modo: selectedTemplate?.prefill.correcao_modo === 'fixed' ? 'fixed' : 'incc',
   }
   const fillableVariables = selectedTemplate?.variables.filter((variable) => !isHiddenProposalSlug(variable.slug)) ?? []
   const templateComplete = selectedTemplate !== null
@@ -352,7 +353,10 @@ export function BrokerReservationDialog({
       return
     }
 
-    const paymentTermsText = appendAdjustedPrices(terms, priceAdjustment)
+    const paymentTermsText = appendAdjustedPrices(terms, {
+      ...priceAdjustment,
+      correcao_modo: mergedValues.correcao_modo ?? 'incc',
+    })
 
     const married = party.kind === 'individual' && party.maritalStatus === MARRIED_STATUS
     const payload: ReservationProposalInput = {

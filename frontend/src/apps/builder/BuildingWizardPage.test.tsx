@@ -168,6 +168,7 @@ describe('BuildingWizardPage', () => {
       })
       expect(api.builderApi.replaceBuildingUnitGrid).toHaveBeenCalled()
       expect(screen.getByRole('heading', { name: 'Revisão estrutural' })).toBeInTheDocument()
+      expect(screen.getByText(/Sem valor, o corretor não reserva/)).toBeInTheDocument()
     })
   })
 

@@ -103,18 +103,21 @@ export function buildPriceAdjustmentValues(input: {
 
 export function adjustedPriceLines(values: Record<string, string>): string[] {
   const lines: string[] = []
+  const fixed = values.correcao_modo === 'fixed'
   const unitCorrected = values.preco_unidade_corrigido?.trim() ?? ''
   const unitOriginal = values.preco_unidade_original?.trim() ?? ''
 
   if (unitCorrected !== '' && unitOriginal !== '') {
-    lines.push(`Valor corrigido da unidade: R$ ${unitCorrected} (original R$ ${unitOriginal})`)
+    const label = fixed ? 'Valor da unidade' : 'Valor corrigido da unidade'
+    lines.push(`${label}: R$ ${unitCorrected} (original R$ ${unitOriginal})`)
   }
 
   const garageCorrected = values.preco_vaga_corrigido?.trim() ?? ''
   const garageOriginal = values.preco_vaga_original?.trim() ?? ''
 
   if (garageCorrected !== '' && garageOriginal !== '') {
-    lines.push(`Valor corrigido da vaga: ${garageCorrected} (original ${garageOriginal})`)
+    const label = fixed ? 'Valor da vaga' : 'Valor corrigido da vaga'
+    lines.push(`${label}: ${garageCorrected} (original ${garageOriginal})`)
   }
 
   return lines

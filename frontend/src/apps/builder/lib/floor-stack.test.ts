@@ -5,6 +5,7 @@ import {
   markException,
   mirrorDraftFromTower,
   resetFloor,
+  setReferenceFloor,
   structurePayload,
   unitCode,
   unitGridPayload,
@@ -91,6 +92,15 @@ describe('floor-stack', () => {
       from: -2,
       to: -2,
     })
+  })
+
+  it('changes the model floor without copying units', () => {
+    const tower = buildSkeleton({ towerCount: 1, floorsAbove: 2, basementCount: 0, unitsPerFloor: 1 })[0]
+    const next = setReferenceFloor(tower, 2)
+
+    expect(next.referenceFloor).toBe(2)
+    expect(next.floors).toBe(tower.floors)
+    expect(setReferenceFloor(tower, 9)).toBe(tower)
   })
 
   it('clones the mirror floor to a range above without touching other kinds', () => {

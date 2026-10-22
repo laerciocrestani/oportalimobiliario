@@ -117,6 +117,17 @@ export function removeFloor(tower: StackTower, floorNumber: number): StackTower 
   }
 }
 
+export function setReferenceFloor(tower: StackTower, floorNumber: number): StackTower {
+  if (!tower.floors.some((floor) => floor.number === floorNumber) || tower.referenceFloor === floorNumber) {
+    return tower
+  }
+
+  return {
+    ...tower,
+    referenceFloor: floorNumber,
+  }
+}
+
 export function addFloor(tower: StackTower, where: 'above' | 'basement'): StackTower {
   if (where === 'basement') {
     const lowest = tower.floors.reduce((min, floor) => Math.min(min, floor.number), 0)

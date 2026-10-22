@@ -84,7 +84,8 @@ it('prefills the unit code and the building name used in the template', function
     $this->getJson("/api/broker/reservations/{$reservation->id}/proposal/templates")
         ->assertOk()
         ->assertJsonPath('0.prefill.nome_empreendimento', 'Residencial Bosque')
-        ->assertJsonPath('0.prefill.codigo_unidade', '1201');
+        ->assertJsonPath('0.prefill.codigo_unidade', '1201')
+        ->assertJsonPath('0.prefill.correcao_modo', 'incc');
 });
 
 it('marks optional placeholders and prefills price, broker and issue date', function () {

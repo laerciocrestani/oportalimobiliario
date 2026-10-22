@@ -4,6 +4,7 @@ import {
   addFloor,
   removeFloor,
   removeUnit,
+  setReferenceFloor,
   floorKindLabel,
   floorLabel,
   floorsTopToBottom,
@@ -20,6 +21,7 @@ import {
   type StructureEditorState,
 } from '@/apps/builder/components/structure-editor-context'
 import { BuildingWizardEnumSelect } from '@/apps/builder/components/BuildingWizardEnumSelect'
+import { formatPrice } from '@/apps/builder/lib/format-price'
 import {
   CEILING_OPTIONS,
   FLOORING_OPTIONS,
@@ -170,6 +172,7 @@ function StructureEditorFloorRow({
   kind,
   customized,
   unitCount,
+  model,
   selected,
   onSelect,
 }: {
@@ -177,6 +180,7 @@ function StructureEditorFloorRow({
   kind: 'residential' | 'commercial' | 'garage' | 'hall'
   customized: boolean
   unitCount: number
+  model: boolean
   selected: boolean
   onSelect: () => void
 }) {
@@ -196,6 +200,7 @@ function StructureEditorFloorRow({
         </span>
       </span>
       <span className="flex flex-wrap justify-end gap-1">
+        {model ? <Badge variant="default">Modelo</Badge> : null}
         <Badge variant="secondary">{floorKindLabel(kind)}</Badge>
         {customized ? <Badge variant="warning">Exceção</Badge> : null}
       </span>
@@ -223,6 +228,7 @@ function StructureEditorFloorStack() {
             kind={floor.kind}
             customized={floor.customized}
             unitCount={floor.units.length}
+            model={meta.selectedTower.referenceFloor === floor.number}
             selected={state.selectedFloorNumber === floor.number}
             onSelect={() => actions.selectFloor(floor.number)}
           />
@@ -590,6 +596,15 @@ function StructureEditorFloorWorkspace() {
   const [cloning, setCloning] = useState(false)
   const preview = tower ? clonePreview(tower, state.mirror.referenceNumber, state.mirror) : []
 
+  function defineModel() {
+    if (!tower || !floor) {
+      return
+    }
+
+    actions.updateTower(setReferenceFloor(tower, floor.number))
+    actions.setMirror({ referenceNumber: floor.number })
+  }
+
   function remove() {
     if (!tower || !floor || tower.floors.length <= 1) {
       return
@@ -701,6 +716,7 @@ function StructureEditorFloorWorkspace() {
               {floorKindLabel(floor.kind)} · {floor.units.length}{' '}
               {floor.kind === 'garage' ? 'vagas' : 'unidades'}
               {floor.customized ? ' · exceção' : ''}
+              {tower?.referenceFloor === floor.number ? ' · pavimento-modelo' : ''}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">Gere o esqueleto e escolha um pavimento.</p>
@@ -713,6 +729,7 @@ function StructureEditorFloorWorkspace() {
                   <th className="py-1 font-medium">Tipo</th>
                   <th className="py-1 font-medium">Área</th>
                   {floor.kind === 'garage' ? null : <th className="py-1 font-medium">Dormitórios</th>}
+                  <th className="py-1 font-medium">{meta.priceMode === 'fixed' ? 'Valor' : 'Valor-base'}</th>
                 </tr>
               </thead>
               <tbody>
@@ -722,6 +739,7 @@ function StructureEditorFloorWorkspace() {
                     <td className="py-1">{unitTypeLabel(floor.kind)}</td>
                     <td className="py-1">{unit.areaM2 || '—'}</td>
                     {floor.kind === 'garage' ? null : <td className="py-1">{unit.bedrooms || '—'}</td>}
+                    <td className="py-1">{formatPrice(unit.priceBase.trim() === '' ? null : unit.priceBase)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -730,6 +748,14 @@ function StructureEditorFloorWorkspace() {
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" disabled={!floor} onClick={() => setEditing(true)}>
               Editar pavimento
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!floor || tower?.referenceFloor === floor.number}
+              onClick={defineModel}
+            >
+              Definir como modelo
             </Button>
             <Button type="button" disabled={!floor} onClick={() => setCloning(true)}>
               Clonar pavimento

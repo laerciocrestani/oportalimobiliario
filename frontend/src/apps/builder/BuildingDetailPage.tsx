@@ -107,6 +107,14 @@ export function BuildingDetailPage() {
               <Badge variant={building.published ? 'default' : 'secondary'}>
                 {building.published ? 'Publicado' : 'Rascunho'}
               </Badge>
+              <Badge variant="outline">
+                {building.category === 'commercial'
+                  ? 'Comercial'
+                  : building.category === 'mixed'
+                    ? 'Misto'
+                    : 'Residencial'}
+              </Badge>
+              <Badge variant="outline">{building.price_mode === 'fixed' ? 'Valor fixo' : 'INCC'}</Badge>
               {building.units_summary ? (
                 <p className="text-sm text-muted-foreground">
                   {building.units_summary.total} unidades

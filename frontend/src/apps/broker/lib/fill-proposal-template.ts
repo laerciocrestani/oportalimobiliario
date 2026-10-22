@@ -95,12 +95,45 @@ export function commercialTermsFromValues(values: Record<string, string>): Propo
 }
 
 export function expandProposalModules(markdown: string, values: Record<string, string>): string {
+  const fixed = values.correcao_modo === 'fixed'
   let reinforcementPlaced = false
   let dationPlaced = false
 
   return markdown
     .split('\n')
     .flatMap((line) => {
+      const trimmed = line.trim()
+
+      if (trimmed === '{bloco_preco_unidade}') {
+        return priceBlockLine(
+          fixed ? 'Valor da unidade' : 'Valor corrigido da unidade',
+          values.preco_unidade_corrigido ?? '',
+          values.preco_unidade_original ?? '',
+          true,
+        )
+      }
+
+      if (trimmed === '{bloco_preco_vaga}') {
+        return priceBlockLine(
+          fixed ? 'Valor da vaga' : 'Valor corrigido da vaga',
+          values.preco_vaga_corrigido ?? '',
+          values.preco_vaga_original ?? '',
+          false,
+        )
+      }
+
+      if (trimmed === '{correcao_parcelas}') {
+        return [fixed
+          ? '> As parcelas permanecem no valor contratado, sem correção pelo INCC.'
+          : '> As parcelas serão corrigidas mensalmente pelo saldo positivo do INCC a partir da data de assinatura do contrato.']
+      }
+
+      if (trimmed === '{correcao_reforcos}') {
+        return [fixed
+          ? '> Os reforços permanecem no valor contratado, sem correção pelo INCC.'
+          : '> Os reforços serão corrigidos mensalmente pelo saldo positivo do INCC a partir da data de assinatura do contrato.']
+      }
+
       if (isReinforcementModuleLine(line)) {
         if (reinforcementPlaced) {
           return []
@@ -124,6 +157,21 @@ export function expandProposalModules(markdown: string, values: Record<string, s
       return [line]
     })
     .join('\n')
+}
+
+function priceBlockLine(label: string, amount: string, original: string, currency: boolean): string[] {
+  const amountText = amount.trim()
+
+  if (amountText === '') {
+    return []
+  }
+
+  const shown = currency ? `R$ ${amountText}` : amountText
+  const originalText = original.trim()
+  const originalShown = currency ? `R$ ${originalText}` : originalText
+  const suffix = originalText === '' ? '' : ` (original ${originalShown})`
+
+  return [`**${label}:** ${shown}${suffix}`]
 }
 
 export const PROPOSAL_CONTEXT_SLUGS = new Set([

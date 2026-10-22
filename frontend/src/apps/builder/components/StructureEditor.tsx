@@ -218,7 +218,7 @@ function StructureEditorFloorStack() {
   return (
     <Card size="sm">
       <CardHeader>
-        <CardTitle>Andares</CardTitle>
+        <CardTitle>Pavimentos</CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col gap-2">
         {floorsTopToBottom(meta.selectedTower.floors).map((floor) => (
@@ -684,27 +684,27 @@ function StructureEditorFloorWorkspace() {
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,18rem)_1fr]">
       <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-col gap-2">
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            className="border-dashed"
             disabled={!tower}
             onClick={() => add('above')}
           >
-            Adicionar andar
+            Adicionar pavimento
           </Button>
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             disabled={!tower}
             onClick={() => add('basement')}
           >
             Adicionar subsolo
           </Button>
+          <StructureEditorFloorStack />
         </div>
-        <StructureEditorFloorStack />
       </div>
       <Card size="sm">
         <CardHeader>
@@ -747,7 +747,7 @@ function StructureEditorFloorWorkspace() {
           ) : null}
           <div className="flex flex-wrap gap-2">
             <Button type="button" variant="outline" disabled={!floor} onClick={() => setEditing(true)}>
-              Editar pavimento
+              Editar
             </Button>
             <Button
               type="button"

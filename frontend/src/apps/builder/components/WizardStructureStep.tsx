@@ -1,3 +1,4 @@
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { StructureEditor } from '@/apps/builder/components/StructureEditor'
 import { useBuildingWizard } from '@/apps/builder/components/building-wizard-context'
 
@@ -9,12 +10,21 @@ export function WizardStructureStep() {
 
   return (
     <>
-      <div>
-        <h2 className="text-base font-semibold">Estrutura</h2>
-        <p className="text-sm text-muted-foreground">
-          Gere uma torre, escolha o pavimento-modelo e clone para os outros andares. Vagas ficam no subsolo.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold">Estrutura</h2>
+          <p className="text-sm text-muted-foreground">
+            Monte a estrutura de {state.form.name || 'o empreendimento'}. Crie um pavimento com suas unidades e replique o modelo para os demais andares.
+          </p>
+        </div>
+        <p className="text-xs text-muted-foreground">Torre única</p>
       </div>
+      <Alert>
+        <AlertTitle>Um pavimento-modelo. Vários andares prontos.</AlertTitle>
+        <AlertDescription>
+          Selecione um pavimento e use Clonar pavimento para replicar todas as suas unidades, para cima ou para baixo.
+        </AlertDescription>
+      </Alert>
 
       <StructureEditor.Provider
         state={{

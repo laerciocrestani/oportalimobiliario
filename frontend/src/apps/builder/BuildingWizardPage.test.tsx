@@ -76,13 +76,13 @@ describe('BuildingWizardPage', () => {
 
     renderWizard()
 
-    await user.type(screen.getByLabelText('Nome do empreendimento'), 'Residencial Aurora')
-    await user.type(screen.getByLabelText('CEP'), '01310100')
-    await user.type(screen.getByLabelText('Logradouro'), 'Avenida Paulista')
-    await user.type(screen.getByLabelText('Número'), '1000')
-    await user.type(screen.getByLabelText('Bairro'), 'Bela Vista')
-    await user.type(screen.getByLabelText('Cidade'), 'São Paulo')
-    await user.type(screen.getByLabelText('UF'), 'SP')
+    await user.type(screen.getByLabelText('Nome do empreendimento *'), 'Residencial Aurora')
+    await user.type(screen.getByLabelText('CEP *'), '01310100')
+    await user.type(screen.getByLabelText('Logradouro *'), 'Avenida Paulista')
+    await user.type(screen.getByLabelText('Número *'), '1000')
+    await user.type(screen.getByLabelText('Bairro *'), 'Bela Vista')
+    await user.type(screen.getByLabelText('Cidade *'), 'São Paulo')
+    await user.type(screen.getByLabelText('UF *'), 'SP')
     await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
 
     await waitFor(() => {
@@ -110,7 +110,7 @@ describe('BuildingWizardPage', () => {
     renderWizard('/buildings/10/wizard')
 
     expect(await screen.findByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
-    expect(screen.getByText('Continuar cadastro')).toBeInTheDocument()
+    expect(screen.getAllByText('Continuar cadastro').length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Gerar esqueleto' })).toBeInTheDocument()
     expect(screen.queryByText('Padrão do empreendimento')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Suítes')).not.toBeInTheDocument()
@@ -358,14 +358,14 @@ describe('BuildingWizardPage', () => {
 
     renderWizard()
 
-    await user.type(screen.getByLabelText('CEP'), '01310100')
+    await user.type(screen.getByLabelText('CEP *'), '01310100')
     await user.click(screen.getByRole('button', { name: 'Buscar CEP' }))
 
     await waitFor(() => {
       expect(api.builderApi.lookupCep).toHaveBeenCalledWith('01310100')
-      expect(screen.getByLabelText('Logradouro')).toHaveValue('Avenida Paulista')
-      expect(screen.getByLabelText('Cidade')).toHaveValue('São Paulo')
-      expect(screen.getByLabelText('UF')).toHaveValue('SP')
+      expect(screen.getByLabelText('Logradouro *')).toHaveValue('Avenida Paulista')
+      expect(screen.getByLabelText('Cidade *')).toHaveValue('São Paulo')
+      expect(screen.getByLabelText('UF *')).toHaveValue('SP')
     })
   })
 })

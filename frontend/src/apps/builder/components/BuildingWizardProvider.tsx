@@ -10,6 +10,7 @@ import {
   useBuildingWizard,
   type BuildingWizardContextValue,
 } from '@/apps/builder/components/building-wizard-context'
+import { Badge } from '@/components/ui/badge'
 import { BuildingWizardSteps } from '@/apps/builder/components/BuildingWizardSteps'
 import { WizardPublishStep } from '@/apps/builder/components/WizardPublishStep'
 import { WizardReviewStep } from '@/apps/builder/components/WizardReviewStep'
@@ -396,15 +397,31 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
 }
 
 function WizardFrame({ children }: { children: ReactNode }) {
-  const { actions } = useBuildingWizard()
+  const { state, actions } = useBuildingWizard()
+  const title = state.updatingExisting
+    ? `Editar ${state.form.name || 'empreendimento'}`
+    : state.buildingId
+      ? 'Continuar cadastro'
+      : 'Novo empreendimento'
 
   return (
     <form
       onSubmit={(event) => {
         void actions.submit(event)
       }}
-      className="mx-auto flex w-full max-w-5xl flex-col gap-6"
+      className="mx-auto flex w-full max-w-6xl flex-col gap-6"
     >
+      <header className="flex flex-col gap-6 border-b pb-5">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+            {state.updatingExisting ? null : <Badge variant="secondary">Rascunho</Badge>}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Cadastre os dados e monte a estrutura do seu empreendimento.
+          </p>
+        </div>
+      </header>
       {children}
     </form>
   )
@@ -426,24 +443,16 @@ function WizardIdentitySection() {
   const { state, actions } = useBuildingWizard()
 
   return (
-    <>
-      <div>
-        <h2 className="text-base font-semibold">Identidade e endereço</h2>
-        <p className="text-sm text-muted-foreground">
-          Informe o nome e o endereço. Se a busca de CEP falhar, preencha os campos manualmente.
-        </p>
-      </div>
-      <BuildingWizardIdentityStep
-        form={state.form}
-        onChange={actions.setForm}
-        onLookupCep={() => void actions.lookupCep()}
-        lookingUpCep={state.lookingUpCep}
-        cepHint={state.cepHint}
-        priceModeLocked={state.stackTowers.some((tower) =>
-          tower.floors.some((floor) => floor.units.some((unit) => unit.priceBase.trim() !== '')),
-        )}
-      />
-    </>
+    <BuildingWizardIdentityStep
+      form={state.form}
+      onChange={actions.setForm}
+      onLookupCep={() => void actions.lookupCep()}
+      lookingUpCep={state.lookingUpCep}
+      cepHint={state.cepHint}
+      priceModeLocked={state.stackTowers.some((tower) =>
+        tower.floors.some((floor) => floor.units.some((unit) => unit.priceBase.trim() !== '')),
+      )}
+    />
   )
 }
 
@@ -476,14 +485,24 @@ function WizardFooter() {
     <div className="flex items-center justify-between gap-2">
       {state.currentStep === 1 ? (
         <Button variant="outline" nativeButton={false} render={<Link to="/buildings" />}>
-          Voltar
+          Cancelar
         </Button>
       ) : (
         <Button type="button" variant="outline" onClick={() => actions.setCurrentStep(state.currentStep - 1)}>
           Voltar
         </Button>
       )}
-      <Button type="submit" disabled={state.saving || state.loading || !meta.canContinue}>
+      <Button type="submit" disabled={state.saving || state.loading || !meta.canContinue} aria-label={
+        state.saving
+          ? 'Salvando...'
+          : state.currentStep === WIZARD_LAST_STEP
+            ? state.updatingExisting
+              ? 'Atualizar empreendimento'
+              : state.isDraft
+                ? 'Salvar rascunho'
+                : 'Publicar'
+            : 'Salvar e continuar'
+      }>
         {state.saving
           ? 'Salvando...'
           : state.currentStep === WIZARD_LAST_STEP
@@ -492,7 +511,7 @@ function WizardFooter() {
               : state.isDraft
                 ? 'Salvar rascunho'
                 : 'Publicar'
-            : 'Salvar e continuar'}
+            : 'Continuar'}
       </Button>
     </div>
   )

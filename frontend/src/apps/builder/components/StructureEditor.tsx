@@ -11,6 +11,7 @@ import {
   resizeFloorUnits,
   setFloorKind,
   type SkeletonInput,
+  type StackTower,
 } from '@/apps/builder/lib/floor-stack'
 import type { FloorKind } from '@/lib/api'
 import {
@@ -21,6 +22,7 @@ import {
   type StructureEditorState,
 } from '@/apps/builder/components/structure-editor-context'
 import { BuildingWizardEnumSelect } from '@/apps/builder/components/BuildingWizardEnumSelect'
+import { FloorPerspective, type FloorPerspectiveLine } from '@/apps/builder/components/FloorPerspective'
 import { formatPrice } from '@/apps/builder/lib/format-price'
 import {
   CEILING_OPTIONS,
@@ -30,8 +32,9 @@ import {
   SOLAR_OPTIONS,
   SUN_PERIOD_OPTIONS,
 } from '@/apps/builder/lib/unit-spec'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -564,6 +567,49 @@ function StructureEditorGaragePanel() {
   )
 }
 
+function perspectiveLines(tower: StackTower): FloorPerspectiveLine[] {
+  const floors = floorsTopToBottom(tower.floors)
+  const lines: FloorPerspectiveLine[] = []
+  const living = floors.find((floor) => floor.kind === 'residential' || floor.kind === 'commercial')
+  const hall = floors.find((floor) => floor.kind === 'hall')
+  const garage = floors.findLast((floor) => floor.kind === 'garage')
+
+  if (living) {
+    const noun = living.kind === 'commercial' ? 'salas' : 'apartamentos'
+    lines.push({
+      label: `${floorLabel(living.number)} · ${living.units.length} ${noun}`,
+      detail: living.units.map((unit) => unit.code).join(' · '),
+      emphasis: true,
+    })
+  }
+
+  if (hall) {
+    lines.push({ label: `${floorLabel(hall.number)} · Hall e áreas comuns` })
+  }
+
+  if (garage) {
+    lines.push({ label: `${floorLabel(garage.number)} · ${garage.units.length} vagas` })
+  }
+
+  return lines
+}
+
+function kindHint(kind: FloorKind): string {
+  if (kind === 'garage') {
+    return 'Vagas de garagem'
+  }
+
+  if (kind === 'commercial') {
+    return 'Salas'
+  }
+
+  if (kind === 'hall') {
+    return 'Áreas comuns'
+  }
+
+  return 'Apartamentos'
+}
+
 function unitTypeLabel(kind: FloorKind): string {
   if (kind === 'garage') {
     return 'Vaga'
@@ -706,6 +752,8 @@ function StructureEditorFloorWorkspace() {
           <StructureEditorFloorStack />
         </div>
       </div>
+      <div className="flex min-w-0 flex-col gap-4">
+        {tower ? <FloorPerspective lines={perspectiveLines(tower)} /> : null}
       <Card size="sm">
         <CardHeader>
           <CardTitle>{floor ? floorLabel(floor.number) : 'Pavimento'}</CardTitle>
@@ -771,82 +819,189 @@ function StructureEditorFloorWorkspace() {
           </div>
         </CardContent>
       </Card>
+      </div>
       <Sheet open={editing} onOpenChange={setEditing}>
         <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
           <SheetHeader>
+            <p className="text-xs text-muted-foreground">{tower?.name ?? 'Estrutura'}</p>
             <SheetTitle>Editar pavimento</SheetTitle>
           </SheetHeader>
-          {floor ? (
+          {floor && tower ? (
             <div className="flex flex-col gap-4 px-4">
-              <fieldset className="space-y-2">
-                <legend className="text-sm font-medium">Tipo de pavimento</legend>
-                <div className="flex flex-wrap gap-3">
+              <FloorPerspective lines={perspectiveLines(tower)} />
+              <div className="flex flex-col gap-2">
+                <p className="text-sm font-medium">Tipo de pavimento *</p>
+                <div className="grid gap-2 sm:grid-cols-2">
                   {floorKindChoices(floor.number).map((kind) => (
-                    <label key={kind} className="flex items-center gap-2 text-sm">
-                      <input
-                        type="radio"
-                        name={`floor-kind-${floor.number}`}
-                        checked={floor.kind === kind}
-                        onChange={() => chooseKind(kind)}
-                      />
-                      {floorKindLabel(kind)}
-                    </label>
+                    <button
+                      key={kind}
+                      type="button"
+                      aria-pressed={floor.kind === kind}
+                      className={cn(
+                        'rounded-lg border px-3 py-2 text-left',
+                        floor.kind === kind ? 'border-primary ring-2 ring-primary/30' : 'border-border',
+                      )}
+                      onClick={() => chooseKind(kind)}
+                    >
+                      <span className="block text-sm font-medium">{floorKindLabel(kind)}</span>
+                      <span className="block text-xs text-muted-foreground">{kindHint(kind)}</span>
+                    </button>
                   ))}
                 </div>
-              </fieldset>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem]">
+                <Field>
+                  <FieldLabel htmlFor={`floor-name-${floor.number}`}>Nome do pavimento *</FieldLabel>
+                  <Input id={`floor-name-${floor.number}`} value={floorLabel(floor.number)} readOnly />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor={`floor-level-${floor.number}`}>Nível *</FieldLabel>
+                  <Input id={`floor-level-${floor.number}`} value={String(floor.number)} readOnly />
+                </Field>
+              </div>
               {floor.kind === 'hall' ? (
                 <p className="text-sm text-muted-foreground">Hall não tem unidades privadas.</p>
               ) : (
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium">
-                    {floor.kind === 'garage' ? 'Vagas' : 'Unidades'}
-                  </span>
-                  <Button type="button" variant="outline" size="sm" onClick={() => changeCount(-1)}>
-                    −
-                  </Button>
-                  <span className="w-6 text-center text-sm">{floor.units.length}</span>
-                  <Button type="button" variant="outline" size="sm" onClick={() => changeCount(1)}>
-                    +
-                  </Button>
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium">
+                      {floor.kind === 'garage' ? 'Vagas' : 'Unidades'} *
+                    </span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => changeCount(-1)}>
+                      −
+                    </Button>
+                    <span className="w-6 text-center text-sm">{floor.units.length}</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => changeCount(1)}>
+                      +
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {floor.number < 0 ? 'Vaga + subsolo (S1-01...)' : 'Andar + sequência (101, 102...)'}
+                  </p>
                 </div>
               )}
+              <StructureEditorUnitEditor />
+              <StructureEditorGaragePanel />
+              <p className="text-xs text-muted-foreground">
+                Cada tipo tem sua própria estrutura. Garagem usa vagas. Hall fica sem unidades privadas.
+              </p>
             </div>
           ) : null}
-          <StructureEditorUnitEditor />
-          <StructureEditorGaragePanel />
+          <SheetFooter>
+            <Button type="button" variant="outline" onClick={() => setEditing(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={() => setEditing(false)}>
+              Salvar pavimento
+            </Button>
+          </SheetFooter>
         </SheetContent>
       </Sheet>
       <Dialog open={cloning} onOpenChange={setCloning}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Clonar pavimento</DialogTitle>
+            <DialogDescription>
+              Replique o modelo com todas as unidades e suas características.
+            </DialogDescription>
           </DialogHeader>
-          <StructureEditorMirrorPanel />
-          {preview.length > 0 ? (
-            <table className="w-full text-sm">
-              <thead className="text-left text-muted-foreground">
-                <tr>
-                  <th className="py-1 font-medium">Pavimento</th>
-                  <th className="py-1 font-medium">Numeração</th>
-                  <th className="py-1 font-medium">Situação</th>
-                </tr>
-              </thead>
-              <tbody>
-                {preview.map((row) => (
-                  <tr key={row.number} className="border-t">
-                    <td className="py-1">{floorLabel(row.number)}</td>
-                    <td className="py-1">{row.codes}</td>
-                    <td className="py-1">{row.situation}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="text-sm text-muted-foreground">Nenhum destino nessa faixa.</p>
-          )}
-          <Button type="button" variant="outline" onClick={() => setCloneQuantity(preview.length + 1)}>
-            Incluir mais um destino
-          </Button>
+          {tower && floor ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2">
+                <div>
+                  <p className="text-sm font-medium">
+                    {floorLabel(state.mirror.referenceNumber)} · {floorKindLabel(
+                      tower.floors.find((item) => item.number === state.mirror.referenceNumber)?.kind ?? floor.kind,
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Pavimento-modelo</p>
+                </div>
+                <Badge variant="secondary">Pavimento-modelo</Badge>
+              </div>
+              <FloorPerspective lines={perspectiveLines(tower)} />
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  aria-pressed={state.mirror.direction === 'up'}
+                  className={cn(
+                    'rounded-lg border px-3 py-2 text-left text-sm',
+                    state.mirror.direction === 'up' ? 'border-primary ring-2 ring-primary/30' : 'border-border',
+                  )}
+                  onClick={() => actions.setMirror({ direction: 'up' })}
+                >
+                  <span className="block font-medium">Para cima</span>
+                  <span className="block text-xs text-muted-foreground">Acima do modelo, níveis crescentes</span>
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={state.mirror.direction === 'down'}
+                  className={cn(
+                    'rounded-lg border px-3 py-2 text-left text-sm',
+                    state.mirror.direction === 'down' ? 'border-primary ring-2 ring-primary/30' : 'border-border',
+                  )}
+                  onClick={() => actions.setMirror({ direction: 'down' })}
+                >
+                  <span className="block font-medium">Para baixo</span>
+                  <span className="block text-xs text-muted-foreground">Abaixo do modelo, níveis decrescentes</span>
+                </button>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium">Quantidade de pavimentos *</span>
+                <Button type="button" variant="outline" size="sm" onClick={() => setCloneQuantity(preview.length - 1)}>
+                  −
+                </Button>
+                <span className="w-6 text-center text-sm">{preview.length}</span>
+                <Button type="button" variant="outline" size="sm" onClick={() => setCloneQuantity(preview.length + 1)}>
+                  +
+                </Button>
+              </div>
+              {preview.length > 0 ? (
+                <table className="w-full text-sm">
+                  <thead className="text-left text-muted-foreground">
+                    <tr>
+                      <th className="py-1 font-medium">Novo pavimento</th>
+                      <th className="py-1 font-medium">Numeração automática</th>
+                      <th className="py-1 font-medium">Situação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {preview.map((row) => (
+                      <tr key={row.number} className="border-t">
+                        <td className="py-1">{floorLabel(row.number)}</td>
+                        <td className="py-1">{row.codes}</td>
+                        <td className="py-1">
+                          {row.situation === 'Cópia' ? 'Livre' : row.situation === 'Exceção' ? 'Ocupado' : 'Outro tipo'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nenhum destino nessa direção.</p>
+              )}
+              <Alert>
+                <AlertTitle>Nenhum pavimento existente será sobrescrito</AlertTitle>
+                <AlertDescription>
+                  Destinos ocupados e de outro tipo ficam protegidos. Térreo, hall e garagem já existentes não são substituídos.
+                </AlertDescription>
+              </Alert>
+            </div>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setCloning(false)}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={preview.length === 0}
+              onClick={() => {
+                actions.cloneMirror()
+                setCloning(false)
+              }}
+            >
+              Clonar {preview.length} pavimentos
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -6,6 +6,7 @@ use App\Enums\ReservationAttachmentKind;
 use App\Enums\ReservationTimelineEventType;
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
+use App\Services\ProposalSignatureService;
 use App\Services\ReservationProposalService;
 use App\Support\ReservationProposalRules;
 use Illuminate\Http\JsonResponse;
@@ -18,6 +19,7 @@ class ReservationProposalController extends Controller
 {
     public function __construct(
         private readonly ReservationProposalService $proposalService,
+        private readonly ProposalSignatureService $signatures,
     ) {}
 
     public function store(Request $request, Reservation $reservation): JsonResponse
@@ -33,6 +35,17 @@ class ReservationProposalController extends Controller
         $updated = $this->proposalService->submit($request->user(), $reservation, $data, $files);
 
         return response()->json($this->formatReservation($updated), 201);
+    }
+
+    public function resendSignatureLinks(Request $request, Reservation $reservation): JsonResponse
+    {
+        if ($reservation->broker_id !== $request->user()->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        return response()->json([
+            'notified' => $this->signatures->resendPendingLinks($reservation),
+        ]);
     }
 
     public function returnSigned(Request $request, Reservation $reservation): JsonResponse
@@ -86,6 +99,8 @@ class ReservationProposalController extends Controller
             'client_id' => $reservation->client_id,
             'status' => $reservation->status->value,
             'expires_at' => $reservation->expires_at,
+            'draft_expires_at' => $reservation->draft_expires_at,
+            'review_deadline_at' => $reservation->review_deadline_at,
             'unit' => $reservation->unit,
             'proposal' => $latestProposal === null ? null : [
                 ...$latestProposal->toApiArray(),

@@ -8,7 +8,7 @@ import type { Building } from '@/lib/api'
 
 function draftBuilding(overrides: Partial<Building> = {}): Building {
   return {
-    id: 10,
+    id: '10',
     slug: 'residencial-aurora',
     name: 'Residencial Aurora',
     description: null,
@@ -54,15 +54,16 @@ describe('BuildingWizardPage', () => {
       permissions: ['buildings.view', 'buildings.manage'],
     })
     vi.spyOn(api.builderApi, 'listBuildingMedia').mockResolvedValue([])
+    vi.spyOn(api.builderApi, 'listAmenities').mockResolvedValue([])
   })
 
-  it('shows three wizard steps', async () => {
+  it('shows four wizard steps', async () => {
     renderWizard()
 
-    expect(await screen.findByRole('button', { name: '1. Identidade' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: '1. Dados básicos' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '2. Estrutura' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: '3. Mídia' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /4\./ })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '3. Revisão estrutural' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '4. Fotos e descritivo' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '2. Torres' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: '3. Unidades' })).not.toBeInTheDocument()
   })
@@ -75,18 +76,19 @@ describe('BuildingWizardPage', () => {
 
     renderWizard()
 
-    await user.type(screen.getByLabelText('Nome do empreendimento'), 'Residencial Aurora')
-    await user.type(screen.getByLabelText('CEP'), '01310100')
-    await user.type(screen.getByLabelText('Logradouro'), 'Avenida Paulista')
-    await user.type(screen.getByLabelText('Número'), '1000')
-    await user.type(screen.getByLabelText('Bairro'), 'Bela Vista')
-    await user.type(screen.getByLabelText('Cidade'), 'São Paulo')
-    await user.type(screen.getByLabelText('UF'), 'SP')
+    await user.type(screen.getByLabelText('Nome do empreendimento *'), 'Residencial Aurora')
+    await user.type(screen.getByLabelText('CEP *'), '01310100')
+    await user.type(screen.getByLabelText('Logradouro *'), 'Avenida Paulista')
+    await user.type(screen.getByLabelText('Número *'), '1000')
+    await user.type(screen.getByLabelText('Bairro *'), 'Bela Vista')
+    await user.type(screen.getByLabelText('Cidade *'), 'São Paulo')
+    await user.type(screen.getByLabelText('UF *'), 'SP')
     await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
 
     await waitFor(() => {
       expect(api.builderApi.createBuilding).toHaveBeenCalledWith({
         name: 'Residencial Aurora',
+        category: 'residential',
         zip: '01310100',
         street: 'Avenida Paulista',
         number: '1000',
@@ -96,6 +98,7 @@ describe('BuildingWizardPage', () => {
         state: 'SP',
         published: false,
         wizard_step: 1,
+        price_mode: 'incc',
       })
       expect(screen.getByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
     })
@@ -107,7 +110,7 @@ describe('BuildingWizardPage', () => {
     renderWizard('/buildings/10/wizard')
 
     expect(await screen.findByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
-    expect(screen.getByText('Continuar cadastro')).toBeInTheDocument()
+    expect(screen.getAllByText('Continuar cadastro').length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Gerar esqueleto' })).toBeInTheDocument()
     expect(screen.queryByText('Padrão do empreendimento')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Suítes')).not.toBeInTheDocument()
@@ -117,14 +120,14 @@ describe('BuildingWizardPage', () => {
   it('saves structure and opens the media step', async () => {
     const user = userEvent.setup()
     const towerA = {
-      id: 1,
+      id: '1',
       name: 'Torre A',
       sort_order: 0,
       floors_count: 1,
       reference_floor: 1,
       floors: [
-        { id: 10, tower_id: 1, number: 0, kind: 'commercial' as const, customized: false },
-        { id: 11, tower_id: 1, number: 1, kind: 'residential' as const, customized: false },
+        { id: '10', tower_id: '1', number: 0, kind: 'commercial' as const, customized: false },
+        { id: '11', tower_id: '1', number: 1, kind: 'residential' as const, customized: false },
       ],
     }
 
@@ -151,7 +154,7 @@ describe('BuildingWizardPage', () => {
     await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
 
     await waitFor(() => {
-      expect(api.builderApi.replaceBuildingStructure).toHaveBeenCalledWith(10, {
+      expect(api.builderApi.replaceBuildingStructure).toHaveBeenCalledWith('10', {
         towers: [
           {
             name: 'Torre A',
@@ -164,21 +167,22 @@ describe('BuildingWizardPage', () => {
         ],
       })
       expect(api.builderApi.replaceBuildingUnitGrid).toHaveBeenCalled()
-      expect(screen.getByRole('heading', { name: 'Mídia' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Revisão estrutural' })).toBeInTheDocument()
+      expect(screen.getByText(/Sem valor, o corretor não reserva/)).toBeInTheDocument()
     })
   })
 
   it('saves the unit grid of the generated tower', async () => {
     const user = userEvent.setup()
     const towerA = {
-      id: 1,
+      id: '1',
       name: 'Torre A',
       sort_order: 0,
       floors_count: 1,
       reference_floor: 1,
       floors: [
-        { id: 10, tower_id: 1, number: 0, kind: 'commercial' as const, customized: false },
-        { id: 11, tower_id: 1, number: 1, kind: 'residential' as const, customized: false },
+        { id: '10', tower_id: '1', number: 0, kind: 'commercial' as const, customized: false },
+        { id: '11', tower_id: '1', number: 1, kind: 'residential' as const, customized: false },
       ],
     }
 
@@ -203,11 +207,11 @@ describe('BuildingWizardPage', () => {
 
     await waitFor(() => {
       expect(api.builderApi.replaceBuildingUnitGrid).toHaveBeenCalledWith(
-        10,
+        '10',
         expect.objectContaining({
           towers: [
             expect.objectContaining({
-              id: 1,
+              id: '1',
               floors: [
                 expect.objectContaining({
                   number: 0,
@@ -227,25 +231,25 @@ describe('BuildingWizardPage', () => {
           ],
         }),
       )
-      expect(screen.getByRole('heading', { name: 'Mídia' })).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Revisão estrutural' })).toBeInTheDocument()
     })
   })
 
   it('fills the description from the IA generator', async () => {
     const user = userEvent.setup()
-    vi.spyOn(api.builderApi, 'getBuilding').mockResolvedValue(draftBuilding({ wizard_step: 3 }))
+    vi.spyOn(api.builderApi, 'getBuilding').mockResolvedValue(draftBuilding({ wizard_step: 4 }))
     vi.spyOn(api.builderApi, 'generateBuildingDescription').mockResolvedValue({
       description: 'Residencial Aurora no centro de São Paulo.',
     })
 
     renderWizard('/buildings/10/wizard')
 
-    expect(await screen.findByRole('heading', { name: 'Mídia' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Fotos e descritivo' })).toBeInTheDocument()
     expect(screen.queryByRole('tab', { name: 'Plantas' })).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Gerar descrição com IA' }))
 
     await waitFor(() => {
-      expect(api.builderApi.generateBuildingDescription).toHaveBeenCalledWith(10)
+      expect(api.builderApi.generateBuildingDescription).toHaveBeenCalledWith('10')
       expect(screen.getByLabelText('Descritivo')).toHaveValue(
         'Residencial Aurora no centro de São Paulo.',
       )
@@ -255,7 +259,7 @@ describe('BuildingWizardPage', () => {
   it('saves the media step as an unpublished draft', async () => {
     const user = userEvent.setup()
     vi.spyOn(api.builderApi, 'getBuilding').mockResolvedValue(
-      draftBuilding({ wizard_step: 3, description: 'Texto inicial.' }),
+      draftBuilding({ wizard_step: 4, description: 'Texto inicial.' }),
     )
     vi.spyOn(api.builderApi, 'updateBuilding').mockResolvedValue(
       draftBuilding({ wizard_step: 3, description: 'Texto inicial.', published: false }),
@@ -263,16 +267,22 @@ describe('BuildingWizardPage', () => {
 
     renderWizard('/buildings/10/wizard')
 
-    expect(await screen.findByRole('heading', { name: 'Mídia' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Fotos e descritivo' })).toBeInTheDocument()
     expect(screen.getByLabelText('Descritivo')).toHaveValue('Texto inicial.')
     expect(screen.getByRole('checkbox', { name: 'Rascunho' })).toBeChecked()
     await user.click(screen.getByRole('button', { name: 'Salvar rascunho' }))
 
     await waitFor(() => {
-      expect(api.builderApi.updateBuilding).toHaveBeenCalledWith(10, {
+      expect(api.builderApi.updateBuilding).toHaveBeenCalledWith('10', {
         description: 'Texto inicial.',
+        ceiling_type: null,
+        opening_type: null,
+        flooring_type: null,
+        solar_position: null,
+        sun_period: null,
+        amenity_ids: [],
         published: false,
-        wizard_step: 3,
+        wizard_step: 4,
       })
       expect(screen.getByText('Lista de empreendimentos')).toBeInTheDocument()
     })
@@ -283,27 +293,33 @@ describe('BuildingWizardPage', () => {
 
     renderWizard('/buildings/10/wizard')
 
-    expect(await screen.findByRole('heading', { name: 'Mídia' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Fotos e descritivo' })).toBeInTheDocument()
   })
 
   it('publishes when the draft switch is turned off', async () => {
     const user = userEvent.setup()
-    vi.spyOn(api.builderApi, 'getBuilding').mockResolvedValue(draftBuilding({ wizard_step: 3 }))
+    vi.spyOn(api.builderApi, 'getBuilding').mockResolvedValue(draftBuilding({ wizard_step: 4 }))
     vi.spyOn(api.builderApi, 'updateBuilding').mockResolvedValue(
       draftBuilding({ wizard_step: 3, published: true, description: null }),
     )
 
     renderWizard('/buildings/10/wizard')
 
-    expect(await screen.findByRole('heading', { name: 'Mídia' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Fotos e descritivo' })).toBeInTheDocument()
     await user.click(screen.getByRole('checkbox', { name: 'Rascunho' }))
     await user.click(screen.getByRole('button', { name: 'Publicar' }))
 
     await waitFor(() => {
-      expect(api.builderApi.updateBuilding).toHaveBeenCalledWith(10, {
+      expect(api.builderApi.updateBuilding).toHaveBeenCalledWith('10', {
         description: null,
+        ceiling_type: null,
+        opening_type: null,
+        flooring_type: null,
+        solar_position: null,
+        sun_period: null,
+        amenity_ids: [],
         published: true,
-        wizard_step: 3,
+        wizard_step: 4,
       })
       expect(screen.getByText('Detalhe do empreendimento')).toBeInTheDocument()
     })
@@ -311,7 +327,7 @@ describe('BuildingWizardPage', () => {
 
   it('shows an error when publishing without unit prices', async () => {
     const user = userEvent.setup()
-    vi.spyOn(api.builderApi, 'getBuilding').mockResolvedValue(draftBuilding({ wizard_step: 3 }))
+    vi.spyOn(api.builderApi, 'getBuilding').mockResolvedValue(draftBuilding({ wizard_step: 4 }))
     vi.spyOn(api.builderApi, 'updateBuilding').mockRejectedValue(
       new api.ApiRequestError('Cannot publish while available units have no price.', 422, {
         published: ['Cannot publish while available units have no price.'],
@@ -320,12 +336,12 @@ describe('BuildingWizardPage', () => {
 
     renderWizard('/buildings/10/wizard')
 
-    expect(await screen.findByRole('heading', { name: 'Mídia' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Fotos e descritivo' })).toBeInTheDocument()
     await user.click(screen.getByRole('checkbox', { name: 'Rascunho' }))
     await user.click(screen.getByRole('button', { name: 'Publicar' }))
 
     expect(
-      await screen.findByText('Não é possível publicar: unidades à venda precisam ter preço.'),
+      await screen.findByText('Cannot publish while available units have no price.'),
     ).toBeInTheDocument()
   })
 
@@ -342,14 +358,14 @@ describe('BuildingWizardPage', () => {
 
     renderWizard()
 
-    await user.type(screen.getByLabelText('CEP'), '01310100')
+    await user.type(screen.getByLabelText('CEP *'), '01310100')
     await user.click(screen.getByRole('button', { name: 'Buscar CEP' }))
 
     await waitFor(() => {
       expect(api.builderApi.lookupCep).toHaveBeenCalledWith('01310100')
-      expect(screen.getByLabelText('Logradouro')).toHaveValue('Avenida Paulista')
-      expect(screen.getByLabelText('Cidade')).toHaveValue('São Paulo')
-      expect(screen.getByLabelText('UF')).toHaveValue('SP')
+      expect(screen.getByLabelText('Logradouro *')).toHaveValue('Avenida Paulista')
+      expect(screen.getByLabelText('Cidade *')).toHaveValue('São Paulo')
+      expect(screen.getByLabelText('UF *')).toHaveValue('SP')
     })
   })
 })

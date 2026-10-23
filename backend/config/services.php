@@ -44,8 +44,15 @@ return [
         'template_language' => env('WHATSAPP_TEMPLATE_LANGUAGE', 'pt_BR'),
         'templates' => [
             'broker_invite' => env('WHATSAPP_TEMPLATE_BROKER_INVITE', 'broker_invite_start'),
+            'signature_link' => env('WHATSAPP_TEMPLATE_SIGNATURE_LINK', 'signature_link'),
         ],
         'decline_button_text' => env('WHATSAPP_DECLINE_BUTTON_TEXT', 'Recusar'),
+    ],
+
+    'zapsign' => [
+        'base_url' => env('ZAPSIGN_BASE_URL', 'https://api.zapsign.com.br'),
+        'token' => env('ZAPSIGN_API_TOKEN'),
+        'webhook_token' => env('ZAPSIGN_WEBHOOK_TOKEN'),
     ],
 
 ];

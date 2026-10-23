@@ -58,3 +58,5 @@ Nenhum.
 - Tenant por subdomínio (`alpha.construtora.localhost`)
 - Cookie auth compartilhada entre portais (`domain=.localhost`)
 - Middleware backend `Host` vs `role` (hardening)
+- Wizard: bloquear na tela a remoção de unidade vendida ou com reserva (`docs/discovery/pendencias-wizard-empreendimento.md`)
+- Esteira de venda da construtora (a unidade só fica `sold` pelo fluxo do corretor)

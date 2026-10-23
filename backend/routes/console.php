@@ -10,7 +10,13 @@ Artisan::command('inspire', function () {
 
 Schedule::command('opim:expire-reservations')->hourly()->withoutOverlapping();
 Schedule::command('opim:expire-pre-reservations')->everyMinute()->withoutOverlapping();
+Schedule::command('opim:expire-proposal-drafts')->everyMinute()->withoutOverlapping();
+Schedule::command('opim:expire-proposal-reviews')->everyMinute()->withoutOverlapping();
 Schedule::command('opim:check-deposit-windows')->hourly()->withoutOverlapping();
+Schedule::command('opim:remind-proposal-signatures')
+    ->dailyAt('08:00')
+    ->timezone('America/Sao_Paulo')
+    ->withoutOverlapping();
 Schedule::command('opim:fetch-incc')
     ->dailyAt('08:05')
     ->timezone('America/Sao_Paulo')

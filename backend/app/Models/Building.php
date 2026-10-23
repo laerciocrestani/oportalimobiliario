@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\BuildingMediaCategory;
+use App\Enums\BuildingCategory;
 use App\Enums\CeilingType;
 use App\Enums\FlooringType;
 use App\Enums\OpeningType;
+use App\Enums\PriceMode;
 use App\Enums\SolarPosition;
 use App\Enums\SunPeriod;
 use App\Enums\UnitStatus;
@@ -14,6 +16,7 @@ use App\Tenancy\Concerns\BelongsToTenant;
 use Database\Factories\BuildingFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -24,6 +27,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[Fillable([
     'tenant_id',
     'name',
+    'category',
     'slug',
     'zip',
     'street',
@@ -39,6 +43,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'solar_position',
     'sun_period',
     'published',
+    'price_mode',
     'wizard_step',
     'wizard_completed_at',
     'seo_title',
@@ -47,12 +52,19 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class Building extends Model
 {
     /** @use HasFactory<BuildingFactory> */
-    use BelongsToTenant, ComputesUnitsSummary, HasFactory;
+    use BelongsToTenant, ComputesUnitsSummary, HasFactory, HasUuids;
+
+    protected $attributes = [
+        'category' => 'residential',
+        'price_mode' => 'incc',
+    ];
 
     protected function casts(): array
     {
         return [
             'published' => 'boolean',
+            'category' => BuildingCategory::class,
+            'price_mode' => PriceMode::class,
             'wizard_step' => 'integer',
             'wizard_completed_at' => 'datetime',
             'ceiling_type' => CeilingType::class,

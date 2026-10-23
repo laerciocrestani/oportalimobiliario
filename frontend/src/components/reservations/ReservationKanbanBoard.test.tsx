@@ -87,7 +87,7 @@ describe('ReservationKanbanBoard', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Proposta em análise' })).toBeInTheDocument()
-    expect(screen.getAllByText('Nenhuma reserva aqui')).toHaveLength(6)
+    expect(screen.getAllByText('Nenhuma reserva aqui')).toHaveLength(5)
     expect(screen.getByRole('region', { name: 'Proposta em análise' }).querySelector('svg')).toBeInTheDocument()
     expect(screen.getByRole('region', { name: 'Proposta em análise' })).toContainElement(
       screen.getByRole('button', { name: 'Abrir andamento de João Silva' }),
@@ -128,11 +128,8 @@ describe('ReservationKanbanBoard', () => {
     expect(screen.queryByLabelText(/Prazo da pré-reserva/)).not.toBeInTheDocument()
   })
 
-  it('shows a hold countdown footer on pre-reservation cards and follows expires_at', () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-09-19T10:00:00.000Z'))
-
-    const { rerender } = render(
+  it('does not render the pre-reservation column', () => {
+    render(
       <ReservationKanbanBoard
         profile="builder"
         reservations={[preReservation]}
@@ -145,27 +142,9 @@ describe('ReservationKanbanBoard', () => {
       />,
     )
 
-    const halfRemaining = screen.getByRole('progressbar', { name: /até 20\/09.*resta 1d/ })
-
-    expect(screen.getByRole('region', { name: 'Pré-reserva/Diálogo' })).toContainElement(halfRemaining)
-    expect(halfRemaining).toHaveClass('[&_[data-slot=progress-indicator]]:bg-amber-500')
-
-    rerender(
-      <ReservationKanbanBoard
-        profile="builder"
-        reservations={[{ ...preReservation, expires_at: '2026-09-22T10:00:00.000Z' }]}
-        cancellingId={null}
-        canCancel
-        onOpen={() => {}}
-        onCancel={() => {}}
-        onMove={() => {}}
-        onProcessRequired={() => {}}
-      />,
-    )
-
-    expect(screen.getByRole('progressbar', { name: /até 22\/09.*resta 3d/ })).toHaveClass(
-      '[&_[data-slot=progress-indicator]]:bg-zinc-500',
-    )
+    expect(screen.queryByRole('region', { name: 'Pré-reserva/Diálogo' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Abrir andamento de João Silva' })).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Proposta em análise' })).toBeInTheDocument()
   })
 
   it('shows aligned unit and garage rows with prices and total under the client name', () => {
@@ -233,7 +212,8 @@ describe('ReservationKanbanBoard', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'Responder' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Responder' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('region', { name: 'Pré-reserva/Diálogo' })).not.toBeInTheDocument()
 
     rerender(
       <ReservationKanbanBoard

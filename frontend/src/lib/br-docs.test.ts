@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cpfDigits, formatCpf, formatPhone, isValidCpf } from '@/lib/br-docs'
+import { cnpjDigits, cpfDigits, formatCnpj, formatCpf, formatPhone, isValidCnpj, isValidCpf } from '@/lib/br-docs'
 
 describe('br-docs', () => {
   it('formats CPF with punctuation', () => {
@@ -14,6 +14,14 @@ describe('br-docs', () => {
     expect(isValidCpf('00000000000')).toBe(false)
     expect(isValidCpf('111.111.111-11')).toBe(false)
     expect(isValidCpf('5299822472')).toBe(false)
+  })
+
+  it('formats and validates CNPJ', () => {
+    expect(formatCnpj('11444777000161')).toBe('11.444.777/0001-61')
+    expect(cnpjDigits('11.444.777/0001-61')).toBe('11444777000161')
+    expect(isValidCnpj('11.444.777/0001-61')).toBe(true)
+    expect(isValidCnpj('11222333000180')).toBe(false)
+    expect(isValidCnpj('00000000000000')).toBe(false)
   })
 
   it('formats mobile and landline phones with DDD', () => {

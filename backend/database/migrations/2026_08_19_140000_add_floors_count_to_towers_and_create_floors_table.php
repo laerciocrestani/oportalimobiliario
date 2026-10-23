@@ -13,9 +13,9 @@ return new class extends Migration
         });
 
         Schema::create('floors', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('tower_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('tower_id')->constrained()->cascadeOnDelete();
             $table->unsignedSmallInteger('number');
             $table->string('kind')->default('residential');
             $table->timestamps();

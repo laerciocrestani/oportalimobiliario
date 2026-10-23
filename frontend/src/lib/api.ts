@@ -17,6 +17,24 @@ export type TeamMember = {
   created_at?: string
 }
 
+export type SignatureWitnessKind = 'team_user' | 'selling_broker'
+
+export type SignatureWitnessSlot = {
+  position: number
+  kind: SignatureWitnessKind
+  user_id: number | null
+}
+
+export type SignatureSettings = {
+  proposal_signer_user_id: number | null
+  witness_slots: SignatureWitnessSlot[]
+}
+
+export type SignatureSettingsInput = {
+  proposal_signer_user_id: number
+  witness_slots: Array<{ kind: SignatureWitnessKind; user_id: number | null }>
+}
+
 export type Amenity = {
   id: number
   slug: string
@@ -87,8 +105,6 @@ export type ContractIssueResult = {
   }
 }
 
-export type ProposalTemplate = ContractTemplate
-
 export type ProposalIssuePreview = ContractIssuePreview
 
 export type ProposalIssueResult = {
@@ -98,6 +114,18 @@ export type ProposalIssueResult = {
     original_name: string
     file_url: string
   }
+}
+
+export type BrokerProposalVariable = ContractCustomVariable & {
+  required?: boolean
+}
+
+export type BrokerProposalTemplate = {
+  id: number
+  name: string
+  body_markdown: string
+  variables: BrokerProposalVariable[]
+  prefill: Record<string, string>
 }
 
 export type LoginResponse = {
@@ -114,21 +142,21 @@ export type UnitsSummary = {
   unavailable: number
 }
 
-export type FloorKind = 'residential' | 'commercial' | 'garage'
+export type FloorKind = 'residential' | 'commercial' | 'garage' | 'hall'
 
 export type Floor = {
-  id: number
-  tower_id: number
+  id: string
+  tower_id: string
   number: number
   kind: FloorKind
   customized?: boolean
 }
 
 export type Tower = {
-  id: number
+  id: string
   name: string
   sort_order: number
-  building_id?: number
+  building_id?: string
   floors_count?: number
   reference_floor?: number | null
   floors?: Floor[]
@@ -138,6 +166,7 @@ export type Tower = {
 
 export type BuildingStructurePayload = {
   towers: Array<{
+    id?: string
     name: string
     floors_count?: number
     reference_floor?: number | null
@@ -147,7 +176,7 @@ export type BuildingStructurePayload = {
 
 export type BuildingUnitGridPayload = {
   towers: Array<{
-    id: number
+    id: string
     reference_floor?: number | null
     floors: Array<{
       number: number
@@ -183,9 +212,10 @@ export type CoverImage = {
 }
 
 export type Building = {
-  id: number
+  id: string
   slug: string
   name: string
+  category?: 'residential' | 'commercial' | 'mixed'
   description: string | null
   zip?: string | null
   street?: string | null
@@ -204,6 +234,7 @@ export type Building = {
   wizard_completed_at?: string | null
   seo_title: string | null
   seo_description: string | null
+  price_mode?: 'incc' | 'fixed'
   units_count?: number
   units_summary?: UnitsSummary
   cover_image?: CoverImage | null
@@ -229,10 +260,10 @@ export type UnitPreHold = {
 }
 
 export type Unit = {
-  id: number
+  id: string
   code: string
   floor: number | null
-  floor_id?: number | null
+  floor_id?: string | null
   floor_kind?: FloorKind | null
   area_m2: string | null
   private_area_m2?: string | null
@@ -253,7 +284,7 @@ export type Unit = {
   opening_type?: string | null
   flooring_type?: string | null
   status: string
-  tower_id?: number
+  tower_id?: string
   tower?: Pick<Tower, 'id' | 'name'>
   building?: Building
   reservation?: Reservation | null
@@ -400,6 +431,8 @@ export type Reservation = {
   broker_id: number
   status?: string
   expires_at: string | null
+  draft_expires_at?: string | null
+  review_deadline_at?: string | null
   created_at?: string
   unit?: Unit
   client?: BrokerClient
@@ -450,6 +483,7 @@ export type BuilderReservationListItem = {
   status: string
   created_at: string
   expires_at: string
+  review_deadline_at?: string | null
   messages_count: number
   unread_messages_count?: number
   needs_reply: boolean
@@ -539,6 +573,8 @@ export type ReservationTimeline = {
     id: number
     code: string
     status: string
+    price?: string | null
+    building_name?: string | null
   }
   client: ReservationTimelineClient | null
   current_proposal: ReservationProposal | null
@@ -570,10 +606,32 @@ export type ReservationContractDataInput = {
   spouse_nationality: string
 }
 
+export type ProposalPartyKind = 'individual' | 'company'
+
+export type ProposalCommercialTerms = {
+  reinforcements: Array<{ amount: string | null; due_on: string | null }>
+  dations: string[]
+}
+
 export type ReservationProposalInput = {
   client_name: string
   client_phone: string
+  party_kind: ProposalPartyKind
+  client_cpf: string
   payment_terms: string
+  deposit_kind: 'pix' | 'asset'
+  address: string
+  city: string
+  state: string
+  zip: string
+  commercial_terms?: ProposalCommercialTerms | null
+  client_email?: string
+  client_rg?: string
+  marital_status?: string
+  nationality?: string
+  profession?: string
+  spouse_name?: string
+  spouse_cpf?: string
 }
 
 export type ReservationProposal = ReservationProposalInput & {
@@ -602,6 +660,7 @@ export type ReservationProposal = ReservationProposalInput & {
   spouse_rg?: string | null
   spouse_nationality?: string | null
   land_value: number
+  commercial_terms?: ProposalCommercialTerms | null
 }
 
 export type ProposalDecision = 'accepted' | 'rejected' | 'returned'
@@ -842,7 +901,7 @@ export async function fetchMe(): Promise<AuthUser> {
 
 export const builderApi = {
   listBuildings: () => apiFetch<Building[]>('/builder/buildings'),
-  getBuilding: (id: number) => apiFetch<Building>(`/builder/buildings/${id}`),
+  getBuilding: (id: string) => apiFetch<Building>(`/builder/buildings/${id}`),
   createBuilding: (data: Partial<Building> & { amenity_ids?: number[] }) =>
     apiFetch<Building>('/builder/buildings', {
       method: 'POST',
@@ -850,31 +909,31 @@ export const builderApi = {
     }),
   lookupCep: (cep: string) => apiFetch<CepAddress>(`/builder/cep/${cep}`),
   listAmenities: () => apiFetch<Amenity[]>('/builder/amenities'),
-  updateBuilding: (id: number, data: Partial<Building> & { amenity_ids?: number[] }) =>
+  updateBuilding: (id: string, data: Partial<Building> & { amenity_ids?: number[] }) =>
     apiFetch<Building>(`/builder/buildings/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  replaceBuildingStructure: (id: number, data: BuildingStructurePayload) =>
+  replaceBuildingStructure: (id: string, data: BuildingStructurePayload) =>
     apiFetch<Building>(`/builder/buildings/${id}/structure`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  replaceBuildingUnitGrid: (id: number, data: BuildingUnitGridPayload) =>
+  replaceBuildingUnitGrid: (id: string, data: BuildingUnitGridPayload) =>
     apiFetch<Building>(`/builder/buildings/${id}/unit-grid`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  generateBuildingDescription: (id: number) =>
+  generateBuildingDescription: (id: string) =>
     apiFetch<{ description: string }>(`/builder/buildings/${id}/generate-description`, {
       method: 'POST',
     }),
-  listBuildingMedia: (buildingId: number, category?: BuildingMediaCategory) => {
+  listBuildingMedia: (buildingId: string, category?: BuildingMediaCategory) => {
     const query = category ? `?category=${category}` : ''
     return apiFetch<BuildingMedia[]>(`/builder/buildings/${buildingId}/media${query}`)
   },
   uploadBuildingMedia: (
-    buildingId: number,
+    buildingId: string,
     file: File,
     category: BuildingMediaCategory,
     published = false,
@@ -889,7 +948,7 @@ export const builderApi = {
     return apiUpload<BuildingMedia>(`/builder/buildings/${buildingId}/media`, formData)
   },
   updateBuildingMedia: (
-    buildingId: number,
+    buildingId: string,
     mediaId: number,
     data: { published?: boolean; sort_order?: number },
   ) =>
@@ -897,30 +956,30 @@ export const builderApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  deleteBuildingMedia: (buildingId: number, mediaId: number) =>
+  deleteBuildingMedia: (buildingId: string, mediaId: number) =>
     apiFetch<void>(`/builder/buildings/${buildingId}/media/${mediaId}`, {
       method: 'DELETE',
     }),
-  fetchBuildingMediaBlob: (buildingId: number, mediaId: number) =>
+  fetchBuildingMediaBlob: (buildingId: string, mediaId: number) =>
     fetchAuthenticatedBlob(`/builder/buildings/${buildingId}/media/${mediaId}/file`),
-  createTower: (buildingId: number, data: Partial<Tower>) =>
+  createTower: (buildingId: string, data: Partial<Tower>) =>
     apiFetch<Tower>(`/builder/buildings/${buildingId}/towers`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  updateTower: (buildingId: number, towerId: number, data: Partial<Tower>) =>
+  updateTower: (buildingId: string, towerId: string, data: Partial<Tower>) =>
     apiFetch<Tower>(`/builder/buildings/${buildingId}/towers/${towerId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
-  listUnits: (buildingId: number) =>
+  listUnits: (buildingId: string) =>
     apiFetch<Unit[]>(`/builder/buildings/${buildingId}/units`),
-  createUnit: (buildingId: number, data: Partial<Unit> & { amenity_ids?: number[] }) =>
+  createUnit: (buildingId: string, data: Partial<Unit> & { amenity_ids?: number[] }) =>
     apiFetch<Unit>(`/builder/buildings/${buildingId}/units`, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  updateUnit: (buildingId: number, unitId: number, data: Partial<Unit> & { amenity_ids?: number[] }) =>
+  updateUnit: (buildingId: string, unitId: string, data: Partial<Unit> & { amenity_ids?: number[] }) =>
     apiFetch<Unit>(`/builder/buildings/${buildingId}/units/${unitId}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -964,14 +1023,20 @@ export const builderApi = {
     apiFetch<void>(`/builder/brokers/${id}`, { method: 'DELETE' }),
   listBrokerBuildings: (brokerId: number) =>
     apiFetch<GrantedBuilding[]>(`/builder/brokers/${brokerId}/buildings`),
-  grantBuildingAccess: (brokerId: number, buildingId: number) =>
+  grantBuildingAccess: (brokerId: number, buildingId: string) =>
     apiFetch(`/builder/brokers/${brokerId}/buildings`, {
       method: 'POST',
       body: JSON.stringify({ building_id: buildingId }),
     }),
-  revokeBuildingAccess: (brokerId: number, buildingId: number) =>
+  revokeBuildingAccess: (brokerId: number, buildingId: string) =>
     apiFetch<void>(`/builder/brokers/${brokerId}/buildings/${buildingId}`, {
       method: 'DELETE',
+    }),
+  getSignatureSettings: () => apiFetch<SignatureSettings>('/builder/signature-settings'),
+  updateSignatureSettings: (data: SignatureSettingsInput) =>
+    apiFetch<SignatureSettings>('/builder/signature-settings', {
+      method: 'PUT',
+      body: JSON.stringify(data),
     }),
   listTeam: () => apiFetch<TeamMember[]>('/builder/team'),
   createTeamMember: (data: {
@@ -1022,6 +1087,14 @@ export const builderApi = {
     }),
   getReservationTimeline: (reservationId: number) =>
     apiFetch<ReservationTimeline>(`/builder/reservations/${reservationId}/timeline`),
+  resendProposalSignatureLinks: (reservationId: number) =>
+    apiFetch<{ notified: number }>(`/builder/reservations/${reservationId}/proposal/signature-links`, {
+      method: 'POST',
+    }),
+  resendContractSignatureLinks: (reservationId: number) =>
+    apiFetch<{ notified: number }>(`/builder/reservations/${reservationId}/contract/signature-links`, {
+      method: 'POST',
+    }),
   decideReservationProposal: (
     reservationId: number,
     decision: ProposalDecision,
@@ -1165,33 +1238,6 @@ export const builderApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  listProposalVariables: () => apiFetch<ContractSystemVariable[]>('/builder/proposal-variables'),
-  listProposalTemplates: () => apiFetch<ProposalTemplate[]>('/builder/proposal-templates'),
-  createProposalTemplate: (data: {
-    name: string
-    body_markdown: string
-    custom_variables?: ContractCustomVariable[]
-    is_active?: boolean
-  }) =>
-    apiFetch<ProposalTemplate>('/builder/proposal-templates', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-  updateProposalTemplate: (
-    id: number,
-    data: Partial<{
-      name: string
-      body_markdown: string
-      custom_variables: ContractCustomVariable[]
-      is_active: boolean
-    }>,
-  ) =>
-    apiFetch<ProposalTemplate>(`/builder/proposal-templates/${id}`, {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }),
-  deleteProposalTemplate: (id: number) =>
-    apiFetch<void>(`/builder/proposal-templates/${id}`, { method: 'DELETE' }),
   listIssueProposalTemplates: (reservationId: number) =>
     apiFetch<Array<{ id: number; name: string }>>(
       `/builder/reservations/${reservationId}/proposal/templates`,
@@ -1241,13 +1287,20 @@ export const brokerApi = {
     apiFetch<ReservationPendingRepliesCount>('/broker/reservations/pending-replies-count'),
   pendingActionsCount: () =>
     apiFetch<ReservationPendingActionCount>('/broker/reservations/pending-actions-count'),
-  listClients: () => apiFetch<BrokerClient[]>('/broker/clients'),
+  listClients: (query?: string) => {
+    const term = query?.trim()
+    const path = term
+      ? `/broker/clients?${new URLSearchParams({ q: term }).toString()}`
+      : '/broker/clients'
+
+    return apiFetch<BrokerClient[]>(path)
+  },
   createClient: (data: { name: string; phone: string; email?: string }) =>
     apiFetch<BrokerClient>('/broker/clients', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  createReservation: (unitId: number, clientId: number, observations?: string) =>
+  createReservation: (unitId: string, clientId: number, observations?: string) =>
     apiFetch<Reservation>('/broker/reservations', {
       method: 'POST',
       body: JSON.stringify({
@@ -1256,7 +1309,15 @@ export const brokerApi = {
         observations: observations?.trim() || undefined,
       }),
     }),
-  createPreHold: (unitId: number, garageUnitIds: number[] = []) =>
+  createDraft: (unitId: string, garageUnitIds: string[] = []) =>
+    apiFetch<Reservation>('/broker/reservations/draft', {
+      method: 'POST',
+      body: JSON.stringify({
+        unit_id: unitId,
+        garage_unit_ids: garageUnitIds,
+      }),
+    }),
+  createPreHold: (unitId: string, garageUnitIds: string[] = []) =>
     apiFetch<Reservation>('/broker/reservations/pre-hold', {
       method: 'POST',
       body: JSON.stringify({
@@ -1272,12 +1333,58 @@ export const brokerApi = {
         observations: observations?.trim() || undefined,
       }),
     }),
+  listReservationProposalTemplates: (reservationId: number) =>
+    apiFetch<BrokerProposalTemplate[]>(`/broker/reservations/${reservationId}/proposal/templates`),
   submitReservationProposal: (reservationId: number, data: ReservationProposalInput, files: File[]) => {
     const formData = new FormData()
 
     formData.append('client_name', data.client_name)
     formData.append('client_phone', data.client_phone)
+    formData.append('party_kind', data.party_kind)
+    formData.append('client_cpf', data.client_cpf)
+    formData.append('address', data.address)
+    formData.append('city', data.city)
+    formData.append('state', data.state)
+    formData.append('zip', data.zip)
     formData.append('payment_terms', data.payment_terms)
+    formData.append('deposit_kind', data.deposit_kind)
+
+    if (data.client_email) {
+      formData.append('client_email', data.client_email)
+    }
+
+    if (data.client_rg) {
+      formData.append('client_rg', data.client_rg)
+    }
+
+    if (data.marital_status) {
+      formData.append('marital_status', data.marital_status)
+    }
+
+    if (data.nationality) {
+      formData.append('nationality', data.nationality)
+    }
+
+    if (data.profession) {
+      formData.append('profession', data.profession)
+    }
+
+    if (data.spouse_name) {
+      formData.append('spouse_name', data.spouse_name)
+    }
+
+    if (data.spouse_cpf) {
+      formData.append('spouse_cpf', data.spouse_cpf)
+    }
+
+    data.commercial_terms?.reinforcements.forEach((row, index) => {
+      formData.append(`commercial_terms[reinforcements][${index}][amount]`, row.amount ?? '')
+      formData.append(`commercial_terms[reinforcements][${index}][due_on]`, row.due_on ?? '')
+    })
+
+    data.commercial_terms?.dations.forEach((line, index) => {
+      formData.append(`commercial_terms[dations][${index}]`, line)
+    })
 
     for (const file of files) {
       formData.append('files[]', file)
@@ -1354,6 +1461,14 @@ export const brokerApi = {
       method: 'POST',
       body: JSON.stringify({ body }),
     }),
+  resendProposalSignatureLinks: (reservationId: number) =>
+    apiFetch<{ notified: number }>(`/broker/reservations/${reservationId}/proposal/signature-links`, {
+      method: 'POST',
+    }),
+  resendContractSignatureLinks: (reservationId: number) =>
+    apiFetch<{ notified: number }>(`/broker/reservations/${reservationId}/contract/signature-links`, {
+      method: 'POST',
+    }),
   getReservationTimeline: (reservationId: number) =>
     apiFetch<ReservationTimeline>(`/broker/reservations/${reservationId}/timeline`),
   listActivity: (params: ActivityListParams) =>
@@ -1402,7 +1517,7 @@ export const brokerApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }, false),
-  fetchBuildingMediaBlob: (buildingId: number, mediaId: number) =>
+  fetchBuildingMediaBlob: (buildingId: string, mediaId: number) =>
     fetchAuthenticatedBlob(`/broker/buildings/${buildingId}/media/${mediaId}/file`),
 }
 

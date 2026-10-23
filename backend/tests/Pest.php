@@ -63,15 +63,19 @@ function validProposalPayload(array $overrides = []): array
         'client_name' => 'Maria Silva',
         'client_email' => 'maria@example.com',
         'client_phone' => '11999999999',
+        'party_kind' => 'individual',
         'client_cpf' => '12345678901',
+        'client_rg' => '123456789',
         'address' => 'Rua A, 100',
         'city' => 'São Paulo',
         'state' => 'SP',
         'zip' => '01000-000',
         'marital_status' => 'solteira',
         'nationality' => 'brasileira',
+        'profession' => 'Arquiteta',
         'land_value' => 150000,
         'payment_terms' => 'Pix R$ 10.000 + 24x R$ 5.000',
+        'deposit_kind' => 'pix',
     ], $overrides);
 }
 
@@ -96,7 +100,7 @@ function signedProposalPdf(string $name = 'proposta-assinada.pdf'): UploadedFile
     return UploadedFile::fake()->create($name, 80, 'application/pdf');
 }
 
-function assertUserActivity(User $actor, UserActivityAction $action, string $messageContains, ?int $resourceId = null): UserActivityEvent
+function assertUserActivity(User $actor, UserActivityAction $action, string $messageContains, int|string|null $resourceId = null): UserActivityEvent
 {
     $query = UserActivityEvent::query()
         ->where('actor_user_id', $actor->id)

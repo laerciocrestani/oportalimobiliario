@@ -64,26 +64,6 @@ describe('BuilderDashboardShell', () => {
     expect(screen.getByRole('link', { name: 'Contratos' })).toHaveAttribute('href', '/contracts')
   })
 
-  it('shows Propostas only when proposals.manage is granted', () => {
-    permissionsRef.current = ['buildings.view', 'reservations.cancel']
-    const { rerender } = render(
-      <BuilderDashboardShell title="Visão geral">
-        <p>conteúdo</p>
-      </BuilderDashboardShell>,
-    )
-
-    expect(screen.queryByRole('link', { name: 'Propostas' })).not.toBeInTheDocument()
-
-    permissionsRef.current = ['buildings.view', 'reservations.cancel', 'proposals.manage']
-    rerender(
-      <BuilderDashboardShell title="Visão geral">
-        <p>conteúdo</p>
-      </BuilderDashboardShell>,
-    )
-
-    expect(screen.getByRole('link', { name: 'Propostas' })).toHaveAttribute('href', '/proposals')
-  })
-
   it('shows Atividade even without audit.view', () => {
     permissionsRef.current = ['buildings.view']
 

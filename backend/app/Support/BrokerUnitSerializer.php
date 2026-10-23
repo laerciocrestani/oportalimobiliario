@@ -3,8 +3,8 @@
 namespace App\Support;
 
 use App\Enums\ReservationStatus;
-use App\Models\Reservation;
 use App\Models\Unit;
+use App\Services\ReservationGarageService;
 
 /**
  * @see REQ-WIZ-009
@@ -35,14 +35,19 @@ class BrokerUnitSerializer
         $isOwner = (int) $reservation->broker_id === $brokerId;
         $isPreReservedFlow = in_array($reservation->status, [
             ReservationStatus::PreHold,
+            ReservationStatus::ProposalDraft,
             ReservationStatus::ProposalPending,
             ReservationStatus::ProposalReturned,
         ], true);
 
         if ($isPreReservedFlow) {
+            $expiresAt = $reservation->isProposalDraft()
+                ? $reservation->draft_expires_at
+                : $reservation->expires_at;
+
             $payload['pre_hold'] = [
                 'reservation_id' => $reservation->id,
-                'expires_at' => $reservation->expires_at?->toIso8601String(),
+                'expires_at' => $expiresAt?->toIso8601String(),
                 'held_by_me' => $isOwner,
             ];
 
@@ -53,8 +58,9 @@ class BrokerUnitSerializer
                     'broker_id' => $reservation->broker_id,
                     'client_id' => $reservation->client_id,
                     'status' => $reservation->status->value,
-                    'expires_at' => $reservation->expires_at?->toIso8601String(),
+                    'expires_at' => $expiresAt?->toIso8601String(),
                     'client' => $reservation->client,
+                    'garage_units' => ReservationGarageService::serializeGarageUnits($reservation),
                 ];
             }
 

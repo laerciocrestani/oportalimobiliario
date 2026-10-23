@@ -39,13 +39,13 @@ class BuildingUnitGridController extends Controller
 
         $data = $request->validate([
             'towers' => ['required', 'array', 'min:1'],
-            'towers.*.id' => ['required', 'integer'],
+            'towers.*.id' => ['required', 'uuid'],
             'towers.*.floors' => ['required', 'array', 'min:1'],
             'towers.*.floors.*.number' => ['required', 'integer', 'min:-20', 'max:80'],
             'towers.*.floors.*.kind' => ['required', Rule::enum(FloorKind::class)],
             'towers.*.floors.*.customized' => ['sometimes', 'boolean'],
             'towers.*.reference_floor' => ['nullable', 'integer', 'min:-20', 'max:80'],
-            'towers.*.floors.*.units' => ['required', 'array', 'min:1'],
+            'towers.*.floors.*.units' => ['required', 'array'],
             'towers.*.floors.*.units.*.code' => ['nullable', 'string', 'max:50'],
             'towers.*.floors.*.units.*.area_m2' => ['nullable', 'numeric', 'min:0'],
             'towers.*.floors.*.units.*.private_area_m2' => ['nullable', 'numeric', 'min:0'],

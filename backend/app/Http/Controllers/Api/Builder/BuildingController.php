@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api\Builder;
 
+use App\Enums\BuildingCategory;
 use App\Enums\CeilingType;
 use App\Enums\FlooringType;
 use App\Enums\OpeningType;
+use App\Enums\PriceMode;
 use App\Enums\SolarPosition;
 use App\Enums\SunPeriod;
 use App\Enums\UnitStatus;
@@ -53,6 +55,7 @@ class BuildingController extends Controller
 
         return [
             'name' => [$building === null ? 'required' : 'sometimes', 'string', 'max:255'],
+            'category' => ['sometimes', Rule::enum(BuildingCategory::class)],
             'slug' => ['nullable', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slugUnique],
             'zip' => ['nullable', 'string', 'regex:/^\d{8}$/'],
             'street' => ['nullable', 'string', 'max:255'],
@@ -68,6 +71,7 @@ class BuildingController extends Controller
             'solar_position' => ['nullable', Rule::enum(SolarPosition::class)],
             'sun_period' => ['nullable', Rule::enum(SunPeriod::class)],
             'published' => ['sometimes', 'boolean'],
+            'price_mode' => ['sometimes', Rule::enum(PriceMode::class)],
             'wizard_step' => ['sometimes', 'integer', 'min:1', 'max:4'],
             'seo_title' => ['nullable', 'string', 'max:255'],
             'seo_description' => ['nullable', 'string', 'max:500'],
@@ -193,9 +197,9 @@ class BuildingController extends Controller
         $building->load([
             'towers' => fn ($query) => $query->orderBy('sort_order')->orderBy('name'),
             'towers.floors' => fn ($query) => $query->orderBy('number'),
-            'towers.units' => fn ($query) => $query->orderByDesc('floor')->orderBy('code'),
+            'towers.units' => fn ($query) => $query->with('reservation')->orderByDesc('floor')->orderBy('code'),
             'units.tower:id,name,building_id',
-            'units' => fn ($query) => $query->orderByDesc('floor')->orderBy('code'),
+            'units' => fn ($query) => $query->with('reservation')->orderByDesc('floor')->orderBy('code'),
             ...AmenityPresentation::buildingEagerLoad(),
         ]);
 
@@ -220,9 +224,12 @@ class BuildingController extends Controller
         $amenityIds = $this->pullAmenityIds($data);
 
         if (array_key_exists('published', $data) && filter_var($data['published'], FILTER_VALIDATE_BOOLEAN)) {
-            $this->assertCanPublish($building);
             $data['wizard_completed_at'] = now();
             $data['wizard_step'] = $data['wizard_step'] ?? 4;
+        }
+
+        if (array_key_exists('price_mode', $data) && $data['price_mode'] !== $building->price_mode->value) {
+            $this->assertPriceModeCanChange($building);
         }
 
         $wasPublished = (bool) $building->published;
@@ -254,16 +261,17 @@ class BuildingController extends Controller
         );
     }
 
-    private function assertCanPublish(Building $building): void
+    private function assertPriceModeCanChange(Building $building): void
     {
-        $availableWithoutPrice = $building->units()
-            ->where('status', UnitStatus::Available)
-            ->whereNull('price_base')
+        $pricedUnit = $building->units()
+            ->where(function ($query): void {
+                $query->whereNotNull('price_base')->orWhereNotNull('price');
+            })
             ->exists();
 
-        if ($availableWithoutPrice) {
+        if ($pricedUnit) {
             throw ValidationException::withMessages([
-                'published' => 'Cannot publish while available units have no price_base.',
+                'price_mode' => 'O modo de preço trava depois que uma unidade recebe valor.',
             ]);
         }
     }

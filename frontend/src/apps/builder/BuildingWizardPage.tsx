@@ -6,7 +6,15 @@ function BuildingWizardShell() {
   const { state } = useBuildingWizard()
 
   return (
-    <BuilderDashboardShell title={state.buildingId ? 'Continuar cadastro' : 'Novo empreendimento'}>
+    <BuilderDashboardShell
+      title={
+        state.updatingExisting
+          ? `Editar ${state.form.name || 'empreendimento'}`
+          : state.buildingId
+            ? 'Continuar cadastro'
+            : 'Novo empreendimento'
+      }
+    >
       <BuildingWizard.Frame>
         <BuildingWizard.Steps />
         <BuildingWizard.Error />

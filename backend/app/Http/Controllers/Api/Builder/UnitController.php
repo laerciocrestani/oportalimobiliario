@@ -59,7 +59,7 @@ class UnitController extends Controller
         $this->authorize('create', Unit::class);
 
         $data = $request->validate([
-            'tower_id' => ['required', 'integer', Rule::exists('towers', 'id')->where('building_id', $building->id)],
+            'tower_id' => ['required', 'uuid', Rule::exists('towers', 'id')->where('building_id', $building->id)],
             'code' => [
                 'required',
                 'string',
@@ -103,7 +103,7 @@ class UnitController extends Controller
         $this->ensureUnitBelongsToBuilding($building, $unit);
 
         $data = $request->validate([
-            'tower_id' => ['sometimes', 'integer', Rule::exists('towers', 'id')->where('building_id', $building->id)],
+            'tower_id' => ['sometimes', 'uuid', Rule::exists('towers', 'id')->where('building_id', $building->id)],
             'code' => ['sometimes', 'string', 'max:50'],
             'floor' => ['nullable', 'integer', 'min:0'],
             'area_m2' => ['nullable', 'numeric', 'min:0'],

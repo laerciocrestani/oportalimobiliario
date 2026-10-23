@@ -11,7 +11,7 @@ import {
 } from '@/lib/api'
 
 type BuildingMediaGalleryProps = {
-  buildingId: number
+  buildingId: string
   showFloorPlans?: boolean
 }
 
@@ -25,7 +25,7 @@ function MediaPreview({
   buildingId,
   media,
 }: {
-  buildingId: number
+  buildingId: string
   media: BuildingMedia
 }) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
@@ -128,7 +128,7 @@ function MediaGrid({
   onDelete,
   onOpenPdf,
 }: {
-  buildingId: number
+  buildingId: string
   items: BuildingMedia[]
   showPublish: boolean
   onPublishChange: (media: BuildingMedia, published: boolean) => void

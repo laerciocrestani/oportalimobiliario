@@ -3,7 +3,6 @@ import {
   BadgeCheckIcon,
   BanIcon,
   KeyRoundIcon,
-  MessagesSquareIcon,
   PenLineIcon,
   ScaleIcon,
   WalletIcon,
@@ -21,9 +20,8 @@ import type { ReservationAttachment, ReservationTimeline } from '@/lib/api'
 
 describe('RESERVATION_KANBAN_COLUMNS', () => {
   it('maps every kanban column to a lucide icon', () => {
-    expect(RESERVATION_KANBAN_COLUMNS).toHaveLength(7)
+    expect(RESERVATION_KANBAN_COLUMNS).toHaveLength(6)
     expect(RESERVATION_KANBAN_COLUMNS.map((column) => [column.id, column.icon])).toEqual([
-      ['pre_reservation', MessagesSquareIcon],
       ['proposal_review', ScaleIcon],
       ['proposal_formalization', BadgeCheckIcon],
       ['docs_deposit', WalletIcon],
@@ -337,12 +335,14 @@ describe('timelineKanbanColumn', () => {
     expect(timelineKanbanColumn(timeline('pre_hold'))).toBe('pre_reservation')
     expect(timelineKanbanColumn(timeline('proposal_pending'))).toBe('proposal_review')
     expect(timelineKanbanColumn(timeline('proposal_returned'))).toBe('proposal_review')
+    expect(timelineKanbanColumn(timeline('proposal_signing'))).toBe('proposal_formalization')
     expect(
       timelineKanbanColumn(timeline('deposit_pending', [{ kind: 'proposal_signed_builder' }])),
     ).toBe('proposal_formalization')
     expect(timelineKanbanColumn(timeline('deposit_proof_pending'))).toBe('docs_deposit')
     expect(timelineKanbanColumn(timeline('contract_data_pending'))).toBe('docs_deposit')
     expect(timelineKanbanColumn(timeline('contract_issued'))).toBe('contract')
+    expect(timelineKanbanColumn(timeline('contract_signing'))).toBe('contract')
     expect(timelineKanbanColumn(timeline('sold'))).toBe('sold')
     expect(timelineKanbanColumn(timeline('cancelled'))).toBe('cancelled')
   })

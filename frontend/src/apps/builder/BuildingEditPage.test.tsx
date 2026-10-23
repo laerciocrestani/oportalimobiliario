@@ -31,6 +31,7 @@ describe('BuildingEditPage', () => {
     })
     vi.spyOn(api.builderApi, 'listBuildingMedia').mockResolvedValue([])
     vi.spyOn(api.builderApi, 'listAmenities').mockResolvedValue([])
+    vi.spyOn(api.builderApi, 'listAmenities').mockResolvedValue([])
 
     render(
       <MemoryRouter initialEntries={['/buildings/1/edit']}>
@@ -41,10 +42,8 @@ describe('BuildingEditPage', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getByText('Dados do empreendimento')).toBeInTheDocument()
-      expect(screen.getByText('Galeria de mídias')).toBeInTheDocument()
-      expect(screen.getByRole('link', { name: 'Voltar' })).toHaveAttribute('href', '/buildings/1')
-      expect(screen.getByDisplayValue('Residencial Aurora')).toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: '1. Dados básicos' })).toBeEnabled()
     })
   })
 })

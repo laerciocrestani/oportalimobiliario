@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\Builder;
 use App\Enums\ProposalDecision;
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
+use App\Services\ProposalReviewService;
+use App\Services\ProposalSignatureService;
 use App\Services\ReservationProposalService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -17,6 +19,8 @@ class ReservationProposalController extends Controller
 {
     public function __construct(
         private readonly ReservationProposalService $proposalService,
+        private readonly ProposalReviewService $reviewService,
+        private readonly ProposalSignatureService $signatures,
     ) {}
 
     public function decide(Request $request, Reservation $reservation): JsonResponse
@@ -34,11 +38,7 @@ class ReservationProposalController extends Controller
                 'string',
                 'max:2000',
             ],
-            'signed_file' => [
-                Rule::requiredIf($request->input('decision') === ProposalDecision::Accepted->value),
-                'nullable',
-                'file',
-            ],
+            'signed_file' => ['nullable', 'file'],
         ]);
 
         $decision = ProposalDecision::from($data['decision']);
@@ -55,6 +55,32 @@ class ReservationProposalController extends Controller
         );
 
         return response()->json($this->formatReservation($updated));
+    }
+
+    public function resendSignatureLinks(Reservation $reservation): JsonResponse
+    {
+        $this->authorize('decideProposal', $reservation);
+
+        return response()->json([
+            'notified' => $this->signatures->resendPendingLinks($reservation),
+        ]);
+    }
+
+    public function extend(Request $request, Reservation $reservation): JsonResponse
+    {
+        $this->authorize('decideProposal', $reservation);
+
+        $data = $request->validate([
+            'hours' => ['required', 'integer', 'min:1', 'max:168'],
+        ]);
+
+        $updated = $this->reviewService->extend($request->user(), $reservation, $data['hours']);
+
+        return response()->json([
+            'id' => $updated->id,
+            'status' => $updated->status->value,
+            'review_deadline_at' => $updated->review_deadline_at,
+        ]);
     }
 
     /**

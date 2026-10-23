@@ -22,7 +22,7 @@ import { Label } from '@/components/ui/label'
 import { builderApi, type Amenity, type Building, type Tower, type Unit } from '@/lib/api'
 
 type UnitCreateDialogProps = {
-  buildingId: number
+  buildingId: string
   towers: Tower[]
   building?: Building | null
   open: boolean
@@ -201,6 +201,7 @@ export function UnitCreateDialog({
             amenities={amenities}
             buildingAmenityIds={buildingAmenityIds}
             defaults={defaults}
+            priceMode={building?.price_mode ?? 'incc'}
             disabled={!hasTowers}
             onChange={setSpec}
           />

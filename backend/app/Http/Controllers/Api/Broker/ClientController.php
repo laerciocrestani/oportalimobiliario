@@ -16,12 +16,25 @@ class ClientController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $data = $request->validate([
+            'q' => ['sometimes', 'nullable', 'string', 'max:255'],
+        ]);
+
+        $term = trim((string) ($data['q'] ?? ''));
+
+        if ($term !== '' && mb_strlen($term) < 3) {
+            return response()->json([]);
+        }
+
         $clients = BrokerClient::query()
             ->where('broker_id', $request->user()->id)
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
 
-        return response()->json($clients);
+        if ($term !== '') {
+            $clients->matchingName($term)->limit(15);
+        }
+
+        return response()->json($clients->get());
     }
 
     public function store(Request $request): JsonResponse

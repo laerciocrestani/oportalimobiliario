@@ -2,16 +2,20 @@
 
 namespace App\Services;
 
+use App\Enums\PartyKind;
 use App\Enums\ProposalDecision;
 use App\Enums\ReservationAttachmentKind;
 use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
 use App\Enums\UnitStatus;
+use App\Jobs\SendProposalToZapSign;
 use App\Models\BrokerClient;
 use App\Models\Reservation;
 use App\Models\ReservationProposal;
 use App\Models\Unit;
 use App\Models\User;
+use App\Support\BusinessClock;
+use App\Support\ProposalCommercialTerms;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -23,6 +27,9 @@ use Illuminate\Support\Str;
  * @see REQ-RTL-009
  * @see REQ-RTL-010
  * @see REQ-RTL-011
+ * @see REQ-RDP-003
+ * @see REQ-RDP-004
+ * @see REQ-RDP-006
  */
 class ReservationProposalService
 {
@@ -30,6 +37,8 @@ class ReservationProposalService
         private readonly ReservationTimelineService $timelineService,
         private readonly UserActivityCatalog $activityCatalog,
         private readonly ReservationGarageService $garageService,
+        private readonly BusinessClock $businessClock,
+        private readonly ProposalIssueService $proposalIssueService,
     ) {}
 
     /**
@@ -50,27 +59,45 @@ class ReservationProposalService
             abort(422, 'Sua pré-reserva expirou. A unidade está disponível novamente.');
         }
 
+        if ($reservation->isProposalDraft() && $reservation->draft_expires_at?->isPast()) {
+            abort(422, 'O prazo de 20 minutos para enviar a proposta acabou. A unidade está disponível novamente.');
+        }
+
         foreach ($files as $file) {
             $this->validateProposalFile($file);
         }
 
         return DB::transaction(function () use ($broker, $reservation, $data, $files) {
             $version = (int) $reservation->proposals()->max('version') + 1;
+            $partyKind = PartyKind::from((string) $data['party_kind']);
+            $married = $partyKind === PartyKind::Individual
+                && $this->optionalString($data, 'marital_status') === 'Casado(a)';
 
             $proposal = $reservation->proposals()->create([
                 'version' => $version,
                 'client_name' => $data['client_name'],
                 'client_email' => $this->optionalString($data, 'client_email'),
                 'client_phone' => $data['client_phone'],
-                'client_cpf' => $this->optionalString($data, 'client_cpf'),
+                'party_kind' => $partyKind,
+                'client_cpf' => preg_replace('/\D+/', '', (string) ($data['client_cpf'] ?? '')) ?? '',
+                'client_rg' => $partyKind === PartyKind::Individual ? $this->optionalString($data, 'client_rg') : '',
                 'address' => $this->optionalString($data, 'address'),
                 'city' => $this->optionalString($data, 'city'),
                 'state' => strtoupper($this->optionalString($data, 'state')),
                 'zip' => $this->optionalString($data, 'zip'),
-                'marital_status' => $this->optionalString($data, 'marital_status'),
-                'nationality' => $this->optionalString($data, 'nationality'),
+                'marital_status' => $partyKind === PartyKind::Individual ? $this->optionalString($data, 'marital_status') : '',
+                'nationality' => $partyKind === PartyKind::Individual ? $this->optionalString($data, 'nationality') : '',
+                'profession' => $partyKind === PartyKind::Individual ? $this->optionalString($data, 'profession') : null,
+                'spouse_name' => $married ? $this->optionalString($data, 'spouse_name') : null,
+                'spouse_cpf' => $married ? (preg_replace('/\D+/', '', $this->optionalString($data, 'spouse_cpf')) ?? '') : null,
                 'land_value' => $data['land_value'] ?? 0,
                 'payment_terms' => $data['payment_terms'],
+                'commercial_terms' => ProposalCommercialTerms::normalize(
+                    isset($data['commercial_terms']) && is_array($data['commercial_terms'])
+                        ? $data['commercial_terms']
+                        : null,
+                ),
+                'deposit_kind' => $data['deposit_kind'],
                 'submitted_by' => $broker->id,
             ]);
 
@@ -93,9 +120,13 @@ class ReservationProposalService
                 $attachmentNames[] = $attachment->original_name;
             }
 
+            $reviewHours = (int) config('opim.proposal_review_business_hours', 48);
+
             $reservation->update([
                 'status' => ReservationStatus::ProposalPending,
                 'expires_at' => null,
+                'draft_expires_at' => null,
+                'review_deadline_at' => $this->businessClock->addHours(now(), $reviewHours),
             ]);
 
             $this->timelineService->record(
@@ -120,6 +151,10 @@ class ReservationProposalService
         ?string $decisionNote = null,
         ?UploadedFile $signedFile = null,
     ): Reservation {
+        if ($decision === ProposalDecision::Returned) {
+            abort(422, 'A proposta não é devolvida. O diálogo fica nas mensagens; a construtora aceita ou recusa.');
+        }
+
         if (! $reservation->isProposalPending()) {
             abort(422, 'Reservation has no pending proposal.');
         }
@@ -133,15 +168,11 @@ class ReservationProposalService
             abort(422, 'Pending proposal not found.');
         }
 
-        if ($decision === ProposalDecision::Accepted) {
-            if ($signedFile === null) {
-                abort(422, 'Envie o PDF da proposta assinado pela construtora.');
-            }
-
+        if ($decision === ProposalDecision::Accepted && $signedFile !== null) {
             $this->validateSignedPdf($signedFile);
         }
 
-        return DB::transaction(function () use ($builder, $reservation, $proposal, $decision, $decisionNote, $signedFile) {
+        $updated = DB::transaction(function () use ($builder, $reservation, $proposal, $decision, $decisionNote) {
             $proposal->update([
                 'decision' => $decision,
                 'decision_note' => $decisionNote,
@@ -150,11 +181,17 @@ class ReservationProposalService
             ]);
 
             return match ($decision) {
-                ProposalDecision::Accepted => $this->accept($builder, $reservation, $proposal, $signedFile),
+                ProposalDecision::Accepted => $this->accept($builder, $reservation, $proposal),
                 ProposalDecision::Rejected => $this->reject($builder, $reservation, $proposal),
                 ProposalDecision::Returned => $this->returnToBroker($builder, $reservation, $proposal),
             };
         });
+
+        if ($updated->isProposalSigning()) {
+            SendProposalToZapSign::dispatch($updated->id);
+        }
+
+        return $updated;
     }
 
     /**
@@ -203,12 +240,7 @@ class ReservationProposalService
         User $builder,
         Reservation $reservation,
         ReservationProposal $proposal,
-        ?UploadedFile $signedFile,
     ): Reservation {
-        if ($signedFile === null) {
-            abort(422, 'Envie o PDF da proposta assinado pela construtora.');
-        }
-
         $client = $this->resolveClientFromProposal($reservation, $proposal);
 
         $unit = Unit::query()
@@ -220,25 +252,14 @@ class ReservationProposalService
             abort(422, 'Unidade não está mais disponível.');
         }
 
-        $unit->update(['status' => UnitStatus::Reserved]);
-        $this->garageService->syncStatus($reservation, UnitStatus::Reserved);
-
         $reservation->update([
             'client_id' => $client->id,
-            'status' => ReservationStatus::DepositPending,
+            'status' => ReservationStatus::ProposalSigning,
             'expires_at' => null,
+            'review_deadline_at' => null,
         ]);
 
-        $path = $this->storeFile($reservation, $signedFile);
-
-        $signedAttachment = $reservation->attachments()->create([
-            'kind' => ReservationAttachmentKind::ProposalSignedBuilder,
-            'path' => $path,
-            'original_name' => $signedFile->getClientOriginalName(),
-            'mime_type' => (string) $signedFile->getMimeType(),
-            'size_bytes' => (int) $signedFile->getSize(),
-            'uploaded_by' => $builder->id,
-        ]);
+        $pdf = $this->proposalIssueService->storeAcceptancePdf($builder, $reservation, $proposal);
 
         $this->timelineService->record(
             $reservation,
@@ -246,7 +267,7 @@ class ReservationProposalService
             $builder,
             [
                 'proposal_id' => $proposal->id,
-                'attachment_id' => $signedAttachment->id,
+                'attachment_id' => $pdf->id,
             ],
         );
 

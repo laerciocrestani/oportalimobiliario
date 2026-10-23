@@ -7,6 +7,7 @@ use App\Enums\UnitStatus;
 use App\Models\Reservation;
 use App\Models\Unit;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 /**
  * @see REQ-RGS-001
@@ -18,14 +19,14 @@ class ReservationGarageService
     /**
      * Validate garage IDs against the primary unit (no locks). Call before locking.
      *
-     * @param  list<int>  $garageUnitIds
-     * @return list<int>
+     * @param  list<string>  $garageUnitIds
+     * @return list<string>
      */
     public function normalizeIds(array $garageUnitIds): array
     {
         return collect($garageUnitIds)
-            ->map(fn ($id) => (int) $id)
-            ->filter(fn (int $id) => $id > 0)
+            ->map(fn ($id) => (string) $id)
+            ->filter(fn (string $id) => Str::isUuid($id))
             ->unique()
             ->sort()
             ->values()
@@ -35,7 +36,7 @@ class ReservationGarageService
     /**
      * Lock primary + garage units in id order. Call inside a DB transaction.
      *
-     * @param  list<int>  $garageUnitIds
+     * @param  list<string>  $garageUnitIds
      * @return array{0: Unit, 1: Collection<int, Unit>}
      */
     public function lockPrimaryAndGarages(Unit $primaryUnit, array $garageUnitIds): array
@@ -77,7 +78,7 @@ class ReservationGarageService
                 abort(422, 'Uma ou mais vagas de garagem não foram encontradas.');
             }
 
-            if ((int) $id === (int) $primary->id) {
+            if ((string) $id === (string) $primary->id) {
                 abort(422, 'A unidade principal não pode ser listada como vaga.');
             }
 
@@ -85,7 +86,7 @@ class ReservationGarageService
                 abort(422, 'Somente unidades de garagem podem ser atreladas como vaga.');
             }
 
-            if ((int) $garage->building_id !== (int) $primary->building_id) {
+            if ((string) $garage->building_id !== (string) $primary->building_id) {
                 abort(422, 'As vagas devem pertencer ao mesmo empreendimento da unidade.');
             }
 

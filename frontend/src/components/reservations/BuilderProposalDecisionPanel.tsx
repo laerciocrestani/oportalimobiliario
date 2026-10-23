@@ -10,10 +10,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  ReservationAttachmentField,
-  type ReservationFileItem,
-} from '@/components/reservations/ReservationAttachmentField'
 import { latestAttachmentByKind } from '@/components/reservations/download-reservation-attachment'
 import {
   builderApi,
@@ -42,7 +38,6 @@ export function BuilderProposalDecisionPanel({
   const [templateId, setTemplateId] = useState('')
   const [preview, setPreview] = useState<ProposalIssuePreview | null>(null)
   const [values, setValues] = useState<Record<string, string>>({})
-  const [signedFiles, setSignedFiles] = useState<ReservationFileItem[]>([])
   const note = decisionNote.trim()
   const generatedPdf = latestAttachmentByKind(attachments, 'proposal_pdf')
   const requiredSlugs = preview?.required_custom_slugs ?? []
@@ -124,13 +119,8 @@ export function BuilderProposalDecisionPanel({
   }
 
   async function handleDecision(decision: ProposalDecision) {
-    if ((decision === 'returned' || decision === 'rejected') && note === '') {
-      setError('Informe o motivo para devolver ou recusar a proposta.')
-      return
-    }
-
-    if (decision === 'accepted' && signedFiles[0] === undefined) {
-      setError('Anexe o PDF da proposta assinado pela construtora para aceitar.')
+    if (decision === 'rejected' && note === '') {
+      setError('Informe o motivo para recusar a proposta.')
       return
     }
 
@@ -138,11 +128,7 @@ export function BuilderProposalDecisionPanel({
     setError(null)
 
     try {
-      if (decision === 'accepted' && signedFiles[0]) {
-        await builderApi.acceptReservationProposal(reservationId, signedFiles[0].file, decisionNote)
-      } else {
-        await builderApi.decideReservationProposal(reservationId, decision, decisionNote)
-      }
+      await builderApi.decideReservationProposal(reservationId, decision, decisionNote)
       onDecided()
     } catch {
       setError('Não foi possível registrar a decisão da proposta.')
@@ -155,8 +141,8 @@ export function BuilderProposalDecisionPanel({
     <FieldGroup className="gap-3">
       {templates.length > 0 ? (
         <>
-          <div className="flex items-end gap-2">
-            <Field className="flex-1">
+          {templates.length > 1 ? (
+            <Field>
               <FieldLabel>Modelo</FieldLabel>
               <Select
                 value={templateId === '' ? null : templateId}
@@ -181,6 +167,8 @@ export function BuilderProposalDecisionPanel({
                 </SelectContent>
               </Select>
             </Field>
+          ) : null}
+          <div>
             <Button
               type="button"
               variant="outline"
@@ -210,16 +198,9 @@ export function BuilderProposalDecisionPanel({
         </>
       ) : null}
 
-      <Field>
-        <FieldLabel>PDF assinado pela construtora</FieldLabel>
-        <ReservationAttachmentField
-          files={signedFiles}
-          onFilesChange={setSignedFiles}
-          accept="application/pdf"
-          disabled={submitting !== null}
-          emptyLabel="Selecionar PDF assinado"
-        />
-      </Field>
+      <p className="text-sm text-muted-foreground">
+        Ao aceitar, a proposta segue para assinatura do cliente, do signatário da construtora e do corretor.
+      </p>
 
       <Field>
         <FieldLabel htmlFor="decision-note">Observação da decisão</FieldLabel>
@@ -228,7 +209,7 @@ export function BuilderProposalDecisionPanel({
           className="min-h-16"
           value={decisionNote}
           onChange={(e) => setDecisionNote(e.target.value)}
-          placeholder="Obrigatório para devolução ou recusa."
+          placeholder="Obrigatório para recusa."
         />
       </Field>
 
@@ -237,18 +218,10 @@ export function BuilderProposalDecisionPanel({
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
-          disabled={submitting !== null || signedFiles.length === 0}
+          disabled={submitting !== null}
           onClick={() => void handleDecision('accepted')}
         >
           {submitting === 'accepted' ? 'Processando...' : 'Aceitar'}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={submitting !== null || note === ''}
-          onClick={() => void handleDecision('returned')}
-        >
-          {submitting === 'returned' ? 'Processando...' : 'Devolver'}
         </Button>
         <Button
           type="button"

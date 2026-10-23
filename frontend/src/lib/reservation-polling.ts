@@ -16,7 +16,7 @@ export function detectPreHoldTransitionToast(
     pre_hold?: { held_by_me: boolean } | null
   }[],
   toastShownFor: Set<number>,
-): { unitCode: string; unitId: number } | null {
+): { unitCode: string; unitId: string } | null {
   for (const unit of nextUnits) {
     if (unit.floor_kind === 'garage') {
       continue

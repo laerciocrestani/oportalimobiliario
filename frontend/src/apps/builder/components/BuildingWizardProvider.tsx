@@ -10,14 +10,18 @@ import {
   useBuildingWizard,
   type BuildingWizardContextValue,
 } from '@/apps/builder/components/building-wizard-context'
+import { Badge } from '@/components/ui/badge'
 import { BuildingWizardSteps } from '@/apps/builder/components/BuildingWizardSteps'
 import { WizardPublishStep } from '@/apps/builder/components/WizardPublishStep'
+import { WizardReviewStep } from '@/apps/builder/components/WizardReviewStep'
 import { WizardStructureStep } from '@/apps/builder/components/WizardStructureStep'
-import { identityFromBuilding, identityUpdatePayload } from '@/apps/builder/lib/building-form'
+import { defaultsFromBuilding, defaultsUpdatePayload, identityFromBuilding, identityUpdatePayload } from '@/apps/builder/lib/building-form'
+import { emptyBuildingDefaults } from '@/apps/builder/lib/unit-spec'
 import {
   applySavedTowerIds,
   buildSkeleton,
   cloneMirror,
+  copyTowerFromPrevious,
   DEFAULT_MIRROR,
   DEFAULT_SKELETON,
   isFloorStackValid,
@@ -60,6 +64,16 @@ function identityPayload(form: BuildingIdentityForm) {
   }
 }
 
+function messageFromError(err: unknown): string | null {
+  if (!(err instanceof ApiRequestError)) {
+    return null
+  }
+
+  const details = err.errors ? Object.values(err.errors).flat() : []
+
+  return details[0] ?? err.message ?? null
+}
+
 function stepErrorMessage(step: number) {
   if (step === 1) {
     return 'Não foi possível salvar o empreendimento.'
@@ -82,7 +96,9 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
   const [selectedFloor, setSelectedFloor] = useState<number | null>(null)
   const [mirror, setMirrorState] = useState<MirrorDraft>({ ...DEFAULT_MIRROR })
   const [description, setDescription] = useState('')
+  const [defaults, setDefaults] = useState(emptyBuildingDefaults)
   const [isDraft, setIsDraft] = useState(true)
+  const [updatingExisting, setUpdatingExisting] = useState(false)
   const [generatingDescription, setGeneratingDescription] = useState(false)
   const [generateHint, setGenerateHint] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState(
@@ -105,7 +121,7 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
     let cancelled = false
 
     void builderApi
-      .getBuilding(Number(buildingId))
+      .getBuilding(buildingId)
       .then((building) => {
         if (cancelled) {
           return
@@ -118,12 +134,14 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
         setSelectedFloor(preferredFloorNumber(nextTowers))
         setMirrorState(mirrorDraftFromTower(nextTowers[0]))
         setDescription(building.description ?? '')
+        setDefaults(defaultsFromBuilding(building))
         setIsDraft(!building.published)
+        setUpdatingExisting(building.published)
 
         const fromState = (location.state as WizardLocationState | null)?.step
         const nextStep = resumeWizardUiStep(building.wizard_step, fromState)
         setCurrentStep(nextStep)
-        setMaxReachable(Math.max(nextStep, 1))
+        setMaxReachable(WIZARD_LAST_STEP)
       })
       .catch(() => {
         if (!cancelled) {
@@ -151,11 +169,48 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
   }
 
   function generateSkeleton() {
-    const next = buildSkeleton(skeleton)
+    const next = buildSkeleton({ ...skeleton, towerCount: 1 })
     setStackTowers(next)
     setSelectedTowerIndex(0)
     setSelectedFloor(preferredFloorNumber(next))
     setMirrorState(mirrorDraftFromTower(next[0]))
+  }
+
+  function updateSelectedTower(tower: StackTower) {
+    setStackTowers((current) =>
+      current.map((item, index) => (index === selectedTowerIndex ? tower : item)),
+    )
+  }
+
+  function addTowerCopy() {
+    const next = copyTowerFromPrevious(stackTowers)
+    const index = next.length - 1
+    const created = next[index]
+
+    setStackTowers(next)
+
+    if (!created) {
+      return
+    }
+
+    setSelectedTowerIndex(index)
+    setSelectedFloor(preferredFloorNumber([created]))
+    setMirrorState(mirrorDraftFromTower(created))
+  }
+
+  function removeSelectedTower() {
+    if (stackTowers.length <= 1 || stackTowers[selectedTowerIndex]?.locked) {
+      return
+    }
+
+    const next = stackTowers.filter((_, index) => index !== selectedTowerIndex)
+    const index = Math.min(selectedTowerIndex, next.length - 1)
+    const selected = next[index]
+
+    setStackTowers(next)
+    setSelectedTowerIndex(index)
+    setSelectedFloor(preferredFloorNumber(selected ? [selected] : next))
+    setMirrorState(mirrorDraftFromTower(selected))
   }
 
   function setSelectedTowerIndexAndMirror(index: number) {
@@ -217,7 +272,7 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
   async function persistIdentity() {
     const payload = identityPayload(form)
     const saved = buildingId
-      ? await builderApi.updateBuilding(Number(buildingId), payload)
+      ? await builderApi.updateBuilding(buildingId, payload)
       : await builderApi.createBuilding(payload)
 
     if (!buildingId) {
@@ -233,14 +288,18 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       return
     }
 
-    const saved = await builderApi.replaceBuildingStructure(Number(buildingId), structurePayload(stackTowers))
+    const saved = await builderApi.replaceBuildingStructure(buildingId, structurePayload(stackTowers))
     const nextTowers = applySavedTowerIds(stackTowers, saved)
     setStackTowers(nextTowers)
     setSelectedTowerIndex(0)
     setSelectedFloor(preferredFloorNumber(nextTowers))
     setMirrorState(mirrorDraftFromTower(nextTowers[0]))
-    await builderApi.replaceBuildingUnitGrid(Number(buildingId), unitGridPayload(nextTowers))
+    await builderApi.replaceBuildingUnitGrid(buildingId, unitGridPayload(nextTowers))
     goToStep(3)
+  }
+
+  function persistReview() {
+    goToStep(4)
   }
 
   async function persistPublish() {
@@ -248,8 +307,9 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       return
     }
 
-    const saved = await builderApi.updateBuilding(Number(buildingId), {
+    const saved = await builderApi.updateBuilding(buildingId, {
       description: description.trim() || null,
+      ...defaultsUpdatePayload(defaults),
       published: !isDraft,
       wizard_step: WIZARD_LAST_STEP,
     })
@@ -273,6 +333,11 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       return
     }
 
+    if (step === 3) {
+      persistReview()
+      return
+    }
+
     await persistPublish()
   }
 
@@ -285,7 +350,7 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
     setGenerateHint(null)
 
     try {
-      const generated = await builderApi.generateBuildingDescription(Number(buildingId))
+      const generated = await builderApi.generateBuildingDescription(buildingId)
       setDescription(generated.description)
     } catch {
       setGenerateHint('Não foi possível gerar o descritivo. Preencha manualmente.')
@@ -302,12 +367,7 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
     try {
       await persistStep(currentStep)
     } catch (err) {
-      if (currentStep === WIZARD_LAST_STEP && err instanceof ApiRequestError && err.status === 422) {
-        setError('Não é possível publicar: unidades à venda precisam ter preço.')
-        return
-      }
-
-      setError(stepErrorMessage(currentStep))
+      setError(messageFromError(err) ?? stepErrorMessage(currentStep))
     } finally {
       setSaving(false)
     }
@@ -330,7 +390,9 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       selectedFloor,
       mirror,
       description,
+      defaults,
       isDraft,
+      updatingExisting,
       generatingDescription,
       generateHint,
       currentStep,
@@ -346,11 +408,15 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       setSkeleton,
       generateSkeleton,
       updateStackUnit,
+      updateSelectedTower,
+      addTowerCopy,
+      removeSelectedTower,
       setMirror,
       cloneMirror: cloneSelectedMirror,
       setSelectedTowerIndex: setSelectedTowerIndexAndMirror,
       setSelectedFloor,
       setDescription,
+      setDefaults,
       setIsDraft,
       setCurrentStep,
       lookupCep,
@@ -365,15 +431,31 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
 }
 
 function WizardFrame({ children }: { children: ReactNode }) {
-  const { actions } = useBuildingWizard()
+  const { state, actions } = useBuildingWizard()
+  const title = state.updatingExisting
+    ? `Editar ${state.form.name || 'empreendimento'}`
+    : state.buildingId
+      ? 'Continuar cadastro'
+      : 'Novo empreendimento'
 
   return (
     <form
       onSubmit={(event) => {
         void actions.submit(event)
       }}
-      className="mx-auto flex w-full max-w-5xl flex-col gap-6"
+      className="mx-auto flex w-full max-w-6xl flex-col gap-6"
     >
+      <header className="flex flex-col gap-6 border-b pb-5">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+            {state.updatingExisting ? null : <Badge variant="secondary">Rascunho</Badge>}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Cadastre os dados e monte a estrutura do seu empreendimento.
+          </p>
+        </div>
+      </header>
       {children}
     </form>
   )
@@ -395,21 +477,16 @@ function WizardIdentitySection() {
   const { state, actions } = useBuildingWizard()
 
   return (
-    <>
-      <div>
-        <h2 className="text-base font-semibold">Identidade e endereço</h2>
-        <p className="text-sm text-muted-foreground">
-          Informe o nome e o endereço. Se a busca de CEP falhar, preencha os campos manualmente.
-        </p>
-      </div>
-      <BuildingWizardIdentityStep
-        form={state.form}
-        onChange={actions.setForm}
-        onLookupCep={() => void actions.lookupCep()}
-        lookingUpCep={state.lookingUpCep}
-        cepHint={state.cepHint}
-      />
-    </>
+    <BuildingWizardIdentityStep
+      form={state.form}
+      onChange={actions.setForm}
+      onLookupCep={() => void actions.lookupCep()}
+      lookingUpCep={state.lookingUpCep}
+      cepHint={state.cepHint}
+      priceModeLocked={state.stackTowers.some((tower) =>
+        tower.floors.some((floor) => floor.units.some((unit) => unit.priceBase.trim() !== '')),
+      )}
+    />
   )
 }
 
@@ -428,6 +505,10 @@ function WizardCurrentStep() {
     return <WizardStructureStep />
   }
 
+  if (state.currentStep === 3) {
+    return <WizardReviewStep />
+  }
+
   return <WizardPublishStep />
 }
 
@@ -438,21 +519,33 @@ function WizardFooter() {
     <div className="flex items-center justify-between gap-2">
       {state.currentStep === 1 ? (
         <Button variant="outline" nativeButton={false} render={<Link to="/buildings" />}>
-          Voltar
+          Cancelar
         </Button>
       ) : (
         <Button type="button" variant="outline" onClick={() => actions.setCurrentStep(state.currentStep - 1)}>
           Voltar
         </Button>
       )}
-      <Button type="submit" disabled={state.saving || state.loading || !meta.canContinue}>
+      <Button type="submit" disabled={state.saving || state.loading || !meta.canContinue} aria-label={
+        state.saving
+          ? 'Salvando...'
+          : state.currentStep === WIZARD_LAST_STEP
+            ? state.updatingExisting
+              ? 'Atualizar empreendimento'
+              : state.isDraft
+                ? 'Salvar rascunho'
+                : 'Publicar'
+            : 'Salvar e continuar'
+      }>
         {state.saving
           ? 'Salvando...'
           : state.currentStep === WIZARD_LAST_STEP
-            ? state.isDraft
-              ? 'Salvar rascunho'
-              : 'Publicar'
-            : 'Salvar e continuar'}
+            ? state.updatingExisting
+              ? 'Atualizar empreendimento'
+              : state.isDraft
+                ? 'Salvar rascunho'
+                : 'Publicar'
+            : 'Continuar'}
       </Button>
     </div>
   )

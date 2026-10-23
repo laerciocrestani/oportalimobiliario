@@ -7,4 +7,5 @@ enum FloorKind: string
     case Residential = 'residential';
     case Commercial = 'commercial';
     case Garage = 'garage';
+    case Hall = 'hall';
 }

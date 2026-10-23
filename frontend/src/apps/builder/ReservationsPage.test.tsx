@@ -111,7 +111,7 @@ describe('ReservationsPage', () => {
     render(<ReservationsPage />)
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'Pré-reserva/Diálogo' })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Pré-reserva/Diálogo' })).not.toBeInTheDocument()
       expect(screen.getByRole('heading', { name: 'Proposta em análise' })).toBeInTheDocument()
       expect(screen.getByRole('heading', { name: 'Vendida' })).toBeInTheDocument()
       expect(screen.getByRole('heading', { name: 'Cancelada' })).toBeInTheDocument()
@@ -199,7 +199,8 @@ describe('ReservationsPage', () => {
 
     await waitFor(() => {
       expect(listReservations).toHaveBeenCalled()
-      expect(screen.getByRole('heading', { name: 'Pré-reserva/Diálogo' })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Pré-reserva/Diálogo' })).not.toBeInTheDocument()
+      expect(screen.getByRole('heading', { name: 'Proposta em análise' })).toBeInTheDocument()
     })
 
     expect(pendingActionsCount).not.toHaveBeenCalled()

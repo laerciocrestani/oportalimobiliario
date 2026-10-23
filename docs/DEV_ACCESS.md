@@ -21,6 +21,16 @@ Chrome resolve `*.localhost` automaticamente. Em outros browsers:
 | Público | http://www.localhost:5173 |
 | API | http://api.localhost:8000 |
 
+## Webhook ZapSign (túnel local)
+
+O backend precisa estar no ar (`docker compose up -d`). Em outro terminal, no host:
+
+```bash
+./scripts/start-zapsign-tunnel.sh
+```
+
+Isso sobe o túnel `opim-dev`. A ZapSign chama `https://hooks-dev.oportalimobiliario.com.br/api/webhooks/zapsign`. Pare com `Ctrl+C`.
+
 ## Popular banco
 
 ```bash

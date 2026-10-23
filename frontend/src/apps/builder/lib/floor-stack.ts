@@ -28,8 +28,17 @@ export type StackUnit = {
   areaM2: string
   bedrooms: string
   bathrooms: string
+  suites: string
+  powderRooms: string
+  balconies: string
   priceBase: string
   priceCompetence: string
+  propertyPosition: string
+  solarPosition: string
+  sunPeriod: string
+  ceilingType: string
+  openingType: string
+  flooringType: string
 }
 
 export type StackFloor = {
@@ -41,10 +50,11 @@ export type StackFloor = {
 
 export type StackTower = {
   key: string
-  id?: number
+  id?: string
   name: string
   referenceFloor: number | null
   floors: StackFloor[]
+  locked?: boolean
 }
 
 export const DEFAULT_UNITS_PER_FLOOR = 4
@@ -67,6 +77,84 @@ export function unitCode(floorNumber: number, position: number): string {
   }
 
   return `${floorNumber}${String(position).padStart(2, '0')}`
+}
+
+export function removeUnit(tower: StackTower, floorNumber: number, unitKey: string): StackTower {
+  return markException(
+    {
+      ...tower,
+      floors: tower.floors.map((floor) => {
+        if (floor.number !== floorNumber) {
+          return floor
+        }
+
+        if (floor.kind !== 'hall' && floor.units.length <= 1) {
+          return floor
+        }
+
+        return {
+          ...floor,
+          units: floor.units.filter((unit) => unit.key !== unitKey),
+        }
+      }),
+    },
+    floorNumber,
+  )
+}
+
+export function removeFloor(tower: StackTower, floorNumber: number): StackTower {
+  if (tower.floors.length <= 1) {
+    return tower
+  }
+
+  const floors = tower.floors.filter((floor) => floor.number !== floorNumber)
+  const referenceFloor =
+    tower.referenceFloor === floorNumber ? (floors[floors.length - 1]?.number ?? null) : tower.referenceFloor
+
+  return {
+    ...tower,
+    referenceFloor,
+    floors,
+  }
+}
+
+export function setReferenceFloor(tower: StackTower, floorNumber: number): StackTower {
+  if (!tower.floors.some((floor) => floor.number === floorNumber) || tower.referenceFloor === floorNumber) {
+    return tower
+  }
+
+  return {
+    ...tower,
+    referenceFloor: floorNumber,
+  }
+}
+
+export function addFloor(tower: StackTower, where: 'above' | 'basement'): StackTower {
+  if (where === 'basement') {
+    const lowest = tower.floors.reduce((min, floor) => Math.min(min, floor.number), 0)
+    const number = lowest > 0 ? -1 : lowest - 1
+    const spots = tower.floors.find((floor) => floor.kind === 'garage')?.units.length ?? 1
+
+    return {
+      ...tower,
+      floors: [...tower.floors, makeFloor(number, 'garage', Math.max(1, spots))].toSorted(
+        (left, right) => left.number - right.number,
+      ),
+    }
+  }
+
+  const highest = tower.floors.reduce((max, floor) => Math.max(max, floor.number), 0)
+  const sample =
+    tower.floors.find((floor) => floor.number === tower.referenceFloor && floor.kind === 'residential') ??
+    tower.floors.find((floor) => floor.kind === 'residential')
+  const count = Math.max(1, sample?.units.length ?? 1)
+
+  return {
+    ...tower,
+    floors: [...tower.floors, makeFloor(highest + 1, 'residential', count)].toSorted(
+      (left, right) => left.number - right.number,
+    ),
+  }
 }
 
 export function buildSkeleton(input: SkeletonInput): StackTower[] {
@@ -233,6 +321,10 @@ export function floorKindLabel(kind: FloorKind): string {
     return 'Comercial'
   }
 
+  if (kind === 'hall') {
+    return 'Hall'
+  }
+
   return 'Residencial'
 }
 
@@ -247,17 +339,114 @@ export function isFloorStackValid(towers: StackTower[]): boolean {
       (tower) =>
         tower.name.trim() !== '' &&
         tower.floors.every(
-          (floor) => floor.units.length >= 1 && floor.units.every((unit) => unit.code.trim() !== ''),
+          (floor) =>
+            (floor.kind === 'hall' || floor.units.length >= 1) &&
+            floor.units.every((unit) => unit.code.trim() !== ''),
         ),
     )
   )
+}
+
+export function setFloorKind(tower: StackTower, floorNumber: number, kind: FloorKind): StackTower {
+  return markException(
+    {
+      ...tower,
+      floors: tower.floors.map((floor) => {
+        if (floor.number !== floorNumber || floor.kind === kind) {
+          return floor
+        }
+
+        if (kind === 'hall') {
+          return { ...floor, kind, units: [] }
+        }
+
+        if (floor.units.length === 0) {
+          return { ...floor, kind, units: [emptyUnit(floor.number, 1)] }
+        }
+
+        return { ...floor, kind }
+      }),
+    },
+    floorNumber,
+  )
+}
+
+export function resizeFloorUnits(tower: StackTower, floorNumber: number, count: number): StackTower {
+  return markException(
+    {
+      ...tower,
+      floors: tower.floors.map((floor) => {
+        if (floor.number !== floorNumber || floor.kind === 'hall') {
+          return floor
+        }
+
+        const nextCount = Math.max(1, count)
+
+        if (nextCount === floor.units.length) {
+          return floor
+        }
+
+        if (nextCount < floor.units.length) {
+          return { ...floor, units: floor.units.slice(0, nextCount) }
+        }
+
+        const added = Array.from({ length: nextCount - floor.units.length }, (_, index) =>
+          emptyUnit(floor.number, floor.units.length + index + 1),
+        )
+
+        return { ...floor, units: [...floor.units, ...added] }
+      }),
+    },
+    floorNumber,
+  )
+}
+
+export type ClonePreviewRow = {
+  number: number
+  codes: string
+  situation: 'Cópia' | 'Exceção' | 'Outro tipo'
+}
+
+export function clonePreview(tower: StackTower, referenceNumber: number, range: CloneRange): ClonePreviewRow[] {
+  const reference = tower.floors.find((item) => item.number === referenceNumber)
+
+  if (!reference) {
+    return []
+  }
+
+  return tower.floors
+    .filter((item) => inCloneRange(item.number, referenceNumber, range))
+    .toSorted((left, right) => right.number - left.number)
+    .map((item) => {
+      if (item.kind !== reference.kind) {
+        return { number: item.number, codes: '—', situation: 'Outro tipo' as const }
+      }
+
+      if (item.customized) {
+        return {
+          number: item.number,
+          codes: item.units.map((unit) => unit.code).join(', ') || '—',
+          situation: 'Exceção' as const,
+        }
+      }
+
+      return {
+        number: item.number,
+        codes: copyUnitsToFloor(reference.units, item.number)
+          .map((unit) => unit.code)
+          .join(', '),
+        situation: 'Cópia' as const,
+      }
+    })
 }
 
 export function applySavedTowerIds(stack: StackTower[], saved: Building): StackTower[] {
   const savedTowers = saved.towers ?? []
 
   return stack.map((tower, index) => {
-    const match = savedTowers.find((item) => item.name === tower.name) ?? savedTowers[index]
+    const match = (tower.id ? savedTowers.find((item) => item.id === tower.id) : undefined)
+      ?? savedTowers.find((item) => item.name === tower.name)
+      ?? savedTowers[index]
 
     if (!match) {
       return tower
@@ -273,7 +462,7 @@ export function applySavedTowerIds(stack: StackTower[], saved: Building): StackT
 
 export function stacksFromBuilding(building: Building): StackTower[] {
   return (building.towers ?? [])
-    .filter((tower) => tower.id > 0)
+    .filter((tower) => tower.id.length > 0)
     .map((tower, index) => {
       const towerUnits = [
         ...(tower.units ?? []),
@@ -293,6 +482,7 @@ export function stacksFromBuilding(building: Building): StackTower[] {
         id: tower.id,
         name: tower.name,
         referenceFloor: tower.reference_floor ?? null,
+        locked: towerHasReference(uniqueUnits),
         floors: metas.map((meta) => {
           const existing = uniqueUnits
             .filter((unit) => unit.floor === meta.number)
@@ -319,8 +509,17 @@ function unitFromApi(unit: Unit, floorNumber: number, index: number): StackUnit 
     areaM2: displayNumber(unit.private_area_m2 ?? unit.area_m2),
     bedrooms: unit.bedrooms != null ? String(unit.bedrooms) : '',
     bathrooms: unit.bathrooms != null ? String(unit.bathrooms) : '',
+    suites: unit.suites != null ? String(unit.suites) : '',
+    powderRooms: unit.powder_rooms != null ? String(unit.powder_rooms) : '',
+    balconies: unit.balconies != null ? String(unit.balconies) : '',
     priceBase: displayNumber(unit.price_base ?? unit.price),
     priceCompetence: displayCompetence(unit.price_competence),
+    propertyPosition: unit.property_position ?? '',
+    solarPosition: unit.solar_position ?? '',
+    sunPeriod: unit.sun_period ?? '',
+    ceilingType: unit.ceiling_type ?? '',
+    openingType: unit.opening_type ?? '',
+    flooringType: unit.flooring_type ?? '',
   }
 }
 
@@ -340,9 +539,46 @@ function displayCompetence(value: string | null | undefined): string {
   return value.slice(0, 7)
 }
 
+export function towerHasReference(units: Array<{ status?: string | null; reservation?: unknown }>): boolean {
+  return units.some((unit) => unit.status === 'sold' || unit.reservation != null)
+}
+
+export function towerLetterName(index: number): string {
+  if (index >= 0 && index < 26) {
+    return `Torre ${String.fromCharCode(65 + index)}`
+  }
+
+  return `Torre ${index + 1}`
+}
+
+export function copyTowerFromPrevious(towers: StackTower[]): StackTower[] {
+  const source = towers[towers.length - 1]
+
+  if (!source) {
+    return towers
+  }
+
+  return [
+    ...towers,
+    {
+      key: draftKey('tower'),
+      name: towerLetterName(towers.length),
+      referenceFloor: source.referenceFloor,
+      floors: source.floors.map((floor) => ({
+        ...floor,
+        units: floor.units.map((unit) => ({
+          ...unit,
+          key: draftKey(`u-${floor.number}`),
+        })),
+      })),
+    },
+  ]
+}
+
 export function structurePayload(towers: StackTower[]): BuildingStructurePayload {
   return {
     towers: towers.map((tower) => ({
+      ...(tower.id ? { id: tower.id } : {}),
       name: tower.name,
       reference_floor: tower.referenceFloor,
       floors: tower.floors.map((item) => ({
@@ -373,8 +609,17 @@ export function unitGridPayload(towers: StackTower[]): BuildingUnitGridPayload {
               private_area_m2: parseNumber(unit.areaM2),
               bedrooms: parseOptionalInt(unit.bedrooms),
               bathrooms: parseOptionalInt(unit.bathrooms),
+              suites: parseOptionalInt(unit.suites),
+              powder_rooms: parseOptionalInt(unit.powderRooms),
+              balconies: parseOptionalInt(unit.balconies),
               price_base: parseNumber(unit.priceBase),
               price_competence: parseCompetence(unit.priceCompetence),
+              property_position: blankText(unit.propertyPosition),
+              solar_position: blankText(unit.solarPosition),
+              sun_period: blankText(unit.sunPeriod),
+              ceiling_type: blankText(unit.ceilingType),
+              opening_type: blankText(unit.openingType),
+              flooring_type: blankText(unit.flooringType),
             })),
           })),
         },
@@ -399,8 +644,17 @@ function emptyUnit(floorNumber: number, position: number): StackUnit {
     areaM2: '',
     bedrooms: '',
     bathrooms: '',
+    suites: '',
+    powderRooms: '',
+    balconies: '',
     priceBase: '',
     priceCompetence: '',
+    propertyPosition: '',
+    solarPosition: '',
+    sunPeriod: '',
+    ceilingType: '',
+    openingType: '',
+    flooringType: '',
   }
 }
 
@@ -425,6 +679,12 @@ function inCloneRange(floorNumber: number, referenceNumber: number, range: Clone
 
 function draftKey(prefix: string): string {
   return `${prefix}-${Math.random().toString(36).slice(2, 8)}`
+}
+
+function blankText(value: string): string | null {
+  const trimmed = value.trim()
+
+  return trimmed === '' ? null : trimmed
 }
 
 function parseNumber(value: string): number | null {

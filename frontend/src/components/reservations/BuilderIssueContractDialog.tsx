@@ -126,8 +126,8 @@ export function BuilderIssueContractDialog({
       })
       onIssued()
       onOpenChange(false)
-    } catch {
-      setError('Não foi possível emitir o contrato. Verifique os campos obrigatórios.')
+    } catch (caught) {
+      setError(issueErrorMessage(caught))
     } finally {
       setSubmitting(false)
     }
@@ -236,4 +236,17 @@ export function BuilderIssueContractDialog({
       </DialogContent>
     </Dialog>
   )
+}
+
+function issueErrorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null && 'errors' in error) {
+    const errors = (error as { errors?: Record<string, string[]> }).errors
+    const first = Object.values(errors ?? {}).flat()[0]
+
+    if (typeof first === 'string' && first !== '') {
+      return first
+    }
+  }
+
+  return 'Não foi possível emitir o contrato. Verifique os campos obrigatórios.'
 }

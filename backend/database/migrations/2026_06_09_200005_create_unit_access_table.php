@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
             $table->foreignId('broker_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('unit_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('unit_id')->constrained()->cascadeOnDelete();
             $table->timestamps();
 
             $table->unique(['broker_id', 'unit_id']);

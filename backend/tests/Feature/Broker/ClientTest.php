@@ -27,6 +27,40 @@ it('lists broker clients for authenticated broker', function () {
         ->assertJsonPath('0.name', 'Ana Silva');
 });
 
+it('searches broker clients by name from the third character', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $otherBroker = User::factory()->broker()->create();
+
+    linkBrokerToTenant($broker, $tenant);
+
+    BrokerClient::factory()->for($broker, 'broker')->create(['name' => 'Ana Silva']);
+    BrokerClient::factory()->for($broker, 'broker')->create(['name' => 'João Souza']);
+    BrokerClient::factory()->for($broker, 'broker')->create(['name' => '100% Marina']);
+    BrokerClient::factory()->for($otherBroker, 'broker')->create(['name' => 'Ana Costa']);
+
+    Sanctum::actingAs($broker);
+
+    $this->getJson('/api/broker/clients?q=An')
+        ->assertOk()
+        ->assertJsonCount(0);
+
+    $this->getJson('/api/broker/clients?q=ana')
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.name', 'Ana Silva');
+
+    $this->getJson('/api/broker/clients?q=joa')
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.name', 'João Souza');
+
+    $this->getJson('/api/broker/clients?q='.rawurlencode('100%'))
+        ->assertOk()
+        ->assertJsonCount(1)
+        ->assertJsonPath('0.name', '100% Marina');
+});
+
 it('creates broker client with required fields', function () {
     $tenant = Tenant::factory()->create();
     $broker = User::factory()->broker()->create();

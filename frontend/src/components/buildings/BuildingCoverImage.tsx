@@ -3,10 +3,10 @@ import { cn } from '@/lib/utils'
 import type { CoverImage } from '@/lib/api'
 
 type BuildingCoverImageProps = {
-  buildingId: number
+  buildingId: string
   coverImage?: CoverImage | null
   alt: string
-  fetchBlob: (buildingId: number, mediaId: number) => Promise<Blob>
+  fetchBlob: (buildingId: string, mediaId: number) => Promise<Blob>
   className?: string
 }
 

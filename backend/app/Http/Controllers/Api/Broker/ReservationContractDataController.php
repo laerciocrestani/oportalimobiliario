@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Broker;
 
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
+use App\Services\ContractSignatureService;
 use App\Services\ReservationContractDataService;
 use App\Support\ReservationContractDataRules;
 use Illuminate\Http\JsonResponse;
@@ -16,6 +17,7 @@ class ReservationContractDataController extends Controller
 {
     public function __construct(
         private readonly ReservationContractDataService $contractDataService,
+        private readonly ContractSignatureService $signatures,
     ) {}
 
     public function store(Request $request, Reservation $reservation): JsonResponse
@@ -53,5 +55,16 @@ class ReservationContractDataController extends Controller
             'status' => $updated->status->value,
             'attachments' => $attachments,
         ], 201);
+    }
+
+    public function resendSignatureLinks(Request $request, Reservation $reservation): JsonResponse
+    {
+        if ($reservation->broker_id !== $request->user()->id) {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
+        return response()->json([
+            'notified' => $this->signatures->resendPendingLinks($reservation),
+        ]);
     }
 }

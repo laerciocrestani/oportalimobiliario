@@ -40,7 +40,7 @@ import { builderApi, type Amenity, type Building, type Tower, type Unit } from '
 
 type UnitDetailDrawerProps = {
   unit: Unit | null
-  buildingId: number
+  buildingId: string
   buildingName: string
   towers: Tower[]
   building?: Building | null
@@ -228,6 +228,7 @@ export function UnitDetailDrawer({
                     amenities={amenities}
                     buildingAmenityIds={buildingAmenityIds}
                     defaults={defaults}
+                    priceMode={building?.price_mode ?? 'incc'}
                     onChange={setSpec}
                   />
                 </>
@@ -293,9 +294,13 @@ export function UnitDetailDrawer({
                   <dd className="font-medium">{unit.total_area_m2 ? `${unit.total_area_m2} m²` : '—'}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Preço (INCC-M)</dt>
+                  <dt className="text-muted-foreground">
+                    {building?.price_mode === 'fixed' ? 'Valor fixo' : 'Preço (INCC-M)'}
+                  </dt>
                   <dd className="font-medium">{formatPrice(unit.price)}</dd>
                 </div>
+                {building?.price_mode === 'fixed' ? null : (
+                  <>
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Preço-base</dt>
                   <dd className="font-medium">{formatPrice(unit.price_base ?? null)}</dd>
@@ -304,6 +309,8 @@ export function UnitDetailDrawer({
                   <dt className="text-muted-foreground">Competência</dt>
                   <dd className="font-medium">{unit.price_competence?.slice(0, 10) || '—'}</dd>
                 </div>
+                  </>
+                )}
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Quartos</dt>
                   <dd className="font-medium">{unit.bedrooms ?? '—'}</dd>

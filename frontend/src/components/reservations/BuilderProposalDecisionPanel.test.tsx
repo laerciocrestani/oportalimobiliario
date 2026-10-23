@@ -57,7 +57,7 @@ const proposal = {
 }
 
 describe('BuilderProposalDecisionPanel', () => {
-  it('requires a note before returning or rejecting', async () => {
+  it('requires a note before rejecting and does not offer a return', async () => {
     const user = userEvent.setup()
 
     render(
@@ -66,36 +66,31 @@ describe('BuilderProposalDecisionPanel', () => {
 
     expect(screen.queryByText('Maria Silva')).not.toBeInTheDocument()
     expect(screen.queryByText('proposta.pdf')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Devolver' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Devolver' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Recusar' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Aceitar' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Aceitar' })).toBeEnabled()
 
     await user.type(screen.getByLabelText('Observação da decisão'), 'Ajustar entrada.')
 
-    expect(screen.getByRole('button', { name: 'Devolver' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Recusar' })).toBeEnabled()
 
-    await user.click(screen.getByRole('button', { name: 'Devolver' }))
+    await user.click(screen.getByRole('button', { name: 'Recusar' }))
 
-    expect(builderApi.decideReservationProposal).toHaveBeenCalledWith(10, 'returned', 'Ajustar entrada.')
+    expect(builderApi.decideReservationProposal).toHaveBeenCalledWith(10, 'rejected', 'Ajustar entrada.')
   })
 
-  it('requires the builder-signed pdf before accepting', async () => {
+  it('accepts without an uploaded signed pdf', async () => {
     const user = userEvent.setup()
-    const signed = new File(['pdf'], 'assinada.pdf', { type: 'application/pdf' })
 
     render(
       <BuilderProposalDecisionPanel reservationId={10} proposal={proposal} onDecided={() => {}} />,
     )
 
-    expect(screen.getByRole('button', { name: 'Aceitar' })).toBeDisabled()
-
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement
-    await user.upload(input, signed)
+    expect(screen.queryByLabelText('PDF assinado pela construtora')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Aceitar' }))
 
     await waitFor(() => {
-      expect(builderApi.acceptReservationProposal).toHaveBeenCalledWith(10, signed, '')
+      expect(builderApi.decideReservationProposal).toHaveBeenCalledWith(10, 'accepted', '')
     })
   })
 

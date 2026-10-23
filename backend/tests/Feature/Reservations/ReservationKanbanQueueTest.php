@@ -226,7 +226,7 @@ it('asks the broker to continue on pre-hold after the builder replies', function
         ->assertJsonPath('0.unread_messages_count', 1);
 });
 
-it('puts the ball back on the broker when a proposal is returned', function () {
+it('keeps the proposal with the builder when a return is refused', function () {
     [
         'builder' => $builder,
         'broker' => $broker,
@@ -242,24 +242,23 @@ it('puts the ball back on the broker when a proposal is returned', function () {
     $this->patchJson("/api/builder/reservations/{$reservation->id}/proposal/decision", [
         'decision' => ProposalDecision::Returned->value,
         'decision_note' => 'Ajuste o valor da entrada.',
-    ])->assertOk();
+    ])->assertUnprocessable();
 
-    expect($reservation->fresh()->status)->toBe(ReservationStatus::ProposalReturned);
+    expect($reservation->fresh()->status)->toBe(ReservationStatus::ProposalPending);
 
     Sanctum::actingAs($broker);
     $this->getJson('/api/broker/reservations')
         ->assertOk()
-        ->assertJsonPath('0.status', ReservationStatus::ProposalReturned->value)
+        ->assertJsonPath('0.status', ReservationStatus::ProposalPending->value)
         ->assertJsonPath('0.kanban_column', 'proposal_review')
-        ->assertJsonPath('0.situation.current.waiting_on', 'broker')
-        ->assertJsonPath('0.pending_action', 'submit_proposal');
+        ->assertJsonPath('0.situation.current.waiting_on', 'builder');
 
     Sanctum::actingAs($builder);
     $this->getJson('/api/builder/reservations')
         ->assertOk()
         ->assertJsonPath('0.kanban_column', 'proposal_review')
-        ->assertJsonPath('0.situation.current.waiting_on', 'broker')
-        ->assertJsonPath('0.pending_action', null);
+        ->assertJsonPath('0.situation.current.waiting_on', 'builder')
+        ->assertJsonPath('0.pending_action', 'proposal_decision');
 });
 
 it('cancels the reservation when the proposal is rejected', function () {

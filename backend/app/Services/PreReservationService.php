@@ -149,6 +149,36 @@ class PreReservationService
         });
     }
 
+    public function cancelLegacyPreHolds(): int
+    {
+        $holds = Reservation::query()
+            ->withoutGlobalScope('tenant')
+            ->where('status', ReservationStatus::PreHold)
+            ->get();
+
+        $count = 0;
+
+        foreach ($holds as $reservation) {
+            DB::transaction(function () use ($reservation, &$count) {
+                $unit = Unit::query()
+                    ->withoutGlobalScope('tenant')
+                    ->lockForUpdate()
+                    ->find($reservation->unit_id);
+
+                if ($unit !== null && $unit->status === UnitStatus::PreReserved) {
+                    $unit->update(['status' => UnitStatus::Available]);
+                }
+
+                $this->garageService->detachAndRelease($reservation);
+
+                $reservation->update(['status' => ReservationStatus::Cancelled]);
+                $count++;
+            });
+        }
+
+        return $count;
+    }
+
     public function expireDuePreHolds(): int
     {
         $expired = Reservation::query()

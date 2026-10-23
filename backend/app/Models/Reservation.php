@@ -4,6 +4,9 @@ namespace App\Models;
 
 use App\Enums\ReservationAttachmentKind;
 use App\Enums\ReservationStatus;
+use App\Enums\SignatureDocumentKind;
+use App\Enums\SignatureDocumentStatus;
+use App\Enums\SignatureSignerStatus;
 use App\Tenancy\Concerns\BelongsToTenant;
 use Database\Factories\ReservationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -21,6 +24,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'client_id',
     'status',
     'expires_at',
+    'draft_expires_at',
+    'review_deadline_at',
     'contract_template_id',
     'contract_values',
 ])]
@@ -34,6 +39,8 @@ class Reservation extends Model
         return [
             'status' => ReservationStatus::class,
             'expires_at' => 'datetime',
+            'draft_expires_at' => 'datetime',
+            'review_deadline_at' => 'datetime',
             'contract_values' => 'array',
         ];
     }
@@ -52,11 +59,13 @@ class Reservation extends Model
                 ->whereIn('status', [
                     ReservationStatus::ProposalPending,
                     ReservationStatus::ProposalReturned,
+                    ReservationStatus::ProposalSigning,
                     ReservationStatus::Confirmed,
                     ReservationStatus::DepositPending,
                     ReservationStatus::DepositProofPending,
                     ReservationStatus::ContractDataPending,
                     ReservationStatus::ContractIssued,
+                    ReservationStatus::ContractSigning,
                     ReservationStatus::ContractUploaded,
                     ReservationStatus::ContractBuilderSigned,
                     ReservationStatus::Sold,
@@ -75,6 +84,21 @@ class Reservation extends Model
         return $this->status === ReservationStatus::PreHold;
     }
 
+    public function isProposalDraft(): bool
+    {
+        return $this->status === ReservationStatus::ProposalDraft;
+    }
+
+    public function isProposalSigning(): bool
+    {
+        return $this->status === ReservationStatus::ProposalSigning;
+    }
+
+    public function isContractSigning(): bool
+    {
+        return $this->status === ReservationStatus::ContractSigning;
+    }
+
     public function isProposalPending(): bool
     {
         return $this->status === ReservationStatus::ProposalPending;
@@ -87,7 +111,10 @@ class Reservation extends Model
 
     public function canSubmitProposal(): bool
     {
-        return $this->isPreHold() || $this->isProposalReturned();
+        return $this->isPreHold()
+            || $this->isProposalDraft()
+            || $this->isProposalPending()
+            || $this->isProposalReturned();
     }
 
     public function isDepositPending(): bool
@@ -146,6 +173,7 @@ class Reservation extends Model
             ReservationStatus::DepositProofPending,
             ReservationStatus::ContractDataPending,
             ReservationStatus::ContractIssued,
+            ReservationStatus::ContractSigning,
             ReservationStatus::ContractUploaded,
             ReservationStatus::ContractBuilderSigned,
         ], true);
@@ -338,6 +366,33 @@ class Reservation extends Model
     public function witnesses(): HasMany
     {
         return $this->hasMany(ReservationWitness::class);
+    }
+
+    /** @return HasMany<SignatureDocument, $this> */
+    public function signatureDocuments(): HasMany
+    {
+        return $this->hasMany(SignatureDocument::class);
+    }
+
+    public function hasSignedContract(): bool
+    {
+        if (! $this->isContractSigning()) {
+            return false;
+        }
+
+        $document = $this->signatureDocuments()
+            ->where('kind', SignatureDocumentKind::Contract)
+            ->where('status', SignatureDocumentStatus::Sent)
+            ->with('signers')
+            ->first();
+
+        if ($document === null || $document->signers->isEmpty()) {
+            return false;
+        }
+
+        return $document->signers->every(
+            fn (SignatureSigner $signer): bool => $signer->status === SignatureSignerStatus::Signed,
+        );
     }
 
     public function isExpired(): bool

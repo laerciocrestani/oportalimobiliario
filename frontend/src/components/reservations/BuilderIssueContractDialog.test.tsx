@@ -62,4 +62,31 @@ describe('BuilderIssueContractDialog', () => {
       expect(onIssued).toHaveBeenCalled()
     })
   })
+
+  it('shows the missing client data returned by the issue endpoint', async () => {
+    const user = userEvent.setup()
+    issueContract.mockRejectedValueOnce({
+      errors: {
+        client_cpf: ['Informe o CPF do cliente antes de emitir o contrato.'],
+      },
+    })
+
+    render(
+      <BuilderIssueContractDialog
+        open
+        onOpenChange={vi.fn()}
+        reservationId={42}
+        onIssued={vi.fn()}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Comissão extra')).toBeInTheDocument()
+    })
+
+    await user.type(screen.getByLabelText('Comissão extra'), 'R$ 5.000')
+    await user.click(screen.getByRole('button', { name: 'Gerar PDF' }))
+
+    expect(await screen.findByText('Informe o CPF do cliente antes de emitir o contrato.')).toBeInTheDocument()
+  })
 })

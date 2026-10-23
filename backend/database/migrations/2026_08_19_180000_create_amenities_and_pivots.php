@@ -18,14 +18,14 @@ return new class extends Migration
 
         Schema::create('building_amenity', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('building_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('building_id')->constrained()->cascadeOnDelete();
             $table->foreignId('amenity_id')->constrained()->cascadeOnDelete();
             $table->unique(['building_id', 'amenity_id']);
         });
 
         Schema::create('unit_amenity', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('unit_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('unit_id')->constrained()->cascadeOnDelete();
             $table->foreignId('amenity_id')->constrained()->cascadeOnDelete();
             $table->unique(['unit_id', 'amenity_id']);
         });

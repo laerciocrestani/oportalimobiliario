@@ -33,7 +33,6 @@ Definidas em `frontend/src/App.tsx`.
 | `/invites` | `InvitesPage` | `builderApi.*` invites |
 | `/reservations` | `ReservationsPage` | `builderApi.listReservations` / `pendingActionsCount` / `moveReservationKanban` |
 | `/contracts` | `ContractsPage` | `builderApi.listContractTemplates` / `issueContract` |
-| `/proposals` | `ProposalsPage` | `builderApi.listProposalTemplates` / `createProposalTemplate` |
 | `/activity` | `ActivityPage` | `builderApi.listActivity` / `listActivityMembers` |
 | `/auth/impersonate` | `ImpersonatePage` | `authApi.exchangeImpersonation` |
 

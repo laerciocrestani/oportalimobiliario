@@ -8,6 +8,7 @@
  * @see REQ-WZR-007
  */
 use App\Enums\FloorKind;
+use App\Enums\UnitStatus;
 use App\Models\Amenity;
 use App\Models\Building;
 use App\Models\Floor;
@@ -204,11 +205,54 @@ it('rejects a floor with zero units', function () {
         ->assertJsonValidationErrors(['towers.0.floors.0.units']);
 });
 
-it('rejects unit grid on a published building', function () {
+it('replaces the unit grid on a published building and keeps a sold unit', function () {
     $tenant = Tenant::factory()->create();
     $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
     $building = Building::factory()->for($tenant)->published()->create();
     $tower = makeDraftTower($tenant, $building, 'Torre A', 1);
+    $sold = Unit::factory()->for($tenant)->for($building)->create([
+        'tower_id' => $tower->id,
+        'floor' => 1,
+        'code' => '101',
+        'status' => UnitStatus::Sold,
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->putJson("/api/builder/buildings/{$building->id}/unit-grid", [
+        'towers' => [
+            [
+                'id' => $tower->id,
+                'floors' => [
+                    [
+                        'number' => 1,
+                        'kind' => 'residential',
+                        'units' => [
+                            ['code' => '101'],
+                            ['code' => '102', 'private_area_m2' => 70],
+                        ],
+                    ],
+                ],
+            ],
+        ],
+    ])->assertOk()
+        ->assertJsonPath('units_summary.total', 2);
+
+    expect($sold->fresh()->status)->toBe(UnitStatus::Sold)
+        ->and(Unit::query()->where('building_id', $building->id)->where('code', '102')->exists())->toBeTrue();
+});
+
+it('rejects removing a sold unit from the grid', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->published()->create();
+    $tower = makeDraftTower($tenant, $building, 'Torre A', 1);
+    Unit::factory()->for($tenant)->for($building)->create([
+        'tower_id' => $tower->id,
+        'floor' => 1,
+        'code' => '102',
+        'status' => UnitStatus::Sold,
+    ]);
 
     Sanctum::actingAs($user);
 
@@ -225,7 +269,8 @@ it('rejects unit grid on a published building', function () {
                 ],
             ],
         ],
-    ])->assertConflict();
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['towers']);
 });
 
 it('requires authentication to replace unit grid', function () {

@@ -2,9 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   buildSkeleton,
   cloneMirror,
+  copyTowerFromPrevious,
+  towerHasReference,
   markException,
   mirrorDraftFromTower,
   resetFloor,
+  setReferenceFloor,
   structurePayload,
   unitCode,
   unitGridPayload,
@@ -91,6 +94,34 @@ describe('floor-stack', () => {
       from: -2,
       to: -2,
     })
+  })
+
+  it('changes the model floor without copying units', () => {
+    const tower = buildSkeleton({ towerCount: 1, floorsAbove: 2, basementCount: 0, unitsPerFloor: 1 })[0]
+    const next = setReferenceFloor(tower, 2)
+
+    expect(next.referenceFloor).toBe(2)
+    expect(next.floors).toBe(tower.floors)
+    expect(setReferenceFloor(tower, 9)).toBe(tower)
+  })
+
+  it('copies the previous tower with the next letter and new keys', () => {
+    const source = buildSkeleton({ towerCount: 1, floorsAbove: 1, basementCount: 0, unitsPerFloor: 1 })[0]
+    source.id = 'tower-1'
+    source.name = 'Torre A'
+    const [kept, copy] = copyTowerFromPrevious([source])
+
+    expect(kept).toBe(source)
+    expect(copy.name).toBe('Torre B')
+    expect(copy.id).toBeUndefined()
+    expect(copy.floors).toHaveLength(source.floors.length)
+    expect(copy.floors[0].units[0].key).not.toBe(source.floors[0].units[0].key)
+    expect(copy.floors[0].units[0].code).toBe(source.floors[0].units[0].code)
+    expect(structurePayload([source, copy]).towers[0].id).toBe('tower-1')
+    expect(structurePayload([source, copy]).towers[1].id).toBeUndefined()
+    expect(towerHasReference([{ status: 'available' }])).toBe(false)
+    expect(towerHasReference([{ status: 'sold' }])).toBe(true)
+    expect(towerHasReference([{ status: 'available', reservation: { id: 1 } }])).toBe(true)
   })
 
   it('clones the mirror floor to a range above without touching other kinds', () => {
@@ -209,6 +240,7 @@ describe('floor-stack', () => {
     expect(structurePayload([tower])).toEqual({
       towers: [
         {
+          id: 10,
           name: 'Torre A',
           reference_floor: 1,
           floors: [
@@ -235,8 +267,17 @@ describe('floor-stack', () => {
                   private_area_m2: 12.5,
                   bedrooms: null,
                   bathrooms: null,
+                  suites: null,
+                  powder_rooms: null,
+                  balconies: null,
                   price_base: 45000,
                   price_competence: '2026-08-01',
+                  property_position: null,
+                  solar_position: null,
+                  sun_period: null,
+                  ceiling_type: null,
+                  opening_type: null,
+                  flooring_type: null,
                 },
               ],
             },
@@ -250,8 +291,17 @@ describe('floor-stack', () => {
                   private_area_m2: 38,
                   bedrooms: 0,
                   bathrooms: 1,
+                  suites: null,
+                  powder_rooms: null,
+                  balconies: null,
                   price_base: 210000,
                   price_competence: null,
+                  property_position: null,
+                  solar_position: null,
+                  sun_period: null,
+                  ceiling_type: null,
+                  opening_type: null,
+                  flooring_type: null,
                 },
               ],
             },
@@ -265,8 +315,17 @@ describe('floor-stack', () => {
                   private_area_m2: null,
                   bedrooms: null,
                   bathrooms: null,
+                  suites: null,
+                  powder_rooms: null,
+                  balconies: null,
                   price_base: null,
                   price_competence: null,
+                  property_position: null,
+                  solar_position: null,
+                  sun_period: null,
+                  ceiling_type: null,
+                  opening_type: null,
+                  flooring_type: null,
                 },
               ],
             },

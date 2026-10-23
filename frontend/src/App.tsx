@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ImpersonatePage } from '@/apps/auth/ImpersonatePage'
 import { LoginPage } from '@/apps/auth/LoginPage'
 import { LegacyPathNotice } from '@/apps/auth/LegacyPathNotice'
@@ -17,7 +17,6 @@ import { InvitesPage } from '@/apps/builder/InvitesPage'
 import { BrokersPage } from '@/apps/builder/BrokersPage'
 import { ReservationsPage } from '@/apps/builder/ReservationsPage'
 import { ContractsPage } from '@/apps/builder/ContractsPage'
-import { ProposalsPage } from '@/apps/builder/ProposalsPage'
 import { TeamPage } from '@/apps/builder/TeamPage'
 import { ActivityPage } from '@/apps/builder/ActivityPage'
 import { BrokerBuildingsPage } from '@/apps/broker/BrokerBuildingsPage'
@@ -143,14 +142,7 @@ function AuthenticatedPortal() {
                 </ProfileGuard>
               }
             />
-            <Route
-              path="/proposals"
-              element={
-                <ProfileGuard profile={profile}>
-                  <ProposalsPage />
-                </ProfileGuard>
-              }
-            />
+            <Route path="/proposals" element={<Navigate to="/" replace />} />
             <Route
               path="/activity"
               element={

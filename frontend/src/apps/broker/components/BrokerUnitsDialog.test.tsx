@@ -14,6 +14,7 @@ vi.mock('sonner', () => ({
 vi.mock('@/lib/api', () => ({
   brokerApi: {
     cancelReservation: vi.fn(),
+    createDraft: vi.fn(),
     createPreHold: vi.fn(),
     listUnits: vi.fn(),
   },
@@ -136,7 +137,7 @@ describe('BrokerUnitsDialog', () => {
       />,
     )
 
-    expect(screen.getByRole('button', { name: 'Pré-reservar' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Reservar' })).toBeInTheDocument()
     expect(screen.getByText(/R\$\s*450\.000,00/)).toBeInTheDocument()
     expect(screen.getAllByText('72 m² · 12º andar').length).toBeGreaterThan(0)
   })
@@ -151,7 +152,7 @@ describe('BrokerUnitsDialog', () => {
       />,
     )
 
-    expect(screen.getByText('Pré-reservada')).toBeInTheDocument()
+    expect(screen.getByText('Reservada')).toBeInTheDocument()
   })
 
   it('shows client reservation and remove button', () => {
@@ -168,16 +169,17 @@ describe('BrokerUnitsDialog', () => {
     expect(screen.getByRole('button', { name: 'Remover reserva' })).toBeInTheDocument()
   })
 
-  it('creates pre-hold before opening the simple pre-reservation dialog', async () => {
+  it('creates a proposal draft before opening the proposal dialog', async () => {
     const user = userEvent.setup()
 
-    vi.mocked(brokerApi.createPreHold).mockResolvedValue({
+    vi.mocked(brokerApi.createDraft).mockResolvedValue({
       id: 77,
       unit_id: 10,
       client_id: null,
       broker_id: 1,
-      status: 'pre_hold',
-      expires_at: '2026-07-10T21:10:00.000000Z',
+      status: 'proposal_draft',
+      expires_at: null,
+      draft_expires_at: '2026-07-10T21:20:00.000000Z',
     })
 
     render(
@@ -189,14 +191,14 @@ describe('BrokerUnitsDialog', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Pré-reservar' }))
+    await user.click(screen.getByRole('button', { name: 'Reservar' }))
 
     await waitFor(() => {
-      expect(brokerApi.createPreHold).toHaveBeenCalledWith(10, [])
+      expect(brokerApi.createDraft).toHaveBeenCalledWith(10, [])
     })
   })
 
-  it('does not show Pré-reservar for garage spots', () => {
+  it('does not show Reservar for garage spots', () => {
     render(
       <BrokerUnitsDialog
         open
@@ -230,19 +232,21 @@ describe('BrokerUnitsDialog', () => {
 
     expect(screen.getByText('S1-01')).toBeInTheDocument()
     expect(screen.getByText('Vaga disponível')).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Pré-reservar' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Reservar' })).toHaveLength(1)
   })
 
-  it('lets the broker optionally attach garage spots before pre-hold', async () => {
+  it('lets the broker optionally attach garage spots before reserving', async () => {
     const user = userEvent.setup()
 
-    vi.mocked(brokerApi.createPreHold).mockResolvedValue({
+    vi.mocked(brokerApi.createDraft).mockReset()
+    vi.mocked(brokerApi.createDraft).mockResolvedValue({
       id: 88,
       unit_id: 10,
       client_id: null,
       broker_id: 1,
-      status: 'pre_hold',
-      expires_at: '2026-07-10T21:10:00.000000Z',
+      status: 'proposal_draft',
+      expires_at: null,
+      draft_expires_at: '2026-07-10T21:20:00.000000Z',
       garage_units: [{ id: 30, code: 'S1-01', price: '45000', status: 'pre_reserved', floor_kind: 'garage' }],
     })
 
@@ -277,16 +281,16 @@ describe('BrokerUnitsDialog', () => {
       />,
     )
 
-    await user.click(screen.getByRole('button', { name: 'Pré-reservar' }))
+    await user.click(screen.getByRole('button', { name: 'Reservar' }))
 
-    expect(screen.getByText('Vagas de garagem')).toBeInTheDocument()
-    expect(brokerApi.createPreHold).not.toHaveBeenCalled()
+    expect(screen.getByRole('heading', { name: 'Vagas de garagem' })).toBeInTheDocument()
+    expect(brokerApi.createDraft).not.toHaveBeenCalled()
 
     await user.click(screen.getByRole('checkbox', { name: 'Selecionar vaga S1-01' }))
     await user.click(screen.getByRole('button', { name: 'Continuar' }))
 
     await waitFor(() => {
-      expect(brokerApi.createPreHold).toHaveBeenCalledWith(10, [30])
+      expect(brokerApi.createDraft).toHaveBeenCalledWith(10, [30])
     })
   })
 

@@ -586,6 +586,10 @@ class UserActivityCatalog
     {
         $hours = (int) ($payload['hours'] ?? 48);
 
+        if (($payload['scope'] ?? null) === 'proposal_review') {
+            return "Prorrogou em {$hours}h úteis a análise da proposta da unidade {$unit}.";
+        }
+
         return "Estendeu em {$hours}h o prazo da pré-reserva da unidade {$unit}.";
     }
 

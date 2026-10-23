@@ -9,9 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('units', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary();
             $table->foreignId('tenant_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('building_id')->constrained()->cascadeOnDelete();
+            $table->foreignUuid('building_id')->constrained()->cascadeOnDelete();
             $table->string('code');
             $table->unsignedSmallInteger('floor')->nullable();
             $table->decimal('area_m2', 10, 2)->nullable();

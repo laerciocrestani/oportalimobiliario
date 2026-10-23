@@ -26,7 +26,7 @@ function createAcceptedReservationForFormalization(Tenant $tenant, User $broker,
 {
     Storage::fake('local');
 
-    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
 
     UnitAccess::factory()->create([
         'tenant_id' => $tenant->id,
@@ -36,23 +36,26 @@ function createAcceptedReservationForFormalization(Tenant $tenant, User $broker,
 
     linkBrokerToTenant($broker, $tenant);
 
-    $reservation = Reservation::factory()->proposalPending()->create([
+    $reservation = Reservation::factory()->create([
         'tenant_id' => $tenant->id,
         'unit_id' => $unit->id,
         'broker_id' => $broker->id,
+        'status' => ReservationStatus::DepositPending,
+        'expires_at' => null,
     ]);
 
     ReservationProposal::factory()->create([
         'reservation_id' => $reservation->id,
         'submitted_by' => $broker->id,
+        'decision' => ProposalDecision::Accepted,
+        'decided_by' => $builder->id,
+        'decided_at' => now(),
     ]);
 
-    Sanctum::actingAs($builder);
-
-    test()->patch("/api/builder/reservations/{$reservation->id}/proposal/decision", [
-        'decision' => ProposalDecision::Accepted->value,
-        'signed_file' => signedProposalPdf('construtora.pdf'),
-    ])->assertOk();
+    ReservationAttachment::factory()->proposalSignedBuilder()->create([
+        'reservation_id' => $reservation->id,
+        'uploaded_by' => $builder->id,
+    ]);
 
     return $reservation->fresh(['unit', 'attachments']);
 }

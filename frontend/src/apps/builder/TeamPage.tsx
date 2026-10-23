@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { BuilderDashboardShell } from '@/apps/builder/components/BuilderDashboardShell'
+import { SignatureSettingsCard } from '@/apps/builder/components/SignatureSettingsCard'
 import {
   BUILDER_PERMISSIONS,
   builderPermissionLabels,
@@ -204,6 +205,8 @@ export function TeamPage() {
             </form>
           </CardContent>
         </Card>
+
+        <SignatureSettingsCard members={members} />
 
         <section className="space-y-3">
           <h3 className="text-lg font-medium">Membros</h3>

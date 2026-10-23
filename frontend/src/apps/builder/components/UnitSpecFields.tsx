@@ -21,6 +21,7 @@ type UnitSpecFieldsProps = {
   buildingAmenityIds: number[]
   defaults?: BuildingDefaultsForm
   disabled?: boolean
+  priceMode?: 'incc' | 'fixed'
   onChange: (spec: UnitSpecForm) => void
 }
 
@@ -40,8 +41,10 @@ export function UnitSpecFields({
   buildingAmenityIds,
   defaults,
   disabled = false,
+  priceMode = 'incc',
   onChange,
 }: UnitSpecFieldsProps) {
+  const fixedPrice = priceMode === 'fixed'
   const inheritedIds = new Set(buildingAmenityIds)
   const inherited = amenities.filter((amenity) => inheritedIds.has(amenity.id))
   const extrasCatalog = amenities.filter((amenity) => !inheritedIds.has(amenity.id))
@@ -82,7 +85,7 @@ export function UnitSpecFields({
           />
         </div>
         <div className="flex flex-col gap-1">
-          <Label htmlFor={`${idPrefix}-price-base`}>Preço-base (R$)</Label>
+          <Label htmlFor={`${idPrefix}-price-base`}>{fixedPrice ? 'Valor fixo (R$)' : 'Preço-base (R$)'}</Label>
           <Input
             id={`${idPrefix}-price-base`}
             inputMode="decimal"
@@ -91,6 +94,7 @@ export function UnitSpecFields({
             onChange={(e) => patch({ priceBase: e.target.value })}
           />
         </div>
+        {fixedPrice ? null : (
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${idPrefix}-competence`}>Competência INCC</Label>
           <Input
@@ -101,6 +105,7 @@ export function UnitSpecFields({
             onChange={(e) => patch({ priceCompetence: e.target.value })}
           />
         </div>
+        )}
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${idPrefix}-bedrooms`}>Quartos</Label>
           <Input

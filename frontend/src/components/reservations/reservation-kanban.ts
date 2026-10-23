@@ -3,7 +3,6 @@ import {
   BadgeCheckIcon,
   BanIcon,
   KeyRoundIcon,
-  MessagesSquareIcon,
   PenLineIcon,
   ScaleIcon,
   WalletIcon,
@@ -32,19 +31,6 @@ export const RESERVATION_KANBAN_COLUMNS: {
   theme: KanbanColumnTheme
 }[] = [
   {
-    id: 'pre_reservation',
-    label: 'Pré-reserva/Diálogo',
-    icon: MessagesSquareIcon,
-    emptyDescription: 'As pré-reservas em diálogo aparecerão nesta coluna.',
-    theme: {
-      column: 'bg-sky-50/60',
-      iconWrap: 'bg-sky-100 text-sky-600',
-      title: 'text-sky-700',
-      count: 'text-sky-600',
-      ring: 'ring-sky-300',
-    },
-  },
-  {
     id: 'proposal_review',
     label: 'Proposta em análise',
     icon: ScaleIcon,
@@ -59,9 +45,9 @@ export const RESERVATION_KANBAN_COLUMNS: {
   },
   {
     id: 'proposal_formalization',
-    label: 'Proposta aceita/Formalização',
+    label: 'Aguardando assinaturas',
     icon: BadgeCheckIcon,
-    emptyDescription: 'As propostas aceitas e em formalização aparecerão nesta coluna.',
+    emptyDescription: 'Propostas aguardando assinatura aparecerão nesta coluna.',
     theme: {
       column: 'bg-emerald-50/60',
       iconWrap: 'bg-emerald-100 text-emerald-600',
@@ -395,6 +381,7 @@ export function timelineKanbanColumn(
 
   if (
     stage === 'contract_issued' ||
+    stage === 'contract_signing' ||
     stage === 'contract_uploaded' ||
     stage === 'contract_builder_signed'
   ) {
@@ -403,6 +390,10 @@ export function timelineKanbanColumn(
 
   if (stage === 'proposal_pending' || stage === 'proposal_returned') {
     return 'proposal_review'
+  }
+
+  if (stage === 'proposal_signing') {
+    return 'proposal_formalization'
   }
 
   if (stage === 'pre_hold') {

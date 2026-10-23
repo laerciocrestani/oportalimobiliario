@@ -258,7 +258,7 @@ it('publishes a draft when available units have price', function () {
     expect($building->fresh()->wizard_completed_at)->not->toBeNull();
 });
 
-it('rejects publishing when an available unit has no price', function () {
+it('publishes when an available unit has no price', function () {
     $tenant = Tenant::factory()->create();
     $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
     $building = Building::factory()->for($tenant)->create(['published' => false]);
@@ -272,12 +272,11 @@ it('rejects publishing when an available unit has no price', function () {
 
     $this->patchJson("/api/builder/buildings/{$building->id}", [
         'published' => true,
-    ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['published']);
+    ])->assertOk()
+        ->assertJsonPath('published', true);
 
-    expect($building->fresh()->published)->toBeFalse()
-        ->and($building->fresh()->wizard_completed_at)->toBeNull();
+    expect($building->fresh()->published)->toBeTrue()
+        ->and($building->fresh()->wizard_completed_at)->not->toBeNull();
 });
 
 it('keeps a wizard draft unpublished after media step', function () {

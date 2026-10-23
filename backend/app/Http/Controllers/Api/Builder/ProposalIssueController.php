@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api\Builder;
 
 use App\Http\Controllers\Controller;
-use App\Models\ProposalTemplate;
 use App\Models\Reservation;
 use App\Services\ProposalIssueService;
 use Illuminate\Http\JsonResponse;
@@ -33,7 +32,7 @@ class ProposalIssueController extends Controller
             'template_id' => ['required', 'integer', 'exists:proposal_templates,id'],
         ]);
 
-        $template = ProposalTemplate::query()->findOrFail($data['template_id']);
+        $template = $this->issueService->resolve($reservation, (int) $data['template_id']);
 
         return response()->json($this->issueService->preview($reservation, $template));
     }
@@ -49,7 +48,7 @@ class ProposalIssueController extends Controller
             'final_price_brl' => ['sometimes', 'nullable', 'numeric', 'min:0'],
         ]);
 
-        $template = ProposalTemplate::query()->findOrFail($data['proposal_template_id']);
+        $template = $this->issueService->resolve($reservation, (int) $data['proposal_template_id']);
 
         $result = $this->issueService->issue(
             $request->user(),

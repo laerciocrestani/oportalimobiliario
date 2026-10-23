@@ -12,6 +12,7 @@ import { BuilderSignedContractDialog } from '@/components/reservations/BuilderSi
 import { BuilderWitnessSignDialog } from '@/components/reservations/BuilderWitnessSignDialog'
 import { BuilderDepositProofApprovalPanel } from '@/components/reservations/BuilderDepositProofApprovalPanel'
 import { BuilderProposalDecisionPanel } from '@/components/reservations/BuilderProposalDecisionPanel'
+import { ProposalSignatureResend } from '@/components/reservations/ProposalSignatureResend'
 import { BrokerReturnSignedProposalDialog } from '@/components/reservations/BrokerReturnSignedProposalDialog'
 import { BuilderIssueContractDialog } from '@/components/reservations/BuilderIssueContractDialog'
 import { ReservationChatPanel } from '@/components/reservations/ReservationChatPanel'
@@ -193,8 +194,21 @@ export function ReservationProgressDialog({
         code: timeline.unit.code,
         floor: null,
         area_m2: null,
-        price: null,
+        price: timeline.unit.price ?? null,
         status: timeline.unit.status,
+        building: timeline.unit.building_name
+          ? {
+              id: 0,
+              slug: '',
+              name: timeline.unit.building_name,
+              description: null,
+              city: null,
+              state: null,
+              published: false,
+              seo_title: null,
+              seo_description: null,
+            }
+          : undefined,
       }
     : null
 
@@ -230,6 +244,15 @@ export function ReservationProgressDialog({
                         onDecided={() => void handleRefresh()}
                       />
                     </div>
+                  ) : null}
+
+                  {timeline.current_stage === 'proposal_signing' ||
+                  timeline.current_stage === 'contract_signing' ? (
+                    <ProposalSignatureResend
+                      profile={profile}
+                      reservationId={timeline.reservation_id}
+                      document={timeline.current_stage === 'contract_signing' ? 'contract' : 'proposal'}
+                    />
                   ) : null}
 
                   {column === 'proposal_review' && isReturnedOrRejectedProposal(timeline.current_proposal) ? (

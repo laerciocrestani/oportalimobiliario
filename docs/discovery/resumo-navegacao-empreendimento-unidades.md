@@ -23,7 +23,7 @@ Arquivo de referência: [Figma — cadastro do empreendimento](https://www.figma
 
 - Sem prazo nem orçamento novo informados.
 - Execução no monorepo atual, com os componentes já existentes.
-- Várias torres, mídia por unidade e a esteira de venda ficam para outra leva.
+- Várias torres já entram no wizard. Mídia por unidade não faz parte do produto. A esteira de venda da construtora não será feita.
 
 ## Atores
 
@@ -107,7 +107,7 @@ Arquivo de referência: [Figma — cadastro do empreendimento](https://www.figma
 
 ## Lacunas / decisões pendentes
 
-- Nenhuma decisão crítica em aberto. O ponto de correção, se houver, é a premissa de que torre, pavimento e unidade também viram UUID junto com o empreendimento.
+- Escopo desta leva fechado. O que ficou para outro momento está em `docs/discovery/pendencias-wizard-empreendimento.md`.
 
 ---
 **Aguardando sua confirmação antes de iniciar arquitetura ou implementação.**

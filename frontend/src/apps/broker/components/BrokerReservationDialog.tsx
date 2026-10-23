@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BanknoteIcon, Building2Icon, CarIcon, FileTextIcon, PencilIcon } from 'lucide-react'
+import { BanknoteIcon, Building2Icon, CarIcon, FileTextIcon, PencilIcon, WalletIcon } from 'lucide-react'
 import { ProposalSectionTitle } from '@/apps/broker/components/ProposalSectionTitle'
 import { ProposalPartyFields } from '@/apps/broker/components/ProposalPartyFields'
 import { ProposalTermsFields } from '@/apps/broker/components/ProposalTermsFields'
@@ -12,8 +12,8 @@ import {
 } from '@/apps/broker/lib/fill-proposal-template'
 import {
   emptyProposalPartyForm,
-  isProposalPartyComplete,
   MARRIED_STATUS,
+  missingProposalPartyFields,
   partyDocumentDigits,
   type ProposalPartyForm,
 } from '@/apps/broker/lib/proposal-party'
@@ -23,6 +23,7 @@ import {
   formatProposalAmount,
   parseProposalAmount,
 } from '@/apps/broker/lib/proposal-price'
+import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -190,9 +191,20 @@ export function BrokerReservationDialog({
     correcao_modo: selectedTemplate?.prefill.correcao_modo === 'fixed' ? 'fixed' : 'incc',
   }
   const fillableVariables = selectedTemplate?.variables.filter((variable) => !isHiddenProposalSlug(variable.slug)) ?? []
-  const templateComplete = selectedTemplate !== null
-    && fillableVariables.every((variable) => variable.required === false || (mergedValues[variable.slug] ?? '').trim() !== '')
-  const partyComplete = isProposalPartyComplete(party)
+  const missingFields = [
+    ...missingProposalPartyFields(party, {
+      name: buyerName,
+      phone: buyerPhone,
+      email: buyerEmail,
+    }),
+    ...(selectedTemplate
+      ? fillableVariables.flatMap((variable) => (
+        variable.required === false || (mergedValues[variable.slug] ?? '').trim() !== ''
+          ? []
+          : [variable.label]
+      ))
+      : (paymentTerms.trim() === '' ? ['Proposta'] : [])),
+  ]
 
   useEffect(() => {
     if (!open || !expiresAt) {
@@ -341,7 +353,19 @@ export function BrokerReservationDialog({
   }
 
   async function handleSubmit() {
-    if (!unit || !reservationId || expired || buyerName.trim() === '' || buyerPhone.trim() === '' || files.length === 0) {
+    if (!unit || !reservationId || submitting) {
+      return
+    }
+
+    if (expired) {
+      toast.error('Sua pré-reserva expirou. Feche este diálogo e tente novamente.')
+      return
+    }
+
+    if (missingFields.length > 0) {
+      toast.warning('Complete a proposta antes de enviar', {
+        description: missingFields.join(', '),
+      })
       return
     }
 
@@ -349,10 +373,6 @@ export function BrokerReservationDialog({
       ? renderProposalPlainText(selectedTemplate.body_markdown, mergedValues)
       : paymentTerms.trim()
     const commercialTerms = commercialTermsFromValues(mergedValues)
-
-    if (terms === '' || !partyComplete || (selectedTemplate !== null && !templateComplete)) {
-      return
-    }
 
     const paymentTermsText = appendAdjustedPrices(terms, {
       ...priceAdjustment,
@@ -407,12 +427,6 @@ export function BrokerReservationDialog({
       setSubmitting(false)
     }
   }
-
-  const canSubmit = buyerName.trim() !== ''
-    && buyerPhone.trim() !== ''
-    && partyComplete
-    && files.length > 0
-    && (selectedTemplate ? templateComplete : paymentTerms.trim() !== '')
 
   return (
     <Dialog
@@ -511,15 +525,17 @@ export function BrokerReservationDialog({
                   />
 
                   <fieldset className="flex flex-col gap-4" disabled={expired}>
-                    <legend>
-                      <ProposalSectionTitle icon={BanknoteIcon}>Condições de pagamento</ProposalSectionTitle>
+                    <legend className="mb-4 w-full">
+                      <ProposalSectionTitle
+                        icon={BanknoteIcon}
+                        description="Informe como o sinal será pago e as condições comerciais desta proposta."
+                      >
+                        Condições de pagamento
+                      </ProposalSectionTitle>
                     </legend>
-                    <p className="text-sm text-muted-foreground">
-                      Informe como o sinal será pago e as condições comerciais desta proposta.
-                    </p>
                     <div className="flex flex-col gap-4 rounded-lg border bg-muted p-4 [&_input]:bg-background [&_textarea]:bg-background">
                       <div className="flex flex-col gap-2">
-                        <p className="text-sm font-medium">Tipo de sinal</p>
+                        <ProposalSectionTitle icon={WalletIcon}>Tipo de sinal</ProposalSectionTitle>
                         <div className="grid grid-cols-2 gap-3">
                           <label
                             className={cn(
@@ -555,7 +571,7 @@ export function BrokerReservationDialog({
                               checked={depositKind === 'asset'}
                               onChange={() => setDepositKind('asset')}
                             />
-                            Bem já descrito na proposta (<span className="font-bold">Dação</span>)
+                            <span>Bem já descrito na proposta (<span className="font-bold">Dação</span>)</span>
                           </label>
                         </div>
                         <p className="text-sm text-muted-foreground">
@@ -642,7 +658,7 @@ export function BrokerReservationDialog({
           )}
           <Button
             type="button"
-            disabled={!canSubmit || submitting || expired}
+            disabled={submitting}
             onClick={() => void handleSubmit()}
           >
             {submitting ? 'Enviando...' : 'Enviar proposta'}

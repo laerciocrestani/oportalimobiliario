@@ -266,7 +266,7 @@ it('rejects a reinforcement with an invalid amount or date', function () {
         ]);
 });
 
-it('rejects proposal without attachments', function () {
+it('accepts a proposal without attachments', function () {
     $tenant = Tenant::factory()->create();
     $broker = User::factory()->broker()->create();
     $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
@@ -287,13 +287,12 @@ it('rejects proposal without attachments', function () {
 
     Sanctum::actingAs($broker);
 
-    $this->postJson("/api/broker/reservations/{$reservation->id}/proposal", [
-        'client_name' => 'Maria Silva',
-        'client_phone' => '11999999999',
-        'payment_terms' => 'Entrada de R$ 50.000',
-    ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['files']);
+    $this->postJson("/api/broker/reservations/{$reservation->id}/proposal", validProposalPayload())
+        ->assertCreated()
+        ->assertJsonPath('status', ReservationStatus::ProposalPending->value)
+        ->assertJsonPath('proposal.attachments', []);
+
+    expect(ReservationAttachment::query()->count())->toBe(0);
 });
 
 it('accepts proposal without opening a deposit TTL', function () {

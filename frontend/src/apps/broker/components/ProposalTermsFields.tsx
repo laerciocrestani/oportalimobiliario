@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { PlusIcon, XIcon } from 'lucide-react'
+import { CalendarIcon, CalendarPlusIcon, HandshakeIcon, InfoIcon, PlusIcon, XIcon } from 'lucide-react'
+import { ProposalSectionTitle } from '@/apps/broker/components/ProposalSectionTitle'
 import {
   dationSlug,
   isDationModuleLine,
@@ -7,16 +8,23 @@ import {
   MAX_REPEAT_ROWS,
   reinforcementSlug,
 } from '@/apps/broker/lib/fill-proposal-template'
+import { brazilianDateToIso, dateToBrazilian, maskBrazilianDate } from '@/lib/br-date'
+import { maskBrazilianCurrency } from '@/lib/br-currency'
 import { Button } from '@/components/ui/button'
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '@/components/ui/input-group'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { ptBR } from 'react-day-picker/locale'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
-import type { ContractCustomVariable } from '@/lib/api'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import type { BrokerProposalVariable } from '@/lib/api'
 
 type ProposalTermsFieldsProps = {
   body: string
-  variables: ContractCustomVariable[]
+  variables: BrokerProposalVariable[]
   values: Record<string, string>
   disabled?: boolean
   onChange: (slug: string, value: string) => void
@@ -40,12 +48,18 @@ export function ProposalTermsFields({
     <>
       {variables.map((variable) => (
         <Field key={variable.slug}>
-          <FieldLabel htmlFor={`proposal-${variable.slug}`}>{variable.label}</FieldLabel>
+          <div className="flex items-center gap-1.5">
+            <FieldLabel htmlFor={`proposal-${variable.slug}`}>
+              {variable.required ? `${variable.label} *` : variable.label}
+            </FieldLabel>
+            {variable.multiline && variable.placeholder ? (
+              <ExampleHint text={variable.placeholder} />
+            ) : null}
+          </div>
           {variable.multiline ? (
             <Textarea
               id={`proposal-${variable.slug}`}
               className="min-h-28"
-              placeholder={variable.placeholder}
               value={values[variable.slug] ?? ''}
               disabled={disabled}
               onChange={(event) => onChange(variable.slug, event.target.value)}
@@ -69,6 +83,125 @@ export function ProposalTermsFields({
         <DationFields values={values} disabled={disabled} onChange={onChange} />
       ) : null}
     </>
+  )
+}
+
+function selectedDueDate(value: string): Date | undefined {
+  const iso = brazilianDateToIso(value)
+
+  if (iso === '') {
+    return undefined
+  }
+
+  const [year, month, day] = iso.split('-').map(Number)
+
+  return new Date(year, month - 1, day)
+}
+
+function DueDateField({
+  id,
+  index,
+  value,
+  disabled,
+  onChange,
+}: {
+  id: string
+  index: number
+  value: string
+  disabled: boolean
+  onChange: (value: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const selected = selectedDueDate(value)
+  const [month, setMonth] = useState<Date | undefined>(selected)
+
+  return (
+    <Field className="flex-1">
+      <FieldLabel htmlFor={id}>Vencimento</FieldLabel>
+      <InputGroup className="bg-background">
+        <InputGroupInput
+          id={id}
+          aria-label={`Vencimento do reforço ${index + 1}`}
+          className="h-full bg-transparent!"
+          placeholder="10/10/2026"
+          inputMode="numeric"
+          value={value}
+          disabled={disabled}
+          onChange={(event) => onChange(maskBrazilianDate(event.target.value))}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown' && !disabled) {
+              event.preventDefault()
+              setMonth(selected ?? new Date())
+              setOpen(true)
+            }
+          }}
+        />
+        <InputGroupAddon align="inline-end">
+          <Popover
+            open={open}
+            onOpenChange={(next) => {
+              setOpen(next)
+              if (next) {
+                setMonth(selected ?? new Date())
+              }
+            }}
+          >
+            <PopoverTrigger
+              render={
+                <InputGroupButton
+                  aria-label={`Abrir calendário do vencimento ${index + 1}`}
+                  size="icon-xs"
+                  variant="ghost"
+                  disabled={disabled}
+                />
+              }
+            >
+              <CalendarIcon />
+            </PopoverTrigger>
+            <PopoverContent className="w-auto overflow-hidden p-0" align="end" sideOffset={8}>
+              <Calendar
+                mode="single"
+                locale={ptBR}
+                selected={selected}
+                month={month}
+                onMonthChange={setMonth}
+                onSelect={(date) => {
+                  if (!date) {
+                    return
+                  }
+
+                  onChange(dateToBrazilian(date))
+                  setOpen(false)
+                }}
+              />
+            </PopoverContent>
+          </Popover>
+        </InputGroupAddon>
+      </InputGroup>
+    </Field>
+  )
+}
+
+function ExampleHint({ text }: { text: string }) {
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              aria-label="Ver exemplo"
+              className="text-muted-foreground"
+            />
+          }
+        >
+          <InfoIcon className="size-4" />
+        </TooltipTrigger>
+        <TooltipContent className="max-w-sm whitespace-pre-line text-left">
+          {text}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   )
 }
 
@@ -96,8 +229,8 @@ function ReinforcementFields({
     const next: ReinforcementRow[] = []
 
     for (let index = 0; index < MAX_REPEAT_ROWS; index += 1) {
-      const valor = values[reinforcementSlug(index, 'valor')] ?? ''
-      const vencimento = values[reinforcementSlug(index, 'vencimento')] ?? ''
+      const valor = maskBrazilianCurrency(values[reinforcementSlug(index, 'valor')] ?? '')
+      const vencimento = maskBrazilianDate(values[reinforcementSlug(index, 'vencimento')] ?? '')
       next.push({ id: rowId(), valor, vencimento })
       if (valor.trim() !== '' || vencimento.trim() !== '') {
         lastFilled = index
@@ -141,7 +274,7 @@ function ReinforcementFields({
 
   return (
     <Field>
-      <FieldLabel>Reforços</FieldLabel>
+      <ProposalSectionTitle icon={CalendarPlusIcon}>Reforços</ProposalSectionTitle>
       <div className="flex flex-col gap-2">
         {rows.map((row, index) => (
           <div key={row.id} className="flex items-end gap-2">
@@ -150,24 +283,20 @@ function ReinforcementFields({
               <Input
                 id={`reforco-valor-${row.id}`}
                 aria-label={`Valor do reforço ${index + 1}`}
-                placeholder="0,00"
-                inputMode="decimal"
+                placeholder="R$ 0,00"
+                inputMode="numeric"
                 value={row.valor}
                 disabled={disabled}
-                onChange={(event) => updateRow(row.id, 'valor', event.target.value)}
+                onChange={(event) => updateRow(row.id, 'valor', maskBrazilianCurrency(event.target.value))}
               />
             </Field>
-            <Field className="flex-1">
-              <FieldLabel htmlFor={`reforco-venc-${row.id}`}>Vencimento</FieldLabel>
-              <Input
-                id={`reforco-venc-${row.id}`}
-                aria-label={`Vencimento do reforço ${index + 1}`}
-                placeholder="dd/mm/aaaa"
-                value={row.vencimento}
-                disabled={disabled}
-                onChange={(event) => updateRow(row.id, 'vencimento', event.target.value)}
-              />
-            </Field>
+            <DueDateField
+              id={`reforco-venc-${row.id}`}
+              index={index}
+              value={row.vencimento}
+              disabled={disabled}
+              onChange={(value) => updateRow(row.id, 'vencimento', value)}
+            />
             {rows.length > 1 ? (
               <Button
                 type="button"
@@ -257,7 +386,7 @@ function DationFields({
 
   return (
     <Field>
-      <FieldLabel>Dações</FieldLabel>
+      <ProposalSectionTitle icon={HandshakeIcon}>Dações</ProposalSectionTitle>
       <div className="flex flex-col gap-2">
         {rows.map((row, index) => (
           <div key={row.id} className="flex items-end gap-2">

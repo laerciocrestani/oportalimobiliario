@@ -110,7 +110,7 @@ final class ProposalModuleMarkdown
         $lines = [];
 
         for ($index = 1; $index <= self::MAX_ROWS; $index++) {
-            $valor = self::plain($values["reforco_{$index}_valor"] ?? '');
+            $valor = preg_replace('/^R\$\s*/u', '', self::plain($values["reforco_{$index}_valor"] ?? '')) ?? '';
             $vencimento = self::plain($values["reforco_{$index}_vencimento"] ?? '');
 
             if ($valor === '' && $vencimento === '') {

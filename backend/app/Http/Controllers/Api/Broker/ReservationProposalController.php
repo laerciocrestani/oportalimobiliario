@@ -29,7 +29,7 @@ class ReservationProposalController extends Controller
         }
 
         $data = $request->validate(ReservationProposalRules::submit());
-        $files = $data['files'];
+        $files = $data['files'] ?? [];
         unset($data['files']);
 
         $updated = $this->proposalService->submit($request->user(), $reservation, $data, $files);

@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ComponentProps } from 'react'
 import { ContactRoundIcon, UsersIcon } from 'lucide-react'
 import { ProposalSectionTitle } from '@/apps/broker/components/ProposalSectionTitle'
 import { Input } from '@/components/ui/input'
+import { Spinner } from '@/components/ui/spinner'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -12,6 +13,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { cnpjDigits, cpfDigits, formatCnpj, formatCpf, isValidCnpj, isValidCpf } from '@/lib/br-docs'
+import { brokerApi } from '@/lib/api'
 import { formatBrazilianMobilePhone } from '@/lib/format-phone'
 import { formatCep, lookupCep } from '@/lib/viacep'
 import { cn } from '@/lib/utils'
@@ -45,9 +47,17 @@ export function ProposalPartyFields({
   const [cepError, setCepError] = useState<string | null>(null)
   const [documentTouched, setDocumentTouched] = useState(false)
   const [spouseTouched, setSpouseTouched] = useState(false)
+  const [lookupNote, setLookupNote] = useState<string | null>(null)
+  const [documentLooking, setDocumentLooking] = useState(false)
+  const [cepLooking, setCepLooking] = useState(false)
   const cepRequestRef = useRef<AbortController | null>(null)
   const formRef = useRef(form)
+  const onChangeRef = useRef(onChange)
+  const onContactChangeRef = useRef(onContactChange)
+  const lookedUpRef = useRef('')
   formRef.current = form
+  onChangeRef.current = onChange
+  onContactChangeRef.current = onContactChange
   const company = form.kind === 'company'
   const documentLabel = company ? 'CNPJ' : 'CPF'
   const documentDigits = company ? cnpjDigits(form.document) : cpfDigits(form.document)
@@ -66,6 +76,75 @@ export function ProposalPartyFields({
     }
   }, [])
 
+  useEffect(() => {
+    if (!documentValid) {
+      lookedUpRef.current = ''
+      setLookupNote(null)
+      setDocumentLooking(false)
+      return
+    }
+
+    if (lookedUpRef.current === documentDigits) {
+      return
+    }
+
+    const controller = new AbortController()
+    let active = true
+    setDocumentLooking(true)
+
+    void brokerApi.lookupBuyer(documentDigits, controller.signal)
+      .then((buyer) => {
+        if (!active) {
+          return
+        }
+
+        lookedUpRef.current = documentDigits
+
+        if (buyer === null) {
+          setLookupNote(null)
+          return
+        }
+
+        const companyBuyer = buyer.party_kind === 'company'
+        onChangeRef.current({
+          ...formRef.current,
+          kind: companyBuyer ? 'company' : 'individual',
+          document: companyBuyer ? formatCnpj(buyer.client_cpf) : formatCpf(buyer.client_cpf),
+          rg: buyer.client_rg ?? '',
+          maritalStatus: buyer.marital_status ?? '',
+          nationality: buyer.nationality?.trim() || 'brasileira',
+          profession: buyer.profession ?? '',
+          zip: formatCep(buyer.zip ?? ''),
+          address: buyer.address ?? '',
+          city: buyer.city ?? '',
+          state: (buyer.state ?? '').toUpperCase(),
+          spouseName: buyer.spouse_name ?? '',
+          spouseCpf: buyer.spouse_cpf ? formatCpf(buyer.spouse_cpf) : '',
+        })
+        onContactChangeRef.current({
+          name: buyer.client_name,
+          phone: formatBrazilianMobilePhone(buyer.client_phone),
+          email: buyer.client_email ?? '',
+        })
+        setLookupNote('Cadastro encontrado. Os dados foram preenchidos.')
+      })
+      .catch(() => {
+        if (active) {
+          setLookupNote(null)
+        }
+      })
+      .finally(() => {
+        if (active) {
+          setDocumentLooking(false)
+        }
+      })
+
+    return () => {
+      active = false
+      controller.abort()
+    }
+  }, [documentDigits, documentValid])
+
   function update(patch: Partial<ProposalPartyForm>) {
     onChange({ ...form, ...patch })
   }
@@ -75,6 +154,7 @@ export function ProposalPartyFields({
     const controller = new AbortController()
     cepRequestRef.current = controller
     setCepError(null)
+    setCepLooking(true)
 
     try {
       const result = await lookupCep(zip, controller.signal)
@@ -94,6 +174,10 @@ export function ProposalPartyFields({
       if (!controller.signal.aborted) {
         setCepError('Não foi possível consultar o CEP.')
       }
+    } finally {
+      if (cepRequestRef.current === controller) {
+        setCepLooking(false)
+      }
     }
   }
 
@@ -101,12 +185,14 @@ export function ProposalPartyFields({
 
   return (
     <fieldset className="flex flex-col gap-4" disabled={disabled}>
-      <legend>
-        <ProposalSectionTitle icon={ContactRoundIcon}>Dados do comprador</ProposalSectionTitle>
+      <legend className="mb-4 w-full">
+        <ProposalSectionTitle
+          icon={ContactRoundIcon}
+          description="Informe os dados para identificar o comprador na proposta."
+        >
+          Dados do comprador
+        </ProposalSectionTitle>
       </legend>
-      <p className="text-sm text-muted-foreground">
-        Informe os dados para identificar o comprador na proposta.
-      </p>
       <div className="flex flex-col gap-4 rounded-lg border bg-muted p-4">
       <div className="flex flex-col gap-2">
         <ProposalSectionTitle icon={UsersIcon}>Tipo de comprador</ProposalSectionTitle>
@@ -166,20 +252,45 @@ export function ProposalPartyFields({
 
       <div className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-3 [&_input]:bg-background [&_[data-slot=select-trigger]]:bg-background">
         <div className="space-y-1">
-          <Label htmlFor="buyer-name">{nameLabel}</Label>
+          <RequiredLabel htmlFor="party-document">{documentLabel}</RequiredLabel>
+          <LookupInput
+            id="party-document"
+            aria-label={documentLabel}
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder={company ? '00.000.000/0000-00' : '000.000.000-00'}
+            aria-invalid={documentInvalid || undefined}
+            aria-required="true"
+            value={form.document}
+            loading={documentLooking}
+            loadingLabel={company ? 'Buscando CNPJ' : 'Buscando CPF'}
+            onBlur={() => setDocumentTouched(true)}
+            onChange={(event) => update({
+              document: company ? formatCnpj(event.target.value) : formatCpf(event.target.value),
+            })}
+          />
+          {documentInvalid ? (
+            <p className="text-xs text-destructive">{company ? 'CNPJ inválido.' : 'CPF inválido.'}</p>
+          ) : null}
+          {lookupNote ? <p className="text-xs text-muted-foreground">{lookupNote}</p> : null}
+        </div>
+        <div className="space-y-1">
+          <RequiredLabel htmlFor="buyer-name">{nameLabel}</RequiredLabel>
           <Input
             id="buyer-name"
             aria-label={nameLabel}
+            aria-required="true"
             autoComplete="name"
             value={contact.name}
             onChange={(event) => onContactChange({ ...contact, name: event.target.value })}
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="buyer-phone">Telefone</Label>
+          <RequiredLabel htmlFor="buyer-phone">Telefone</RequiredLabel>
           <Input
             id="buyer-phone"
             aria-label="Telefone"
+            aria-required="true"
             inputMode="tel"
             autoComplete="tel"
             placeholder="(00) 00000-0000"
@@ -203,34 +314,14 @@ export function ProposalPartyFields({
           />
         </div>
 
-        <div className="space-y-1">
-          <Label htmlFor="party-document">{documentLabel}</Label>
-        <Input
-          id="party-document"
-          aria-label={documentLabel}
-          inputMode="numeric"
-          autoComplete="off"
-          placeholder={company ? '00.000.000/0000-00' : '000.000.000-00'}
-          aria-invalid={documentInvalid || undefined}
-          value={form.document}
-          onBlur={() => setDocumentTouched(true)}
-          onChange={(event) => update({
-            document: company ? formatCnpj(event.target.value) : formatCpf(event.target.value),
-          })}
-        />
-        {documentInvalid ? (
-          <p className="text-xs text-destructive">{company ? 'CNPJ inválido.' : 'CPF inválido.'}</p>
-        ) : null}
-      </div>
-
       {form.kind === 'individual' ? (
         <>
           <div className="space-y-1">
-            <Label htmlFor="party-rg">RG</Label>
-            <Input id="party-rg" aria-label="RG" value={form.rg} onChange={(event) => update({ rg: event.target.value })} />
+            <RequiredLabel htmlFor="party-rg">RG</RequiredLabel>
+            <Input id="party-rg" aria-label="RG" aria-required="true" value={form.rg} onChange={(event) => update({ rg: event.target.value })} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="party-marital">Estado civil</Label>
+            <RequiredLabel htmlFor="party-marital">Estado civil</RequiredLabel>
             <Select
               value={form.maritalStatus === '' ? null : form.maritalStatus}
               onValueChange={(next) => {
@@ -244,7 +335,7 @@ export function ProposalPartyFields({
                 })
               }}
             >
-              <SelectTrigger id="party-marital" className="w-full" aria-label="Estado civil">
+              <SelectTrigger id="party-marital" className="w-full" aria-label="Estado civil" aria-required="true">
                 <SelectValue placeholder="Selecione" />
               </SelectTrigger>
               <SelectContent>
@@ -257,19 +348,21 @@ export function ProposalPartyFields({
             </Select>
           </div>
           <div className="space-y-1">
-            <Label htmlFor="party-nationality">Nacionalidade</Label>
+            <RequiredLabel htmlFor="party-nationality">Nacionalidade</RequiredLabel>
             <Input
               id="party-nationality"
               aria-label="Nacionalidade"
+              aria-required="true"
               value={form.nationality}
               onChange={(event) => update({ nationality: event.target.value })}
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="party-profession">Profissão</Label>
+            <RequiredLabel htmlFor="party-profession">Profissão</RequiredLabel>
             <Input
               id="party-profession"
               aria-label="Profissão"
+              aria-required="true"
               value={form.profession}
               onChange={(event) => update({ profession: event.target.value })}
             />
@@ -277,19 +370,21 @@ export function ProposalPartyFields({
           {form.maritalStatus === MARRIED_STATUS ? (
             <>
               <div className="space-y-1">
-                <Label htmlFor="spouse-name">Nome do cônjuge</Label>
+                <RequiredLabel htmlFor="spouse-name">Nome do cônjuge</RequiredLabel>
                 <Input
                   id="spouse-name"
                   aria-label="Nome do cônjuge"
+                  aria-required="true"
                   value={form.spouseName}
                   onChange={(event) => update({ spouseName: event.target.value })}
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="spouse-cpf">CPF do cônjuge</Label>
+                <RequiredLabel htmlFor="spouse-cpf">CPF do cônjuge</RequiredLabel>
                 <Input
                   id="spouse-cpf"
                   aria-label="CPF do cônjuge"
+                  aria-required="true"
                   inputMode="numeric"
                   autoComplete="off"
                   placeholder="000.000.000-00"
@@ -306,11 +401,14 @@ export function ProposalPartyFields({
       ) : null}
 
         <div className="space-y-1">
-          <Label htmlFor="party-zip">CEP</Label>
-          <Input
+          <RequiredLabel htmlFor="party-zip">CEP</RequiredLabel>
+          <LookupInput
             id="party-zip"
             aria-label="CEP"
+            aria-required="true"
             value={form.zip}
+            loading={cepLooking}
+            loadingLabel="Buscando CEP"
             onChange={(event) => {
               const zip = formatCep(event.target.value)
               update({ zip })
@@ -322,29 +420,32 @@ export function ProposalPartyFields({
           {cepError ? <p className="text-xs text-destructive">{cepError}</p> : null}
         </div>
         <div className="space-y-1">
-          <Label htmlFor="party-city">Cidade</Label>
+          <RequiredLabel htmlFor="party-city">Cidade</RequiredLabel>
           <Input
             id="party-city"
             aria-label="Cidade"
+            aria-required="true"
             value={form.city}
             onChange={(event) => update({ city: event.target.value })}
           />
         </div>
         <div className="space-y-1">
-          <Label htmlFor="party-state">UF</Label>
+          <RequiredLabel htmlFor="party-state">UF</RequiredLabel>
           <Input
             id="party-state"
             aria-label="UF"
+            aria-required="true"
             maxLength={2}
             value={form.state}
             onChange={(event) => update({ state: event.target.value.toUpperCase() })}
           />
         </div>
         <div className="space-y-1 sm:col-span-3">
-          <Label htmlFor="party-address">Endereço</Label>
+          <RequiredLabel htmlFor="party-address">Endereço</RequiredLabel>
           <Input
             id="party-address"
             aria-label="Endereço"
+            aria-required="true"
             value={form.address}
             onChange={(event) => update({ address: event.target.value })}
           />
@@ -352,5 +453,31 @@ export function ProposalPartyFields({
       </div>
       </div>
     </fieldset>
+  )
+}
+
+function RequiredLabel({ htmlFor, children }: { htmlFor: string; children: string }) {
+  return <Label htmlFor={htmlFor}>{children} *</Label>
+}
+
+function LookupInput({
+  loading,
+  loadingLabel,
+  className,
+  ...props
+}: ComponentProps<typeof Input> & {
+  loading: boolean
+  loadingLabel: string
+}) {
+  return (
+    <div className="relative">
+      <Input className={cn(loading && 'pr-8', className)} {...props} />
+      {loading ? (
+        <Spinner
+          aria-label={loadingLabel}
+          className="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground"
+        />
+      ) : null}
+    </div>
   )
 }

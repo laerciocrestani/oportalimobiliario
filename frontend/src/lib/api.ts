@@ -610,6 +610,24 @@ export type ReservationContractDataInput = {
 
 export type ProposalPartyKind = 'individual' | 'company'
 
+export type BrokerBuyer = {
+  party_kind: ProposalPartyKind
+  client_name: string
+  client_phone: string
+  client_email: string | null
+  client_cpf: string
+  client_rg: string | null
+  address: string | null
+  city: string | null
+  state: string | null
+  zip: string | null
+  marital_status: string | null
+  nationality: string | null
+  profession: string | null
+  spouse_name: string | null
+  spouse_cpf: string | null
+}
+
 export type ProposalCommercialTerms = {
   description?: string | null
   reinforcements: Array<{ amount: string | null; due_on: string | null }>
@@ -1290,6 +1308,20 @@ export const brokerApi = {
     apiFetch<ReservationPendingRepliesCount>('/broker/reservations/pending-replies-count'),
   pendingActionsCount: () =>
     apiFetch<ReservationPendingActionCount>('/broker/reservations/pending-actions-count'),
+  lookupBuyer: async (document: string, signal?: AbortSignal) => {
+    try {
+      return await apiFetch<BrokerBuyer>(
+        `/broker/buyers?${new URLSearchParams({ document }).toString()}`,
+        { signal },
+      )
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 404) {
+        return null
+      }
+
+      throw error
+    }
+  },
   listClients: (query?: string) => {
     const term = query?.trim()
     const path = term

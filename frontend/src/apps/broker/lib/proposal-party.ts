@@ -1,4 +1,5 @@
 import { cnpjDigits, cpfDigits, isValidCnpj, isValidCpf } from '@/lib/br-docs'
+import { isValidEmail } from '@/lib/format-phone'
 import { cepDigits } from '@/lib/viacep'
 
 export type ProposalPartyKind = 'individual' | 'company'
@@ -78,4 +79,78 @@ export function isProposalPartyComplete(form: ProposalPartyForm): boolean {
 
 export function partyDocumentDigits(form: ProposalPartyForm): string {
   return form.kind === 'company' ? cnpjDigits(form.document) : cpfDigits(form.document)
+}
+
+export function missingProposalPartyFields(
+  form: ProposalPartyForm,
+  contact: { name: string; phone: string; email: string },
+): string[] {
+  const company = form.kind === 'company'
+  const missing: string[] = []
+
+  if (company) {
+    if (!isValidCnpj(form.document)) {
+      missing.push('CNPJ')
+    }
+  } else if (!isValidCpf(form.document)) {
+    missing.push('CPF')
+  }
+
+  if (contact.name.trim() === '') {
+    missing.push(company ? 'Razão social' : 'Nome')
+  }
+
+  if (contact.phone.trim() === '') {
+    missing.push('Telefone')
+  }
+
+  if (contact.email.trim() !== '' && !isValidEmail(contact.email)) {
+    missing.push('E-mail')
+  }
+
+  if (!company) {
+    if (form.rg.trim() === '') {
+      missing.push('RG')
+    }
+
+    if (form.maritalStatus.trim() === '') {
+      missing.push('Estado civil')
+    }
+
+    if (form.nationality.trim() === '') {
+      missing.push('Nacionalidade')
+    }
+
+    if (form.profession.trim() === '') {
+      missing.push('Profissão')
+    }
+
+    if (form.maritalStatus === MARRIED_STATUS) {
+      if (form.spouseName.trim() === '') {
+        missing.push('Nome do cônjuge')
+      }
+
+      if (!isValidCpf(form.spouseCpf)) {
+        missing.push('CPF do cônjuge')
+      }
+    }
+  }
+
+  if (cepDigits(form.zip).length !== 8) {
+    missing.push('CEP')
+  }
+
+  if (form.city.trim() === '') {
+    missing.push('Cidade')
+  }
+
+  if (form.state.trim().length !== 2) {
+    missing.push('UF')
+  }
+
+  if (form.address.trim() === '') {
+    missing.push('Endereço')
+  }
+
+  return missing
 }

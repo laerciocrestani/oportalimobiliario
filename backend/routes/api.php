@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Broker\BrokerInviteController as BrokerBrokerInvite
 use App\Http\Controllers\Api\Broker\BrokerJoinController;
 use App\Http\Controllers\Api\Broker\BrokerProfileController;
 use App\Http\Controllers\Api\Broker\BuildingMediaController as BrokerBuildingMediaController;
+use App\Http\Controllers\Api\Broker\BuyerLookupController as BrokerBuyerLookupController;
 use App\Http\Controllers\Api\Broker\ClientController as BrokerClientController;
 use App\Http\Controllers\Api\Broker\ReservationAttachmentController as BrokerReservationAttachmentController;
 use App\Http\Controllers\Api\Broker\ReservationContractDataController as BrokerReservationContractDataController;
@@ -188,6 +189,7 @@ Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('bro
     Route::get('/activity', [BrokerActivityController::class, 'index']);
 
     Route::middleware('broker.active')->group(function () {
+        Route::get('/buyers', [BrokerBuyerLookupController::class, 'show']);
         Route::get('/clients', [BrokerClientController::class, 'index']);
         Route::post('/clients', [BrokerClientController::class, 'store']);
         Route::get('/units', [BrokerUnitController::class, 'index']);

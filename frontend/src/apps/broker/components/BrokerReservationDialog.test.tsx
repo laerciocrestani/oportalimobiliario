@@ -1,7 +1,15 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { BrokerReservationDialog } from '@/apps/broker/components/BrokerReservationDialog'
+import { toast } from 'sonner'
+
+vi.mock('sonner', () => ({
+  toast: {
+    warning: vi.fn(),
+    error: vi.fn(),
+  },
+}))
 
 vi.mock('@/lib/viacep', async () => {
   const actual = await vi.importActual<typeof import('@/lib/viacep')>('@/lib/viacep')
@@ -17,6 +25,7 @@ vi.mock('@/lib/api', () => ({
     submitReservationProposal: vi.fn(),
     releasePreHold: vi.fn(),
     listReservationProposalTemplates: vi.fn().mockResolvedValue([]),
+    lookupBuyer: vi.fn().mockResolvedValue(null),
   },
 }))
 
@@ -71,6 +80,12 @@ async function fillIndividualBuyer(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe('BrokerReservationDialog', () => {
+  beforeEach(() => {
+    vi.mocked(brokerApi.submitReservationProposal).mockReset()
+    vi.mocked(toast.warning).mockReset()
+    vi.mocked(toast.error).mockReset()
+  })
+
   it('prefills the attached client and hides the client picker', async () => {
     render(
       <BrokerReservationDialog
@@ -89,7 +104,7 @@ describe('BrokerReservationDialog', () => {
     expect(screen.getByText('Não informado')).toBeInTheDocument()
     expect(screen.getByText('A identificação das vagas não foi informada nesta proposta.')).toBeInTheDocument()
     expect(screen.queryByText('Total da proposta')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Enviar proposta' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Enviar proposta' })).toBeEnabled()
     expect(screen.queryByLabelText('Cliente cadastrado')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Novo cliente' })).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Nome do cliente *')).not.toBeInTheDocument()
@@ -135,7 +150,7 @@ describe('BrokerReservationDialog', () => {
     await user.type(screen.getByLabelText('Proposta *'), validProposal.payment_terms)
     await fillIndividualBuyer(user)
 
-    expect(screen.getByRole('button', { name: 'Enviar proposta' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Enviar proposta' })).toBeEnabled()
 
     const file = new File(['proposta'], 'proposta.pdf', { type: 'application/pdf' })
     await user.upload(document.querySelector('input[type="file"]') as HTMLInputElement, file)
@@ -156,6 +171,36 @@ describe('BrokerReservationDialog', () => {
       )
       expect(onReserved).toHaveBeenCalled()
     })
+  })
+
+  it('lists the missing fields in a toast and does not send the proposal', async () => {
+    const user = userEvent.setup()
+
+    render(
+      <BrokerReservationDialog
+        open
+        onOpenChange={() => {}}
+        unit={unit}
+        reservationId={55}
+        expiresAt="2099-01-01T12:00:00.000000Z"
+        client={attachedClient}
+        onReserved={() => {}}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Ana Silva')).toBeInTheDocument()
+    })
+
+    await user.click(screen.getByRole('button', { name: 'Enviar proposta' }))
+
+    expect(toast.warning).toHaveBeenCalledWith(
+      'Complete a proposta antes de enviar',
+      expect.objectContaining({
+        description: expect.stringContaining('CPF, RG, Estado civil, Profissão, CEP, Cidade, UF, Endereço, Proposta'),
+      }),
+    )
+    expect(brokerApi.submitReservationProposal).not.toHaveBeenCalled()
   })
 
   it('does not release pre-hold when closed from the timeline', async () => {
@@ -325,14 +370,16 @@ describe('BrokerReservationDialog', () => {
       />,
     )
 
-    expect(await screen.findByLabelText('Descreva as condições de pagamento')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText(/Entrada de R\$ 50\.000/)).toBeInTheDocument()
+    expect(await screen.findByLabelText('Descreva as condições de pagamento *')).toBeInTheDocument()
+    expect(screen.getByLabelText('Descreva as condições de pagamento *')).not.toHaveAttribute('placeholder')
+    await user.hover(screen.getByRole('button', { name: 'Ver exemplo' }))
+    expect(await screen.findByText(/Entrada de R\$ 50\.000/)).toBeInTheDocument()
     expect(screen.queryByRole('combobox', { name: 'Modelo da construtora' })).not.toBeInTheDocument()
     expect(screen.getByDisplayValue('Ana Silva')).toBeInTheDocument()
     expect(screen.queryByLabelText('Nome do cliente')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Enviar proposta' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Enviar proposta' })).toBeEnabled()
 
-    await user.type(screen.getByLabelText('Descreva as condições de pagamento'), 'Entrada de R$ 50.000 + 24x')
+    await user.type(screen.getByLabelText('Descreva as condições de pagamento *'), 'Entrada de R$ 50.000 + 24x')
     await fillIndividualBuyer(user)
 
     const file = new File(['proposta'], 'proposta.pdf', { type: 'application/pdf' })
@@ -385,7 +432,7 @@ describe('BrokerReservationDialog', () => {
       />,
     )
 
-    expect(await screen.findByLabelText('Valor de entrada')).toBeInTheDocument()
+    expect(await screen.findByLabelText('Valor de entrada *')).toBeInTheDocument()
     expect(screen.queryByLabelText('Imobiliária')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Corretor')).not.toBeInTheDocument()
     expect(screen.queryByDisplayValue('Danilo Reis')).not.toBeInTheDocument()
@@ -399,7 +446,7 @@ describe('BrokerReservationDialog', () => {
     expect(screen.queryByLabelText('Empreendimento')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Vagas de garagem')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Box')).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Valor de entrada')).toBeInTheDocument()
+    expect(screen.getByLabelText('Valor de entrada *')).toBeInTheDocument()
   })
 
   it('saves a corrected unit and garage price beside the original', async () => {
@@ -486,7 +533,7 @@ describe('BrokerReservationDialog', () => {
     expect(screen.getByText(listed('440000'))).toBeInTheDocument()
     expect(screen.queryByLabelText('preco unidade corrigido')).not.toBeInTheDocument()
 
-    await user.type(screen.getByLabelText('Condições de pagamento'), 'Entrada de R$ 50.000 + 24x')
+    await user.type(screen.getByLabelText('Condições de pagamento *'), 'Entrada de R$ 50.000 + 24x')
     await fillIndividualBuyer(user)
     const file = new File(['proposta'], 'proposta.pdf', { type: 'application/pdf' })
     await user.upload(document.querySelector('input[type="file"]') as HTMLInputElement, file)

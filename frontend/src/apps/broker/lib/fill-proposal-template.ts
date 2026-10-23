@@ -41,8 +41,9 @@ export function reinforcementLines(values: Record<string, string>): string[] {
       continue
     }
 
+    const amount = valor.replace(/^R\$\s*/i, '').trim()
     const parts = [
-      valor !== '' ? `Valor: R$ ${valor}` : '',
+      amount !== '' ? `Valor: R$ ${amount}` : '',
       vencimento !== '' ? `Venc.: ${vencimento}` : '',
     ].filter((part) => part !== '')
 

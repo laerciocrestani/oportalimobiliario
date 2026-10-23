@@ -11,7 +11,6 @@ import {
   resizeFloorUnits,
   setFloorKind,
   type SkeletonInput,
-  type StackTower,
 } from '@/apps/builder/lib/floor-stack'
 import type { FloorKind } from '@/lib/api'
 import {
@@ -22,7 +21,7 @@ import {
   type StructureEditorState,
 } from '@/apps/builder/components/structure-editor-context'
 import { BuildingWizardEnumSelect } from '@/apps/builder/components/BuildingWizardEnumSelect'
-import { FloorPerspective, type FloorPerspectiveLine } from '@/apps/builder/components/FloorPerspective'
+import { FloorPerspective } from '@/apps/builder/components/FloorPerspective'
 import { formatPrice } from '@/apps/builder/lib/format-price'
 import {
   CEILING_OPTIONS,
@@ -567,33 +566,6 @@ function StructureEditorGaragePanel() {
   )
 }
 
-function perspectiveLines(tower: StackTower): FloorPerspectiveLine[] {
-  const floors = floorsTopToBottom(tower.floors)
-  const lines: FloorPerspectiveLine[] = []
-  const living = floors.find((floor) => floor.kind === 'residential' || floor.kind === 'commercial')
-  const hall = floors.find((floor) => floor.kind === 'hall')
-  const garage = floors.findLast((floor) => floor.kind === 'garage')
-
-  if (living) {
-    const noun = living.kind === 'commercial' ? 'salas' : 'apartamentos'
-    lines.push({
-      label: `${floorLabel(living.number)} · ${living.units.length} ${noun}`,
-      detail: living.units.map((unit) => unit.code).join(' · '),
-      emphasis: true,
-    })
-  }
-
-  if (hall) {
-    lines.push({ label: `${floorLabel(hall.number)} · Hall e áreas comuns` })
-  }
-
-  if (garage) {
-    lines.push({ label: `${floorLabel(garage.number)} · ${garage.units.length} vagas` })
-  }
-
-  return lines
-}
-
 function kindHint(kind: FloorKind): string {
   if (kind === 'garage') {
     return 'Vagas de garagem'
@@ -753,7 +725,7 @@ function StructureEditorFloorWorkspace() {
         </div>
       </div>
       <div className="flex min-w-0 flex-col gap-4">
-        {tower ? <FloorPerspective lines={perspectiveLines(tower)} /> : null}
+        {tower ? <FloorPerspective floors={tower.floors} /> : null}
       <Card size="sm">
         <CardHeader>
           <CardTitle>{floor ? floorLabel(floor.number) : 'Pavimento'}</CardTitle>
@@ -828,7 +800,7 @@ function StructureEditorFloorWorkspace() {
           </SheetHeader>
           {floor && tower ? (
             <div className="flex flex-col gap-4 px-4">
-              <FloorPerspective lines={perspectiveLines(tower)} />
+              <FloorPerspective floors={tower.floors} />
               <div className="flex flex-col gap-2">
                 <p className="text-sm font-medium">Tipo de pavimento *</p>
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -918,7 +890,7 @@ function StructureEditorFloorWorkspace() {
                 </div>
                 <Badge variant="secondary">Pavimento-modelo</Badge>
               </div>
-              <FloorPerspective lines={perspectiveLines(tower)} />
+              <FloorPerspective floors={tower.floors} />
               <div className="grid gap-2 sm:grid-cols-2">
                 <button
                   type="button"

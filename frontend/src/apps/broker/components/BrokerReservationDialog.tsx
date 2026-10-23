@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Building2Icon, CarIcon, FileTextIcon, PencilIcon } from 'lucide-react'
+import { BanknoteIcon, Building2Icon, CarIcon, FileTextIcon, PencilIcon } from 'lucide-react'
+import { ProposalSectionTitle } from '@/apps/broker/components/ProposalSectionTitle'
 import { ProposalPartyFields } from '@/apps/broker/components/ProposalPartyFields'
 import { ProposalTermsFields } from '@/apps/broker/components/ProposalTermsFields'
 import { draftSendProgress } from '@/apps/broker/lib/draft-send-progress'
@@ -510,7 +511,9 @@ export function BrokerReservationDialog({
                   />
 
                   <fieldset className="flex flex-col gap-4" disabled={expired}>
-                    <legend className="text-base font-semibold">Condições de pagamento</legend>
+                    <legend>
+                      <ProposalSectionTitle icon={BanknoteIcon}>Condições de pagamento</ProposalSectionTitle>
+                    </legend>
                     <p className="text-sm text-muted-foreground">
                       Informe como o sinal será pago e as condições comerciais desta proposta.
                     </p>

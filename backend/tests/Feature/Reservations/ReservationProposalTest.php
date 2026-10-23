@@ -190,6 +190,44 @@ it('stores reinforcements and dations as json on the proposal', function () {
     ]);
 });
 
+it('stores the payment description inside commercial terms', function () {
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+
+    UnitAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'unit_id' => $unit->id,
+    ]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = Reservation::factory()->preHold()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+
+    $description = "Entrada de R$ 50.000, vencimento em 10/11/2026.\nTotal dos reforços: R$ 30.000.";
+
+    $this->post("/api/broker/reservations/{$reservation->id}/proposal", validProposalRequest([
+        'commercial_terms' => [
+            'description' => $description,
+            'reinforcements' => [],
+            'dations' => [],
+        ],
+    ]))
+        ->assertCreated()
+        ->assertJsonPath('proposal.commercial_terms.description', $description);
+
+    expect($reservation->proposals()->first()?->commercial_terms['description'])->toBe($description);
+});
+
 it('rejects a reinforcement with an invalid amount or date', function () {
     Storage::fake('local');
 

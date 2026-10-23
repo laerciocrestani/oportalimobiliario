@@ -69,6 +69,7 @@ export function dationLines(values: Record<string, string>): string[] {
 }
 
 export function commercialTermsFromValues(values: Record<string, string>): ProposalCommercialTerms | null {
+  const description = (values.condicoes_pagamento ?? '').trim()
   const reinforcements: ProposalCommercialTerms['reinforcements'] = []
   const dations: string[] = []
 
@@ -87,11 +88,15 @@ export function commercialTermsFromValues(values: Record<string, string>): Propo
     }
   }
 
-  if (reinforcements.length === 0 && dations.length === 0) {
+  if (description === '' && reinforcements.length === 0 && dations.length === 0) {
     return null
   }
 
-  return { reinforcements, dations }
+  return {
+    ...(description !== '' ? { description } : {}),
+    reinforcements,
+    dations,
+  }
 }
 
 export function expandProposalModules(markdown: string, values: Record<string, string>): string {

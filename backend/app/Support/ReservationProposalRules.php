@@ -20,6 +20,7 @@ class ReservationProposalRules
             'party_kind' => ['required', Rule::enum(PartyKind::class)],
             'payment_terms' => ['required', 'string', 'max:20000'],
             'commercial_terms' => ['sometimes', 'nullable', 'array'],
+            'commercial_terms.description' => ['sometimes', 'nullable', 'string', 'max:20000'],
             'commercial_terms.reinforcements' => ['sometimes', 'array', 'max:30'],
             'commercial_terms.reinforcements.*.amount' => ['nullable', 'string', 'max:40'],
             'commercial_terms.reinforcements.*.due_on' => ['nullable', 'string', 'max:20'],

@@ -10,6 +10,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import { Textarea } from '@/components/ui/textarea'
 import type { ContractCustomVariable } from '@/lib/api'
 
 type ProposalTermsFieldsProps = {
@@ -31,23 +33,39 @@ export function ProposalTermsFields({
   disabled = false,
   onChange,
 }: ProposalTermsFieldsProps) {
+  const showReinforcements = bodyHas(body, isReinforcementModuleLine)
+  const showDations = bodyHas(body, isDationModuleLine)
+
   return (
     <>
       {variables.map((variable) => (
         <Field key={variable.slug}>
           <FieldLabel htmlFor={`proposal-${variable.slug}`}>{variable.label}</FieldLabel>
-          <Input
-            id={`proposal-${variable.slug}`}
-            value={values[variable.slug] ?? ''}
-            disabled={disabled}
-            onChange={(event) => onChange(variable.slug, event.target.value)}
-          />
+          {variable.multiline ? (
+            <Textarea
+              id={`proposal-${variable.slug}`}
+              className="min-h-28"
+              placeholder={variable.placeholder}
+              value={values[variable.slug] ?? ''}
+              disabled={disabled}
+              onChange={(event) => onChange(variable.slug, event.target.value)}
+            />
+          ) : (
+            <Input
+              id={`proposal-${variable.slug}`}
+              value={values[variable.slug] ?? ''}
+              disabled={disabled}
+              onChange={(event) => onChange(variable.slug, event.target.value)}
+            />
+          )}
         </Field>
       ))}
-      {bodyHas(body, isReinforcementModuleLine) ? (
+      {variables.length > 0 && (showReinforcements || showDations) ? <Separator /> : null}
+      {showReinforcements ? (
         <ReinforcementFields values={values} disabled={disabled} onChange={onChange} />
       ) : null}
-      {bodyHas(body, isDationModuleLine) ? (
+      {showReinforcements && showDations ? <Separator /> : null}
+      {showDations ? (
         <DationFields values={values} disabled={disabled} onChange={onChange} />
       ) : null}
     </>

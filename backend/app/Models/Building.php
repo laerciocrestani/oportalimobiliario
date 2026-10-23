@@ -100,14 +100,30 @@ class Building extends Model
         return $this->hasMany(BuildingMedia::class);
     }
 
+    /**
+     * Unidade disponível de menor preço.
+     *
+     * Não usa ofMany(): o desempate agrega MAX(id) e o PostgreSQL não tem max(uuid).
+     */
     public function cheapestAvailableUnit(): HasOne
     {
-        return $this->hasOne(Unit::class)->ofMany(
-            ['price' => 'min'],
-            fn (Builder $query) => $query
-                ->where('status', UnitStatus::Available)
-                ->whereNotNull('price'),
-        );
+        $table = (new Unit)->getTable();
+
+        return $this->hasOne(Unit::class)
+            ->where("{$table}.status", UnitStatus::Available)
+            ->whereNotNull("{$table}.price")
+            ->whereRaw(
+                "{$table}.id = (
+                    select cheapest.id
+                    from {$table} as cheapest
+                    where cheapest.building_id = {$table}.building_id
+                      and cheapest.status = ?
+                      and cheapest.price is not null
+                    order by cheapest.price asc, cheapest.id asc
+                    limit 1
+                )",
+                [UnitStatus::Available->value],
+            );
     }
 
     public function publicCoverMedia(): HasOne

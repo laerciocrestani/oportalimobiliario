@@ -180,18 +180,31 @@ export function BuilderProposalDecisionPanel({
           </div>
 
           {requiredSlugs.map((slug) => {
-            const label = preview?.custom_variables.find((variable) => variable.slug === slug)?.label ?? slug
+            const variable = preview?.custom_variables.find((item) => item.slug === slug)
+            const label = variable?.label ?? slug
 
             return (
               <Field key={slug}>
                 <FieldLabel htmlFor={`proposal-value-${slug}`}>{label}</FieldLabel>
-                <Input
-                  id={`proposal-value-${slug}`}
-                  value={values[slug] ?? ''}
-                  onChange={(event) =>
-                    setValues((current) => ({ ...current, [slug]: event.target.value }))
-                  }
-                />
+                {variable?.multiline ? (
+                  <Textarea
+                    id={`proposal-value-${slug}`}
+                    className="min-h-28"
+                    placeholder={variable.placeholder}
+                    value={values[slug] ?? ''}
+                    onChange={(event) =>
+                      setValues((current) => ({ ...current, [slug]: event.target.value }))
+                    }
+                  />
+                ) : (
+                  <Input
+                    id={`proposal-value-${slug}`}
+                    value={values[slug] ?? ''}
+                    onChange={(event) =>
+                      setValues((current) => ({ ...current, [slug]: event.target.value }))
+                    }
+                  />
+                )}
               </Field>
             )
           })}

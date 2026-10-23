@@ -289,7 +289,13 @@ describe('BrokerReservationDialog', () => {
           { slug: 'nome_cliente', label: 'Nome do cliente' },
           { slug: 'telefone_cliente', label: 'Telefone do cliente' },
           { slug: 'email_cliente', label: 'E-mail do cliente' },
-          { slug: 'condicoes_pagamento', label: 'Condições de pagamento' },
+          {
+            slug: 'condicoes_pagamento',
+            label: 'Descreva as condições de pagamento',
+            required: true,
+            multiline: true,
+            placeholder: 'Entrada de R$ 50.000, primeiro vencimento em 10/12/2026. Total dos reforços e observações.',
+          },
         ],
         prefill: {
           nome_cliente: attachedClient.name,
@@ -319,13 +325,14 @@ describe('BrokerReservationDialog', () => {
       />,
     )
 
-    expect(await screen.findByLabelText('Condições de pagamento')).toBeInTheDocument()
+    expect(await screen.findByLabelText('Descreva as condições de pagamento')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/Entrada de R\$ 50\.000/)).toBeInTheDocument()
     expect(screen.queryByRole('combobox', { name: 'Modelo da construtora' })).not.toBeInTheDocument()
     expect(screen.getByDisplayValue('Ana Silva')).toBeInTheDocument()
     expect(screen.queryByLabelText('Nome do cliente')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Enviar proposta' })).toBeDisabled()
 
-    await user.type(screen.getByLabelText('Condições de pagamento'), 'Entrada de R$ 50.000 + 24x')
+    await user.type(screen.getByLabelText('Descreva as condições de pagamento'), 'Entrada de R$ 50.000 + 24x')
     await fillIndividualBuyer(user)
 
     const file = new File(['proposta'], 'proposta.pdf', { type: 'application/pdf' })
@@ -341,6 +348,11 @@ describe('BrokerReservationDialog', () => {
           client_email: 'ana@example.com',
           ...buyerPayload,
           payment_terms: 'Proponente: Ana Silva, telefone (11) 88888-8888, e-mail ana@example.com.\n\nCondições: Entrada de R$ 50.000 + 24x.',
+          commercial_terms: {
+            description: 'Entrada de R$ 50.000 + 24x',
+            reinforcements: [],
+            dations: [],
+          },
           deposit_kind: 'pix',
         },
         [file],

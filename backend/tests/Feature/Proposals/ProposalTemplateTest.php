@@ -64,10 +64,15 @@ it('replaces custom proposal templates with the commercial proposal', function (
         ->assertJsonPath('0.name', CommercialProposalTemplate::NAME)
         ->assertJsonPath('0.prefill.nome_cliente', 'Ana Silva');
 
-    expect($response->json('0.body_markdown'))->toContain('{reforcos}', '{dacoes}');
+    expect($response->json('0.body_markdown'))
+        ->toContain('{{condicoes_pagamento}}')
+        ->toContain('{reforcos}')
+        ->toContain('{dacoes}')
+        ->not->toContain('valor_entrada');
     expect(collect($response->json('0.variables'))->pluck('slug')->all())
-        ->toContain('valor_entrada')
-        ->not->toContain('comissao_extra');
+        ->toContain('condicoes_pagamento')
+        ->not->toContain('comissao_extra')
+        ->not->toContain('valor_entrada');
 
     expect(ProposalTemplate::query()->withoutGlobalScope('tenant')->where('tenant_id', $tenant->id)->count())->toBe(1);
     expect(ProposalTemplate::query()->withoutGlobalScope('tenant')->find($foreign->id)?->name)->toBe('Outra construtora');

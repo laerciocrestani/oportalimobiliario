@@ -4408,8 +4408,13 @@ components:
         commercial_terms:
           type: object
           nullable: true
-          description: Structured reinforcements and dations. payment_terms stays the readable text.
+          description: Payment description plus structured reinforcements and dations. payment_terms stays the readable text.
           properties:
+            description:
+              type: string
+              nullable: true
+              maxLength: 20000
+              description: Free-text payment conditions written by the broker.
             reinforcements:
               type: array
               maxItems: 30
@@ -4486,6 +4491,12 @@ components:
               required:
                 type: boolean
                 description: False when the placeholder is written as {{slug?}}
+              multiline:
+                type: boolean
+                description: True when the broker should fill this variable in a textarea
+              placeholder:
+                type: string
+                description: Example shown in the empty field
         prefill:
           type: object
           additionalProperties:

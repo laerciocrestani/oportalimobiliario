@@ -175,4 +175,14 @@ describe('commercialTermsFromValues', () => {
   it('returns null when every row is blank', () => {
     expect(commercialTermsFromValues({})).toBeNull()
   })
+
+  it('keeps the payment description when the rows are blank', () => {
+    expect(commercialTermsFromValues({
+      condicoes_pagamento: 'Entrada de R$ 50.000, primeiro vencimento em 10/12/2026.',
+    })).toEqual({
+      description: 'Entrada de R$ 50.000, primeiro vencimento em 10/12/2026.',
+      reinforcements: [],
+      dations: [],
+    })
+  })
 })

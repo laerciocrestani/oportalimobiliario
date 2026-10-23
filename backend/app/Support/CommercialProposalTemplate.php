@@ -12,6 +12,8 @@ class CommercialProposalTemplate
 {
     public const NAME = 'Proposta comercial padrão';
 
+    public const PAYMENT_PLACEHOLDER = "Entrada de R$ 50.000, vencimento em 10/11/2026.\n24x de R$ 8.000, total R$ 192.000, primeiro vencimento em 10/12/2026.\nTotal dos reforços: R$ 30.000.\nObservações: condições especiais desta proposta.";
+
     public static function body(): string
     {
         return <<<'MD'
@@ -51,11 +53,9 @@ class CommercialProposalTemplate
 
 {bloco_preco_vaga}
 
-**Valor de entrada:** R$ {{valor_entrada}} · **Venc.:** {{vencimento_entrada?}}
+### Condições de pagamento
 
-**Parcelas:** {{parcelas_quantidade}} x R$ {{parcela_valor}} (R$ {{parcelas_total?}})
-
-**Primeiro venc.:** {{primeiro_vencimento?}}
+{{condicoes_pagamento}}
 
 {correcao_parcelas}
 
@@ -63,13 +63,9 @@ class CommercialProposalTemplate
 
 {reforcos}
 
-**Total:** R$ {{reforcos_total?}}
-
 {correcao_reforcos}
 
 {dacoes}
-
-**OBS:** {{observacoes?}}
 
 ---
 
@@ -86,14 +82,12 @@ MD;
             ['slug' => 'profissao_cliente', 'label' => 'Profissão'],
             ['slug' => 'box', 'label' => 'Box'],
             ['slug' => 'imobiliaria', 'label' => 'Imobiliária'],
-            ['slug' => 'valor_entrada', 'label' => 'Valor de entrada'],
-            ['slug' => 'vencimento_entrada', 'label' => 'Vencimento da entrada'],
-            ['slug' => 'parcelas_quantidade', 'label' => 'Qtd.'],
-            ['slug' => 'parcela_valor', 'label' => 'Valor'],
-            ['slug' => 'parcelas_total', 'label' => 'Total'],
-            ['slug' => 'primeiro_vencimento', 'label' => 'Primeiro vencimento'],
-            ['slug' => 'reforcos_total', 'label' => 'Total dos reforços'],
-            ['slug' => 'observacoes', 'label' => 'Observações'],
+            [
+                'slug' => 'condicoes_pagamento',
+                'label' => 'Descreva as condições de pagamento',
+                'multiline' => true,
+                'placeholder' => self::PAYMENT_PLACEHOLDER,
+            ],
         ];
     }
 

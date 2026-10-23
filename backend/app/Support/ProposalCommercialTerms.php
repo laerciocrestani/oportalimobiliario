@@ -9,7 +9,7 @@ final class ProposalCommercialTerms
 {
     /**
      * @param  array<string, mixed>|null  $input
-     * @return array{reinforcements: list<array{amount: string|null, due_on: string|null}>, dations: list<string>}|null
+     * @return array{description?: string, reinforcements: list<array{amount: string|null, due_on: string|null}>, dations: list<string>}|null
      */
     public static function normalize(?array $input): ?array
     {
@@ -78,14 +78,23 @@ final class ProposalCommercialTerms
             }
         }
 
-        if ($reinforcements === [] && $dations === []) {
+        $description = trim(strip_tags((string) ($input['description'] ?? '')));
+        $description = trim(preg_replace('/[ \t]+/u', ' ', $description) ?? $description);
+
+        if ($reinforcements === [] && $dations === [] && $description === '') {
             return null;
         }
 
-        return [
+        $terms = [
             'reinforcements' => $reinforcements,
             'dations' => $dations,
         ];
+
+        if ($description !== '') {
+            $terms['description'] = $description;
+        }
+
+        return $terms;
     }
 
     private static function money(string $value): ?string

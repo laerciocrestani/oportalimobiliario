@@ -61,6 +61,27 @@ it('resolves system values from the latest proposal and unit', function () {
         ->and($values['data_emissao'])->toMatch('/^\d{2}\/\d{2}\/\d{4}$/');
 });
 
+it('uses the payment description when the proposal stored one', function () {
+    $tenant = Tenant::factory()->create();
+    $unit = Unit::factory()->for($tenant)->create();
+    $reservation = Reservation::factory()->for($tenant)->create([
+        'unit_id' => $unit->id,
+    ]);
+
+    ReservationProposal::factory()->create([
+        'reservation_id' => $reservation->id,
+        'payment_terms' => 'Documento completo da proposta',
+        'commercial_terms' => [
+            'description' => 'Entrada de R$ 50.000, primeiro vencimento em 10/12/2026.',
+            'reinforcements' => [],
+            'dations' => [],
+        ],
+    ]);
+
+    expect((new ContractVariableResolver)->systemValues($reservation)['condicoes_pagamento'])
+        ->toBe('Entrada de R$ 50.000, primeiro vencimento em 10/12/2026.');
+});
+
 it('treats a placeholder marked with ? as optional', function () {
     $resolver = new ContractVariableResolver;
 

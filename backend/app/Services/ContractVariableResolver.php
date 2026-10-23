@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ContractTemplate;
 use App\Models\Reservation;
+use App\Models\ReservationProposal;
 use App\Support\ContractSystemVariables;
 use Illuminate\Support\Number;
 
@@ -99,7 +100,7 @@ class ContractVariableResolver
             'correcao_modo' => $unit?->building?->price_mode?->value ?? 'incc',
             'preco_final' => $this->formatMoney($price),
             'valor_terreno' => $this->formatMoney($proposal?->land_value),
-            'condicoes_pagamento' => $this->string($proposal?->payment_terms),
+            'condicoes_pagamento' => $this->paymentConditions($proposal),
             'nome_corretor' => $this->string($reservation->broker?->name),
             'data_emissao' => now('America/Sao_Paulo')->format('d/m/Y'),
         ];
@@ -165,6 +166,18 @@ class ContractVariableResolver
         $values['preco_final'] = $this->formatMoney($finalPriceBrl);
 
         return $values;
+    }
+
+    private function paymentConditions(?ReservationProposal $proposal): string
+    {
+        $terms = $proposal?->commercial_terms;
+        $description = is_array($terms) ? trim((string) ($terms['description'] ?? '')) : '';
+
+        if ($description !== '') {
+            return $description;
+        }
+
+        return $this->string($proposal?->payment_terms);
     }
 
     private function string(mixed $value): string

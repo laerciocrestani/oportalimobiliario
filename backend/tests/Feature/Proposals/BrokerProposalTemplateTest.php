@@ -8,6 +8,7 @@ use App\Models\Tenant;
 use App\Models\Unit;
 use App\Models\UnitAccess;
 use App\Models\User;
+use App\Support\CommercialProposalTemplate;
 use Laravel\Sanctum\Sanctum;
 
 it('lists active proposal templates of the building owner for the broker', function () {
@@ -49,15 +50,27 @@ it('lists active proposal templates of the building owner for the broker', funct
         ->assertJsonPath('0.prefill.nome_cliente', 'Ana Silva')
         ->assertJsonPath('0.prefill.telefone_cliente', '11988888888')
         ->assertJsonPath('0.prefill.email_cliente', 'ana@example.com')
-        ->assertJsonMissingPath('0.prefill.valor_entrada');
+        ->assertJsonMissingPath('0.prefill.condicoes_pagamento');
 
-    $entrada = collect($response->json('0.variables'))->firstWhere('slug', 'valor_entrada');
+    $condicoes = collect($response->json('0.variables'))->firstWhere('slug', 'condicoes_pagamento');
 
-    expect($entrada)->toMatchArray([
-        'slug' => 'valor_entrada',
-        'label' => 'Valor de entrada',
+    expect($condicoes)->toMatchArray([
+        'slug' => 'condicoes_pagamento',
+        'label' => 'Descreva as condições de pagamento',
         'required' => true,
-    ]);
+        'multiline' => true,
+        'placeholder' => CommercialProposalTemplate::PAYMENT_PLACEHOLDER,
+    ])
+        ->and(collect($response->json('0.variables'))->pluck('slug')->all())->not->toContain(
+            'valor_entrada',
+            'vencimento_entrada',
+            'parcelas_quantidade',
+            'parcela_valor',
+            'parcelas_total',
+            'primeiro_vencimento',
+            'reforcos_total',
+            'observacoes',
+        );
 });
 
 it('prefills the unit code and the building name used in the template', function () {
@@ -123,7 +136,7 @@ it('marks optional placeholders and prefills price, broker and issue date', func
 
     $variables = collect($response->json('0.variables'))->keyBy('slug');
 
-    expect($variables->get('valor_entrada')['required'])->toBeTrue()
+    expect($variables->get('condicoes_pagamento')['required'])->toBeTrue()
         ->and($variables->keys()->all())->not->toContain(
             'box',
             'nome_corretor',

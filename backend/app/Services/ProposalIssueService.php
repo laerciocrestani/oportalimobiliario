@@ -56,7 +56,7 @@ class ProposalIssueService
     /**
      * Modelos ativos da construtora dona da reserva, para o corretor preencher no envio.
      *
-     * @return list<array{id: int, name: string, body_markdown: string, variables: list<array{slug: string, label: string}>, prefill: object}>
+     * @return list<array{id: int, name: string, body_markdown: string, variables: list<array{slug: string, label: string, required: bool, placeholder?: string, multiline?: bool}>, prefill: object}>
      */
     public function listForBroker(Reservation $reservation): array
     {
@@ -98,15 +98,12 @@ class ProposalIssueService
             ->get()
             ->map(function (ProposalTemplate $template) use ($systemValues, $catalog, $autoSlugs, $contextSlugs): array {
                 $optional = array_flip($this->resolver->optionalPlaceholderSlugs($template->body_markdown));
-                $customLabels = collect($template->custom_variables ?? [])
-                    ->mapWithKeys(function (mixed $variable): array {
-                        if (! is_array($variable)) {
-                            return [];
-                        }
-
+                $customBySlug = collect($template->custom_variables ?? [])
+                    ->filter(fn (mixed $variable): bool => is_array($variable))
+                    ->mapWithKeys(function (array $variable): array {
                         $slug = (string) ($variable['slug'] ?? '');
 
-                        return $slug === '' ? [] : [$slug => (string) ($variable['label'] ?? '')];
+                        return $slug === '' ? [] : [$slug => $variable];
                     });
 
                 $variables = [];
@@ -125,16 +122,31 @@ class ProposalIssueService
                         continue;
                     }
 
-                    $customLabel = $customLabels->get($slug);
+                    $custom = $customBySlug->get($slug);
+                    $customLabel = is_array($custom) ? (string) ($custom['label'] ?? '') : '';
                     $catalogEntry = $catalog->get($slug);
                     $catalogLabel = is_array($catalogEntry) ? ($catalogEntry['label'] ?? null) : null;
-                    $variables[] = [
+                    $variable = [
                         'slug' => $slug,
-                        'label' => (is_string($customLabel) && $customLabel !== '')
+                        'label' => $customLabel !== ''
                             ? $customLabel
                             : (is_string($catalogLabel) && $catalogLabel !== '' ? $catalogLabel : str_replace('_', ' ', $slug)),
                         'required' => ! isset($optional[$slug]),
                     ];
+
+                    if (is_array($custom)) {
+                        $placeholder = trim((string) ($custom['placeholder'] ?? ''));
+
+                        if ($placeholder !== '') {
+                            $variable['placeholder'] = $placeholder;
+                        }
+
+                        if (($custom['multiline'] ?? false) === true) {
+                            $variable['multiline'] = true;
+                        }
+                    }
+
+                    $variables[] = $variable;
                 }
 
                 $mode = trim((string) ($systemValues['correcao_modo'] ?? ''));

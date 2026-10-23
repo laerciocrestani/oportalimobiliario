@@ -67,6 +67,8 @@ export type UnitResolvedDefaults = {
 export type ContractCustomVariable = {
   slug: string
   label: string
+  placeholder?: string
+  multiline?: boolean
 }
 
 export type ContractTemplate = {
@@ -609,6 +611,7 @@ export type ReservationContractDataInput = {
 export type ProposalPartyKind = 'individual' | 'company'
 
 export type ProposalCommercialTerms = {
+  description?: string | null
   reinforcements: Array<{ amount: string | null; due_on: string | null }>
   dations: string[]
 }
@@ -1375,6 +1378,10 @@ export const brokerApi = {
 
     if (data.spouse_cpf) {
       formData.append('spouse_cpf', data.spouse_cpf)
+    }
+
+    if (data.commercial_terms?.description) {
+      formData.append('commercial_terms[description]', data.commercial_terms.description)
     }
 
     data.commercial_terms?.reinforcements.forEach((row, index) => {

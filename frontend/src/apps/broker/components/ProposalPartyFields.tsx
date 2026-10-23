@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { ContactRoundIcon, UsersIcon } from 'lucide-react'
+import { ProposalSectionTitle } from '@/apps/broker/components/ProposalSectionTitle'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -99,13 +101,15 @@ export function ProposalPartyFields({
 
   return (
     <fieldset className="flex flex-col gap-4" disabled={disabled}>
-      <legend className="text-base font-semibold">Dados do comprador</legend>
+      <legend>
+        <ProposalSectionTitle icon={ContactRoundIcon}>Dados do comprador</ProposalSectionTitle>
+      </legend>
       <p className="text-sm text-muted-foreground">
         Informe os dados para identificar o comprador na proposta.
       </p>
       <div className="flex flex-col gap-4 rounded-lg border bg-muted p-4">
       <div className="flex flex-col gap-2">
-        <p className="text-sm font-medium">Tipo de comprador</p>
+        <ProposalSectionTitle icon={UsersIcon}>Tipo de comprador</ProposalSectionTitle>
         <div className="grid grid-cols-2 gap-3">
           <label
             className={cn(

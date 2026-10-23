@@ -1,0 +1,348 @@
+---
+import {
+  compareUnitValues,
+  detailHref,
+  fold,
+  formatArea,
+  formatBrl,
+  formatFloor,
+  nextOrdem,
+  showsIncc,
+  statusLabel,
+  unitCounter,
+  unitMatches,
+  type DetailQuery,
+  type ModeloUnit,
+  type UnitColumn,
+} from '@/lib/modelo'
+
+interface Props {
+  units: ModeloUnit[]
+  columns: UnitColumn[]
+  query: DetailQuery
+  path: string
+  bedroomChoices: number[]
+  amenityNames: string[]
+  hasFloor: boolean
+  hasPrice: boolean
+}
+
+const { units, columns, query, path, bedroomChoices, amenityNames, hasFloor, hasPrice } = Astro.props
+
+const ordered = [...units].sort((a, b) =>
+  compareUnitValues(
+    { index: a.index, code: a.code, floor: a.floor, area: a.privateAreaM2, price: a.price },
+    { index: b.index, code: b.code, floor: b.floor, area: b.privateAreaM2, price: b.price },
+    query.ordem,
+  ),
+)
+const visible = ordered.filter((unit) => unitMatches(unit, query))
+const filtersActive = Boolean(
+  query.codigo ||
+    query.dorms != null ||
+    query.andarDe != null ||
+    query.andarAte != null ||
+    query.ate != null ||
+    query.diferencial,
+)
+
+const labels: Record<UnitColumn, string> = {
+  code: 'Código',
+  floor: 'Andar',
+  privateArea: 'Área privativa',
+  bedrooms: 'Dormitórios',
+  suites: 'Suítes',
+  bathrooms: 'Banheiros',
+  amenities: 'Diferenciais',
+  price: 'Preço',
+}
+
+const sortKeys: Partial<Record<UnitColumn, 'codigo' | 'andar' | 'area' | 'preco'>> = {
+  code: 'codigo',
+  floor: 'andar',
+  privateArea: 'area',
+  price: 'preco',
+}
+
+function ariaSort(column: UnitColumn): 'ascending' | 'descending' | 'none' | undefined {
+  const key = sortKeys[column]
+
+  if (!key) {
+    return undefined
+  }
+
+  if (query.ordem === `${key}-asc`) {
+    return 'ascending'
+  }
+
+  if (query.ordem === `${key}-desc`) {
+    return 'descending'
+  }
+
+  return 'none'
+}
+
+function priceText(unit: ModeloUnit): string {
+  return unit.price == null ? 'Valor sob consulta' : formatBrl(unit.price)
+}
+
+const clearHref = detailHref(path, query, {
+  codigo: '',
+  dorms: null,
+  andarDe: null,
+  andarAte: null,
+  ate: null,
+  diferencial: '',
+})
+---
+
+<div data-modelo-units>
+  <form id="modelo-unidades" method="get" action={path}>
+    <div class="modelo-tools">
+      <label>
+        <span>Buscar por código</span>
+        <input name="codigo" value={query.codigo} autocomplete="off" />
+      </label>
+      {
+        bedroomChoices.length > 0 && (
+          <div>
+            <span class="modelo-field-label">Dormitórios</span>
+            <div class="modelo-choice-row" role="group" aria-label="Dormitórios">
+              {bedroomChoices.map((bedrooms) => (
+                <a
+                  class="modelo-choice"
+                  href={detailHref(path, query, { dorms: query.dorms === bedrooms ? null : bedrooms })}
+                  data-filter="dorms"
+                  data-value={bedrooms}
+                  aria-pressed={query.dorms === bedrooms ? 'true' : 'false'}
+                >
+                  {bedrooms}
+                </a>
+              ))}
+            </div>
+          </div>
+        )
+      }
+      {
+        hasFloor && (
+          <fieldset class="modelo-floor">
+            <legend>Faixa de andar</legend>
+            <label>
+              <span>Andar de</span>
+              <input name="andar-de" inputmode="numeric" value={query.andarDe ?? ''} />
+            </label>
+            <label>
+              <span>Andar até</span>
+              <input name="andar-ate" inputmode="numeric" value={query.andarAte ?? ''} />
+            </label>
+          </fieldset>
+        )
+      }
+      {
+        hasPrice && (
+          <label>
+            <span>Preço até</span>
+            <input name="ate" inputmode="numeric" value={query.ate ?? ''} autocomplete="off" />
+          </label>
+        )
+      }
+      {
+        amenityNames.length > 0 && (
+          <div>
+            <span class="modelo-field-label">Diferencial</span>
+            <div class="modelo-choice-row" role="group" aria-label="Diferencial">
+              {amenityNames.map((name) => (
+                <a
+                  class="modelo-choice"
+                  href={detailHref(path, query, {
+                    diferencial: fold(query.diferencial) === fold(name) ? '' : name,
+                  })}
+                  data-filter="diferencial"
+                  data-value={name}
+                  aria-pressed={fold(query.diferencial) === fold(name) ? 'true' : 'false'}
+                >
+                  {name}
+                </a>
+              ))}
+            </div>
+          </div>
+        )
+      }
+    </div>
+  </form>
+
+  <p class="modelo-counter" data-unit-count aria-live="polite">{unitCounter(visible.length, ordered.length)}</p>
+
+  <div class="modelo-empty" data-unit-empty hidden={visible.length !== 0}>
+    <p>Nenhuma unidade com esses critérios.</p>
+    <a class="modelo-button" href={clearHref}>Limpar filtros</a>
+  </div>
+
+  <div class="modelo-table-wrap" hidden={visible.length === 0}>
+    <table class="modelo-table" data-unit-table data-sort={query.ordem ?? ''}>
+      <caption class="modelo-sr">Unidades do empreendimento</caption>
+      <thead>
+        <tr>
+          {
+            columns.map((column) => {
+              const sortKey = sortKeys[column]
+              const sort = ariaSort(column)
+
+              return (
+                <th scope="col" aria-sort={sort} class={column === 'price' ? 'modelo-money' : undefined}>
+                  {sortKey ? (
+                    <a href={detailHref(path, query, { ordem: nextOrdem(query.ordem, sortKey) })} data-sort-key={sortKey}>
+                      {labels[column]}
+                    </a>
+                  ) : (
+                    labels[column]
+                  )}
+                </th>
+              )
+            })
+          }
+          <th scope="col"><span class="modelo-sr">Comparar</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        {
+          ordered.map((unit) => {
+            const label = statusLabel(unit.status)
+            const expanded = query.unidade === unit.code && unit.amenities.length > 2
+
+            return (
+              <tr
+                data-unit
+                data-index={unit.index}
+                data-code={unit.code}
+                data-floor={unit.floor ?? ''}
+                data-area={unit.privateAreaM2 ?? ''}
+                data-price={unit.price ?? ''}
+                data-bedrooms={unit.bedrooms ?? ''}
+                data-amenities={JSON.stringify(unit.amenities)}
+                hidden={!visible.includes(unit)}
+              >
+                {columns.includes('code') && (
+                  <td data-label="Código" data-field="code" data-value={unit.code}>
+                    {unit.code}
+                  </td>
+                )}
+                {columns.includes('floor') && (
+                  <td data-label="Andar" data-field="floor" data-value={unit.floor == null ? '' : formatFloor(unit.floor)}>
+                    {unit.floor == null ? '' : formatFloor(unit.floor)}
+                  </td>
+                )}
+                {columns.includes('privateArea') && (
+                  <td
+                    data-label="Área privativa"
+                    data-field="area"
+                    data-value={unit.privateAreaM2 == null ? '' : formatArea(unit.privateAreaM2)}
+                  >
+                    {unit.privateAreaM2 == null ? '' : formatArea(unit.privateAreaM2)}
+                  </td>
+                )}
+                {columns.includes('bedrooms') && (
+                  <td data-label="Dormitórios" data-field="bedrooms" data-value={unit.bedrooms ?? ''}>
+                    {unit.bedrooms ?? ''}
+                  </td>
+                )}
+                {columns.includes('suites') && (
+                  <td data-label="Suítes" data-field="suites" data-value={unit.suites ?? ''}>
+                    {unit.suites ?? ''}
+                  </td>
+                )}
+                {columns.includes('bathrooms') && (
+                  <td data-label="Banheiros" data-field="bathrooms" data-value={unit.bathrooms ?? ''}>
+                    {unit.bathrooms ?? ''}
+                  </td>
+                )}
+                {columns.includes('amenities') && (
+                  <td data-label="Diferenciais" data-field="amenities" data-value={unit.amenities.join(', ')}>
+                    {unit.amenities.length > 2 ? (
+                      <>
+                        <span>{unit.amenities.slice(0, 2).join(', ')}</span>
+                        <button
+                          type="button"
+                          class="modelo-button modelo-button--quiet"
+                          data-expand-button={unit.code}
+                          aria-expanded={expanded ? 'true' : 'false'}
+                          aria-controls={`diferenciais-${unit.index}`}
+                        >
+                          {expanded ? 'Ocultar diferenciais' : 'Ver diferenciais'}
+                        </button>
+                        <div
+                          id={`diferenciais-${unit.index}`}
+                          class:list={['modelo-expand', { 'is-open': expanded }]}
+                          data-expand-for={unit.code}
+                          inert={!expanded}
+                        >
+                          <div class="modelo-expand__inner">
+                            <ul>
+                              {unit.amenities.map((name) => (
+                                <li>{name}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      unit.amenities.join(', ')
+                    )}
+                  </td>
+                )}
+                {columns.includes('price') && (
+                  <td
+                    class="modelo-money"
+                    data-label="Preço"
+                    data-field="price"
+                    data-value={priceText(unit)}
+                    data-muted={unit.status === 'sold' ? 'true' : 'false'}
+                  >
+                    <span class:list={['modelo-money__value', { 'is-muted': unit.status === 'sold' }]}>
+                      {priceText(unit)}
+                    </span>
+                    {showsIncc(unit) && <span class="modelo-money__note">Valor de tabela corrigido pelo INCC-M.</span>}
+                    <span data-field="status" data-value={label ?? ''} class="modelo-status" hidden={!label}>
+                      {label}
+                    </span>
+                  </td>
+                )}
+                <td class="modelo-actions" data-label="">
+                  <button
+                    type="button"
+                    class="modelo-button modelo-button--quiet"
+                    data-compare={unit.code}
+                    aria-pressed={query.comparar.includes(unit.code) ? 'true' : 'false'}
+                  >
+                    {query.comparar.includes(unit.code) ? 'Na comparação' : 'Comparar'}
+                  </button>
+                </td>
+              </tr>
+            )
+          })
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<style>
+  .modelo-field-label {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: var(--muted);
+    font-size: 0.8125rem;
+  }
+
+  fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  legend {
+    margin-bottom: 0.35rem;
+    color: var(--muted);
+    font-size: 0.8125rem;
+  }
+</style>

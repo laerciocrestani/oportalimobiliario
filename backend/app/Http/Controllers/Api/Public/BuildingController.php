@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Services\UnitPriceCalculator;
 use App\Support\AmenityPresentation;
+use App\Support\BuilderContact;
 use App\Support\BuildingCoverImage;
 use Illuminate\Http\JsonResponse;
 
@@ -31,9 +32,10 @@ class BuildingController extends Controller
             ->with([
                 'cheapestAvailableUnit',
                 'publicCoverMedia',
+                'tenant.builderUsers',
             ])
             ->orderBy('name')
-            ->get(['id', 'slug', 'name', 'description', 'city', 'state', 'seo_title', 'seo_description'])
+            ->get(['id', 'tenant_id', 'slug', 'name', 'description', 'city', 'state', 'seo_title', 'seo_description'])
             ->map(fn (Building $building) => $this->toListArray($building));
 
         return response()->json($buildings);
@@ -47,13 +49,19 @@ class BuildingController extends Controller
 
         $building->load([
             'amenities' => fn ($query) => $query->orderBy('name'),
+            'tenant.builderUsers',
             'units' => fn ($query) => $query
                 ->where('status', 'available')
                 ->with(['amenities' => fn ($amenities) => $amenities->orderBy('name')]),
         ]);
         AmenityPresentation::decorateBuilding($building);
+        $builder = BuilderContact::for($building);
+        $building->unsetRelation('tenant');
 
-        return response()->json($building);
+        return response()->json([
+            ...$building->toArray(),
+            'builder' => $builder,
+        ]);
     }
 
     /**
@@ -93,6 +101,7 @@ class BuildingController extends Controller
                 $building->id,
                 $mediaPrefix,
             ),
+            'builder' => BuilderContact::for($building),
         ];
     }
 }

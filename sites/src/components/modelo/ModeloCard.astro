@@ -1,0 +1,64 @@
+---
+import type { PublicBuildingListItem } from '@/lib/api'
+import { browserMediaUrl, cardMeta, formatBrl, formatPlace, listPrice, unitCount } from '@/lib/modelo'
+
+interface Props {
+  building: PublicBuildingListItem
+  index: number
+  hidden?: boolean
+}
+
+const { building, index, hidden = false } = Astro.props
+const coverUrl = building.cover_image?.url ? browserMediaUrl(building.cover_image.url) : null
+const place = formatPlace(building.city, building.state)
+const price = listPrice(building)
+const cheapest = building.cheapest_unit
+const meta = cheapest ? cardMeta(cheapest) : null
+---
+
+<li
+  data-card
+  data-index={index}
+  data-name={building.name}
+  data-city={building.city ?? ''}
+  data-price={price ?? ''}
+  hidden={hidden}
+>
+  <a class="modelo-card" href={`/modelo/empreendimentos/${encodeURIComponent(building.slug)}`}>
+    <span class="modelo-card__media">
+      {
+        coverUrl ? (
+          <img src={coverUrl} alt={building.name} width="640" height="480" loading="lazy" />
+        ) : (
+          <span class="modelo-card__fallback">{building.name}</span>
+        )
+      }
+      {building.units_count > 0 && <span class="modelo-card__count">{unitCount(building.units_count)}</span>}
+    </span>
+    <span class="modelo-card__body">
+      <h2>{building.name}</h2>
+      {
+        building.builder?.name && (
+          <p class="modelo-card__builder">
+            <span>Comercializado por</span> {building.builder.name}
+          </p>
+        )
+      }
+      {place && <p class="modelo-card__place">{place}</p>}
+      {building.description?.trim() && <p class="modelo-card__text">{building.description}</p>}
+      {
+        price != null ? (
+          <p class="modelo-card__price">
+            <span>A partir de</span>
+            <strong>{formatBrl(price)}</strong>
+          </p>
+        ) : (
+          <p class="modelo-card__price">
+            <strong>Valor sob consulta</strong>
+          </p>
+        )
+      }
+      {meta && <p class="modelo-card__meta">{meta}</p>}
+    </span>
+  </a>
+</li>

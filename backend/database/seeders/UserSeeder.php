@@ -48,8 +48,12 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password'),
                     'role' => 'builder',
                     'tenant_id' => $alpha->id,
+                    'phone' => '1130001001',
                 ],
             );
+            if ($alphaUser->phone === null) {
+                $alphaUser->update(['phone' => '1130001001']);
+            }
             $registrar->setPermissionsTeamId($alpha->id);
             $alphaUser->syncRoles([$builderRole]);
             BuilderPermissions::assign($alphaUser, BuilderPermissions::all());
@@ -95,8 +99,12 @@ class UserSeeder extends Seeder
                     'password' => Hash::make('password'),
                     'role' => 'builder',
                     'tenant_id' => $beta->id,
+                    'phone' => '2130001002',
                 ],
             );
+            if ($betaUser->phone === null) {
+                $betaUser->update(['phone' => '2130001002']);
+            }
             $registrar->setPermissionsTeamId($beta->id);
             $betaUser->syncRoles([$builderRole]);
             BuilderPermissions::assign($betaUser, BuilderPermissions::all());

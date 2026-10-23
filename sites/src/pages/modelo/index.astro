@@ -1,0 +1,205 @@
+---
+import ModeloCard from '@/components/modelo/ModeloCard.astro'
+import ModeloFooter from '@/components/modelo/ModeloFooter.astro'
+import ModeloHeader from '@/components/modelo/ModeloHeader.astro'
+import ModeloLayout from '@/layouts/ModeloLayout.astro'
+import { listBuildings, type PublicBuildingListItem } from '@/lib/api'
+import {
+  compareHome,
+  formatBrl,
+  launchCount,
+  listPrice,
+  matchesCity,
+  matchesPrice,
+  parseHomeQuery,
+  toHomeSearch,
+  uniqueCities,
+  type HomeQuery,
+} from '@/lib/modelo'
+import { modeloHomeSeo, modeloMessageSeo } from '@/lib/modelo-seo'
+
+// A lista pública não traz bedrooms nem coordenadas.
+// O filtro de dormitórios fica na ficha. A alternância Lista / Mapa
+// não entra enquanto latitude e longitude não existirem no contrato.
+
+let buildings: PublicBuildingListItem[] = []
+let loadError = false
+
+try {
+  buildings = await listBuildings()
+} catch {
+  loadError = true
+}
+
+const query: HomeQuery = parseHomeQuery(Astro.url.searchParams)
+const cities = uniqueCities(buildings.map((building) => building.city))
+const hasPrice = buildings.some((building) => listPrice(building) != null)
+const indexed = buildings.map((building, index) => ({
+  building,
+  record: {
+    index,
+    name: building.name,
+    city: building.city,
+    price: listPrice(building),
+  },
+}))
+const ordered = [...indexed].sort((a, b) => compareHome(a.record, b.record, query.ordem))
+const visibleCount = ordered.filter(
+  (item) => matchesCity(item.record.city, query.cidade) && matchesPrice(item.record.price, query.ate),
+).length
+const citiesJson = JSON.stringify(cities).replace(/</g, '\\u003c')
+const seo = loadError
+  ? modeloMessageSeo(
+      Astro.url,
+      'Não foi possível carregar os lançamentos.',
+      'Não foi possível carregar os lançamentos.',
+    )
+  : modeloHomeSeo(Astro.url)
+
+if (loadError) {
+  Astro.response.status = 503
+}
+
+function clearHref(next: HomeQuery): string {
+  const search = toHomeSearch(next)
+
+  return search ? `/modelo${search}` : '/modelo'
+}
+---
+
+<ModeloLayout seo={seo}>
+  <ModeloHeader
+    slot="header"
+    lancamentosHref={buildings.length > 0 && !loadError ? '#lancamentos' : '/modelo'}
+  />
+  {
+    loadError ? (
+      <section class="modelo-message modelo-wrap">
+        <h1>Não foi possível carregar os lançamentos.</h1>
+        <button type="button" class="modelo-button" data-retry>
+          Tentar de novo
+        </button>
+      </section>
+    ) : buildings.length === 0 ? (
+      <section class="modelo-hero">
+        <div class="modelo-wrap">
+          <div class="modelo-hero__panel">
+            <p class="modelo-kicker">Lançamentos</p>
+            <h1>Encontre o empreendimento e a unidade que cabem na sua busca.</h1>
+            <p>Nenhum lançamento publicado no momento.</p>
+          </div>
+        </div>
+      </section>
+    ) : (
+      <div data-modelo-home>
+        <section class="modelo-hero">
+          <div class="modelo-wrap">
+            <div class="modelo-hero__panel">
+            <p class="modelo-kicker">Lançamentos</p>
+            <h1>Encontre o empreendimento e a unidade que cabem na sua busca.</h1>
+            <form id="modelo-busca" class="modelo-search" method="get" action="/modelo">
+              {cities.length > 0 && (
+                <div class="modelo-field modelo-city">
+                  <label class="modelo-sr" for="cidade">Cidade</label>
+                  <input
+                    id="cidade"
+                    name="cidade"
+                    type="search"
+                    value={query.cidade}
+                    placeholder="Busque por cidade"
+                    role="combobox"
+                    autocomplete="off"
+                    aria-autocomplete="list"
+                    aria-expanded="false"
+                    aria-controls="cidade-sugestoes"
+                  />
+                  <ul id="cidade-sugestoes" class="modelo-suggest" role="listbox" hidden />
+                </div>
+              )}
+              <button type="submit" class="modelo-sr">Ver lançamentos</button>
+            </form>
+            </div>
+          </div>
+        </section>
+
+        <div class="modelo-refine">
+          <div class="modelo-wrap modelo-refine__inner">
+            <p class="modelo-count" data-modelo-count aria-live="polite">
+              {launchCount(visibleCount)}
+            </p>
+            <ul class="modelo-chips" data-modelo-chips>
+              {query.cidade && (
+                <li class="modelo-chip">
+                  <span>{query.cidade}</span>
+                  <a href={clearHref({ ...query, cidade: '' })} aria-label={`Remover filtro de cidade ${query.cidade}`}>
+                    Remover
+                  </a>
+                </li>
+              )}
+              {query.ate != null && (
+                <li class="modelo-chip">
+                  <span>Preço até {formatBrl(query.ate)}</span>
+                  <a href={clearHref({ ...query, ate: null })} aria-label="Remover filtro de preço">
+                    Remover
+                  </a>
+                </li>
+              )}
+            </ul>
+            {
+              hasPrice && (
+                <label class="modelo-field modelo-price">
+                  <span>Preço até</span>
+                  <input form="modelo-busca" name="ate" inputmode="numeric" value={query.ate ?? ''} autocomplete="off" />
+                </label>
+              )
+            }
+            <label class="modelo-sort">
+              <span>Ordenar por</span>
+              <select form="modelo-busca" name="ordem" data-modelo-sort onchange="this.form.requestSubmit()">
+                <option value="relevancia" selected={query.ordem === 'relevancia'}>
+                  Relevância
+                </option>
+                <option value="menor-preco" selected={query.ordem === 'menor-preco'}>
+                  Menor preço
+                </option>
+                <option value="maior-preco" selected={query.ordem === 'maior-preco'}>
+                  Maior preço
+                </option>
+                <option value="nome" selected={query.ordem === 'nome'}>
+                  Nome
+                </option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <section id="lancamentos" class="modelo-listings" tabindex="-1" aria-labelledby="lancamentos-titulo">
+          <div class="modelo-wrap">
+            <h2 id="lancamentos-titulo" class="modelo-sr">Lançamentos</h2>
+            <ul class="modelo-grid" data-modelo-grid hidden={visibleCount === 0}>
+              {ordered.map((item) => (
+                <ModeloCard
+                  building={item.building}
+                  index={item.record.index}
+                  hidden={!matchesCity(item.record.city, query.cidade) || !matchesPrice(item.record.price, query.ate)}
+                />
+              ))}
+            </ul>
+            <div class="modelo-empty" data-modelo-empty hidden={visibleCount !== 0}>
+              <p>Nenhum lançamento com esses critérios.</p>
+              <a class="modelo-button" href="/modelo">Limpar filtros</a>
+            </div>
+          </div>
+        </section>
+        <script type="application/json" id="modelo-cities" is:inline set:html={citiesJson} />
+      </div>
+    )
+  }
+  <ModeloFooter slot="footer" />
+</ModeloLayout>
+
+<script>
+  import { initModeloHome } from '@/scripts/modelo-home'
+
+  initModeloHome()
+</script>

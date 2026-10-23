@@ -1,0 +1,358 @@
+---
+import ModeloFooter from '@/components/modelo/ModeloFooter.astro'
+import ModeloHeader from '@/components/modelo/ModeloHeader.astro'
+import ModeloUnits from '@/components/modelo/ModeloUnits.astro'
+import ModeloLayout from '@/layouts/ModeloLayout.astro'
+import {
+  PublicApiError,
+  browserApiUrl,
+  getBuildingBySlug,
+  listBuildings,
+  type PublicBuildingDetail,
+  type PublicBuildingListItem,
+} from '@/lib/api'
+import {
+  bedroomOptions,
+  browserMediaUrl,
+  buildingFacts,
+  descriptionParagraphs,
+  distinctAmenities,
+  formatBrl,
+  formatPhone,
+  formatPlace,
+  lowestPrice,
+  phoneHref,
+  normalizeUnit,
+  parseDetailQuery,
+  visibleColumns,
+} from '@/lib/modelo'
+import { modeloBuildingSeo, modeloMessageSeo } from '@/lib/modelo-seo'
+
+const slug = Astro.params.slug
+let detail: PublicBuildingDetail | null = null
+let listItem: PublicBuildingListItem | null = null
+let notFound = !slug
+let loadError = false
+
+if (slug) {
+  const [detailResult, listResult] = await Promise.allSettled([getBuildingBySlug(slug), listBuildings()])
+
+  if (detailResult.status === 'fulfilled') {
+    detail = detailResult.value
+  } else if (detailResult.reason instanceof PublicApiError && detailResult.reason.status === 404) {
+    notFound = true
+  } else {
+    loadError = true
+  }
+
+  if (listResult.status === 'fulfilled' && detail) {
+    listItem = listResult.value.find((item) => item.slug === detail?.slug) ?? null
+  }
+}
+
+const backHref = listBackHref(Astro.request)
+const query = parseDetailQuery(Astro.url.searchParams)
+
+if (notFound) {
+  Astro.response.status = 404
+}
+
+if (loadError) {
+  Astro.response.status = 503
+}
+
+const units = (detail?.units ?? []).map((unit, index) => normalizeUnit(unit, index))
+const facts = buildingFacts(units)
+const paragraphs = descriptionParagraphs(detail?.description)
+const amenityNames = distinctAmenities(units)
+const coverPath = detail?.cover_image?.url ?? listItem?.cover_image?.url ?? null
+const coverUrl = coverPath ? browserMediaUrl(coverPath) : null
+const place = formatPlace(detail?.city, detail?.state)
+const builder = detail?.builder ?? listItem?.builder ?? null
+const builderPhone = formatPhone(builder?.phone)
+const fromPrice = lowestPrice(units)
+const hasOverview = paragraphs.length > 0 || facts.length > 0 || Boolean(coverUrl)
+const toc = [
+  hasOverview ? { href: '#visao-geral', label: 'Visão geral' } : null,
+  { href: '#unidades', label: 'Unidades' },
+  amenityNames.length > 0 ? { href: '#diferenciais', label: 'Diferenciais' } : null,
+].filter((item): item is { href: string; label: string } => item !== null)
+
+const seo = detail
+  ? modeloBuildingSeo(detail, Astro.url)
+  : modeloMessageSeo(
+      Astro.url,
+      notFound ? 'Lançamento não encontrado' : 'Não foi possível carregar os lançamentos.',
+      notFound
+        ? 'Este endereço não corresponde a um empreendimento publicado.'
+        : 'Não foi possível carregar os lançamentos.',
+    )
+
+if (detail && coverUrl) {
+  seo.ogImage = coverUrl
+}
+
+const path = detail ? `/modelo/empreendimentos/${encodeURIComponent(detail.slug)}` : '/modelo'
+
+function listBackHref(request: Request): string {
+  const referer = request.headers.get('referer')
+
+  if (!referer) {
+    return '/modelo#lancamentos'
+  }
+
+  try {
+    const url = new URL(referer)
+
+    if (url.pathname === '/modelo') {
+      return `/modelo${url.search}#lancamentos`
+    }
+  } catch {
+    return '/modelo#lancamentos'
+  }
+
+  return '/modelo#lancamentos'
+}
+---
+
+<ModeloLayout seo={seo}>
+  <ModeloHeader slot="header" lancamentosHref={backHref} restoreList />
+  {
+    notFound ? (
+      <section class="modelo-message modelo-wrap">
+        <h1>Lançamento não encontrado.</h1>
+        <p>Este endereço não corresponde a um empreendimento publicado.</p>
+        <a class="modelo-button" href="/modelo">Lançamentos</a>
+      </section>
+    ) : loadError || !detail ? (
+      <section class="modelo-message modelo-wrap">
+        <h1>Não foi possível carregar os lançamentos.</h1>
+        <button type="button" class="modelo-button" data-retry>
+          Tentar de novo
+        </button>
+      </section>
+    ) : (
+      <>
+        <article class="modelo-building modelo-wrap modelo-wrap--wide" data-modelo-building data-building-slug={detail.slug}>
+          <a class="modelo-back" href={backHref} data-modelo-back>Lançamentos</a>
+          <header>
+            <h1>{detail.name}</h1>
+            {place && <p class="modelo-place">{place}</p>}
+            {
+              builder?.name && (
+                <p class="modelo-builder">
+                  <span>Comercializado por</span> {builder.name}
+                </p>
+              )
+            }
+            {
+              builder?.name && (
+                <button type="button" class="modelo-button modelo-button--wrap" data-contact-open>
+                  Solicitar acesso para comercializar esse empreendimento
+                </button>
+              )
+            }
+          </header>
+          <nav class="modelo-anchors" data-modelo-toc aria-label="Nesta página">
+            {toc.map((item, index) => (
+              <a href={item.href} aria-current={index === 0 ? 'location' : undefined}>
+                {item.label}
+              </a>
+            ))}
+          </nav>
+          <div class="modelo-sheet">
+            <aside class="modelo-toc" data-modelo-toc aria-label="Nesta página">
+              {toc.map((item, index) => (
+                <a href={item.href} aria-current={index === 0 ? 'location' : undefined}>
+                  {item.label}
+                </a>
+              ))}
+            </aside>
+            <div>
+              {
+                hasOverview && (
+                  <section id="visao-geral" class="modelo-section">
+                    <h2>Visão geral</h2>
+                    {paragraphs.length > 0 && (
+                      <div class="modelo-prose">
+                        {paragraphs.map((paragraph) => (
+                          <p>{paragraph}</p>
+                        ))}
+                      </div>
+                    )}
+                    {facts.length > 0 && (
+                      <dl class="modelo-facts">
+                        {facts.map((fact) => (
+                          <div>
+                            <dt>{fact.label}</dt>
+                            <dd>{fact.value}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
+                    {coverUrl && (
+                      <figure class="modelo-gallery">
+                        <button type="button" data-lightbox-open aria-haspopup="dialog">
+                          <img src={coverUrl} alt={detail.name} width="1200" height="900" />
+                        </button>
+                      </figure>
+                    )}
+                  </section>
+                )
+              }
+
+              <section id="unidades" class="modelo-section">
+                <h2>Unidades à venda</h2>
+                {
+                  units.length > 0 ? (
+                    <ModeloUnits
+                      units={units}
+                      columns={visibleColumns(units)}
+                      query={query}
+                      path={path}
+                      bedroomChoices={bedroomOptions(units)}
+                      amenityNames={amenityNames}
+                      hasFloor={units.some((unit) => unit.floor != null)}
+                      hasPrice={units.some((unit) => unit.price != null)}
+                    />
+                  ) : (
+                    <p>Nenhuma unidade publicada neste empreendimento.</p>
+                  )
+                }
+              </section>
+
+              {
+                amenityNames.length > 0 && (
+                  <section id="diferenciais" class="modelo-section">
+                    <h2>Diferenciais</h2>
+                    <ul class="modelo-differentials">
+                      {amenityNames.map((name) => (
+                        <li>{name}</li>
+                      ))}
+                    </ul>
+                  </section>
+                )
+              }
+
+              <section class="modelo-close" aria-label="Contato">
+                <p class="modelo-close__name">{detail.name}</p>
+                {
+                  fromPrice != null ? (
+                    <p class="modelo-close__price">
+                      A partir de <strong>{formatBrl(fromPrice)}</strong>
+                    </p>
+                  ) : (
+                    <p class="modelo-close__price">Valor sob consulta</p>
+                  )
+                }
+                {
+                  builder?.name && (
+                    <button type="button" class="modelo-button modelo-button--wrap" data-contact-open>
+                      Solicitar acesso para comercializar esse empreendimento
+                    </button>
+                  )
+                }
+              </section>
+            </div>
+          </div>
+        </article>
+
+        <div class="modelo-compare-bar" data-compare-bar hidden>
+          <ul data-compare-picks />
+          <button type="button" class="modelo-button" data-compare-open hidden>Ver comparação</button>
+          <p data-compare-limit hidden>Compare até 3 unidades.</p>
+        </div>
+
+        <dialog class="modelo-panel" data-compare-dialog aria-labelledby="comparacao-titulo">
+          <div class="modelo-panel__head">
+            <h2 id="comparacao-titulo">Comparação</h2>
+            <button type="button" class="modelo-button modelo-button--quiet" data-close>Fechar</button>
+          </div>
+          <div data-compare-mount />
+        </dialog>
+
+        {
+          coverUrl && (
+            <dialog class="modelo-lightbox" data-lightbox aria-label={detail.name}>
+              <div class="modelo-lightbox__head">
+                <p>{detail.name}</p>
+                <button type="button" class="modelo-button modelo-button--quiet" data-close>Fechar</button>
+              </div>
+              <img src={coverUrl} alt={detail.name} />
+            </dialog>
+          )
+        }
+
+        {
+          builder?.name && (
+            <dialog class="modelo-panel modelo-panel--center modelo-contact" data-contact aria-labelledby="contato-titulo">
+              <div class="modelo-panel__head">
+                <h2 id="contato-titulo">Solicitar acesso para comercializar esse empreendimento</h2>
+                <button type="button" class="modelo-button modelo-button--quiet" data-close>Fechar</button>
+              </div>
+              <p class="modelo-contact__lead">Fale com a construtora para pedir acesso e mais informações.</p>
+              <dl>
+                <dt>Construtora</dt>
+                <dd>{builder.name}</dd>
+                <dt>E-mail</dt>
+                <dd>
+                  {
+                    builder.email ? (
+                      <a href={`mailto:${builder.email}`}>{builder.email}</a>
+                    ) : (
+                      'Não informado'
+                    )
+                  }
+                </dd>
+                <dt>Telefone</dt>
+                <dd>
+                  {
+                    builder.phone && builderPhone ? (
+                      <a href={phoneHref(builder.phone)}>{builderPhone}</a>
+                    ) : (
+                      'Não informado'
+                    )
+                  }
+                </dd>
+              </dl>
+              <form
+                class="modelo-contact__form"
+                data-access-form
+                method="post"
+                action={browserApiUrl(`/public/buildings/${encodeURIComponent(detail.slug)}/access-requests`)}
+              >
+                <div data-access-fields>
+                  <h3>Seus dados</h3>
+                  <label class="modelo-field">
+                    <span>Nome</span>
+                    <input name="name" type="text" required maxlength="120" autocomplete="name" />
+                  </label>
+                  <label class="modelo-field">
+                    <span>Telefone</span>
+                    <input name="phone" type="tel" required maxlength="30" autocomplete="tel" inputmode="tel" placeholder="(11) 90000-0000" />
+                  </label>
+                  <label class="modelo-field">
+                    <span>E-mail <span class="modelo-optional">opcional</span></span>
+                    <input name="email" type="email" maxlength="255" autocomplete="email" />
+                  </label>
+                  <p class="modelo-contact__error" data-access-error role="alert" tabindex="-1" hidden></p>
+                  <button type="submit" class="modelo-button">Enviar pedido</button>
+                </div>
+                <p class="modelo-contact__success" data-access-success role="status" tabindex="-1" hidden>
+                  Pedido enviado para a construtora.
+                </p>
+              </form>
+            </dialog>
+          )
+        }
+      </>
+    )
+  }
+  <ModeloFooter slot="footer" />
+</ModeloLayout>
+
+<script>
+  import { initModeloDetail } from '@/scripts/modelo-detail'
+
+  initModeloDetail()
+</script>

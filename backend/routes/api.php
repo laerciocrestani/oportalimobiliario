@@ -53,6 +53,7 @@ use App\Http\Controllers\Api\Builder\TeamMemberController;
 use App\Http\Controllers\Api\Builder\TenantBrokerInviteLinkController;
 use App\Http\Controllers\Api\Builder\TowerController;
 use App\Http\Controllers\Api\Builder\UnitController;
+use App\Http\Controllers\Api\Public\BrokerAccessRequestController as PublicBrokerAccessRequestController;
 use App\Http\Controllers\Api\Public\BuildingController as PublicBuildingController;
 use App\Http\Controllers\Api\Public\BuildingMediaController as PublicBuildingMediaController;
 use App\Http\Controllers\Api\Public\PublicSeoController;
@@ -75,6 +76,8 @@ Route::prefix('public')->group(function () {
     Route::get('/buildings/{building:slug}', [PublicBuildingController::class, 'show']);
     Route::get('/buildings/{building:slug}/media', [PublicBuildingMediaController::class, 'index']);
     Route::get('/buildings/{building:slug}/media/{media}/file', [PublicBuildingMediaController::class, 'file']);
+    Route::post('/buildings/{building:slug}/access-requests', [PublicBrokerAccessRequestController::class, 'store'])
+        ->middleware('throttle:10,1');
     Route::get('/sitemap.xml', [PublicSeoController::class, 'sitemap']);
     Route::get('/robots.txt', [PublicSeoController::class, 'robots']);
     Route::get('/whatsapp/webhook', [WhatsAppWebhookController::class, 'verify']);

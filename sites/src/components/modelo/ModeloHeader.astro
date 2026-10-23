@@ -1,0 +1,121 @@
+---
+import { BROKER_URL, BUILDER_URL } from '@/lib/modelo'
+
+interface Props {
+  lancamentosHref?: string
+  restoreList?: boolean
+}
+
+const { lancamentosHref = '/modelo#lancamentos', restoreList = false } = Astro.props
+---
+
+<header class="modelo-header">
+  <div class="modelo-wrap modelo-header__inner">
+    <a href="/modelo" class="modelo-brand">
+      <span class="modelo-brand__mark" aria-hidden="true"></span>
+      <span class="modelo-sr">O Portal Imobiliário</span>
+    </a>
+    <nav class="modelo-nav" aria-label="Principal">
+      <a
+        href={lancamentosHref}
+        data-modelo-lancamentos
+        data-modelo-back={restoreList || undefined}
+      >
+        Lançamentos
+      </a>
+      <div class="modelo-account">
+        <button
+          type="button"
+          class="modelo-account__toggle"
+          aria-expanded="false"
+          aria-controls="modelo-account-menu"
+        >
+          Entrar
+        </button>
+        <div id="modelo-account-menu" class="modelo-account__menu">
+          <a href={BROKER_URL}>Sou corretor</a>
+          <a href={BUILDER_URL}>Área da construtora</a>
+        </div>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const header = document.querySelector<HTMLElement>('.modelo-header')
+
+  if (header && document.querySelector('.modelo-hero')) {
+    header.classList.add('is-over-hero')
+  }
+
+  function syncHeader() {
+    header?.classList.toggle('is-scrolled', window.scrollY > 8)
+  }
+
+  syncHeader()
+  window.addEventListener('scroll', syncHeader, { passive: true })
+
+  const toggle = document.querySelector<HTMLButtonElement>('.modelo-account__toggle')
+  const menu = document.querySelector<HTMLElement>('#modelo-account-menu')
+
+  function setMenu(open: boolean) {
+    if (!toggle || !menu) {
+      return
+    }
+
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false')
+    menu.classList.toggle('is-open', open)
+  }
+
+  toggle?.addEventListener('click', () => {
+    setMenu(toggle.getAttribute('aria-expanded') !== 'true')
+  })
+
+  document.addEventListener('click', (event) => {
+    if (!menu || !toggle) {
+      return
+    }
+
+    const target = event.target
+
+    if (target instanceof Node && (menu.contains(target) || toggle.contains(target))) {
+      return
+    }
+
+    setMenu(false)
+  })
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      setMenu(false)
+      if (toggle?.getAttribute('aria-expanded') === 'false' && document.activeElement instanceof HTMLElement) {
+        const inside = menu?.contains(document.activeElement)
+
+        if (inside) {
+          toggle.focus()
+        }
+      }
+    }
+  })
+
+  const listLink = document.querySelector<HTMLAnchorElement>('[data-modelo-lancamentos]')
+
+  listLink?.addEventListener('click', (event) => {
+    const href = listLink.getAttribute('href') ?? ''
+
+    if (!href.startsWith('#')) {
+      return
+    }
+
+    const target = document.querySelector<HTMLElement>(href)
+
+    if (!target) {
+      return
+    }
+
+    event.preventDefault()
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    target.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' })
+    target.focus()
+  })
+</script>

@@ -13,6 +13,12 @@ export type CheapestUnit = {
   floor: number | null
 }
 
+export type PublicBuilder = {
+  name: string
+  email: string | null
+  phone: string | null
+}
+
 export type PublicBuildingListItem = {
   id: number
   slug: string
@@ -25,6 +31,7 @@ export type PublicBuildingListItem = {
   units_count: number
   cheapest_unit: CheapestUnit | null
   cover_image: CoverImage | null
+  builder?: PublicBuilder | null
 }
 
 export type PublicAmenity = {
@@ -83,6 +90,25 @@ async function fetchPublic<T>(path: string): Promise<T> {
   }
 
   return response.json() as Promise<T>
+}
+
+/** O HTML público é aberto no navegador. No Docker, a API interna é `backend`. */
+export function browserApiUrl(path: string): string {
+  const base = API_BASE.replace(/\/$/, '')
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`
+
+  try {
+    const url = new URL(`${base}${normalizedPath}`)
+
+    if (url.hostname === 'backend') {
+      url.hostname = 'api.localhost'
+      url.port = '8000'
+    }
+
+    return url.toString()
+  } catch {
+    return `${base}${normalizedPath}`
+  }
 }
 
 export function publicMediaUrl(relativeUrl: string): string {

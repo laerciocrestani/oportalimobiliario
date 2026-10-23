@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use App\Enums\BuildingMediaCategory;
 use App\Enums\BuildingCategory;
+use App\Enums\BuildingMediaCategory;
 use App\Enums\CeilingType;
 use App\Enums\FlooringType;
 use App\Enums\OpeningType;
@@ -88,6 +88,11 @@ class Building extends Model
     public function units(): HasMany
     {
         return $this->hasMany(Unit::class);
+    }
+
+    public function accessRequests(): HasMany
+    {
+        return $this->hasMany(BrokerAccessRequest::class);
     }
 
     public function amenities(): BelongsToMany

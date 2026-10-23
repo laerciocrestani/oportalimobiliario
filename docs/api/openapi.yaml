@@ -72,6 +72,40 @@ paths:
           description: Media file stream
         '404':
           description: Not found
+  /api/public/buildings/{slug}/access-requests:
+    post:
+      summary: Corretor pede acesso para comercializar um empreendimento publicado
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicBrokerAccessRequest'
+      responses:
+        '201':
+          description: Pedido registrado e enviado à construtora
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicBrokerAccessRequestResult'
+        '200':
+          description: O mesmo telefone já tinha um pedido neste empreendimento; nome e e-mail foram atualizados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicBrokerAccessRequestResult'
+        '404':
+          description: Empreendimento inexistente ou não publicado
+        '422':
+          description: Nome, telefone ou e-mail inválido
+        '429':
+          description: Muitas tentativas
   /api/public/sitemap.xml:
     get:
       summary: Public sitemap XML
@@ -2360,6 +2394,35 @@ paths:
       responses:
         '201':
           description: Created
+  /api/broker/buyers:
+    get:
+      summary: Look up a buyer by CPF or CNPJ
+      description: >
+        Returns the latest buyer data from a proposal submitted by the
+        authenticated broker. Another broker's proposals are not visible.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: document
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 18
+          description: CPF (11 digits) or CNPJ (14 digits). Punctuation is ignored.
+      responses:
+        '200':
+          description: Buyer found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BrokerBuyer'
+        '401':
+          description: Unauthenticated
+        '404':
+          description: No proposal of this broker uses the document
+        '422':
+          description: Document is not a CPF or CNPJ
   /api/broker/units:
     get:
       summary: List units by access
@@ -2784,8 +2847,8 @@ paths:
     post:
       summary: Submit reservation proposal (broker)
       description: |
-        Sends client name and phone, commercial proposal terms and one or more
-        attachments. Accepts a proposal draft or a returned proposal.
+        Sends client data and commercial proposal terms. Attachments are optional
+        at this step. Accepts a proposal draft or a returned proposal.
         Name or phone missing responds 422. On success the reservation becomes
         proposal_pending and review_deadline_at is set to 48 business hours
         ahead (America/Sao_Paulo, skipping weekends and national holidays).
@@ -3867,6 +3930,46 @@ components:
           $ref: '#/components/schemas/PublicCheapestUnit'
         cover_image:
           $ref: '#/components/schemas/CoverImage'
+        builder:
+          $ref: '#/components/schemas/PublicBuilder'
+    PublicBrokerAccessRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 120
+        phone:
+          type: string
+          maxLength: 30
+          description: Telefone com DDD. E-mail é opcional.
+        email:
+          type: string
+          format: email
+          nullable: true
+      required:
+        - name
+        - phone
+    PublicBrokerAccessRequestResult:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+    PublicBuilder:
+      type: object
+      description: Construtora que comercializa o empreendimento. E-mail e telefone são da conta builder mais antiga do tenant.
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          nullable: true
+        phone:
+          type: string
+          nullable: true
+      required:
+        - name
     PublicUnit:
       type: object
       properties:
@@ -4463,6 +4566,57 @@ components:
         land_value:
           type: number
           format: double
+    BrokerBuyer:
+      type: object
+      required:
+        - party_kind
+        - client_name
+        - client_phone
+        - client_cpf
+      properties:
+        party_kind:
+          type: string
+          enum: [individual, company]
+        client_name:
+          type: string
+        client_phone:
+          type: string
+        client_email:
+          type: string
+          nullable: true
+        client_cpf:
+          type: string
+          description: Digits only. CPF has 11 digits and CNPJ has 14.
+        client_rg:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        city:
+          type: string
+          nullable: true
+        state:
+          type: string
+          nullable: true
+        zip:
+          type: string
+          nullable: true
+        marital_status:
+          type: string
+          nullable: true
+        nationality:
+          type: string
+          nullable: true
+        profession:
+          type: string
+          nullable: true
+        spouse_name:
+          type: string
+          nullable: true
+        spouse_cpf:
+          type: string
+          nullable: true
     BrokerProposalTemplate:
       type: object
       required:
@@ -4506,17 +4660,14 @@ components:
       allOf:
         - $ref: '#/components/schemas/ReservationProposalInput'
         - type: object
-          required:
-            - files
           properties:
             files:
               type: array
-              minItems: 1
               maxItems: 10
               items:
                 type: string
                 format: binary
-              description: Proposal attachments (JPEG, PNG, WebP or PDF, max 10MB each)
+              description: Optional proposal attachments (JPEG, PNG, WebP or PDF, max 10MB each)
     ReservationProposal:
       allOf:
         - $ref: '#/components/schemas/ReservationProposalInput'

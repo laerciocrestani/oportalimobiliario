@@ -25,4 +25,9 @@ class Tenant extends Model
     {
         return $this->hasMany(User::class);
     }
+
+    public function builderUsers(): HasMany
+    {
+        return $this->hasMany(User::class)->where('role', 'builder')->orderBy('id');
+    }
 }

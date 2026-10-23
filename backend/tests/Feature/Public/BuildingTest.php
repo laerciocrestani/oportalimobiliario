@@ -12,6 +12,7 @@ use App\Models\Building;
 use App\Models\BuildingMedia;
 use App\Models\Tenant;
 use App\Models\Unit;
+use App\Models\User;
 
 it('lists only published buildings without auth', function () {
     $tenant = Tenant::factory()->create();
@@ -55,6 +56,38 @@ it('returns cheapest available unit on public building list', function () {
         ->assertJsonPath('0.cheapest_unit.price_base', '350000.00')
         ->assertJsonPath('0.cheapest_unit.area_m2', '65.50')
         ->assertJsonPath('0.cheapest_unit.floor', 3);
+});
+
+it('exposes the builder company contact on the public list and detail', function () {
+    $tenant = Tenant::factory()->create(['name' => 'Construtora Alpha']);
+    $building = Building::factory()->for($tenant)->published()->create(['name' => 'Com contato']);
+
+    User::factory()->builder()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Conta da construtora',
+        'email' => 'construtora@alpha.demo',
+        'phone' => '1130001001',
+    ]);
+    User::factory()->builder()->create([
+        'tenant_id' => $tenant->id,
+        'name' => 'Comercial Alpha',
+        'email' => 'comercial@alpha.demo',
+        'phone' => '11988887777',
+    ]);
+
+    $this->getJson('/api/public/buildings')
+        ->assertSuccessful()
+        ->assertJsonPath('0.builder.name', 'Construtora Alpha')
+        ->assertJsonPath('0.builder.email', 'construtora@alpha.demo')
+        ->assertJsonPath('0.builder.phone', '1130001001');
+
+    $detail = $this->getJson("/api/public/buildings/{$building->slug}")
+        ->assertSuccessful()
+        ->assertJsonPath('builder.name', 'Construtora Alpha')
+        ->assertJsonPath('builder.email', 'construtora@alpha.demo')
+        ->assertJsonPath('builder.phone', '1130001001');
+
+    expect(json_encode($detail->json()))->not->toContain('comercial@alpha.demo');
 });
 
 it('returns null cheapest unit when no available priced units exist', function () {

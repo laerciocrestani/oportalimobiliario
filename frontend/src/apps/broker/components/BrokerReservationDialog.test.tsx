@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 
 vi.mock('sonner', () => ({
   toast: {
+    success: vi.fn(),
     warning: vi.fn(),
     error: vi.fn(),
   },
@@ -82,6 +83,7 @@ async function fillIndividualBuyer(user: ReturnType<typeof userEvent.setup>) {
 describe('BrokerReservationDialog', () => {
   beforeEach(() => {
     vi.mocked(brokerApi.submitReservationProposal).mockReset()
+    vi.mocked(toast.success).mockReset()
     vi.mocked(toast.warning).mockReset()
     vi.mocked(toast.error).mockReset()
   })
@@ -121,6 +123,7 @@ describe('BrokerReservationDialog', () => {
   it('submits proposal using the attached client without selecting again', async () => {
     const user = userEvent.setup()
     const onReserved = vi.fn()
+    const onOpenChange = vi.fn()
 
     vi.mocked(brokerApi.submitReservationProposal).mockResolvedValue({
       id: 55,
@@ -134,7 +137,7 @@ describe('BrokerReservationDialog', () => {
     render(
       <BrokerReservationDialog
         open
-        onOpenChange={() => {}}
+        onOpenChange={onOpenChange}
         unit={unit}
         reservationId={55}
         expiresAt="2099-01-01T12:00:00.000000Z"
@@ -170,6 +173,8 @@ describe('BrokerReservationDialog', () => {
         [file],
       )
       expect(onReserved).toHaveBeenCalled()
+      expect(onOpenChange).toHaveBeenCalledWith(false)
+      expect(toast.success).toHaveBeenCalledWith('Reserva feita com sucesso')
     })
   })
 

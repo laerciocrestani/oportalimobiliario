@@ -421,6 +421,7 @@ export function BrokerReservationDialog({
       resetState()
       onOpenChange(false)
       onReserved()
+      toast.success('Reserva feita com sucesso')
     } catch {
       setError('Não foi possível enviar a proposta. Verifique se o prazo de 20 minutos ainda está válido.')
     } finally {

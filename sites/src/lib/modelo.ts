@@ -204,6 +204,13 @@ export function unitCount(count: number): string {
   return `${count.toLocaleString('pt-BR')} ${noun}`
 }
 
+export function portfolioLine(units: number, buildings: number): string {
+  const unitLabel = units === 1 ? 'unidade' : 'unidades'
+  const buildingLabel = buildings === 1 ? 'empreendimento' : 'empreendimentos'
+
+  return `${units.toLocaleString('pt-BR')} ${unitLabel} em ${buildings.toLocaleString('pt-BR')} ${buildingLabel}`
+}
+
 export function unitCounter(visible: number, total: number): string {
   const noun = total === 1 ? 'unidade' : 'unidades'
 

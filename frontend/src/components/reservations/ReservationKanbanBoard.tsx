@@ -23,7 +23,7 @@ import {
   resolveKanbanDrop,
   type KanbanColumnTheme,
 } from '@/components/reservations/reservation-kanban'
-import { Building2Icon, CarIcon, HomeIcon, MessageCircleIcon, ReplyIcon, type LucideIcon } from 'lucide-react'
+import { Building2Icon, CarIcon, ClockCheckIcon, ClockFadingIcon, HomeIcon, MessageCircleIcon, ReplyIcon, type LucideIcon } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -394,6 +394,12 @@ function KanbanCardBody({
             </p>
           </Fragment>
         ))}
+        {(reservation.kanban_column === 'proposal_formalization' || reservation.kanban_column === 'contract') && reservation.signature_progress ? (
+          <SignatureProgress
+            signed={reservation.signature_progress.signed}
+            total={reservation.signature_progress.total}
+          />
+        ) : null}
         {cardCta ? (
           <>
             <Separator className="col-span-2 my-0.5" />
@@ -425,6 +431,24 @@ function KanbanCardBody({
         </Button>
       ) : null}
     </div>
+  )
+}
+
+function SignatureProgress({ signed, total }: { signed: number; total: number }) {
+  const complete = total > 0 && signed >= total
+  const Icon = complete ? ClockCheckIcon : ClockFadingIcon
+
+  return (
+    <>
+      <Separator className="col-span-2 my-0.5" />
+      <Icon
+        className={cn('size-4 justify-self-center', complete ? 'text-green-600' : 'text-orange-500')}
+        aria-hidden
+      />
+      <p className={cn('text-xs font-medium leading-none', complete ? 'text-green-600' : 'text-orange-500')}>
+        Assinaturas: {signed}/{total}
+      </p>
+    </>
   )
 }
 

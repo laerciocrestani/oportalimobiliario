@@ -1,3 +1,5 @@
+import { clearSharedToken, currentToken, writeSharedToken } from '@/lib/auth-token'
+
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://api.localhost:8000/api'
 
 export type AuthUser = {
@@ -105,6 +107,13 @@ export type ContractIssueResult = {
     original_name: string
     file_url: string
   }
+}
+
+export type ContractReview = {
+  templates: Array<{ id: number; name: string }>
+  template_id: number | null
+  body: string
+  html: string
 }
 
 export type ProposalIssuePreview = ContractIssuePreview
@@ -372,11 +381,13 @@ export type TenantInviteLink = {
 
 export type PendingBroker = {
   id: number
+  building_request_id: number | null
   broker_id: number
   name: string
   email: string | null
   phone: string | null
   requested_at: string
+  building_name: string | null
 }
 
 export type BrokerJoinPreview = {
@@ -508,6 +519,10 @@ export type BuilderReservationListItem = {
     building: Pick<Building, 'id' | 'name'> | null
   } | null
   garage_units?: GarageUnit[]
+  signature_progress?: {
+    signed: number
+    total: number
+  } | null
 }
 
 export type ReservationPendingActionCount = {
@@ -566,6 +581,23 @@ export type ReservationTimelineClient = {
   email: string | null
 }
 
+export type SignatureProcessPartyState = 'processing' | 'waiting' | 'done' | 'refused'
+
+export type SignatureProcessParty = {
+  key?: string
+  role: 'builder' | 'broker' | 'buyer' | 'witness'
+  label: string
+  name: string
+  status: 'pending' | 'signed' | 'refused'
+  signed_at?: string | null
+}
+
+export type SignatureProcess = {
+  sent_at: string
+  due_at: string
+  parties: SignatureProcessParty[]
+}
+
 export type ReservationTimeline = {
   reservation_id: number
   current_stage: string
@@ -578,6 +610,7 @@ export type ReservationTimeline = {
     price?: string | null
     building_name?: string | null
   }
+  garage_units?: GarageUnit[]
   client: ReservationTimelineClient | null
   current_proposal: ReservationProposal | null
   current_deposit_proof: ReservationAttachment | null
@@ -585,6 +618,7 @@ export type ReservationTimeline = {
   current_builder_signed_contract: ReservationAttachment | null
   witnesses: ReservationWitness[]
   attachments: ReservationAttachment[]
+  signature_process?: SignatureProcess | null
   steps: ReservationTimelineStep[]
 }
 
@@ -897,15 +931,15 @@ export async function exchangeImpersonationCode(code: string): Promise<LoginResp
 }
 
 export function saveToken(token: string): void {
-  localStorage.setItem('opim_token', token)
+  writeSharedToken(token)
 }
 
 export function getToken(): string | null {
-  return localStorage.getItem('opim_token')
+  return currentToken()
 }
 
 export function clearToken(): void {
-  localStorage.removeItem('opim_token')
+  clearSharedToken()
 }
 
 export async function logout(): Promise<void> {
@@ -1029,6 +1063,12 @@ export const builderApi = {
     }),
   rejectPendingBroker: (id: number) =>
     apiFetch<void>(`/builder/pending-brokers/${id}/reject`, { method: 'POST' }),
+  approveBuildingRequest: (id: number) =>
+    apiFetch<{ id: number; building_id: string }>(`/builder/building-requests/${id}/approve`, {
+      method: 'POST',
+    }),
+  rejectBuildingRequest: (id: number) =>
+    apiFetch<void>(`/builder/building-requests/${id}/reject`, { method: 'POST' }),
   listBrokers: () => apiFetch<LinkedBroker[]>('/builder/brokers'),
   deactivateBroker: (id: number) =>
     apiFetch<{ id: number; status: 'inactive'; revoked_at: string }>(
@@ -1108,13 +1148,15 @@ export const builderApi = {
     }),
   getReservationTimeline: (reservationId: number) =>
     apiFetch<ReservationTimeline>(`/builder/reservations/${reservationId}/timeline`),
-  resendProposalSignatureLinks: (reservationId: number) =>
+  resendProposalSignatureLinks: (reservationId: number, role?: 'builder' | 'broker' | 'buyer') =>
     apiFetch<{ notified: number }>(`/builder/reservations/${reservationId}/proposal/signature-links`, {
       method: 'POST',
+      body: JSON.stringify(role ? { role } : {}),
     }),
-  resendContractSignatureLinks: (reservationId: number) =>
+  resendContractSignatureLinks: (reservationId: number, signerKey?: string) =>
     apiFetch<{ notified: number }>(`/builder/reservations/${reservationId}/contract/signature-links`, {
       method: 'POST',
+      body: JSON.stringify(signerKey ? { signer_key: signerKey } : {}),
     }),
   decideReservationProposal: (
     reservationId: number,
@@ -1243,6 +1285,20 @@ export const builderApi = {
     apiFetch<Array<{ id: number; name: string }>>(
       `/builder/reservations/${reservationId}/contract/templates`,
     ),
+  getContractReview: (reservationId: number) =>
+    apiFetch<ContractReview>(`/builder/reservations/${reservationId}/contract/review`),
+  updateContractReview: (
+    reservationId: number,
+    data: { template_id?: number; body?: string },
+  ) =>
+    apiFetch<ContractReview>(`/builder/reservations/${reservationId}/contract/review`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+  acceptContractReview: (reservationId: number) =>
+    apiFetch<{ status: string }>(`/builder/reservations/${reservationId}/contract/accept`, {
+      method: 'POST',
+    }),
   previewContractIssue: (reservationId: number, templateId: number) =>
     apiFetch<ContractIssuePreview>(
       `/builder/reservations/${reservationId}/contract/preview?template_id=${templateId}`,
@@ -1370,6 +1426,18 @@ export const brokerApi = {
     }),
   listReservationProposalTemplates: (reservationId: number) =>
     apiFetch<BrokerProposalTemplate[]>(`/broker/reservations/${reservationId}/proposal/templates`),
+  uploadReservationDocuments: (reservationId: number, files: File[]) => {
+    const formData = new FormData()
+
+    for (const file of files) {
+      formData.append('files[]', file)
+    }
+
+    return apiUpload<{ attachments: ReservationAttachment[] }>(
+      `/broker/reservations/${reservationId}/attachments`,
+      formData,
+    )
+  },
   submitReservationProposal: (reservationId: number, data: ReservationProposalInput, files: File[]) => {
     const formData = new FormData()
 
@@ -1500,13 +1568,15 @@ export const brokerApi = {
       method: 'POST',
       body: JSON.stringify({ body }),
     }),
-  resendProposalSignatureLinks: (reservationId: number) =>
+  resendProposalSignatureLinks: (reservationId: number, role?: 'builder' | 'broker' | 'buyer') =>
     apiFetch<{ notified: number }>(`/broker/reservations/${reservationId}/proposal/signature-links`, {
       method: 'POST',
+      body: JSON.stringify(role ? { role } : {}),
     }),
-  resendContractSignatureLinks: (reservationId: number) =>
+  resendContractSignatureLinks: (reservationId: number, signerKey?: string) =>
     apiFetch<{ notified: number }>(`/broker/reservations/${reservationId}/contract/signature-links`, {
       method: 'POST',
+      body: JSON.stringify(signerKey ? { signer_key: signerKey } : {}),
     }),
   getReservationTimeline: (reservationId: number) =>
     apiFetch<ReservationTimeline>(`/broker/reservations/${reservationId}/timeline`),
@@ -1543,7 +1613,11 @@ export const brokerApi = {
     email: string
     password: string
   }) =>
-    apiFetch<LoginResponse & { pending_approval: boolean }>('/broker/join/register', {
+    apiFetch<{
+      email_confirmation_required: boolean
+      pending_approval: boolean
+      message: string
+    }>('/broker/join/register', {
       method: 'POST',
       body: JSON.stringify(data),
     }, false),

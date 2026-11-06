@@ -19,6 +19,19 @@ export type PublicBuilder = {
   phone: string | null
 }
 
+export type PublicBuilderCatalogItem = {
+  slug: string
+  name: string
+  logo_url: string | null
+  address: string | null
+  buildings_count: number
+  available_units_count: number
+}
+
+export type PublicBuilderCatalogDetail = PublicBuilderCatalogItem & {
+  buildings: PublicBuildingListItem[]
+}
+
 export type PublicBuildingListItem = {
   id: number
   slug: string
@@ -60,6 +73,14 @@ export type PublicUnit = {
 
 export type PublicBuildingDetail = PublicBuildingListItem & {
   units?: PublicUnit[]
+}
+
+export type PublicBuildingMedia = {
+  id: number
+  url: string
+  mime_type: string
+  original_name: string
+  sort_order: number
 }
 
 export class PublicApiError extends Error {
@@ -122,8 +143,20 @@ export function listBuildings(): Promise<PublicBuildingListItem[]> {
   return fetchPublic<PublicBuildingListItem[]>('/public/buildings')
 }
 
+export function listBuilders(): Promise<PublicBuilderCatalogItem[]> {
+  return fetchPublic<PublicBuilderCatalogItem[]>('/public/builders')
+}
+
+export function getBuilder(slug: string): Promise<PublicBuilderCatalogDetail> {
+  return fetchPublic<PublicBuilderCatalogDetail>(`/public/builders/${encodeURIComponent(slug)}`)
+}
+
 export function getBuildingBySlug(slug: string): Promise<PublicBuildingDetail> {
   return fetchPublic<PublicBuildingDetail>(`/public/buildings/${encodeURIComponent(slug)}`)
+}
+
+export function listBuildingMedia(slug: string): Promise<PublicBuildingMedia[]> {
+  return fetchPublic<PublicBuildingMedia[]>(`/public/buildings/${encodeURIComponent(slug)}/media`)
 }
 
 export async function fetchSitemapXml(): Promise<string> {

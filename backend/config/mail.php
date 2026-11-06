@@ -115,4 +115,9 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    | Cópia em todo e-mail. Vazio reutiliza o remetente global.
+    */
+    'cc' => env('MAIL_CC'),
+
 ];

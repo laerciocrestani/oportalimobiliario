@@ -40,6 +40,9 @@ TenantSeeder → RolePermissionSeeder → UserSeeder → InccIndexSeeder → Ame
 | `construtora@alpha.demo` | `builder` | alpha | **todas** (`BuilderPermissions::all()`) | `construtora.localhost:5173` |
 | `comercial@alpha.demo` | `builder` | alpha | `buildings.view`, `invites.send` | construtora |
 | `supervisor@alpha.demo` | `builder` | alpha | `buildings.view`, `units.update_status`, `reservations.cancel`, `reservations.witness` | construtora |
+| `alcindoalpha@pidia.com.br` | `builder` | alpha | `buildings.view`, `reservations.cancel` — signatário da proposta e do contrato | construtora |
+| `amaliaabrantes@pidia.com.br` | `builder` | alpha | `reservations.witness` — testemunha 1 | construtora |
+| `ericasoldi@pidia.com.br` | `builder` | alpha | `reservations.witness` — testemunha 2 | construtora |
 | `construtora@beta.demo` | `builder` | beta | **todas** | construtora |
 | `corretor@demo.com` | `broker` | — | — (acesso via `building_access` / `unit_access`) | `corretor.localhost:5173` |
 

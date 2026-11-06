@@ -1,0 +1,91 @@
+---
+import ModeloCard from '@/components/modelo/ModeloCard.astro'
+import ModeloFooter from '@/components/modelo/ModeloFooter.astro'
+import ModeloHeader from '@/components/modelo/ModeloHeader.astro'
+import ModeloLayout from '@/layouts/ModeloLayout.astro'
+import { getBuilder, PublicApiError, type PublicBuilderCatalogDetail } from '@/lib/api'
+import { portfolioLine } from '@/lib/modelo'
+import { modeloBuilderSeo, modeloMessageSeo } from '@/lib/modelo-seo'
+
+const slug = Astro.params.slug
+let builder: PublicBuilderCatalogDetail | null = null
+let notFound = !slug
+let loadError = false
+
+if (slug) {
+  try {
+    builder = await getBuilder(slug)
+  } catch (error) {
+    if (error instanceof PublicApiError && error.status === 404) {
+      notFound = true
+    } else {
+      loadError = true
+    }
+  }
+}
+
+if (notFound) {
+  Astro.response.status = 404
+}
+
+if (loadError) {
+  Astro.response.status = 503
+}
+
+const seo = builder
+  ? modeloBuilderSeo(builder, Astro.url)
+  : modeloMessageSeo(
+      Astro.url,
+      notFound ? 'Construtora não encontrada' : 'Não foi possível carregar a construtora.',
+      notFound
+        ? 'Este endereço não corresponde a uma construtora com lançamento publicado.'
+        : 'Não foi possível carregar a construtora.',
+    )
+const stock = builder ? portfolioLine(builder.available_units_count, builder.buildings_count) : null
+---
+
+<ModeloLayout seo={seo}>
+  <ModeloHeader slot="header" />
+  {
+    notFound ? (
+      <section class="modelo-message modelo-wrap">
+        <h1>Construtora não encontrada.</h1>
+        <p>Este endereço não corresponde a uma construtora com lançamento publicado.</p>
+        <a class="modelo-button" href="/modelo/construtoras">Construtoras</a>
+      </section>
+    ) : loadError || !builder || !stock ? (
+      <section class="modelo-message modelo-wrap">
+        <h1>Não foi possível carregar a construtora.</h1>
+        <button type="button" class="modelo-button" data-retry>
+          Tentar de novo
+        </button>
+      </section>
+    ) : (
+      <>
+        <section class="modelo-page modelo-wrap">
+          <a class="modelo-back" href="/modelo/construtoras">Construtoras</a>
+          <p class="modelo-kicker">Construtora</p>
+          <h1>{builder.name}</h1>
+          {builder.address && <p class="modelo-card__place">{builder.address}</p>}
+          <p class="modelo-card__price modelo-builder-card__stock">
+            <span>Unidades à venda</span>
+            <strong>{stock}</strong>
+          </p>
+          <h2 id="empreendimentos-titulo" class="modelo-sr">Empreendimentos</h2>
+          <ul class="modelo-grid modelo-builder-buildings" aria-labelledby="empreendimentos-titulo">
+            {builder.buildings.map((building, index) => (
+              <ModeloCard building={building} index={index} />
+            ))}
+          </ul>
+        </section>
+      </>
+    )
+  }
+  <ModeloFooter slot="footer" />
+</ModeloLayout>
+
+<script>
+  document.querySelector<HTMLButtonElement>('[data-retry]')?.addEventListener('click', () => {
+    location.reload()
+  })
+</script>

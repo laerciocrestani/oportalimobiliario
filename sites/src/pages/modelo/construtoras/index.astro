@@ -1,0 +1,67 @@
+---
+import ModeloBuilderCard from '@/components/modelo/ModeloBuilderCard.astro'
+import ModeloFooter from '@/components/modelo/ModeloFooter.astro'
+import ModeloHeader from '@/components/modelo/ModeloHeader.astro'
+import ModeloLayout from '@/layouts/ModeloLayout.astro'
+import { listBuilders, type PublicBuilderCatalogItem } from '@/lib/api'
+import { modeloBuildersSeo, modeloMessageSeo } from '@/lib/modelo-seo'
+
+let builders: PublicBuilderCatalogItem[] = []
+let loadError = false
+
+try {
+  builders = await listBuilders()
+} catch {
+  loadError = true
+}
+
+const seo = loadError
+  ? modeloMessageSeo(
+      Astro.url,
+      'Não foi possível carregar as construtoras.',
+      'Não foi possível carregar as construtoras.',
+    )
+  : modeloBuildersSeo(Astro.url)
+
+if (loadError) {
+  Astro.response.status = 503
+}
+---
+
+<ModeloLayout seo={seo}>
+  <ModeloHeader slot="header" />
+  {
+    loadError ? (
+      <section class="modelo-message modelo-wrap">
+        <h1>Não foi possível carregar as construtoras.</h1>
+        <button type="button" class="modelo-button" data-retry>
+          Tentar de novo
+        </button>
+      </section>
+    ) : builders.length === 0 ? (
+      <section class="modelo-page modelo-wrap">
+        <p class="modelo-kicker">Construtoras</p>
+        <h1 id="construtoras-titulo">Construtoras</h1>
+        <p>Nenhuma construtora com lançamento publicado no momento.</p>
+      </section>
+    ) : (
+      <section class="modelo-page modelo-wrap">
+        <p class="modelo-kicker">Construtoras</p>
+        <h1 id="construtoras-titulo">Construtoras</h1>
+        <p>Escolha a construtora para ver os empreendimentos e as unidades à venda.</p>
+        <ul class="modelo-builder-grid" aria-labelledby="construtoras-titulo">
+          {builders.map((builder) => (
+            <ModeloBuilderCard builder={builder} />
+          ))}
+        </ul>
+      </section>
+    )
+  }
+  <ModeloFooter slot="footer" />
+</ModeloLayout>
+
+<script>
+  document.querySelector<HTMLButtonElement>('[data-retry]')?.addEventListener('click', () => {
+    location.reload()
+  })
+</script>

@@ -541,6 +541,7 @@ class BrokerInviteService
             'password' => Hash::make($password),
             'role' => 'broker',
             'tenant_id' => null,
+            'email_verified_at' => now(),
         ]);
     }
 }

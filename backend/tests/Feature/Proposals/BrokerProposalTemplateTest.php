@@ -146,6 +146,9 @@ it('marks optional placeholders and prefills price, broker and issue date', func
             'preco_unidade_corrigido',
             'preco_vaga_original',
             'preco_vaga_corrigido',
+            'qualificacao_comprador',
+            'descricao_imovel',
+            'preco_por_extenso',
         );
 });
 

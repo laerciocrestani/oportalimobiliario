@@ -1,7 +1,6 @@
 import {
   Building2Icon,
   CalendarClockIcon,
-  ClipboardListIcon,
   ClockIcon,
   FilePenLineIcon,
   FilePlusIcon,
@@ -24,7 +23,6 @@ export const RESERVATION_STEP_KEYS = [
   'proposal_decision',
   'deposit_window',
   'deposit_proof',
-  'contract_data',
   'contract_issue',
   'contract_sign_gov',
   'contract_upload',
@@ -44,7 +42,6 @@ export const RESERVATION_STEP_ICONS: Record<ReservationStepKey, LucideIcon> = {
   proposal_decision: ScaleIcon,
   deposit_window: ClockIcon,
   deposit_proof: ReceiptIcon,
-  contract_data: ClipboardListIcon,
   contract_issue: FilePlusIcon,
   contract_sign_gov: PenLineIcon,
   contract_upload: FileUpIcon,

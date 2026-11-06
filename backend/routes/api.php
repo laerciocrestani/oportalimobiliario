@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\Broker\BrokerInviteController as BrokerBrokerInvite
 use App\Http\Controllers\Api\Broker\BrokerJoinController;
 use App\Http\Controllers\Api\Broker\BrokerProfileController;
 use App\Http\Controllers\Api\Broker\BuildingMediaController as BrokerBuildingMediaController;
+use App\Http\Controllers\Api\Broker\BuildingRequestController as BrokerBuildingRequestController;
 use App\Http\Controllers\Api\Broker\BuyerLookupController as BrokerBuyerLookupController;
 use App\Http\Controllers\Api\Broker\ClientController as BrokerClientController;
 use App\Http\Controllers\Api\Broker\ReservationAttachmentController as BrokerReservationAttachmentController;
@@ -31,6 +32,7 @@ use App\Http\Controllers\Api\Builder\BuildingAccessController;
 use App\Http\Controllers\Api\Builder\BuildingController;
 use App\Http\Controllers\Api\Builder\BuildingDescriptionController;
 use App\Http\Controllers\Api\Builder\BuildingMediaController as BuilderBuildingMediaController;
+use App\Http\Controllers\Api\Builder\BuildingRequestController as BuilderBuildingRequestController;
 use App\Http\Controllers\Api\Builder\BuildingStructureController;
 use App\Http\Controllers\Api\Builder\BuildingUnitGridController;
 use App\Http\Controllers\Api\Builder\CepController;
@@ -54,6 +56,9 @@ use App\Http\Controllers\Api\Builder\TenantBrokerInviteLinkController;
 use App\Http\Controllers\Api\Builder\TowerController;
 use App\Http\Controllers\Api\Builder\UnitController;
 use App\Http\Controllers\Api\Public\BrokerAccessRequestController as PublicBrokerAccessRequestController;
+use App\Http\Controllers\Api\Public\BrokerAccountController as PublicBrokerAccountController;
+use App\Http\Controllers\Api\Public\BrokerEmailConfirmationController;
+use App\Http\Controllers\Api\Public\BuilderController as PublicBuilderController;
 use App\Http\Controllers\Api\Public\BuildingController as PublicBuildingController;
 use App\Http\Controllers\Api\Public\BuildingMediaController as PublicBuildingMediaController;
 use App\Http\Controllers\Api\Public\PublicSeoController;
@@ -74,9 +79,13 @@ Route::get('/health', function () {
 Route::prefix('public')->group(function () {
     Route::get('/buildings', [PublicBuildingController::class, 'index']);
     Route::get('/buildings/{building:slug}', [PublicBuildingController::class, 'show']);
+    Route::get('/builders', [PublicBuilderController::class, 'index']);
+    Route::get('/builders/{slug}', [PublicBuilderController::class, 'show']);
     Route::get('/buildings/{building:slug}/media', [PublicBuildingMediaController::class, 'index']);
     Route::get('/buildings/{building:slug}/media/{media}/file', [PublicBuildingMediaController::class, 'file']);
     Route::post('/buildings/{building:slug}/access-requests', [PublicBrokerAccessRequestController::class, 'store'])
+        ->middleware('throttle:10,1');
+    Route::post('/buildings/{building:slug}/broker-account', [PublicBrokerAccountController::class, 'store'])
         ->middleware('throttle:10,1');
     Route::get('/sitemap.xml', [PublicSeoController::class, 'sitemap']);
     Route::get('/robots.txt', [PublicSeoController::class, 'robots']);
@@ -86,11 +95,15 @@ Route::prefix('public')->group(function () {
 
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
+    Route::get('/broker-email/confirm', [BrokerEmailConfirmationController::class, 'confirm'])
+        ->name('broker.email.confirm');
     Route::post('/impersonate/exchange', [AuthController::class, 'exchangeImpersonation']);
     Route::middleware('auth:sanctum')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/logout', [AuthController::class, 'logout']);
+        Route::post('/handoff', [AuthController::class, 'handoff']);
     });
+    Route::post('/handoff/exchange', [AuthController::class, 'exchangeHandoff']);
 });
 
 Route::prefix('broker/invites')->group(function () {
@@ -137,6 +150,8 @@ Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permiss
     Route::get('/pending-brokers', [TenantBrokerInviteLinkController::class, 'pendingBrokers']);
     Route::post('/pending-brokers/{brokerTenant}/approve', [TenantBrokerInviteLinkController::class, 'approve']);
     Route::post('/pending-brokers/{brokerTenant}/reject', [TenantBrokerInviteLinkController::class, 'reject']);
+    Route::post('/building-requests/{brokerBuildingRequest}/approve', [BuilderBuildingRequestController::class, 'approve']);
+    Route::post('/building-requests/{brokerBuildingRequest}/reject', [BuilderBuildingRequestController::class, 'reject']);
 
     Route::get('/brokers', [BuilderBrokerController::class, 'index']);
     Route::get('/brokers/{broker}/buildings', [BuilderBrokerController::class, 'buildings']);
@@ -172,6 +187,9 @@ Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permiss
     Route::patch('/reservations/{reservation}/hold/extend', [BuilderReservationHoldController::class, 'extend']);
     Route::post('/reservations/{reservation}/hold/drop', [BuilderReservationHoldController::class, 'drop']);
     Route::patch('/reservations/{reservation}/kanban', [BuilderReservationKanbanController::class, 'update']);
+    Route::get('/reservations/{reservation}/contract/review', [ContractIssueController::class, 'review']);
+    Route::patch('/reservations/{reservation}/contract/review', [ContractIssueController::class, 'updateReview']);
+    Route::post('/reservations/{reservation}/contract/accept', [ContractIssueController::class, 'accept']);
     Route::get('/reservations/{reservation}/contract/templates', [ContractIssueController::class, 'templates']);
     Route::get('/reservations/{reservation}/contract/preview', [ContractIssueController::class, 'preview']);
     Route::post('/reservations/{reservation}/contract/issue', [ContractIssueController::class, 'store']);
@@ -189,6 +207,7 @@ Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permiss
 
 Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('broker')->group(function () {
     Route::get('/profile', [BrokerProfileController::class, 'show']);
+    Route::post('/buildings/{building:slug}/access-requests', [BrokerBuildingRequestController::class, 'store']);
     Route::get('/activity', [BrokerActivityController::class, 'index']);
 
     Route::middleware('broker.active')->group(function () {
@@ -215,6 +234,7 @@ Route::middleware(['auth:sanctum', 'tenant.ensure.none', 'broker'])->prefix('bro
         Route::post('/reservations/{reservation}/contract/signature-links', [BrokerReservationContractDataController::class, 'resendSignatureLinks']);
         Route::post('/reservations/{reservation}/contract/gov', [BrokerReservationContractSignedController::class, 'gov']);
         Route::post('/reservations/{reservation}/contract/signed', [BrokerReservationContractSignedController::class, 'store']);
+        Route::post('/reservations/{reservation}/attachments', [BrokerReservationAttachmentController::class, 'store']);
         Route::get('/reservations/{reservation}/attachments/{attachment}/file', [BrokerReservationAttachmentController::class, 'file']);
         Route::delete('/reservations/{reservation}/pre-hold', [ReservationController::class, 'releasePreHold']);
         Route::delete('/reservations/{reservation}', [ReservationController::class, 'destroy']);

@@ -17,49 +17,41 @@ class CommercialProposalTemplate
     public static function body(): string
     {
         return <<<'MD'
-**Data:** {{data_emissao}}
+# PROPOSTA DE COMPRA DE IMÓVEL
 
-## Dados do cliente
+Documento Particular
 
-**Cliente:** {{nome_cliente}}
+**Local e Data:** {{local_data}}
 
-**Estado civil:** {{estado_civil?}}
+## 1. DAS PARTES
 
-**Profissão:** {{profissao_cliente?}}
+**COMPRADOR:** {{qualificacao_comprador}}
 
-**CPF/CNPJ:** {{cpf_cliente?}} · **RG:** {{rg_cliente?}}
+**CORRETOR:** {{qualificacao_corretor}}
 
-**Endereço:** {{endereco_cliente?}}
+**CONSTRUTORA / VENDEDORA:** {{qualificacao_construtora}}
 
-**CEP:** {{cep_cliente?}}
+## 2. DO OBJETO
 
-**Contato:** {{telefone_cliente}}
+O presente instrumento tem por objeto a proposta de compra do seguinte imóvel:
 
-**E-mail:** {{email_cliente?}}
+{{descricao_imovel}}
 
-**Empreendimento:** {{nome_empreendimento}}
+{dados_unidade}
 
-**Unidade:** {{codigo_unidade}} · **Box:** {{box?}}
+{{texto_matricula}}
 
-**Imobiliária:** {{imobiliaria?}}
+## 3. DO PREÇO E FORMA DE PAGAMENTO
 
-**Corretor:** {{nome_corretor}}
+O valor total proposto para a compra do imóvel é de R$ {{preco_por_extenso}} (R$ {{preco_final}}), a ser pago da seguinte forma:
 
-## Condições
-
-**Valor total:** R$ {{preco_final}}
+{{condicoes_pagamento}}
 
 {bloco_preco_unidade}
 
 {bloco_preco_vaga}
 
-### Condições de pagamento
-
-{{condicoes_pagamento}}
-
 {correcao_parcelas}
-
-### Reforços
 
 {reforcos}
 
@@ -67,9 +59,19 @@ class CommercialProposalTemplate
 
 {dacoes}
 
----
+## 4. DAS CONDIÇÕES
 
-Corretor | Cliente | Construtora
+**4.1.** A presente proposta tem validade de 15 (quinze) dias a contar da data de sua assinatura.
+
+**4.2.** A aceitação desta proposta pela Construtora/Vendedora implicará na obrigação de formalizar o contrato de promessa de compra e venda no prazo de 10 (dez) dias úteis.
+
+**4.3.** O imóvel será entregue livre e desembaraçado de quaisquer ônus, dívidas ou pendências.
+
+**4.4.** As despesas com escritura, registro, ITBI e demais taxas correrão por conta do Comprador, salvo disposição em contrário no contrato definitivo.
+
+**4.5.** Esta proposta não gera obrigação definitiva até a assinatura do contrato de promessa de compra e venda pelas partes.
+
+E, por estarem assim justas e contratadas, as partes assinam a presente proposta em 03 (três) vias de igual teor e forma, na presença das testemunhas abaixo.
 MD;
     }
 
@@ -79,9 +81,6 @@ MD;
     public static function variables(): array
     {
         return [
-            ['slug' => 'profissao_cliente', 'label' => 'Profissão'],
-            ['slug' => 'box', 'label' => 'Box'],
-            ['slug' => 'imobiliaria', 'label' => 'Imobiliária'],
             [
                 'slug' => 'condicoes_pagamento',
                 'label' => 'Descreva as condições de pagamento',

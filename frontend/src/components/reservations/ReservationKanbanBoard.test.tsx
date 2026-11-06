@@ -107,6 +107,76 @@ describe('ReservationKanbanBoard', () => {
     expect(screen.queryByLabelText(/Prazo da pré-reserva/)).not.toBeInTheDocument()
   })
 
+  it('shows the signature count on cards waiting for signatures', () => {
+    render(
+      <ReservationKanbanBoard
+        profile="builder"
+        reservations={[{
+          ...reservation,
+          status: 'proposal_signing',
+          kanban_column: 'proposal_formalization',
+          signature_progress: { signed: 1, total: 3 },
+        }]}
+        cancellingId={null}
+        canCancel
+        onOpen={() => {}}
+        onCancel={() => {}}
+        onMove={() => {}}
+        onProcessRequired={() => {}}
+      />,
+    )
+
+    const footer = screen.getByText('Assinaturas: 1/3')
+    expect(footer).toHaveClass('text-orange-500')
+  })
+
+  it('shows a complete signature count in green', () => {
+    render(
+      <ReservationKanbanBoard
+        profile="builder"
+        reservations={[{
+          ...reservation,
+          status: 'proposal_signing',
+          kanban_column: 'proposal_formalization',
+          signature_progress: { signed: 3, total: 3 },
+        }]}
+        cancellingId={null}
+        canCancel
+        onOpen={() => {}}
+        onCancel={() => {}}
+        onMove={() => {}}
+        onProcessRequired={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('Assinaturas: 3/3')).toHaveClass('text-green-600')
+  })
+
+  it('shows the signature count on contract signature cards', () => {
+    render(
+      <ReservationKanbanBoard
+        profile="builder"
+        reservations={[{
+          ...reservation,
+          status: 'contract_signing',
+          kanban_column: 'contract',
+          signature_progress: { signed: 1, total: 4 },
+        }]}
+        cancellingId={null}
+        canCancel
+        onOpen={() => {}}
+        onCancel={() => {}}
+        onMove={() => {}}
+        onProcessRequired={() => {}}
+      />,
+    )
+
+    expect(screen.getByText('Assinaturas: 1/4')).toHaveClass('text-orange-500')
+    expect(screen.getByRole('region', { name: 'Contrato (assinaturas)' })).toContainElement(
+      screen.getByText('Assinaturas: 1/4'),
+    )
+  })
+
   it('hides the drag handle when the reservation cannot move', () => {
     render(
       <ReservationKanbanBoard

@@ -75,6 +75,7 @@ class ProposalIssueService
             'preco_final',
             'nome_corretor',
             'data_emissao',
+            'dados_unidade',
         ];
         $contextSlugs = [
             'nome_empreendimento',
@@ -88,6 +89,13 @@ class ProposalIssueService
             'preco_unidade_corrigido',
             'preco_vaga_original',
             'preco_vaga_corrigido',
+            'local_data',
+            'qualificacao_comprador',
+            'qualificacao_corretor',
+            'qualificacao_construtora',
+            'descricao_imovel',
+            'texto_matricula',
+            'preco_por_extenso',
         ];
 
         return ProposalTemplate::query()
@@ -109,15 +117,15 @@ class ProposalIssueService
                 $variables = [];
                 $prefill = [];
 
-                foreach ($this->resolver->extractPlaceholders($template->body_markdown) as $slug) {
-                    if (in_array($slug, $autoSlugs, true)) {
-                        $value = trim((string) ($systemValues[$slug] ?? ''));
+                foreach ($autoSlugs as $slug) {
+                    $value = trim((string) ($systemValues[$slug] ?? ''));
 
-                        if ($value !== '') {
-                            $prefill[$slug] = $value;
-                        }
+                    if ($value !== '') {
+                        $prefill[$slug] = $value;
                     }
+                }
 
+                foreach ($this->resolver->extractPlaceholders($template->body_markdown) as $slug) {
                     if (in_array($slug, $contextSlugs, true)) {
                         continue;
                     }

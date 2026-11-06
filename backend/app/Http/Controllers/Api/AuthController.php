@@ -6,6 +6,7 @@ use App\Enums\UserActivityAction;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\BrokerEmailConfirmationService;
 use App\Services\UserActivityLogger;
 use App\Support\BuilderPermissions;
 use App\Support\PhoneNumberNormalizer;
@@ -13,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -20,6 +22,7 @@ class AuthController extends Controller
 {
     public function __construct(
         private readonly UserActivityLogger $activityLogger,
+        private readonly BrokerEmailConfirmationService $emailConfirmations,
     ) {}
 
     public function login(Request $request): JsonResponse
@@ -44,6 +47,14 @@ class AuthController extends Controller
             ]);
         }
 
+        if ($user->role === 'broker' && $user->email_verified_at === null) {
+            $this->emailConfirmations->send($user);
+
+            throw ValidationException::withMessages([
+                'email' => ['Confirme o acesso pelo link enviado ao seu e-mail. Enviamos um novo link.'],
+            ]);
+        }
+
         $this->activityLogger->record(
             action: UserActivityAction::AuthLogin,
             message: 'Entrou no sistema.',
@@ -62,6 +73,40 @@ class AuthController extends Controller
                 'role' => $user->role,
                 'tenant_id' => $user->tenant_id,
             ],
+        ]);
+    }
+
+    public function handoff(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        if ($user === null || $user->role !== 'broker') {
+            abort(403);
+        }
+
+        $code = (string) Str::uuid();
+        Cache::put('broker-handoff:'.$code, $user->id, now()->addMinutes(2));
+
+        return response()->json(['code' => $code]);
+    }
+
+    public function exchangeHandoff(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'code' => ['required', 'uuid'],
+        ]);
+
+        $userId = Cache::pull('broker-handoff:'.$data['code']);
+        $user = is_numeric($userId) ? User::query()->find((int) $userId) : null;
+
+        if ($user === null || $user->role !== 'broker') {
+            throw ValidationException::withMessages([
+                'code' => ['Código inválido ou expirado.'],
+            ]);
+        }
+
+        return response()->json([
+            'token' => $user->createToken('api')->plainTextToken,
         ]);
     }
 

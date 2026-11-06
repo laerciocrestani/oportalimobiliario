@@ -90,4 +90,47 @@ class ZapSignClient
             'signers' => $byRole,
         ];
     }
+
+    /**
+     * @return array{status: string, signers: list<array{token: string, external_id: string, status: string, signed_at: string|null}>}
+     */
+    public function fetchDocument(string $token): array
+    {
+        $apiToken = (string) config('services.zapsign.token');
+
+        if ($apiToken === '') {
+            throw new RuntimeException('ZapSign não está configurado.');
+        }
+
+        $response = Http::baseUrl(rtrim((string) config('services.zapsign.base_url'), '/'))
+            ->withToken($apiToken)
+            ->acceptJson()
+            ->get('/api/v1/docs/'.$token.'/');
+
+        if ($response->failed()) {
+            throw new RuntimeException('ZapSign não devolveu o documento (HTTP '.$response->status().').');
+        }
+
+        $signers = [];
+
+        foreach ($response->json('signers') ?? [] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $signedAt = $row['signed_at'] ?? null;
+
+            $signers[] = [
+                'token' => (string) ($row['token'] ?? ''),
+                'external_id' => (string) ($row['external_id'] ?? ''),
+                'status' => (string) ($row['status'] ?? ''),
+                'signed_at' => is_string($signedAt) && $signedAt !== '' ? $signedAt : null,
+            ];
+        }
+
+        return [
+            'status' => (string) $response->json('status'),
+            'signers' => $signers,
+        ];
+    }
 }

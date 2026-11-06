@@ -110,6 +110,16 @@ describe('renderProposalPlainText', () => {
     )
   })
 
+  it('expands the unit data block from the contract fields', () => {
+    const text = renderProposalPlainText('{dados_unidade}', {
+      dados_unidade: '**Dados da unidade**\n- **Número da unidade:** 101\n- **Vagas de garagem:** 1 vaga — S1-01',
+    })
+
+    expect(text).toContain('Dados da unidade')
+    expect(text).toContain('Número da unidade: 101')
+    expect(text).toContain('Vagas de garagem: 1 vaga — S1-01')
+  })
+
   it('writes a fixed price and drops the INCC clause', () => {
     const text = renderProposalPlainText(
       '{bloco_preco_unidade}\n\n{correcao_parcelas}',

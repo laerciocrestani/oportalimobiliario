@@ -119,7 +119,7 @@ class ContractSignatureService
         $this->links->notifyPending($document->fresh() ?? $document);
     }
 
-    public function resendPendingLinks(Reservation $reservation): int
+    public function resendPendingLinks(Reservation $reservation, ?string $signerKey = null): int
     {
         if (! $reservation->isContractSigning()) {
             abort(422, 'O contrato não está aguardando assinatura.');
@@ -134,6 +134,23 @@ class ContractSignatureService
 
         if ($document === null) {
             abort(422, 'O documento ainda não foi enviado para assinatura.');
+        }
+
+        if ($signerKey !== null) {
+            $signer = $document->signers()
+                ->withoutGlobalScope('tenant')
+                ->where('signer_key', $signerKey)
+                ->first();
+
+            $notified = $signer !== null && $signer->status === SignatureSignerStatus::Pending
+                ? ($this->links->notify($signer, 'contrato') ? 1 : 0)
+                : 0;
+
+            if ($notified === 0) {
+                abort(422, 'Não há signatário pendente com link para reenviar.');
+            }
+
+            return $notified;
         }
 
         $notified = $this->links->notifyPending($document);

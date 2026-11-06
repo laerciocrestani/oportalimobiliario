@@ -495,7 +495,9 @@ export function stacksFromBuilding(building: Building): StackTower[] {
             units:
               existing.length > 0
                 ? existing.map((unit, unitIndex) => unitFromApi(unit, meta.number, unitIndex))
-                : [emptyUnit(meta.number, 1)],
+                : meta.kind === 'hall'
+                  ? []
+                  : [emptyUnit(meta.number, 1)],
           }
         }),
       }

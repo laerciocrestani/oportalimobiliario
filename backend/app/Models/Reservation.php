@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'review_deadline_at',
     'contract_template_id',
     'contract_values',
+    'contract_draft_markdown',
 ])]
 class Reservation extends Model
 {

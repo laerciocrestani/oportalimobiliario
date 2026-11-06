@@ -39,6 +39,36 @@ paths:
                 $ref: '#/components/schemas/PublicBuildingDetail'
         '404':
           description: Not found
+  /api/public/builders:
+    get:
+      summary: List active builders with at least one published building (no auth)
+      responses:
+        '200':
+          description: Builders ordered by name. logo_url stays null until a company logo exists. address is the shared street or the published cities.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicBuilderCatalogItem'
+  /api/public/builders/{slug}:
+    get:
+      summary: Show one builder and its published buildings
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Builder summary plus the same building cards used by the public list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicBuilderCatalogDetail'
+        '404':
+          description: Unknown, inactive, or without published buildings
   /api/public/buildings/{slug}/media:
     get:
       summary: List published building media (internal/external only)
@@ -74,7 +104,7 @@ paths:
           description: Not found
   /api/public/buildings/{slug}/access-requests:
     post:
-      summary: Corretor pede acesso para comercializar um empreendimento publicado
+      summary: Lead anônimo pede contato para comercializar um empreendimento publicado
       parameters:
         - name: slug
           in: path
@@ -106,6 +136,90 @@ paths:
           description: Nome, telefone ou e-mail inválido
         '429':
           description: Muitas tentativas
+  /api/public/buildings/{slug}/broker-account:
+    post:
+      summary: Cria conta de corretor e pede acesso ao empreendimento publicado
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, phone, email, password, password_confirmation]
+              properties:
+                name:
+                  type: string
+                phone:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                password_confirmation:
+                  type: string
+      responses:
+        '201':
+          description: Conta criada sem sessão. O corretor confirma o acesso pelo e-mail e o link abre o portal já autenticado.
+        '404':
+          description: Empreendimento inexistente ou não publicado
+        '422':
+          description: Dados inválidos ou conta já existente
+        '429':
+          description: Muitas tentativas
+  /api/broker/buildings/{slug}/access-requests:
+    post:
+      summary: Corretor autenticado pede acesso a um empreendimento publicado
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Pedido pendente criado ou já existente
+        '403':
+          description: Conta que não é de corretor
+        '404':
+          description: Empreendimento inexistente ou não publicado
+        '422':
+          description: Acesso já concedido ou vínculo inativo
+  /api/builder/building-requests/{id}/approve:
+    post:
+      summary: Aprova o pedido e libera só aquele empreendimento
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Vínculo aprovado, se estava pendente, e acesso ao empreendimento concedido
+        '404':
+          description: Pedido de outra construtora ou inexistente
+  /api/builder/building-requests/{id}/reject:
+    post:
+      summary: Recusa o pedido de um empreendimento
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Pedido removido. Vínculo novo pendente é desfeito se não restar outro pedido.
+        '404':
+          description: Pedido de outra construtora ou inexistente
   /api/public/sitemap.xml:
     get:
       summary: Public sitemap XML
@@ -133,7 +247,29 @@ paths:
         '200':
           description: Token issued
         '422':
-          description: Invalid credentials
+          description: Invalid credentials or broker email still unconfirmed
+  /api/auth/broker-email/confirm:
+    get:
+      summary: Confirma o e-mail do corretor e abre o portal já autenticado
+      parameters:
+        - name: user
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: expires
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: signature
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redireciona para a ponte de sessão do corretor, ou para o login se o link expirou
   /api/auth/me:
     get:
       summary: Current user
@@ -557,7 +693,7 @@ paths:
                               description: When true, recloning the mirror floor must not overwrite this floor.
                             units:
                               type: array
-                              minItems: 1
+                              description: At least one unit, except for a hall floor, which may be an empty list.
                               items:
                                 type: object
                                 properties:
@@ -1863,8 +1999,9 @@ paths:
     post:
       summary: Resend proposal signature links (builder)
       description: |
-        Resends the WhatsApp and e-mail link to every signer who has not signed
-        or refused. When the signer has no e-mail, only WhatsApp is sent.
+        Resends the WhatsApp and e-mail link to signers who have not signed
+        or refused. Pass `role` to resend only to the signer who currently has
+        the signature. When the signer has no e-mail, only WhatsApp is sent.
         The reservation must be `proposal_signing` and the ZapSign document `sent`.
       security:
         - bearerAuth: []
@@ -1874,6 +2011,17 @@ paths:
           required: true
           schema:
             type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role:
+                  type: string
+                  enum: [builder, broker, buyer]
+                  description: When set, resends only if this signer currently has the turn. Omit to resend to that same signer.
       responses:
         '200':
           description: Links resent
@@ -2112,14 +2260,13 @@ paths:
           description: Forbidden
         '422':
           description: Invalid stage, inactive template, missing required values, or missing client CPF or address
-  /api/builder/reservations/{reservation}/contract/signature-links:
-    post:
-      summary: Resend contract signature links (builder)
+  /api/builder/reservations/{reservation}/contract/review:
+    get:
+      summary: Preview the filled contract for this reservation
       description: |
-        Resends the WhatsApp and e-mail link to every contract signer who has not
-        signed or refused. When the signer has no e-mail, only WhatsApp is sent.
-        The reservation must be `contract_signing` and the ZapSign document `sent`.
-        The daily 08:00 reminder uses the same rule and does not block this button.
+        Returns the active templates and the filled text of this reservation.
+        Does not create a PDF and does not notify signers.
+        Requires `contracts.manage`.
       security:
         - bearerAuth: []
       parameters:
@@ -2128,6 +2275,89 @@ paths:
           required: true
           schema:
             type: integer
+      responses:
+        '200':
+          description: Filled contract preview
+        '403':
+          description: Missing contracts permission
+    patch:
+      summary: Switch the contract model or save this reservation's text
+      description: |
+        `template_id` replaces the reservation text with that model filled in.
+        `body` saves an edit for this reservation only and does not change the model.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                template_id:
+                  type: integer
+                body:
+                  type: string
+      responses:
+        '200':
+          description: Updated preview
+        '403':
+          description: Missing contracts permission
+        '422':
+          description: Contract already accepted
+  /api/builder/reservations/{reservation}/contract/accept:
+    post:
+      summary: Accept the contract, generate the PDF and send it for signature
+      description: |
+        Generates the PDF from the reviewed text and sends the ZapSign links by e-mail.
+        Requires `contracts.manage`.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: Contract accepted
+        '403':
+          description: Missing contracts permission
+        '422':
+          description: Contract already accepted or empty
+  /api/builder/reservations/{reservation}/contract/signature-links:
+    post:
+      summary: Resend contract signature links (builder)
+      description: |
+        Resends the WhatsApp and e-mail link to every contract signer who has not
+        signed or refused. When the signer has no e-mail, only WhatsApp is sent.
+        The reservation must be `contract_signing` and the ZapSign document `sent`.
+        The daily 08:00 reminder uses the same rule and does not block this button.
+        Optional `signer_key` resends only that person (`buyer`, `builder`, `witness-1`, `witness-2`).
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signer_key:
+                  type: string
       responses:
         '200':
           description: Links resent
@@ -2843,6 +3073,38 @@ paths:
                   $ref: '#/components/schemas/BrokerProposalTemplate'
         '403':
           description: Not the reservation owner
+  /api/broker/reservations/{reservation}/attachments:
+    post:
+      summary: Upload reservation documents (broker)
+      description: Adds proposal documents while the reservation is in progress. JPEG, PNG, WebP or PDF, up to 10MB each.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: reservation
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '201':
+          description: Documents stored
+        '403':
+          description: Not the reservation owner
+        '422':
+          description: Invalid file or cancelled reservation
   /api/broker/reservations/{reservation}/proposal:
     post:
       summary: Submit reservation proposal (broker)
@@ -2912,6 +3174,7 @@ paths:
         Resends the WhatsApp and e-mail link to every contract signer who has not
         signed or refused. Only the selling broker of the reservation can call this.
         The reservation must be `contract_signing` and the ZapSign document `sent`.
+        Optional `signer_key` resends only that person (`buyer`, `builder`, `witness-1`, `witness-2`).
       security:
         - bearerAuth: []
       parameters:
@@ -2920,6 +3183,15 @@ paths:
           required: true
           schema:
             type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                signer_key:
+                  type: string
       responses:
         '200':
           description: Links resent
@@ -3221,7 +3493,7 @@ paths:
                   type: string
       responses:
         '201':
-          description: Registered with auth token; pending builder approval
+          description: Conta criada e pendente de aprovação. Sem token; o acesso entra pelo link do e-mail.
   /api/public/whatsapp/webhook:
     get:
       summary: Meta WhatsApp webhook verification
@@ -3970,6 +4242,43 @@ components:
           nullable: true
       required:
         - name
+    PublicBuilderCatalogItem:
+      type: object
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        logo_url:
+          type: string
+          nullable: true
+          description: Null enquanto a construtora não tiver logo cadastrada.
+        address:
+          type: string
+          nullable: true
+          description: Rua compartilhada por todos os empreendimentos publicados, ou a lista de cidades.
+        buildings_count:
+          type: integer
+        available_units_count:
+          type: integer
+          description: Unidades com status available em empreendimentos publicados.
+      required:
+        - slug
+        - name
+        - logo_url
+        - buildings_count
+        - available_units_count
+    PublicBuilderCatalogDetail:
+      allOf:
+        - $ref: '#/components/schemas/PublicBuilderCatalogItem'
+        - type: object
+          properties:
+            buildings:
+              type: array
+              items:
+                $ref: '#/components/schemas/PublicBuildingListItem'
+          required:
+            - buildings
     PublicUnit:
       type: object
       properties:
@@ -4228,6 +4537,15 @@ components:
           example: witness_signature
         deposit_overdue:
           type: boolean
+        signature_progress:
+          nullable: true
+          description: Proposal signature count while the card is waiting for signatures.
+          type: object
+          properties:
+            signed:
+              type: integer
+            total:
+              type: integer
         kanban_column:
           type: string
           enum:
@@ -4398,6 +4716,10 @@ components:
             building_name:
               type: string
               nullable: true
+        garage_units:
+          type: array
+          items:
+            $ref: '#/components/schemas/GarageUnit'
         current_proposal:
           nullable: true
           allOf:
@@ -4418,6 +4740,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ReservationWitness'
+        signature_process:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/ProposalSignatureProcess'
         attachments:
           type: array
           items:
@@ -4426,6 +4752,32 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ReservationTimelineStep'
+    ProposalSignatureProcess:
+      type: object
+      properties:
+        sent_at:
+          type: string
+          format: date-time
+        due_at:
+          type: string
+          format: date-time
+        parties:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                type: string
+              role:
+                type: string
+                enum: [builder, broker, buyer, witness]
+              label:
+                type: string
+              name:
+                type: string
+              status:
+                type: string
+                enum: [pending, signed, refused]
     ReservationPendingActionCount:
       type: object
       properties:

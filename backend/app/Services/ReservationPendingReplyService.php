@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
+use App\Enums\SignatureDocumentKind;
+use App\Enums\SignatureSignerStatus;
 use App\Models\Reservation;
 use App\Models\ReservationMessage;
 use App\Models\ReservationTimelineEvent;
@@ -152,6 +154,7 @@ class ReservationPendingReplyService
             'situation' => $this->timelineService->situation($reservation),
             'kanban_column' => $this->kanbanService->column($reservation)->value,
             'allowed_kanban_moves' => $this->kanbanService->allowedMoves($reservation, $viewer),
+            'signature_progress' => $this->signatureProgress($reservation),
             'client' => $reservation->client ? [
                 'id' => $reservation->client->id,
                 'name' => $reservation->client->name,
@@ -170,6 +173,44 @@ class ReservationPendingReplyService
                 ] : null,
             ] : null,
             'garage_units' => ReservationGarageService::serializeGarageUnits($reservation),
+        ];
+    }
+
+    /**
+     * @return array{signed: int, total: int}|null
+     */
+    private function signatureProgress(Reservation $reservation): ?array
+    {
+        if ($reservation->isProposalSigning()) {
+            return $this->signatureCount($reservation, SignatureDocumentKind::Proposal, 3);
+        }
+
+        if ($reservation->isContractSigning()) {
+            return $this->signatureCount($reservation, SignatureDocumentKind::Contract, 4);
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{signed: int, total: int}
+     */
+    private function signatureCount(Reservation $reservation, SignatureDocumentKind $kind, int $total): array
+    {
+        $reservation->loadMissing('signatureDocuments.signers');
+
+        $document = $reservation->signatureDocuments
+            ->where('kind', $kind)
+            ->sortByDesc('id')
+            ->first();
+
+        $signed = $document?->signers
+            ->where('status', SignatureSignerStatus::Signed)
+            ->count() ?? 0;
+
+        return [
+            'signed' => $signed,
+            'total' => $total,
         ];
     }
 
@@ -202,10 +243,6 @@ class ReservationPendingReplyService
 
         if ($reservation->canSubmitDepositProof() && $reservation->isDepositPending()) {
             return 'submit_deposit_proof';
-        }
-
-        if ($reservation->canSubmitContractData() && ! $this->hasTimelineEvent($reservation, ReservationTimelineEventType::ContractDataSubmitted)) {
-            return 'submit_contract_data';
         }
 
         if ($reservation->isContractIssued() && ! $this->hasTimelineEvent($reservation, ReservationTimelineEventType::ContractSignedGov)) {
@@ -246,8 +283,7 @@ class ReservationPendingReplyService
             return 'deposit_proof_approval';
         }
 
-        if ($reservation->isContractDataPending()
-            && $this->hasTimelineEvent($reservation, ReservationTimelineEventType::ContractDataSubmitted)) {
+        if ($reservation->isContractDataPending()) {
             return 'issue_contract';
         }
 

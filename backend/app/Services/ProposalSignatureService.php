@@ -19,6 +19,7 @@ use App\Models\TenantSignatureSetting;
 use App\Models\Unit;
 use App\Models\User;
 use App\Services\ZapSign\ZapSignClient;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
@@ -118,30 +119,179 @@ class ProposalSignatureService
         $this->links->notifyPending($document->fresh() ?? $document);
     }
 
-    public function resendPendingLinks(Reservation $reservation): int
+    public function resendPendingLinks(Reservation $reservation, ?SignatureSignerRole $role = null): int
     {
         if (! $reservation->isProposalSigning()) {
             abort(422, 'A proposta não está aguardando assinatura.');
         }
 
-        $document = SignatureDocument::query()
+        $document = $this->sentProposalDocument($reservation);
+        $sentNow = false;
+
+        if ($document === null) {
+            $this->send($reservation->id);
+            $document = $this->sentProposalDocument($reservation);
+            $sentNow = true;
+        }
+
+        if ($document === null) {
+            $error = SignatureDocument::query()
+                ->withoutGlobalScope('tenant')
+                ->where('reservation_id', $reservation->id)
+                ->where('kind', SignatureDocumentKind::Proposal)
+                ->value('error');
+
+            abort(422, is_string($error) && trim($error) !== ''
+                ? $error
+                : 'Não foi possível enviar a proposta para assinatura.');
+        }
+
+        if ($sentNow) {
+            $notified = SignatureSigner::query()
+                ->withoutGlobalScope('tenant')
+                ->where('signature_document_id', $document->id)
+                ->where('status', SignatureSignerStatus::Pending)
+                ->when($role !== null, fn ($query) => $query->where('role', $role))
+                ->whereNotNull('last_notified_at')
+                ->count();
+
+            if ($notified > 0) {
+                return $notified;
+            }
+        }
+
+        $this->refreshSignerContacts($reservation, $document);
+
+        $notified = $role === null
+            ? $this->links->notifyPending($document)
+            : $this->links->notifyPending($document, $role);
+
+        if ($notified === 0) {
+            abort(422, $this->notifyFailureMessage($document, $role));
+        }
+
+        return $notified;
+    }
+
+    private function refreshSignerContacts(Reservation $reservation, SignatureDocument $document): void
+    {
+        $reservation->loadMissing(['proposals', 'broker', 'unit']);
+
+        try {
+            $signers = $this->signersFor($reservation);
+        } catch (RuntimeException) {
+            return;
+        }
+
+        foreach ($signers as $signer) {
+            SignatureSigner::query()
+                ->withoutGlobalScope('tenant')
+                ->where('signature_document_id', $document->id)
+                ->where('role', $signer['role'])
+                ->update([
+                    'name' => $signer['name'],
+                    'email' => $signer['email'] !== '' ? $signer['email'] : null,
+                    'phone' => $signer['phone'] !== '' ? $signer['phone'] : null,
+                ]);
+        }
+    }
+
+    private function notifyFailureMessage(SignatureDocument $document, ?SignatureSignerRole $role): string
+    {
+        $signer = SignatureSigner::query()
+            ->withoutGlobalScope('tenant')
+            ->where('signature_document_id', $document->id)
+            ->when($role !== null, fn ($query) => $query->where('role', $role))
+            ->where('status', SignatureSignerStatus::Pending)
+            ->first();
+
+        if ($signer === null || trim((string) $signer->sign_url) === '') {
+            return 'Não há signatário pendente com link para reenviar.';
+        }
+
+        $who = match ($signer->role) {
+            SignatureSignerRole::Builder => 'gestor',
+            SignatureSignerRole::Broker => 'corretor',
+            SignatureSignerRole::Buyer => 'comprador',
+            default => 'signatário',
+        };
+
+        if (trim((string) $signer->email) === '') {
+            return "O {$who} não tem e-mail cadastrado para receber o link.";
+        }
+
+        return "Não foi possível enviar o link para o e-mail do {$who}.";
+    }
+
+    public function syncProposalSignatures(Reservation $reservation): void
+    {
+        if (! $reservation->isProposalSigning()) {
+            return;
+        }
+
+        $document = $this->sentProposalDocument($reservation);
+
+        if ($document === null) {
+            return;
+        }
+
+        try {
+            $remote = $this->zapSign->fetchDocument((string) $document->provider_document_id);
+        } catch (Throwable) {
+            return;
+        }
+
+        DB::transaction(function () use ($document, $remote): void {
+            foreach ($remote['signers'] as $row) {
+                if ($row['status'] !== 'signed') {
+                    continue;
+                }
+
+                $signer = SignatureSigner::query()
+                    ->withoutGlobalScope('tenant')
+                    ->where('signature_document_id', $document->id)
+                    ->where(function ($query) use ($row): void {
+                        if ($row['token'] !== '') {
+                            $query->orWhere('provider_signer_id', $row['token']);
+                        }
+
+                        if ($row['external_id'] !== '') {
+                            $query->orWhere('role', $row['external_id']);
+                        }
+                    })
+                    ->first();
+
+                if ($signer === null || $signer->status === SignatureSignerStatus::Signed) {
+                    continue;
+                }
+
+                $signer->update([
+                    'status' => SignatureSignerStatus::Signed,
+                    'signed_at' => $row['signed_at'] !== null ? Carbon::parse($row['signed_at']) : now(),
+                ]);
+            }
+
+            $waiting = SignatureSigner::query()
+                ->withoutGlobalScope('tenant')
+                ->where('signature_document_id', $document->id)
+                ->where('status', '!=', SignatureSignerStatus::Signed->value)
+                ->exists();
+
+            if (! $waiting) {
+                $this->advanceAfterProposalSignatures($document);
+            }
+        });
+    }
+
+    private function sentProposalDocument(Reservation $reservation): ?SignatureDocument
+    {
+        return SignatureDocument::query()
             ->withoutGlobalScope('tenant')
             ->where('reservation_id', $reservation->id)
             ->where('kind', SignatureDocumentKind::Proposal)
             ->where('status', SignatureDocumentStatus::Sent)
+            ->whereNotNull('provider_document_id')
             ->first();
-
-        if ($document === null) {
-            abort(422, 'O documento ainda não foi enviado para assinatura.');
-        }
-
-        $notified = $this->links->notifyPending($document);
-
-        if ($notified === 0) {
-            abort(422, 'Não há signatário pendente com link para reenviar.');
-        }
-
-        return $notified;
     }
 
     /**
@@ -175,7 +325,7 @@ class ProposalSignatureService
             abort(422, 'Signatário não encontrado neste documento.');
         }
 
-        DB::transaction(function () use ($document, $signerToken, $next): void {
+        DB::transaction(function () use ($document, $signerToken, $next, $payload): void {
             $signer = SignatureSigner::query()
                 ->withoutGlobalScope('tenant')
                 ->where('signature_document_id', $document->id)
@@ -191,7 +341,12 @@ class ProposalSignatureService
                 return;
             }
 
-            $signer->update(['status' => $next]);
+            $signer->update([
+                'status' => $next,
+                'signed_at' => $next === SignatureSignerStatus::Signed
+                    ? $this->signedAt($payload)
+                    : null,
+            ]);
 
             if ($next !== SignatureSignerStatus::Signed) {
                 return;
@@ -351,10 +506,15 @@ class ProposalSignatureService
     private function incomingStatus(array $payload): SignatureSignerStatus
     {
         $nested = $payload['signer_who_signed'] ?? $payload['signer'] ?? null;
-        $raw = $payload['status'] ?? (is_array($nested) ? ($nested['status'] ?? null) : null);
+        $signerStatus = is_array($nested) ? ($nested['status'] ?? null) : null;
         $event = is_string($payload['event_type'] ?? null) ? $payload['event_type'] : '';
+        $raw = is_string($signerStatus) && $signerStatus !== '' ? $signerStatus : '';
 
-        if (! is_string($raw) || $raw === '') {
+        if ($raw === '' && is_string($payload['status'] ?? null) && ! in_array($payload['status'], ['pending', 'new'], true)) {
+            $raw = $payload['status'];
+        }
+
+        if ($raw === '') {
             $raw = match ($event) {
                 'doc_signed' => 'signed',
                 'doc_refused', 'signer_refused' => 'refused',
@@ -367,5 +527,16 @@ class ProposalSignatureService
             'refused', 'rejected' => SignatureSignerStatus::Refused,
             default => abort(422, 'Status de assinatura não reconhecido.'),
         };
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function signedAt(array $payload): Carbon
+    {
+        $nested = $payload['signer_who_signed'] ?? $payload['signer'] ?? null;
+        $raw = is_array($nested) ? ($nested['signed_at'] ?? null) : null;
+
+        return is_string($raw) && $raw !== '' ? Carbon::parse($raw) : now();
     }
 }

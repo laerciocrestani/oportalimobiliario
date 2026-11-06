@@ -366,19 +366,28 @@ export function InvitesPage() {
     }
   }
 
-  async function handleApprovePending(id: number) {
+  async function handleApprovePending(broker: PendingBroker) {
     try {
-      await builderApi.approvePendingBroker(id)
-      toast.success('Corretor aprovado.')
+      if (broker.building_request_id) {
+        await builderApi.approveBuildingRequest(broker.building_request_id)
+        toast.success('Empreendimento liberado para o corretor.')
+      } else {
+        await builderApi.approvePendingBroker(broker.id)
+        toast.success('Corretor aprovado.')
+      }
       await Promise.all([loadPendingBrokers(), loadInvites()])
     } catch {
       toast.error('Não foi possível aprovar o corretor.')
     }
   }
 
-  async function handleRejectPending(id: number) {
+  async function handleRejectPending(broker: PendingBroker) {
     try {
-      await builderApi.rejectPendingBroker(id)
+      if (broker.building_request_id) {
+        await builderApi.rejectBuildingRequest(broker.building_request_id)
+      } else {
+        await builderApi.rejectPendingBroker(broker.id)
+      }
       toast.success('Solicitação recusada.')
       await loadPendingBrokers()
     } catch {
@@ -482,8 +491,8 @@ export function InvitesPage() {
         <PendingBrokersSection
           pendingBrokers={pendingBrokers}
           loading={pendingLoading}
-          onApprove={(id) => void handleApprovePending(id)}
-          onReject={(id) => void handleRejectPending(id)}
+          onApprove={(broker) => void handleApprovePending(broker)}
+          onReject={(broker) => void handleRejectPending(broker)}
         />
 
         {loading ? (

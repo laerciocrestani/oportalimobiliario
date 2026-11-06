@@ -110,6 +110,12 @@ export function expandProposalModules(markdown: string, values: Record<string, s
     .flatMap((line) => {
       const trimmed = line.trim()
 
+      if (trimmed === '{dados_unidade}') {
+        const block = (values.dados_unidade ?? '').trim()
+
+        return block === '' ? [] : block.split('\n')
+      }
+
       if (trimmed === '{bloco_preco_unidade}') {
         return priceBlockLine(
           fixed ? 'Valor da unidade' : 'Valor corrigido da unidade',

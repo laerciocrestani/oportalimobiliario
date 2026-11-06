@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { GalleryVerticalEnd } from 'lucide-react'
 import { LoginForm } from '@/components/login-form'
 import { login, saveToken } from '@/lib/api'
@@ -17,10 +17,14 @@ type LoginLocationState = {
 export function LoginPage({ profile }: LoginPageProps) {
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
   const locationState = location.state as LoginLocationState | null
+  const confirmationError = searchParams.get('confirmation') === 'expired'
+    ? 'O link de confirmação expirou ou não é válido. Se a conta já foi confirmada, entre com e-mail e senha. Se ainda não confirmou, entre com a senha do cadastro para receber um novo link.'
+    : null
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(locationState?.error ?? null)
+  const [error, setError] = useState<string | null>(locationState?.error ?? confirmationError)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {

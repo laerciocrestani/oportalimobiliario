@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Builder;
 
 use App\Http\Controllers\Controller;
+use App\Models\BrokerBuildingRequest;
 use App\Models\BrokerTenant;
 use App\Models\TenantBrokerInviteLink;
 use App\Services\TenantBrokerInviteLinkService;
@@ -43,22 +44,44 @@ class TenantBrokerInviteLinkController extends Controller
     {
         $this->authorize('viewAny', TenantBrokerInviteLink::class);
 
-        $pending = BrokerTenant::query()
+        $tenantId = $request->user()->tenant_id;
+
+        $buildingRequests = BrokerBuildingRequest::query()
+            ->with(['broker', 'building:id,name'])
+            ->where('tenant_id', $tenantId)
+            ->orderByDesc('created_at')
+            ->get();
+
+        $pendingBuildings = $buildingRequests->map(fn (BrokerBuildingRequest $item): array => [
+            'id' => $item->id,
+            'building_request_id' => $item->id,
+            'broker_id' => $item->broker_id,
+            'name' => $item->broker->name,
+            'email' => $item->broker->usesSyntheticEmail() ? null : $item->broker->email,
+            'phone' => $item->broker->phone,
+            'requested_at' => $item->created_at?->toIso8601String(),
+            'building_name' => $item->building->name,
+        ]);
+
+        $pendingBrokers = BrokerTenant::query()
             ->with('broker')
-            ->where('tenant_id', $request->user()->tenant_id)
+            ->where('tenant_id', $tenantId)
             ->pendingApproval()
+            ->whereNotIn('broker_id', $buildingRequests->pluck('broker_id'))
             ->orderByDesc('accepted_at')
             ->get()
             ->map(fn (BrokerTenant $link): array => [
                 'id' => $link->id,
+                'building_request_id' => null,
                 'broker_id' => $link->broker_id,
                 'name' => $link->broker->name,
                 'email' => $link->broker->usesSyntheticEmail() ? null : $link->broker->email,
                 'phone' => $link->broker->phone,
                 'requested_at' => $link->accepted_at->toIso8601String(),
+                'building_name' => null,
             ]);
 
-        return response()->json($pending);
+        return response()->json($pendingBuildings->concat($pendingBrokers)->values());
     }
 
     public function approve(Request $request, BrokerTenant $brokerTenant): JsonResponse

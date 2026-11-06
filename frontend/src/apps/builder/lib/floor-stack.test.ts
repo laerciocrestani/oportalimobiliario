@@ -3,6 +3,7 @@ import {
   buildSkeleton,
   cloneMirror,
   copyTowerFromPrevious,
+  stacksFromBuilding,
   towerHasReference,
   markException,
   mirrorDraftFromTower,
@@ -14,6 +15,7 @@ import {
   type StackTower,
   type StackUnit,
 } from '@/apps/builder/lib/floor-stack'
+import type { Building } from '@/lib/api'
 
 function withUnits(tower: StackTower, floorNumber: number, patch: Array<Partial<StackUnit>>): StackTower {
   return {
@@ -219,6 +221,37 @@ describe('floor-stack', () => {
 
     expect(floor(reset, 2).customized).toBe(false)
     expect(floor(reset, 2).units[0]).toMatchObject({ code: '201', areaM2: '50', bedrooms: '2' })
+  })
+
+  it('keeps a hall floor empty when the building has no units there', () => {
+    const [tower] = stacksFromBuilding({
+      towers: [
+        {
+          id: 'tower-1',
+          name: 'Torre A',
+          sort_order: 0,
+          floors: [
+            { id: 'floor-0', tower_id: 'tower-1', number: 0, kind: 'hall' },
+            { id: 'floor-1', tower_id: 'tower-1', number: 1, kind: 'residential' },
+          ],
+          units: [
+            {
+              id: 'unit-1',
+              code: '101',
+              floor: 1,
+              tower_id: 'tower-1',
+              area_m2: null,
+              price: null,
+              status: 'available',
+            },
+          ],
+        },
+      ],
+      units: [],
+    } as Building)
+
+    expect(tower.floors.find((item) => item.number === 0)?.units).toEqual([])
+    expect(tower.floors.find((item) => item.number === 1)?.units.map((unit) => unit.code)).toEqual(['101'])
   })
 
   it('builds structure and unit-grid payloads compatible with the API', () => {

@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'phone',
     'email',
     'status',
+    'signed_at',
     'provider_signer_id',
     'sign_url',
     'last_notified_at',
@@ -31,6 +32,7 @@ class SignatureSigner extends Model
         return [
             'role' => SignatureSignerRole::class,
             'status' => SignatureSignerStatus::class,
+            'signed_at' => 'datetime',
             'last_notified_at' => 'datetime',
         ];
     }

@@ -179,6 +179,52 @@ it('persists unit spec sheet and extra amenities without copying building amenit
         ->and($unit->amenities()->pluck('amenities.id')->all())->toBe([$extra->id]);
 });
 
+it('accepts a hall floor without units', function () {
+    $tenant = Tenant::factory()->create();
+    $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
+    $building = Building::factory()->for($tenant)->create(['published' => false]);
+    $tower = makeDraftTowerFloors($tenant, $building, 'Torre A', [
+        ['number' => 0, 'kind' => FloorKind::Hall->value],
+        ['number' => 1, 'kind' => FloorKind::Residential->value],
+        ['number' => 2, 'kind' => FloorKind::Hall->value],
+    ]);
+
+    Sanctum::actingAs($user);
+
+    $this->putJson("/api/builder/buildings/{$building->id}/unit-grid", [
+        'towers' => [
+            [
+                'id' => $tower->id,
+                'floors' => [
+                    [
+                        'number' => 0,
+                        'kind' => 'hall',
+                        'units' => [],
+                    ],
+                    [
+                        'number' => 1,
+                        'kind' => 'residential',
+                        'units' => [
+                            ['code' => '101'],
+                        ],
+                    ],
+                    [
+                        'number' => 2,
+                        'kind' => 'hall',
+                        'units' => [],
+                    ],
+                ],
+            ],
+        ],
+    ])
+        ->assertOk()
+        ->assertJsonPath('towers.0.floors.2.kind', 'hall');
+
+    expect(Floor::query()->where('tower_id', $tower->id)->where('number', 2)->first()?->kind)->toBe(FloorKind::Hall)
+        ->and(Unit::query()->where('tower_id', $tower->id)->where('floor', 2)->count())->toBe(0)
+        ->and(Unit::query()->where('tower_id', $tower->id)->pluck('code')->all())->toBe(['101']);
+});
+
 it('rejects a floor with zero units', function () {
     $tenant = Tenant::factory()->create();
     $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();

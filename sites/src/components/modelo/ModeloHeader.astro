@@ -23,6 +23,12 @@ const { lancamentosHref = '/modelo#lancamentos', restoreList = false } = Astro.p
       >
         Lançamentos
       </a>
+      <a
+        href="/modelo/construtoras"
+        aria-current={Astro.url.pathname.startsWith('/modelo/construtoras') ? 'page' : undefined}
+      >
+        Construtoras
+      </a>
       <div class="modelo-account">
         <button
           type="button"

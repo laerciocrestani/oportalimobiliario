@@ -617,3 +617,38 @@ it('includes proposal attachments on builder timeline before decision', function
         ->assertJsonPath('current_proposal.attachments.1.original_name', 'simulacao.jpg')
         ->assertJsonPath('attachments.0.kind', ReservationAttachmentKind::Proposal->value);
 });
+
+it('lets the broker upload documents during the reservation', function () {
+    Storage::fake('local');
+
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
+
+    UnitAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'unit_id' => $unit->id,
+    ]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = Reservation::factory()->proposalPending()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+
+    $this->post("/api/broker/reservations/{$reservation->id}/attachments", [
+        'files' => [
+            UploadedFile::fake()->create('rg.pdf', 40, 'application/pdf'),
+        ],
+    ])
+        ->assertCreated()
+        ->assertJsonPath('attachments.0.kind', ReservationAttachmentKind::Proposal->value)
+        ->assertJsonPath('attachments.0.original_name', 'rg.pdf');
+
+    expect($reservation->attachments()->count())->toBe(1);
+});

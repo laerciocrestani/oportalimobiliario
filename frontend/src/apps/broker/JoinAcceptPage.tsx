@@ -1,17 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { GalleryVerticalEnd } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { brokerApi, ApiRequestError, saveToken } from '@/lib/api'
+import { brokerApi, ApiRequestError } from '@/lib/api'
 import { formatBrazilianMobilePhone, isBrazilianMobilePhoneValid, isValidEmail } from '@/lib/format-phone'
 
 export function JoinAcceptPage() {
   const { token = '' } = useParams()
-  const navigate = useNavigate()
   const [tenantName, setTenantName] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -23,6 +22,7 @@ export function JoinAcceptPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [previewLoading, setPreviewLoading] = useState(true)
+  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null)
   const resendingInviteRef = useRef(false)
 
   useEffect(() => {
@@ -70,21 +70,14 @@ export function JoinAcceptPage() {
     setLoading(true)
 
     try {
-      const result = await brokerApi.registerViaJoinLink({
+      await brokerApi.registerViaJoinLink({
         token,
         name,
         phone,
         email: email.trim(),
         password,
       })
-      saveToken(result.token)
-
-      if (result.pending_approval) {
-        navigate('/pending-approval')
-        return
-      }
-
-      navigate('/')
+      setConfirmationEmail(email.trim())
     } catch (err) {
       if (err instanceof ApiRequestError && err.errors) {
         const emailMessage = err.errors.email?.[0]
@@ -188,19 +181,26 @@ export function JoinAcceptPage() {
 
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Cadastro de corretor</CardTitle>
+          <CardTitle>{confirmationEmail ? 'Confirme em seu e-mail' : 'Cadastro de corretor'}</CardTitle>
           <CardDescription>
-            {previewLoading
-              ? 'Carregando...'
-              : tenantName
-                ? `Solicite acesso à construtora ${tenantName}.`
-                : 'Link de convite'}
+            {confirmationEmail
+              ? `Enviamos um link para ${confirmationEmail}. Abra a mensagem e clique em Confirmar acesso para entrar no portal do corretor.`
+              : previewLoading
+                ? 'Carregando...'
+                : tenantName
+                  ? `Solicite acesso à construtora ${tenantName}.`
+                  : 'Link de convite'}
           </CardDescription>
         </CardHeader>
         <CardContent>
+          {confirmationEmail ? (
+            <p className="text-sm text-muted-foreground">
+              Se o link expirar, entre com o e-mail e a senha do cadastro para receber outro.
+            </p>
+          ) : null}
           {error ? <p className="mb-4 text-sm text-destructive">{error}</p> : null}
 
-          {previewLoading || error === 'Link de convite inválido.' ? null : (
+          {confirmationEmail || previewLoading || error === 'Link de convite inválido.' ? null : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="join-name">Nome completo</Label>

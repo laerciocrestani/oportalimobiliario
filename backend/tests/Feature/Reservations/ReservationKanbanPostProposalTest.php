@@ -69,17 +69,18 @@ it('moves the ball to the builder while the deposit proof is under review', func
         ->assertJsonPath('0.situation.current.waiting_on', 'builder');
 });
 
-it('returns the ball to the broker while contract data is pending', function () {
+it('moves contract data pending to the contract column waiting on the builder', function () {
     ['builder' => $builder] = postProposalKanbanSetup(ReservationStatus::ContractDataPending);
 
     Sanctum::actingAs($builder);
     $this->getJson('/api/builder/reservations')
         ->assertOk()
-        ->assertJsonPath('0.kanban_column', 'docs_deposit')
-        ->assertJsonPath('0.situation.current.waiting_on', 'broker');
+        ->assertJsonPath('0.kanban_column', 'contract')
+        ->assertJsonPath('0.situation.current.waiting_on', 'builder')
+        ->assertJsonPath('0.pending_action', 'issue_contract');
 });
 
-it('keeps issue-contract in docs_deposit waiting on the builder', function () {
+it('keeps issue-contract in the contract column waiting on the builder', function () {
     ['builder' => $builder, 'broker' => $broker, 'reservation' => $reservation] = postProposalKanbanSetup(
         ReservationStatus::ContractDataPending,
     );
@@ -93,7 +94,7 @@ it('keeps issue-contract in docs_deposit waiting on the builder', function () {
     Sanctum::actingAs($builder);
     $this->getJson('/api/builder/reservations')
         ->assertOk()
-        ->assertJsonPath('0.kanban_column', 'docs_deposit')
+        ->assertJsonPath('0.kanban_column', 'contract')
         ->assertJsonPath('0.situation.current.waiting_on', 'builder');
 });
 
@@ -198,11 +199,13 @@ it('gives the witness view when the manager is also the current witness', functi
     $builder = User::factory()->builder()->withBuilderPermissions([
         BuilderPermissions::CANCEL_RESERVATIONS,
         BuilderPermissions::VIEW_BUILDINGS,
+        BuilderPermissions::WITNESS,
     ])->for($tenant)->create();
     $broker = User::factory()->broker()->create();
     $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::Reserved]);
     $witness2 = User::factory()->builder()->withBuilderPermissions([
         BuilderPermissions::VIEW_BUILDINGS,
+        BuilderPermissions::WITNESS,
     ])->for($tenant)->create();
 
     linkBrokerToTenant($broker, $tenant);
@@ -327,25 +330,14 @@ it('exposes sequential pending actions from formalization through issue contract
     Sanctum::actingAs($broker);
     $this->getJson('/api/broker/reservations')
         ->assertOk()
-        ->assertJsonPath('0.pending_action', 'submit_contract_data');
-
-    ReservationTimelineEvent::factory()->create([
-        'reservation_id' => $reservation->id,
-        'type' => ReservationTimelineEventType::ContractDataSubmitted,
-        'actor_id' => $broker->id,
-    ]);
-
-    Sanctum::actingAs($broker);
-    $this->getJson('/api/broker/reservations')
-        ->assertOk()
         ->assertJsonPath('0.pending_action', null)
-        ->assertJsonPath('0.kanban_column', 'docs_deposit');
+        ->assertJsonPath('0.kanban_column', 'contract');
 
     Sanctum::actingAs($builder);
     $this->getJson('/api/builder/reservations')
         ->assertOk()
         ->assertJsonPath('0.pending_action', 'issue_contract')
-        ->assertJsonPath('0.kanban_column', 'docs_deposit')
+        ->assertJsonPath('0.kanban_column', 'contract')
         ->assertJsonPath('0.situation.current.waiting_on', 'builder');
 });
 

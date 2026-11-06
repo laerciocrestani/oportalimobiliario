@@ -109,6 +109,13 @@ class ReservationPolicy
         return ! $reservation->isReadOnly() && $this->manages($user, $reservation);
     }
 
+    public function reviewContract(User $user, Reservation $reservation): bool
+    {
+        return ! $reservation->isReadOnly()
+            && $user->can(BuilderPermissions::MANAGE_CONTRACTS)
+            && $this->sameTenant($user, $reservation);
+    }
+
     public function uploadSignedContract(User $user, Reservation $reservation): bool
     {
         return ! $reservation->isReadOnly() && $this->manages($user, $reservation);

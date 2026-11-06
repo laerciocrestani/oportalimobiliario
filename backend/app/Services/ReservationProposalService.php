@@ -42,6 +42,49 @@ class ReservationProposalService
     ) {}
 
     /**
+     * @param  list<UploadedFile>  $files
+     * @return list<array<string, mixed>>
+     */
+    public function addDocuments(User $broker, Reservation $reservation, array $files): array
+    {
+        if ($reservation->broker_id !== $broker->id) {
+            abort(403, 'Forbidden.');
+        }
+
+        if ($reservation->status === ReservationStatus::Cancelled) {
+            abort(422, 'Reserva cancelada.');
+        }
+
+        if ($files === []) {
+            abort(422, 'Selecione um arquivo.');
+        }
+
+        foreach ($files as $file) {
+            $this->validateProposalFile($file);
+        }
+
+        $prefix = "/broker/reservations/{$reservation->id}/attachments";
+        $created = [];
+
+        foreach ($files as $file) {
+            $path = $this->storeFile($reservation, $file);
+
+            $attachment = $reservation->attachments()->create([
+                'kind' => ReservationAttachmentKind::Proposal,
+                'path' => $path,
+                'original_name' => $file->getClientOriginalName(),
+                'mime_type' => (string) $file->getMimeType(),
+                'size_bytes' => (int) $file->getSize(),
+                'uploaded_by' => $broker->id,
+            ]);
+
+            $created[] = $attachment->toApiArray($prefix);
+        }
+
+        return $created;
+    }
+
+    /**
      * @param  array<string, mixed>  $data
      * @param  list<UploadedFile>  $files
      */

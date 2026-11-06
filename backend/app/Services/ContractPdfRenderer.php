@@ -35,8 +35,11 @@ class ContractPdfRenderer
             <meta charset="utf-8">
             <style>
                 body { font-family: DejaVu Sans, sans-serif; font-size: 12px; color: #111; }
-                h1, h2, h3 { margin-bottom: 0.4em; }
-                p { line-height: 1.45; }
+                h1 { margin-bottom: 0.2em; font-size: 16px; text-align: center; }
+                h2, h3 { margin-bottom: 0.4em; }
+                p { line-height: 1.45; text-align: justify; }
+                table { width: 100%; margin-top: 28px; border-collapse: collapse; }
+                th, td { width: 33%; text-align: center; font-weight: normal; padding: 8px 6px; }
             </style>
         </head>
         <body>{$html}</body>

@@ -1,3 +1,4 @@
+import { initModeloAccess } from '@/scripts/modelo-access'
 import {
   LIST_STORAGE_KEY,
   compareUnitValues,
@@ -65,15 +66,30 @@ export function initModeloDetail(): void {
   bindDialog(compareDialog)
   bindDialog(lightbox)
   bindDialog(contact)
-  bindAccessForm(contact)
+  initModeloAccess(contact)
   watchSections()
   syncExpand()
   syncCompare()
 
-  article.querySelector<HTMLButtonElement>('[data-lightbox-open]')?.addEventListener('click', (event) => {
-    if (lightbox && event.currentTarget instanceof HTMLElement) {
-      show(lightbox, event.currentTarget)
-    }
+  article.querySelectorAll<HTMLButtonElement>('[data-lightbox-open]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const source = button.querySelector('img')
+      const image = lightbox?.querySelector('img')
+      const caption = lightbox?.querySelector<HTMLElement>('[data-lightbox-caption]')
+
+      if (!lightbox || !image || !source) {
+        return
+      }
+
+      image.src = source.currentSrc || source.src
+      image.alt = button.dataset.caption ?? ''
+
+      if (caption && button.dataset.caption) {
+        caption.textContent = button.dataset.caption
+      }
+
+      show(lightbox, button)
+    })
   })
 
   article.querySelectorAll<HTMLButtonElement>('[data-contact-open]').forEach((button) => {
@@ -567,94 +583,6 @@ export function initModeloDetail(): void {
     dialog.addEventListener('close', () => {
       opener?.focus()
       opener = null
-    })
-  }
-
-  function bindAccessForm(dialog: HTMLDialogElement | null): void {
-    const form = dialog?.querySelector<HTMLFormElement>('[data-access-form]')
-
-    if (!form) {
-      return
-    }
-
-    const errorNode = form.querySelector<HTMLElement>('[data-access-error]')
-    const successNode = form.querySelector<HTMLElement>('[data-access-success]')
-    const fields = form.querySelector<HTMLElement>('[data-access-fields]')
-    const submit = form.querySelector<HTMLButtonElement>('button[type="submit"]')
-    const submitLabel = submit?.textContent ?? 'Enviar pedido'
-
-    form.addEventListener('submit', (event) => {
-      event.preventDefault()
-
-      if (!submit || submit.disabled) {
-        return
-      }
-
-      const showError = (message: string): void => {
-        if (!errorNode) {
-          return
-        }
-
-        errorNode.textContent = message
-        errorNode.removeAttribute('hidden')
-        errorNode.focus()
-      }
-
-      if (errorNode) {
-        errorNode.textContent = ''
-        errorNode.setAttribute('hidden', '')
-      }
-
-      submit.disabled = true
-      submit.textContent = 'Enviando…'
-
-      const data = new FormData(form)
-      const payload = {
-        name: String(data.get('name') ?? ''),
-        phone: String(data.get('phone') ?? ''),
-        email: String(data.get('email') ?? ''),
-      }
-
-      fetch(form.action, {
-        method: 'POST',
-        headers: {
-          Accept: 'application/json',
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      })
-        .then(async (response) => {
-          if (response.ok) {
-            fields?.setAttribute('hidden', '')
-            successNode?.removeAttribute('hidden')
-            successNode?.focus()
-            return
-          }
-
-          submit.disabled = false
-          submit.textContent = submitLabel
-
-          if (response.status === 429) {
-            showError('Muitas tentativas. Espere um instante e tente de novo.')
-            return
-          }
-
-          if (response.status === 422) {
-            const body = (await response.json().catch(() => null)) as {
-              errors?: Record<string, string[]>
-            } | null
-            const message = body?.errors ? Object.values(body.errors).flat().find((item) => item !== '') : ''
-            showError(message || 'Confira os dados e tente de novo.')
-            return
-          }
-
-          showError('Não foi possível enviar o pedido. Tente de novo.')
-        })
-        .catch(() => {
-          submit.disabled = false
-          submit.textContent = submitLabel
-          showError('Não foi possível enviar o pedido. Tente de novo.')
-        })
     })
   }
 

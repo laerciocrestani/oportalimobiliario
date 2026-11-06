@@ -10,6 +10,7 @@ use App\Enums\SignatureDocumentStatus;
 use App\Enums\SignatureSignerRole;
 use App\Enums\SignatureSignerStatus;
 use App\Enums\UnitStatus;
+use App\Mail\SignatureLinkMail;
 use App\Models\Reservation;
 use App\Models\ReservationProposal;
 use App\Models\ReservationTimelineEvent;
@@ -21,6 +22,7 @@ use App\Models\Unit;
 use App\Models\User;
 use App\Support\BuilderPermissions;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 
@@ -94,6 +96,31 @@ function signWebhook(string $signerToken, string $status = 'signed'): void
     ], ['X-ZapSign-Token' => 'hook-secret'])->assertOk();
 }
 
+it('emails the builder, the broker and the buyer when the proposal is accepted', function () {
+    Storage::fake('local');
+    Mail::fake();
+    fakeZapSign();
+    ['accepter' => $accepter, 'signer' => $signer, 'broker' => $broker, 'reservation' => $reservation] = signatureReservation();
+    $signer->update(['email' => 'gestor@alpha.test']);
+    $broker->update(['email' => 'corretor@alpha.test']);
+
+    Sanctum::actingAs($accepter);
+
+    $this->patchJson("/api/builder/reservations/{$reservation->id}/proposal/decision", [
+        'decision' => ProposalDecision::Accepted->value,
+    ])->assertOk();
+
+    Mail::assertSent(SignatureLinkMail::class, fn (SignatureLinkMail $mail): bool => $mail->hasTo('gestor@alpha.test'));
+    Mail::assertSent(SignatureLinkMail::class, fn (SignatureLinkMail $mail): bool => $mail->hasTo('corretor@alpha.test'));
+    Mail::assertSent(SignatureLinkMail::class, fn (SignatureLinkMail $mail): bool => $mail->hasTo('maria@example.com'));
+    Mail::assertSentCount(3);
+
+    signWebhook('sig-builder');
+
+    Mail::assertSentCount(3);
+    expect(SignatureSigner::query()->where('role', SignatureSignerRole::Builder)->sole()->signed_at)->not->toBeNull();
+});
+
 it('keeps the acceptance when ZapSign fails', function () {
     Storage::fake('local');
     fakeZapSign(500);
@@ -146,6 +173,8 @@ it('sends the configured signers and moves the card after the three signatures',
         ->assertOk()
         ->assertJsonPath('0.status', ReservationStatus::ProposalSigning->value)
         ->assertJsonPath('0.kanban_column', 'proposal_formalization')
+        ->assertJsonPath('0.signature_progress.signed', 0)
+        ->assertJsonPath('0.signature_progress.total', 3)
         ->assertJsonPath('0.situation.current.waiting_on', null);
 
     $document = SignatureDocument::query()->sole();
@@ -176,6 +205,40 @@ it('sends the configured signers and moves the card after the three signatures',
     $this->getJson('/api/builder/reservations')
         ->assertOk()
         ->assertJsonPath('0.kanban_column', 'docs_deposit');
+});
+
+it('marks the gestor signed when ZapSign still reports the document as pending', function () {
+    Storage::fake('local');
+    fakeZapSign();
+    ['accepter' => $accepter, 'reservation' => $reservation] = signatureReservation();
+
+    Sanctum::actingAs($accepter);
+
+    $this->patchJson("/api/builder/reservations/{$reservation->id}/proposal/decision", [
+        'decision' => ProposalDecision::Accepted->value,
+    ])->assertOk();
+
+    $this->postJson('/api/webhooks/zapsign', [
+        'event_type' => 'doc_signed',
+        'token' => 'doc-1',
+        'status' => 'pending',
+        'signer_who_signed' => [
+            'token' => 'sig-builder',
+            'status' => 'signed',
+            'signed_at' => '2026-10-24T12:29:09.981858Z',
+        ],
+    ], ['X-ZapSign-Token' => 'hook-secret'])->assertOk();
+
+    $builder = SignatureSigner::query()->where('role', SignatureSignerRole::Builder)->sole();
+
+    expect($builder->status)->toBe(SignatureSignerStatus::Signed)
+        ->and($builder->signed_at)->not->toBeNull()
+        ->and($reservation->fresh()->status)->toBe(ReservationStatus::ProposalSigning);
+
+    $this->getJson('/api/builder/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.signature_progress.signed', 1)
+        ->assertJsonPath('0.signature_progress.total', 3);
 });
 
 it('does not release the unit when one signer refuses', function () {

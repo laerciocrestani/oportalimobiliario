@@ -25,6 +25,7 @@ class ReservationDepositService
     public function __construct(
         private readonly ReservationTimelineService $timelineService,
         private readonly ReservationGarageService $garageService,
+        private readonly ContractIssueService $contracts,
     ) {}
 
     public function submitProof(User $broker, Reservation $reservation, UploadedFile $file): Reservation
@@ -95,7 +96,7 @@ class ReservationDepositService
             abort(422, 'Deposit proof attachment not found.');
         }
 
-        return DB::transaction(function () use ($builder, $reservation, $attachment) {
+        $approved = DB::transaction(function () use ($builder, $reservation, $attachment) {
             $reservation->update([
                 'status' => ReservationStatus::ContractDataPending,
             ]);
@@ -109,6 +110,10 @@ class ReservationDepositService
 
             return $reservation->fresh(['unit', 'attachments']);
         });
+
+        $this->contracts->issueDefault($builder, $approved);
+
+        return $reservation->fresh(['unit', 'attachments']);
     }
 
     public function checkOverdueDepositWindows(): int

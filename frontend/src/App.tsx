@@ -24,6 +24,7 @@ import { BrokerClientsPage } from '@/apps/broker/BrokerClientsPage'
 import { BrokerOverviewPage } from '@/apps/broker/BrokerOverviewPage'
 import { BrokerReservationsPage } from '@/apps/broker/BrokerReservationsPage'
 import { ActivityPage as BrokerActivityPage } from '@/apps/broker/ActivityPage'
+import { SessionBridgePage } from '@/apps/auth/SessionBridgePage'
 import { InviteAcceptPage } from '@/apps/broker/InviteAcceptPage'
 import { JoinAcceptPage } from '@/apps/broker/JoinAcceptPage'
 import { PendingApprovalPage } from '@/apps/broker/PendingApprovalPage'
@@ -156,6 +157,7 @@ function AuthenticatedPortal() {
           <>
             <Route path="/invite/:token" element={<InviteAcceptPage />} />
             <Route path="/join/:token" element={<JoinAcceptPage />} />
+            <Route path="/session-bridge" element={<SessionBridgePage />} />
             <Route
               path="/pending-approval"
               element={

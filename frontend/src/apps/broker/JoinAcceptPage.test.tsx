@@ -11,9 +11,9 @@ const { previewJoinLink, registerViaJoinLink, resendIndividualInviteFromJoin, to
     type: 'open',
   }),
   registerViaJoinLink: vi.fn().mockResolvedValue({
-    token: 'api-token',
+    email_confirmation_required: true,
     pending_approval: true,
-    user: { id: 1, name: 'Corretor', email: null, role: 'broker', tenant_id: null },
+    message: 'Confirme em seu e-mail. Enviamos um link para liberar o acesso ao portal do corretor.',
   }),
   resendIndividualInviteFromJoin: vi.fn().mockResolvedValue({
     channel: 'email',
@@ -50,7 +50,6 @@ function renderPage() {
     <MemoryRouter initialEntries={['/join/demo-token']}>
       <Routes>
         <Route path="/join/:token" element={<JoinAcceptPage />} />
-        <Route path="/pending-approval" element={<div>Pending</div>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -73,8 +72,11 @@ describe('JoinAcceptPage', () => {
     await user.click(screen.getByRole('button', { name: 'Solicitar acesso' }))
 
     await waitFor(() => {
-      expect(screen.getByText('Pending')).toBeInTheDocument()
+      expect(screen.getByText('Confirme em seu e-mail')).toBeInTheDocument()
     })
+
+    expect(screen.getByText(/corretor@demo.com/)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Nome completo')).not.toBeInTheDocument()
   })
 
   it('shows resend invite toast when individual invite already exists', async () => {

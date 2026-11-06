@@ -313,6 +313,8 @@ Emissão de PDF (override de REQ-RTL-018: corretor **vê/baixa** o PDF): ver **b
 | REQ-PUB-006 | cheapest_unit | `Public/BuildingController.php` | `BuildingCard.tsx` | `BuildingTest.php` |
 | REQ-PUB-007 | cover_image | `Support/BuildingCoverImage.php` | `BuildingCard.tsx` | `BuildingTest.php` |
 | REQ-PUB-008 | Layout hero/header/footer | — | `PublicLayout.tsx`, `PublicHero.tsx` | — |
+| REQ-PUB-011 | Catálogo público de construtoras | `Public/BuilderController.php` | `sites/src/pages/modelo/construtoras/` | `tests/Feature/Public/BuilderCatalogTest.php` |
+| REQ-PUB-012 | Corretor pede o empreendimento no site modelo e confirma o acesso por e-mail | `Services/BrokerBuildingRequestService.php`, `Services/BrokerEmailConfirmationService.php`, `Public/BrokerAccountController.php`, `Public/BrokerEmailConfirmationController.php`, `Broker/BuildingRequestController.php`, `Builder/BuildingRequestController.php` | `sites/src/scripts/modelo-access.ts`, `apps/broker/JoinAcceptPage.tsx`, `apps/builder/components/PendingBrokersSection.tsx`, `lib/auth-token.ts` | `tests/Feature/Public/BrokerBuildingRequestTest.php`, `tests/Feature/TenantBrokerInviteLinkTest.php` |
 
 ---
 

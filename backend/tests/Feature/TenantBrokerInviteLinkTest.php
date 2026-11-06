@@ -1,12 +1,14 @@
 <?php
 
+use App\Mail\BrokerEmailConfirmationMail;
 use App\Mail\BrokerInviteMail;
 use App\Models\BrokerInvite;
-use Illuminate\Support\Facades\Mail;
 use App\Models\BrokerTenant;
 use App\Models\Tenant;
 use App\Models\TenantBrokerInviteLink;
 use App\Models\User;
+use App\Services\BrokerEmailConfirmationService;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
 
 it('returns or creates tenant invite link for builder', function () {
@@ -56,6 +58,7 @@ it('previews open join link', function () {
 });
 
 it('registers broker via open link and requires builder approval', function () {
+    Mail::fake();
     $tenant = Tenant::factory()->create();
     $user = User::factory()->builder()->for($tenant)->create();
     $link = TenantBrokerInviteLink::factory()->create([
@@ -71,9 +74,12 @@ it('registers broker via open link and requires builder approval', function () {
         'password' => 'password123',
     ])
         ->assertCreated()
+        ->assertJsonPath('email_confirmation_required', true)
         ->assertJsonPath('pending_approval', true)
-        ->assertJsonPath('user.name', 'Corretor Link Aberto')
-        ->assertJsonPath('user.email', 'link.aberto@demo.com');
+        ->assertJsonPath('message', BrokerEmailConfirmationService::MESSAGE)
+        ->assertJsonMissingPath('token');
+
+    Mail::assertSent(BrokerEmailConfirmationMail::class, fn (BrokerEmailConfirmationMail $mail): bool => $mail->hasTo('link.aberto@demo.com'));
 
     $broker = User::query()->where('email', 'link.aberto@demo.com')->first();
     expect($broker)->not->toBeNull();

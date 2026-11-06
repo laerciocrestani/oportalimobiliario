@@ -11,6 +11,7 @@ import {
   resizeFloorUnits,
   setFloorKind,
   type SkeletonInput,
+  type StackUnit,
 } from '@/apps/builder/lib/floor-stack'
 import type { FloorKind } from '@/lib/api'
 import {
@@ -22,7 +23,6 @@ import {
 } from '@/apps/builder/components/structure-editor-context'
 import { BuildingWizardEnumSelect } from '@/apps/builder/components/BuildingWizardEnumSelect'
 import { FloorPerspective } from '@/apps/builder/components/FloorPerspective'
-import { formatPrice } from '@/apps/builder/lib/format-price'
 import {
   CEILING_OPTIONS,
   FLOORING_OPTIONS,
@@ -33,7 +33,6 @@ import {
 } from '@/apps/builder/lib/unit-spec'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -343,226 +342,173 @@ function RemoveUnitButton({ unitKey }: { unitKey: string }) {
   )
 }
 
-function UnitPriceFields({
+function priceInputLabel(code: string, fixed: boolean): string {
+  return fixed ? `Valor (R$) ${code}` : `Valor-base INCC ${code}`
+}
+
+function UnitCompetenceField({
   unitKey,
   code,
-  priceBase,
   priceCompetence,
 }: {
   unitKey: string
   code: string
-  priceBase: string
   priceCompetence: string
 }) {
   const { actions, meta } = useStructureEditor()
-  const fixed = meta.priceMode === 'fixed'
+
+  if (meta.priceMode === 'fixed') {
+    return null
+  }
 
   return (
-    <>
+    <Field>
+      <FieldLabel htmlFor={`unit-competence-${unitKey}`}>Competência {code}</FieldLabel>
+      <Input
+        id={`unit-competence-${unitKey}`}
+        placeholder="AAAA-MM"
+        value={priceCompetence}
+        onChange={(event) => actions.updateUnit(unitKey, { priceCompetence: event.target.value })}
+      />
+    </Field>
+  )
+}
+
+function LivingUnitDetails({ unit }: { unit: StackUnit }) {
+  const { actions } = useStructureEditor()
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="sm:col-span-2 lg:col-span-3">
+        <RemoveUnitButton unitKey={unit.key} />
+      </div>
       <Field>
-        <FieldLabel htmlFor={`unit-price-${unitKey}`}>{fixed ? `Valor (R$) ${code}` : `Valor-base INCC ${code}`}</FieldLabel>
+        <FieldLabel htmlFor={`unit-bathrooms-${unit.key}`}>Banheiros {unit.code}</FieldLabel>
         <Input
-          id={`unit-price-${unitKey}`}
-          inputMode="decimal"
-          value={priceBase}
-          onChange={(event) => actions.updateUnit(unitKey, { priceBase: event.target.value })}
+          id={`unit-bathrooms-${unit.key}`}
+          inputMode="numeric"
+          value={unit.bathrooms}
+          onChange={(event) => actions.updateUnit(unit.key, { bathrooms: event.target.value })}
         />
       </Field>
-      {fixed ? null : (
-        <Field>
-          <FieldLabel htmlFor={`unit-competence-${unitKey}`}>Competência {code}</FieldLabel>
-          <Input
-            id={`unit-competence-${unitKey}`}
-            placeholder="AAAA-MM"
-            value={priceCompetence}
-            onChange={(event) => actions.updateUnit(unitKey, { priceCompetence: event.target.value })}
-          />
-        </Field>
-      )}
-    </>
+      <Field>
+        <FieldLabel htmlFor={`unit-suites-${unit.key}`}>Suítes {unit.code}</FieldLabel>
+        <Input
+          id={`unit-suites-${unit.key}`}
+          inputMode="numeric"
+          value={unit.suites ?? ''}
+          onChange={(event) => actions.updateUnit(unit.key, { suites: event.target.value })}
+        />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor={`unit-powder-${unit.key}`}>Lavabos {unit.code}</FieldLabel>
+        <Input
+          id={`unit-powder-${unit.key}`}
+          inputMode="numeric"
+          value={unit.powderRooms}
+          onChange={(event) => actions.updateUnit(unit.key, { powderRooms: event.target.value })}
+        />
+      </Field>
+      <Field>
+        <FieldLabel htmlFor={`unit-balconies-${unit.key}`}>Sacadas {unit.code}</FieldLabel>
+        <Input
+          id={`unit-balconies-${unit.key}`}
+          inputMode="numeric"
+          value={unit.balconies}
+          onChange={(event) => actions.updateUnit(unit.key, { balconies: event.target.value })}
+        />
+      </Field>
+      <UnitCompetenceField unitKey={unit.key} code={unit.code} priceCompetence={unit.priceCompetence} />
+      <BuildingWizardEnumSelect
+        id={`unit-position-${unit.key}`}
+        label={`Posição ${unit.code}`}
+        value={unit.propertyPosition}
+        emptyLabel="Não informado"
+        options={PROPERTY_POSITION_OPTIONS}
+        onChange={(propertyPosition) => actions.updateUnit(unit.key, { propertyPosition })}
+      />
+      <BuildingWizardEnumSelect
+        id={`unit-solar-${unit.key}`}
+        label={`Sol ${unit.code}`}
+        value={unit.solarPosition}
+        emptyLabel="Não informado"
+        options={SOLAR_OPTIONS}
+        onChange={(solarPosition) => actions.updateUnit(unit.key, { solarPosition })}
+      />
+      <BuildingWizardEnumSelect
+        id={`unit-sun-${unit.key}`}
+        label={`Período ${unit.code}`}
+        value={unit.sunPeriod}
+        emptyLabel="Não informado"
+        options={SUN_PERIOD_OPTIONS}
+        onChange={(sunPeriod) => actions.updateUnit(unit.key, { sunPeriod })}
+      />
+      <BuildingWizardEnumSelect
+        id={`unit-ceiling-${unit.key}`}
+        label={`Forro ${unit.code}`}
+        value={unit.ceilingType}
+        emptyLabel="Não informado"
+        options={CEILING_OPTIONS}
+        onChange={(ceilingType) => actions.updateUnit(unit.key, { ceilingType })}
+      />
+      <BuildingWizardEnumSelect
+        id={`unit-opening-${unit.key}`}
+        label={`Aberturas ${unit.code}`}
+        value={unit.openingType}
+        emptyLabel="Não informado"
+        options={OPENING_OPTIONS}
+        onChange={(openingType) => actions.updateUnit(unit.key, { openingType })}
+      />
+      <BuildingWizardEnumSelect
+        id={`unit-flooring-${unit.key}`}
+        label={`Piso ${unit.code}`}
+        value={unit.flooringType}
+        emptyLabel="Não informado"
+        options={FLOORING_OPTIONS}
+        onChange={(flooringType) => actions.updateUnit(unit.key, { flooringType })}
+      />
+    </div>
+  )
+}
+
+function GarageUnitDetails({ unit }: { unit: StackUnit }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <RemoveUnitButton unitKey={unit.key} />
+      <UnitCompetenceField unitKey={unit.key} code={unit.code} priceCompetence={unit.priceCompetence} />
+    </div>
   )
 }
 
 function StructureEditorUnitEditor() {
-  const { actions, meta } = useStructureEditor()
-  const floor = meta.selectedFloor
+  const floor = useStructureEditor().meta.selectedFloor
 
   if (!floor || floor.kind === 'garage') {
     return null
   }
 
   return (
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle>
-          {floorLabel(floor.number)} · {floorKindLabel(floor.kind)}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        {floor.units.map((unit) => (
-          <div key={unit.key} className="grid gap-3 rounded-lg border p-3 md:grid-cols-3 xl:grid-cols-6">
-            <div className="md:col-span-3 xl:col-span-6">
-              <RemoveUnitButton unitKey={unit.key} />
-            </div>
-            <Field>
-              <FieldLabel htmlFor={`unit-code-${unit.key}`}>Código</FieldLabel>
-              <Input id={`unit-code-${unit.key}`} value={unit.code} readOnly />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor={`unit-area-${unit.key}`}>Área privativa {unit.code} (m²)</FieldLabel>
-              <Input
-                id={`unit-area-${unit.key}`}
-                value={unit.areaM2}
-                onChange={(event) => actions.updateUnit(unit.key, { areaM2: event.target.value })}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor={`unit-bedrooms-${unit.key}`}>Dormitórios {unit.code}</FieldLabel>
-              <Input
-                id={`unit-bedrooms-${unit.key}`}
-                inputMode="numeric"
-                value={unit.bedrooms}
-                onChange={(event) => actions.updateUnit(unit.key, { bedrooms: event.target.value })}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor={`unit-bathrooms-${unit.key}`}>Banheiros {unit.code}</FieldLabel>
-              <Input
-                id={`unit-bathrooms-${unit.key}`}
-                inputMode="numeric"
-                value={unit.bathrooms}
-                onChange={(event) => actions.updateUnit(unit.key, { bathrooms: event.target.value })}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor={`unit-suites-${unit.key}`}>Suítes {unit.code}</FieldLabel>
-              <Input
-                id={`unit-suites-${unit.key}`}
-                inputMode="numeric"
-                value={unit.suites ?? ''}
-                onChange={(event) => actions.updateUnit(unit.key, { suites: event.target.value })}
-              />
-            </Field>
-            <UnitPriceFields
-              unitKey={unit.key}
-              code={unit.code}
-              priceBase={unit.priceBase}
-              priceCompetence={unit.priceCompetence}
-            />
-            <Field>
-              <FieldLabel htmlFor={`unit-powder-${unit.key}`}>Lavabos {unit.code}</FieldLabel>
-              <Input
-                id={`unit-powder-${unit.key}`}
-                inputMode="numeric"
-                value={unit.powderRooms}
-                onChange={(event) => actions.updateUnit(unit.key, { powderRooms: event.target.value })}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor={`unit-balconies-${unit.key}`}>Sacadas {unit.code}</FieldLabel>
-              <Input
-                id={`unit-balconies-${unit.key}`}
-                inputMode="numeric"
-                value={unit.balconies}
-                onChange={(event) => actions.updateUnit(unit.key, { balconies: event.target.value })}
-              />
-            </Field>
-            <BuildingWizardEnumSelect
-              id={`unit-position-${unit.key}`}
-              label={`Posição ${unit.code}`}
-              value={unit.propertyPosition}
-              emptyLabel="Não informado"
-              options={PROPERTY_POSITION_OPTIONS}
-              onChange={(propertyPosition) => actions.updateUnit(unit.key, { propertyPosition })}
-            />
-            <BuildingWizardEnumSelect
-              id={`unit-solar-${unit.key}`}
-              label={`Sol ${unit.code}`}
-              value={unit.solarPosition}
-              emptyLabel="Não informado"
-              options={SOLAR_OPTIONS}
-              onChange={(solarPosition) => actions.updateUnit(unit.key, { solarPosition })}
-            />
-            <BuildingWizardEnumSelect
-              id={`unit-sun-${unit.key}`}
-              label={`Período ${unit.code}`}
-              value={unit.sunPeriod}
-              emptyLabel="Não informado"
-              options={SUN_PERIOD_OPTIONS}
-              onChange={(sunPeriod) => actions.updateUnit(unit.key, { sunPeriod })}
-            />
-            <BuildingWizardEnumSelect
-              id={`unit-ceiling-${unit.key}`}
-              label={`Forro ${unit.code}`}
-              value={unit.ceilingType}
-              emptyLabel="Não informado"
-              options={CEILING_OPTIONS}
-              onChange={(ceilingType) => actions.updateUnit(unit.key, { ceilingType })}
-            />
-            <BuildingWizardEnumSelect
-              id={`unit-opening-${unit.key}`}
-              label={`Aberturas ${unit.code}`}
-              value={unit.openingType}
-              emptyLabel="Não informado"
-              options={OPENING_OPTIONS}
-              onChange={(openingType) => actions.updateUnit(unit.key, { openingType })}
-            />
-            <BuildingWizardEnumSelect
-              id={`unit-flooring-${unit.key}`}
-              label={`Piso ${unit.code}`}
-              value={unit.flooringType}
-              emptyLabel="Não informado"
-              options={FLOORING_OPTIONS}
-              onChange={(flooringType) => actions.updateUnit(unit.key, { flooringType })}
-            />
-          </div>
-        ))}
-      </CardContent>
-    </Card>
+    <div className="flex flex-col gap-4">
+      {floor.units.map((unit) => (
+        <LivingUnitDetails key={unit.key} unit={unit} />
+      ))}
+    </div>
   )
 }
 
 function StructureEditorGaragePanel() {
-  const { actions, meta } = useStructureEditor()
-  const floor = meta.selectedFloor
+  const floor = useStructureEditor().meta.selectedFloor
 
   if (!floor || floor.kind !== 'garage') {
     return null
   }
 
   return (
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle>
-          Vagas · {floorLabel(floor.number)}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-6">
-        {floor.units.map((unit) => (
-          <FieldGroup key={unit.key} className="rounded-lg border p-3">
-            <RemoveUnitButton unitKey={unit.key} />
-            <Field>
-              <FieldLabel htmlFor={`spot-code-${unit.key}`}>Código {unit.code}</FieldLabel>
-              <Input id={`spot-code-${unit.key}`} value={unit.code} readOnly />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor={`spot-area-${unit.key}`}>Área {unit.code} (m²)</FieldLabel>
-              <Input
-                id={`spot-area-${unit.key}`}
-                value={unit.areaM2}
-                onChange={(event) => actions.updateUnit(unit.key, { areaM2: event.target.value })}
-              />
-            </Field>
-            <UnitPriceFields
-              unitKey={unit.key}
-              code={unit.code}
-              priceBase={unit.priceBase}
-              priceCompetence={unit.priceCompetence}
-            />
-          </FieldGroup>
-        ))}
-      </CardContent>
-    </Card>
+    <div className="flex flex-col gap-4">
+      {floor.units.map((unit) => (
+        <GarageUnitDetails key={unit.key} unit={unit} />
+      ))}
+    </div>
   )
 }
 
@@ -606,11 +552,155 @@ function floorKindChoices(number: number): FloorKind[] {
   return ['residential', 'commercial', 'hall']
 }
 
+function FloorKindPicker({
+  number,
+  kind,
+  onChoose,
+}: {
+  number: number
+  kind: FloorKind
+  onChoose: (kind: FloorKind) => void
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-sm font-medium">Tipo de pavimento</p>
+      <div className="flex flex-wrap gap-2">
+        {floorKindChoices(number).map((choice) => (
+          <button
+            key={choice}
+            type="button"
+            aria-pressed={kind === choice}
+            className={cn(
+              'rounded-lg border px-3 py-2 text-left',
+              kind === choice ? 'border-primary ring-2 ring-primary/30' : 'border-border',
+            )}
+            onClick={() => onChoose(choice)}
+          >
+            <span className="block text-sm font-medium">{floorKindLabel(choice)}</span>
+            <span className="block text-xs text-muted-foreground">{kindHint(choice)}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function FloorUnitCounter({
+  number,
+  kind,
+  count,
+  onChange,
+}: {
+  number: number
+  kind: FloorKind
+  count: number
+  onChange: (delta: number) => void
+}) {
+  if (kind === 'hall') {
+    return <p className="text-sm text-muted-foreground">Hall não tem unidades privadas.</p>
+  }
+
+  const label = kind === 'garage' ? 'Vagas' : 'Unidades'
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-medium">{label}</span>
+        <Button type="button" variant="outline" size="sm" onClick={() => onChange(-1)} aria-label={`Diminuir ${label.toLowerCase()}`}>
+          −
+        </Button>
+        <span className="w-6 text-center text-sm">{count}</span>
+        <Button type="button" variant="outline" size="sm" onClick={() => onChange(1)} aria-label={`Aumentar ${label.toLowerCase()}`}>
+          +
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {number < 0 ? 'Vaga + subsolo (S1-01...)' : 'Andar + sequência (101, 102...)'}
+      </p>
+    </div>
+  )
+}
+
+function FloorUnitRow({
+  unit,
+  kind,
+  open,
+  columnCount,
+  onToggle,
+}: {
+  unit: StackUnit
+  kind: FloorKind
+  open: boolean
+  columnCount: number
+  onToggle: () => void
+}) {
+  const { actions, meta } = useStructureEditor()
+  const garage = kind === 'garage'
+  const fixed = meta.priceMode === 'fixed'
+
+  return (
+    <>
+      <tr className="border-t">
+        <td className="py-2 pr-3">{unit.code}</td>
+        <td className="py-2 pr-3">{unitTypeLabel(kind)}</td>
+        <td className="py-2 pr-3">
+          <Input
+            aria-label={garage ? `Área ${unit.code} (m²)` : `Área privativa ${unit.code} (m²)`}
+            value={unit.areaM2}
+            inputMode="decimal"
+            className="h-8 min-w-24"
+            onChange={(event) => actions.updateUnit(unit.key, { areaM2: event.target.value })}
+          />
+        </td>
+        {garage ? null : (
+          <td className="py-2 pr-3">
+            <Input
+              aria-label={`Dormitórios ${unit.code}`}
+              value={unit.bedrooms}
+              inputMode="numeric"
+              className="h-8 w-20"
+              onChange={(event) => actions.updateUnit(unit.key, { bedrooms: event.target.value })}
+            />
+          </td>
+        )}
+        <td className="py-2 pr-3">
+          <Input
+            aria-label={priceInputLabel(unit.code, fixed)}
+            value={unit.priceBase}
+            inputMode="decimal"
+            className="h-8 min-w-28"
+            onChange={(event) => actions.updateUnit(unit.key, { priceBase: event.target.value })}
+          />
+        </td>
+        <td className="py-2 text-right">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            aria-expanded={open}
+            aria-label={open ? `Ocultar ${unit.code}` : `Detalhes ${unit.code}`}
+            onClick={onToggle}
+          >
+            {open ? 'Ocultar' : 'Detalhes'}
+          </Button>
+        </td>
+      </tr>
+      {open ? (
+        <tr className="border-t bg-muted/40">
+          <td colSpan={columnCount} className="px-1 py-3">
+            {garage ? <GarageUnitDetails unit={unit} /> : <LivingUnitDetails unit={unit} />}
+          </td>
+        </tr>
+      ) : null}
+    </>
+  )
+}
+
 function StructureEditorFloorWorkspace() {
   const { state, actions, meta } = useStructureEditor()
   const floor = meta.selectedFloor
   const tower = meta.selectedTower
-  const [editing, setEditing] = useState(false)
+  const [openUnitKey, setOpenUnitKey] = useState<string | null>(null)
   const [cloning, setCloning] = useState(false)
   const preview = tower ? clonePreview(tower, state.mirror.referenceNumber, state.mirror) : []
 
@@ -741,34 +831,48 @@ function StructureEditorFloorWorkspace() {
           ) : (
             <p className="text-sm text-muted-foreground">Gere o esqueleto e escolha um pavimento.</p>
           )}
+          {floor ? <FloorKindPicker number={floor.number} kind={floor.kind} onChoose={chooseKind} /> : null}
+          {floor ? (
+            <FloorUnitCounter
+              number={floor.number}
+              kind={floor.kind}
+              count={floor.units.length}
+              onChange={changeCount}
+            />
+          ) : null}
           {floor && floor.units.length > 0 ? (
-            <table className="w-full text-sm">
-              <thead className="text-left text-muted-foreground">
-                <tr>
-                  <th className="py-1 font-medium">Código</th>
-                  <th className="py-1 font-medium">Tipo</th>
-                  <th className="py-1 font-medium">Área</th>
-                  {floor.kind === 'garage' ? null : <th className="py-1 font-medium">Dormitórios</th>}
-                  <th className="py-1 font-medium">{meta.priceMode === 'fixed' ? 'Valor' : 'Valor-base'}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {floor.units.map((unit) => (
-                  <tr key={unit.key} className="border-t">
-                    <td className="py-1">{unit.code}</td>
-                    <td className="py-1">{unitTypeLabel(floor.kind)}</td>
-                    <td className="py-1">{unit.areaM2 || '—'}</td>
-                    {floor.kind === 'garage' ? null : <td className="py-1">{unit.bedrooms || '—'}</td>}
-                    <td className="py-1">{formatPrice(unit.priceBase.trim() === '' ? null : unit.priceBase)}</td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-left text-muted-foreground">
+                  <tr>
+                    <th className="py-1 font-medium">Código</th>
+                    <th className="py-1 font-medium">Tipo</th>
+                    <th className="py-1 font-medium">Área</th>
+                    {floor.kind === 'garage' ? null : <th className="py-1 font-medium">Dormitórios</th>}
+                    <th className="py-1 font-medium">{meta.priceMode === 'fixed' ? 'Valor' : 'Valor-base'}</th>
+                    <th className="py-1">
+                      <span className="sr-only">Detalhes</span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {floor.units.map((unit) => (
+                    <FloorUnitRow
+                      key={unit.key}
+                      unit={unit}
+                      kind={floor.kind}
+                      open={openUnitKey === unit.key}
+                      columnCount={floor.kind === 'garage' ? 5 : 6}
+                      onToggle={() =>
+                        setOpenUnitKey((current) => (current === unit.key ? null : unit.key))
+                      }
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" disabled={!floor} onClick={() => setEditing(true)}>
-              Editar
-            </Button>
             <Button
               type="button"
               variant="outline"
@@ -792,83 +896,6 @@ function StructureEditorFloorWorkspace() {
         </CardContent>
       </Card>
       </div>
-      <Sheet open={editing} onOpenChange={setEditing}>
-        <SheetContent side="right" className="w-full overflow-y-auto sm:max-w-xl">
-          <SheetHeader>
-            <p className="text-xs text-muted-foreground">{tower?.name ?? 'Estrutura'}</p>
-            <SheetTitle>Editar pavimento</SheetTitle>
-          </SheetHeader>
-          {floor && tower ? (
-            <div className="flex flex-col gap-4 px-4">
-              <FloorPerspective floors={tower.floors} />
-              <div className="flex flex-col gap-2">
-                <p className="text-sm font-medium">Tipo de pavimento *</p>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {floorKindChoices(floor.number).map((kind) => (
-                    <button
-                      key={kind}
-                      type="button"
-                      aria-pressed={floor.kind === kind}
-                      className={cn(
-                        'rounded-lg border px-3 py-2 text-left',
-                        floor.kind === kind ? 'border-primary ring-2 ring-primary/30' : 'border-border',
-                      )}
-                      onClick={() => chooseKind(kind)}
-                    >
-                      <span className="block text-sm font-medium">{floorKindLabel(kind)}</span>
-                      <span className="block text-xs text-muted-foreground">{kindHint(kind)}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_7rem]">
-                <Field>
-                  <FieldLabel htmlFor={`floor-name-${floor.number}`}>Nome do pavimento *</FieldLabel>
-                  <Input id={`floor-name-${floor.number}`} value={floorLabel(floor.number)} readOnly />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor={`floor-level-${floor.number}`}>Nível *</FieldLabel>
-                  <Input id={`floor-level-${floor.number}`} value={String(floor.number)} readOnly />
-                </Field>
-              </div>
-              {floor.kind === 'hall' ? (
-                <p className="text-sm text-muted-foreground">Hall não tem unidades privadas.</p>
-              ) : (
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-medium">
-                      {floor.kind === 'garage' ? 'Vagas' : 'Unidades'} *
-                    </span>
-                    <Button type="button" variant="outline" size="sm" onClick={() => changeCount(-1)}>
-                      −
-                    </Button>
-                    <span className="w-6 text-center text-sm">{floor.units.length}</span>
-                    <Button type="button" variant="outline" size="sm" onClick={() => changeCount(1)}>
-                      +
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {floor.number < 0 ? 'Vaga + subsolo (S1-01...)' : 'Andar + sequência (101, 102...)'}
-                  </p>
-                </div>
-              )}
-              <StructureEditorUnitEditor />
-              <StructureEditorGaragePanel />
-              <p className="text-xs text-muted-foreground">
-                Cada tipo tem sua própria estrutura. Garagem usa vagas. Hall fica sem unidades privadas.
-              </p>
-            </div>
-          ) : null}
-          <SheetFooter>
-            <Button type="button" variant="outline" onClick={() => setEditing(false)}>
-              Cancelar
-            </Button>
-            <Button type="button" onClick={() => setEditing(false)}>
-              Salvar pavimento
-            </Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
       <Dialog open={cloning} onOpenChange={setCloning}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>

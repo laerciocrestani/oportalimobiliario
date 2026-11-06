@@ -5,12 +5,19 @@ namespace App\Services;
 use App\Enums\DepositKind;
 use App\Enums\ReservationAttachmentKind;
 use App\Enums\ReservationTimelineEventType;
+use App\Enums\SignatureDocumentKind;
+use App\Enums\SignatureSignerRole;
+use App\Enums\SignatureSignerStatus;
+use App\Enums\SignatureWitnessKind;
 use App\Models\Reservation;
 use App\Models\ReservationAttachment;
 use App\Models\ReservationProposal;
 use App\Models\ReservationTimelineEvent;
+use App\Models\SignatureSigner;
+use App\Models\TenantSignatureSetting;
 use App\Models\User;
 use App\Support\BuilderPermissions;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 
 /**
@@ -40,7 +47,6 @@ class ReservationTimelineService
             ReservationTimelineEventType::DepositProofSubmitted,
             ReservationTimelineEventType::DepositProofApproved,
         ]],
-        ['key' => 'contract_data', 'label' => 'Dados para contrato', 'event_types' => [ReservationTimelineEventType::ContractDataSubmitted]],
         ['key' => 'contract_issue', 'label' => 'Emissão do contrato', 'event_types' => [ReservationTimelineEventType::ContractIssued]],
         ['key' => 'contract_sign_gov', 'label' => 'Assinatura GOV', 'event_types' => [ReservationTimelineEventType::ContractSignedGov]],
         ['key' => 'contract_upload', 'label' => 'Contrato assinado pelo comprador', 'event_types' => [ReservationTimelineEventType::ContractUploaded]],
@@ -110,7 +116,16 @@ class ReservationTimelineService
      */
     public function build(Reservation $reservation, User $viewer): array
     {
-        $reservation->loadMissing(['unit.building', 'broker', 'client', 'timelineEvents.actor', 'proposals', 'attachments', 'witnesses.user']);
+        $reservation->loadMissing([
+            'unit.building',
+            'broker',
+            'client',
+            'timelineEvents.actor',
+            'proposals',
+            'attachments',
+            'witnesses.user',
+            'signatureDocuments.signers',
+        ]);
 
         $events = $reservation->timelineEvents->sortBy('created_at');
         $messagesCount = $reservation->messages()->count();
@@ -153,6 +168,7 @@ class ReservationTimelineService
                 'price' => $reservation->unit->price,
                 'building_name' => $reservation->unit->building?->name,
             ],
+            'garage_units' => ReservationGarageService::serializeGarageUnits($reservation),
             'client' => $reservation->client === null ? null : [
                 'id' => $reservation->client->id,
                 'name' => $reservation->client->name,
@@ -168,9 +184,177 @@ class ReservationTimelineService
                 ->values()
                 ->map(fn ($witness) => $witness->toApiArray($viewer))
                 ->all(),
+            'signature_process' => $this->signatureProcess($reservation),
             'attachments' => $visibleAttachments,
             'steps' => $steps,
         ];
+    }
+
+    /**
+     * @return array{sent_at: string, due_at: string, parties: list<array{key: string, role: string, label: string, name: string, status: string, signed_at: string|null}>}|null
+     */
+    private function signatureProcess(Reservation $reservation): ?array
+    {
+        if ($reservation->isProposalSigning()) {
+            return $this->proposalSignatureProcess($reservation);
+        }
+
+        if ($reservation->isContractSigning()) {
+            return $this->contractSignatureProcess($reservation);
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{sent_at: string, due_at: string, parties: list<array{key: string, role: string, label: string, name: string, status: string, signed_at: string|null}>}
+     */
+    private function proposalSignatureProcess(Reservation $reservation): array
+    {
+        $document = $reservation->signatureDocuments
+            ->where('kind', SignatureDocumentKind::Proposal)
+            ->sortByDesc('id')
+            ->first();
+        $acceptedAt = $reservation->timelineEvents
+            ->where('type', ReservationTimelineEventType::ProposalAccepted)
+            ->sortByDesc('created_at')
+            ->first()
+            ?->created_at;
+        $sentAt = $document?->created_at ?? $acceptedAt ?? now();
+        $signers = $document?->signers ?? collect();
+        $roles = [
+            SignatureSignerRole::Builder->value => 'Gestor da construtora',
+            SignatureSignerRole::Broker->value => 'Corretor',
+            SignatureSignerRole::Buyer->value => 'Cliente',
+        ];
+        $parties = [];
+
+        foreach ($roles as $role => $label) {
+            $signer = $signers->first(fn ($item): bool => $item->role === SignatureSignerRole::from($role));
+            $parties[] = $this->signatureParty($role, $role, $label, $signer, $this->signaturePartyName($reservation, $role));
+        }
+
+        return $this->signatureProcessPayload($sentAt, $parties);
+    }
+
+    /**
+     * @return array{sent_at: string, due_at: string, parties: list<array{key: string, role: string, label: string, name: string, status: string, signed_at: string|null}>}
+     */
+    private function contractSignatureProcess(Reservation $reservation): array
+    {
+        $document = $reservation->signatureDocuments
+            ->where('kind', SignatureDocumentKind::Contract)
+            ->sortByDesc('id')
+            ->first();
+        $issuedAt = $reservation->timelineEvents
+            ->where('type', ReservationTimelineEventType::ContractIssued)
+            ->sortByDesc('created_at')
+            ->first()
+            ?->created_at;
+        $sentAt = $document?->created_at ?? $issuedAt ?? now();
+        $signers = $document?->signers ?? collect();
+        $setting = TenantSignatureSetting::query()
+            ->withoutGlobalScope('tenant')
+            ->where('tenant_id', $reservation->tenant_id)
+            ->with(['proposalSigner', 'witnessSlots.user'])
+            ->first();
+        $slots = [
+            ['key' => 'buyer', 'role' => SignatureSignerRole::Buyer->value, 'label' => 'Comprador'],
+            ['key' => 'builder', 'role' => SignatureSignerRole::Builder->value, 'label' => 'Gestor'],
+            ['key' => 'witness-1', 'role' => SignatureSignerRole::Witness->value, 'label' => 'Testemunha 1'],
+            ['key' => 'witness-2', 'role' => SignatureSignerRole::Witness->value, 'label' => 'Testemunha 2'],
+        ];
+        $parties = [];
+
+        foreach ($slots as $slot) {
+            $signer = $signers->first(fn (SignatureSigner $item): bool => $item->signer_key === $slot['key'])
+                ?? ($slot['role'] === SignatureSignerRole::Witness->value
+                    ? null
+                    : $signers->first(fn (SignatureSigner $item): bool => $item->role->value === $slot['role']));
+            $parties[] = $this->signatureParty(
+                $slot['key'],
+                $slot['role'],
+                $slot['label'],
+                $signer,
+                $this->contractPartyName($reservation, $slot['key'], $setting),
+            );
+        }
+
+        return $this->signatureProcessPayload($sentAt, $parties);
+    }
+
+    /**
+     * @param  list<array{key: string, role: string, label: string, name: string, status: string, signed_at: string|null}>  $parties
+     * @return array{sent_at: string, due_at: string, parties: list<array{key: string, role: string, label: string, name: string, status: string, signed_at: string|null}>}
+     */
+    private function signatureProcessPayload(CarbonInterface $sentAt, array $parties): array
+    {
+        return [
+            'sent_at' => $sentAt->toIso8601String(),
+            'due_at' => $sentAt->copy()->addHours(24)->toIso8601String(),
+            'parties' => $parties,
+        ];
+    }
+
+    /**
+     * @return array{key: string, role: string, label: string, name: string, status: string, signed_at: string|null}
+     */
+    private function signatureParty(string $key, string $role, string $label, ?SignatureSigner $signer, string $fallbackName): array
+    {
+        $status = $signer?->status instanceof SignatureSignerStatus
+            ? $signer->status->value
+            : SignatureSignerStatus::Pending->value;
+        $name = trim((string) $signer?->name);
+
+        return [
+            'key' => $key,
+            'role' => $role,
+            'label' => $label,
+            'name' => $name !== '' ? $name : trim($fallbackName),
+            'status' => $status,
+            'signed_at' => $signer?->signed_at?->toIso8601String(),
+        ];
+    }
+
+    private function contractPartyName(Reservation $reservation, string $key, ?TenantSignatureSetting $setting): string
+    {
+        if ($key === 'buyer') {
+            return $this->signaturePartyName($reservation, SignatureSignerRole::Buyer->value);
+        }
+
+        if ($key === 'builder') {
+            return trim((string) ($setting?->proposalSigner?->name ?? ''));
+        }
+
+        $position = $key === 'witness-2' ? 2 : 1;
+        $slot = $setting?->witnessSlots->firstWhere('position', $position);
+
+        if ($slot?->kind === SignatureWitnessKind::SellingBroker) {
+            return trim((string) ($reservation->broker?->name ?? ''));
+        }
+
+        return trim((string) ($slot?->user?->name ?? ''));
+    }
+
+    private function signaturePartyName(Reservation $reservation, string $role): string
+    {
+        if ($role === SignatureSignerRole::Broker->value) {
+            return (string) ($reservation->broker?->name ?? '');
+        }
+
+        if ($role === SignatureSignerRole::Buyer->value) {
+            $proposal = $reservation->proposals->sortByDesc('version')->first();
+
+            return (string) ($proposal?->client_name ?? $reservation->client?->name ?? '');
+        }
+
+        $actor = $reservation->timelineEvents
+            ->where('type', ReservationTimelineEventType::ProposalAccepted)
+            ->sortByDesc('created_at')
+            ->first()
+            ?->actor;
+
+        return (string) ($actor?->name ?? '');
     }
 
     /**
@@ -361,7 +545,7 @@ class ReservationTimelineService
         }
 
         if ($reservation->isContractDataPending()) {
-            return 'contract_data';
+            return 'contract_issue';
         }
 
         if ($reservation->isDepositProofPending()) {
@@ -369,7 +553,7 @@ class ReservationTimelineService
         }
 
         if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::DepositProofApproved)) {
-            return 'contract_data';
+            return 'contract_issue';
         }
 
         if ($events->contains(fn (ReservationTimelineEvent $event) => $event->type === ReservationTimelineEventType::DepositProofSubmitted)) {
@@ -793,8 +977,7 @@ class ReservationTimelineService
             'proposal_decision' => ['open_dialogue'],
             'deposit_window' => $isBroker ? $this->depositWindowBrokerActions($reservation) : [],
             'deposit_proof' => $this->depositProofActions($reservation, $isBroker),
-            'contract_data' => $isBroker ? ['submit_contract_data'] : [],
-            'contract_issue' => $isBroker ? [] : ['issue_contract'],
+            'contract_issue' => $viewer->can(BuilderPermissions::MANAGE_CONTRACTS) ? ['review_contract'] : [],
             'contract_sign_gov' => $isBroker ? ['mark_signed_gov'] : ['issue_contract'],
             'contract_upload' => $isBroker ? ['upload_signed_contract'] : [],
             'contract_builder_sign' => $this->isBuilderManager($viewer) ? ['upload_builder_signed_contract'] : [],
@@ -996,7 +1179,6 @@ class ReservationTimelineService
         return match ($currentKey) {
             'proposal_submitted',
             'deposit_window',
-            'contract_data',
             'contract_sign_gov',
             'contract_upload' => 'broker',
             'proposal_decision',

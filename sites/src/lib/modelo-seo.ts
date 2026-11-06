@@ -1,4 +1,4 @@
-import type { PublicBuildingDetail } from '@/lib/api'
+import type { PublicBuilderCatalogItem, PublicBuildingDetail } from '@/lib/api'
 import type { SeoMeta } from '@/lib/seo'
 import { siteBaseUrl } from '@/lib/seo'
 
@@ -27,6 +27,29 @@ export function modeloHomeSeo(requestUrl: URL): SeoMeta {
       url: `${base}/modelo`,
       description: 'Encontre o empreendimento e a unidade que cabem na sua busca.',
     },
+  }
+}
+
+export function modeloBuildersSeo(requestUrl: URL): SeoMeta {
+  const base = siteBaseUrl(requestUrl)
+
+  return {
+    title: `Construtoras | ${SITE_NAME}`,
+    description: 'Escolha a construtora para ver os empreendimentos e as unidades à venda.',
+    canonical: `${base}/modelo/construtoras`,
+    ogType: 'website',
+  }
+}
+
+export function modeloBuilderSeo(builder: PublicBuilderCatalogItem, requestUrl: URL): SeoMeta {
+  const base = siteBaseUrl(requestUrl)
+  const place = builder.address ? ` em ${builder.address}` : ''
+
+  return {
+    title: `${builder.name} | ${SITE_NAME}`,
+    description: truncate(`${builder.name}${place}.`, 160),
+    canonical: `${base}/modelo/construtoras/${encodeURIComponent(builder.slug)}`,
+    ogType: 'website',
   }
 }
 

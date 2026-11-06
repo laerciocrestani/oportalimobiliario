@@ -85,9 +85,7 @@ function StructureEditorHarness({ initialTowers = [] }: { initialTowers?: StackT
       <StructureEditor.Skeleton />
       <StructureEditor.TowerTabs />
       <StructureEditor.MirrorPanel />
-      <StructureEditor.FloorStack />
-      <StructureEditor.UnitEditor />
-      <StructureEditor.GaragePanel />
+      <StructureEditor.FloorWorkspace />
     </StructureEditor.Provider>
   )
 }
@@ -105,7 +103,8 @@ describe('StructureEditor', () => {
     expect(screen.getByRole('button', { name: /Andar 1/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Térreo/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Subsolo 1/ })).toBeInTheDocument()
-    expect(screen.getByDisplayValue('101')).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: '101' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
   })
 
   it('edits the selected floor unit', async () => {
@@ -119,6 +118,22 @@ describe('StructureEditor', () => {
 
     expect(screen.getByLabelText('Área privativa 101 (m²)')).toHaveValue('50')
     expect(screen.getByLabelText('Dormitórios 101')).toHaveValue('2')
+  })
+
+  it('opens the remaining unit fields in the row', async () => {
+    const user = userEvent.setup()
+    render(<StructureEditorHarness />)
+
+    await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
+    await user.click(screen.getByRole('button', { name: /Andar 1/ }))
+
+    expect(screen.queryByLabelText('Banheiros 101')).not.toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Detalhes 101' }))
+    await user.type(screen.getByLabelText('Banheiros 101'), '2')
+
+    expect(screen.getByLabelText('Banheiros 101')).toHaveValue('2')
+    expect(screen.getByRole('button', { name: 'Ocultar 101' })).toHaveAttribute('aria-expanded', 'true')
   })
 
   it('marks the edited floor as an exception', async () => {
@@ -144,7 +159,7 @@ describe('StructureEditor', () => {
     await user.click(screen.getByRole('button', { name: /Andar 2/ }))
     await user.type(screen.getByLabelText('Área privativa 201 (m²)'), '61')
 
-    await user.click(screen.getByRole('button', { name: 'Clonar' }))
+    await user.click(screen.getByRole('button', { name: /^Clonar$/ }))
 
     expect(screen.getByRole('button', { name: /Andar 2/ })).toHaveTextContent('Exceção')
     expect(screen.getByRole('button', { name: /Andar 3/ })).not.toHaveTextContent('Exceção')
@@ -161,7 +176,7 @@ describe('StructureEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: /Subsolo 1/ }))
 
-    expect(screen.getByText('Vagas · Subsolo 1')).toBeInTheDocument()
+    expect(screen.getByText(/Garagem · 2 vagas/)).toBeInTheDocument()
     expect(screen.queryByLabelText('Dormitórios S1-01')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Área privativa S1-01 (m²)')).not.toBeInTheDocument()
 
@@ -184,6 +199,6 @@ describe('StructureEditor', () => {
     await user.click(screen.getByRole('button', { name: /Andar 2/ }))
 
     expect(screen.getByRole('tab', { name: 'Torre B' })).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByDisplayValue('201')).toBeInTheDocument()
+    expect(screen.getByRole('cell', { name: '201' })).toBeInTheDocument()
   })
 })

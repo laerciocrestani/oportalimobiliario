@@ -5,11 +5,13 @@ namespace App\Services;
 use App\Enums\ReservationStatus;
 use App\Enums\SignatureDocumentKind;
 use App\Enums\SignatureDocumentStatus;
+use App\Enums\SignatureSignerRole;
 use App\Enums\SignatureSignerStatus;
 use App\Mail\SignatureLinkMail;
 use App\Models\SignatureDocument;
 use App\Models\SignatureSigner;
 use App\Support\BusinessClock;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
 use Throwable;
 
@@ -20,7 +22,39 @@ class SignatureLinkNotifier
 {
     public function __construct(private readonly WhatsAppCloudApiService $whatsapp) {}
 
-    public function notifyPending(SignatureDocument $document): int
+    public function notifyCurrent(SignatureDocument $document): int
+    {
+        if ($document->kind !== SignatureDocumentKind::Proposal) {
+            return $this->notifyPending($document);
+        }
+
+        $signer = $this->currentProposalSigner($document);
+
+        if ($signer === null) {
+            return 0;
+        }
+
+        return $this->notify($signer, $this->documentLabel($document)) ? 1 : 0;
+    }
+
+    public function currentProposalSigner(SignatureDocument $document): ?SignatureSigner
+    {
+        $signers = $this->signers($document);
+
+        foreach ([SignatureSignerRole::Builder, SignatureSignerRole::Broker, SignatureSignerRole::Buyer] as $role) {
+            $signer = $signers->first(
+                fn (SignatureSigner $item): bool => $item->role === $role && $item->status === SignatureSignerStatus::Pending,
+            );
+
+            if ($signer !== null) {
+                return $signer;
+            }
+        }
+
+        return null;
+    }
+
+    public function notifyPending(SignatureDocument $document, ?SignatureSignerRole $role = null): int
     {
         $signers = $document->relationLoaded('signers')
             ? $document->signers
@@ -30,6 +64,10 @@ class SignatureLinkNotifier
 
         foreach ($signers as $signer) {
             if ($signer->status !== SignatureSignerStatus::Pending) {
+                continue;
+            }
+
+            if ($role !== null && $signer->role !== $role) {
                 continue;
             }
 
@@ -115,8 +153,9 @@ class SignatureLinkNotifier
         $sent = false;
         $phone = trim((string) $signer->phone);
         $email = trim((string) $signer->email);
+        $emailOnly = $documentLabel === 'contrato';
 
-        if ($phone !== '') {
+        if (! $emailOnly && $phone !== '') {
             try {
                 $this->whatsapp->sendSignatureLink($phone, $signer->name, $url);
                 $sent = true;
@@ -139,6 +178,16 @@ class SignatureLinkNotifier
         }
 
         return $sent;
+    }
+
+    /**
+     * @return Collection<int, SignatureSigner>
+     */
+    private function signers(SignatureDocument $document): Collection
+    {
+        return $document->relationLoaded('signers')
+            ? $document->signers
+            : $document->signers()->withoutGlobalScope('tenant')->get();
     }
 
     private function documentLabel(SignatureDocument $document): string

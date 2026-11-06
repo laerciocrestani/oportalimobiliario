@@ -382,8 +382,8 @@ it('exposes submit contract data action on broker timeline', function () {
         ->assertJsonPath('client.name', $reservation->client->name)
         ->assertJsonPath('client.phone', $reservation->client->phone);
 
-    $contractDataStep = collect($response->json('steps'))->firstWhere('key', 'contract_data');
+    $contractStep = collect($response->json('steps'))->firstWhere('key', 'contract_issue');
 
-    expect($contractDataStep['status'])->toBe('current')
-        ->and($contractDataStep['actions'])->toBe(['submit_contract_data']);
+    expect($contractStep['status'])->toBe('current')
+        ->and($contractStep['actions'])->toBe([]);
 });

@@ -103,9 +103,9 @@ it('follows sequential witness signatures and then allows the manager to mark so
     Sanctum::actingAs($witness1);
     $this->getJson("/api/builder/reservations/{$reservation->id}/timeline")
         ->assertOk()
-        ->assertJsonPath('steps.11.key', 'contract_witness_1')
-        ->assertJsonPath('steps.11.status', 'current')
-        ->assertJsonPath('steps.11.actions', ['sign_as_witness']);
+        ->assertJsonPath('steps.10.key', 'contract_witness_1')
+        ->assertJsonPath('steps.10.status', 'current')
+        ->assertJsonPath('steps.10.actions', ['sign_as_witness']);
 
     $this->postJson("/api/builder/reservations/{$reservation->id}/contract/witnesses/1/sign")
         ->assertOk();
@@ -121,9 +121,9 @@ it('follows sequential witness signatures and then allows the manager to mark so
     Sanctum::actingAs($witness2);
     $this->getJson("/api/builder/reservations/{$reservation->id}/timeline")
         ->assertOk()
-        ->assertJsonPath('steps.12.key', 'contract_witness_2')
-        ->assertJsonPath('steps.12.status', 'current')
-        ->assertJsonPath('steps.12.actions', ['sign_as_witness']);
+        ->assertJsonPath('steps.11.key', 'contract_witness_2')
+        ->assertJsonPath('steps.11.status', 'current')
+        ->assertJsonPath('steps.11.actions', ['sign_as_witness']);
 
     $this->postJson("/api/builder/reservations/{$reservation->id}/contract/witnesses/2/sign")
         ->assertOk();
@@ -133,9 +133,9 @@ it('follows sequential witness signatures and then allows the manager to mark so
     Sanctum::actingAs($builder);
     $this->getJson("/api/builder/reservations/{$reservation->id}/timeline")
         ->assertOk()
-        ->assertJsonPath('steps.13.key', 'contract_validate')
-        ->assertJsonPath('steps.13.status', 'current')
-        ->assertJsonPath('steps.13.actions', ['validate_contract']);
+        ->assertJsonPath('steps.12.key', 'contract_validate')
+        ->assertJsonPath('steps.12.status', 'current')
+        ->assertJsonPath('steps.12.actions', ['validate_contract']);
 
     $this->patchJson("/api/builder/reservations/{$reservation->id}/contract/validate", [
         'note' => 'Contrato conferido com testemunhas.',
@@ -150,8 +150,8 @@ it('follows sequential witness signatures and then allows the manager to mark so
     $this->getJson("/api/builder/reservations/{$reservation->id}/timeline")
         ->assertOk()
         ->assertJsonPath('current_stage', 'sold')
-        ->assertJsonPath('steps.14.key', 'sold')
-        ->assertJsonPath('steps.14.status', 'current');
+        ->assertJsonPath('steps.13.key', 'sold')
+        ->assertJsonPath('steps.13.status', 'current');
 });
 
 it('allows a witness without reservations.cancel to sign only the assigned reservation', function () {

@@ -6,8 +6,10 @@
  * @see REQ-LOG-004
  */
 use App\Enums\UserActivityAction;
+use App\Mail\BrokerEmailConfirmationMail;
 use App\Models\User;
 use App\Models\UserActivityEvent;
+use Illuminate\Support\Facades\Mail;
 use Laravel\Sanctum\Sanctum;
 
 it('logs in with valid credentials', function () {
@@ -25,6 +27,24 @@ it('logs in with valid credentials', function () {
         ->assertOk()
         ->assertJsonStructure(['token', 'user' => ['id', 'email', 'role']])
         ->assertJsonPath('user.email', $user->email);
+});
+
+it('asks an unverified broker to confirm by email and sends a new link', function () {
+    Mail::fake();
+
+    User::factory()->broker()->unverified()->create([
+        'email' => 'novo@corretores.test',
+        'password' => 'password1',
+    ]);
+
+    $this->postJson('/api/auth/login', [
+        'email' => 'novo@corretores.test',
+        'password' => 'password1',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('email');
+
+    Mail::assertSent(BrokerEmailConfirmationMail::class, fn (BrokerEmailConfirmationMail $mail): bool => $mail->hasTo('novo@corretores.test'));
 });
 
 it('rejects invalid credentials', function () {

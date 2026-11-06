@@ -65,6 +65,7 @@ Definidas em `frontend/src/App.tsx`.
 |------|--------|---------------|
 | `/` | `PublicHome` (SPA legado) | `publicApi.listBuildings` / `getBuilding` |
 | `/` + `/empreendimentos/:slug` | portal `sites/` (Astro SSR, `:4321`) | `GET /api/public/buildings` |
+| `/modelo/construtoras` + `/modelo/construtoras/:slug` | portal modelo (`sites/`, `:4321`) | `GET /api/public/builders` |
 
 O portal público de produção é `sites/` (`www.localhost:4321`). O SPA em `www.localhost:5173` permanece para smoke interno.
 

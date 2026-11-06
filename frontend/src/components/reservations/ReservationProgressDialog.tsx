@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { FileTextIcon } from 'lucide-react'
 import { BrokerReservationDialog } from '@/apps/broker/components/BrokerReservationDialog'
 import { BrokerContractDataDialog } from '@/components/reservations/BrokerContractDataDialog'
 import { BrokerDepositProofDialog } from '@/components/reservations/BrokerDepositProofDialog'
@@ -12,10 +13,15 @@ import { BuilderSignedContractDialog } from '@/components/reservations/BuilderSi
 import { BuilderWitnessSignDialog } from '@/components/reservations/BuilderWitnessSignDialog'
 import { BuilderDepositProofApprovalPanel } from '@/components/reservations/BuilderDepositProofApprovalPanel'
 import { BuilderProposalDecisionPanel } from '@/components/reservations/BuilderProposalDecisionPanel'
-import { ProposalSignatureResend } from '@/components/reservations/ProposalSignatureResend'
 import { BrokerReturnSignedProposalDialog } from '@/components/reservations/BrokerReturnSignedProposalDialog'
-import { BuilderIssueContractDialog } from '@/components/reservations/BuilderIssueContractDialog'
+import { ContractReviewDialog } from '@/components/reservations/ContractReviewDialog'
 import { ReservationChatPanel } from '@/components/reservations/ReservationChatPanel'
+import {
+  useReservationFileItems,
+  type ReservationFileItem,
+} from '@/components/reservations/ReservationAttachmentField'
+import { ReservationFilesPanel } from '@/components/reservations/ReservationFilesPanel'
+import { ReservationSubjectCard } from '@/components/reservations/ReservationSubjectCard'
 import {
   isReturnedOrRejectedProposal,
   ProposalDecisionAlert,
@@ -34,6 +40,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { builderApi, brokerApi, type ReservationTimeline as ReservationTimelineData, type Unit } from '@/lib/api'
+import { formatListedPrice } from '@/lib/unit-listing'
 import { notifyReservationBadgeRefresh } from '@/lib/reservation-badge-events'
 
 type ReservationProgressDialogProps = {
@@ -57,7 +64,7 @@ export function ReservationProgressDialog({
   const [proposalOpen, setProposalOpen] = useState(false)
   const [depositProofOpen, setDepositProofOpen] = useState(false)
   const [contractDataOpen, setContractDataOpen] = useState(false)
-  const [issueContractOpen, setIssueContractOpen] = useState(false)
+  const [reviewContractOpen, setReviewContractOpen] = useState(false)
   const [govSignatureOpen, setGovSignatureOpen] = useState(false)
   const [signedContractOpen, setSignedContractOpen] = useState(false)
   const [builderSignedContractOpen, setBuilderSignedContractOpen] = useState(false)
@@ -66,6 +73,8 @@ export function ReservationProgressDialog({
   const [extendHoldOpen, setExtendHoldOpen] = useState(false)
   const [dropHoldOpen, setDropHoldOpen] = useState(false)
   const [returnSignedProposalOpen, setReturnSignedProposalOpen] = useState(false)
+  const { files: documentFiles, setFiles: setDocumentFiles } = useReservationFileItems()
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   async function loadTimeline() {
     if (reservationId === null) {
@@ -133,8 +142,8 @@ export function ReservationProgressDialog({
       return
     }
 
-    if (action === 'issue_contract') {
-      setIssueContractOpen(true)
+    if (action === 'issue_contract' || action === 'review_contract') {
+      setReviewContractOpen(true)
       return
     }
 
@@ -173,6 +182,27 @@ export function ReservationProgressDialog({
     }
   }
 
+  async function handleDocumentFiles(next: ReservationFileItem[]) {
+    const previous = new Set(documentFiles.map((item) => item.id))
+    const added = next.filter((item) => !previous.has(item.id))
+
+    setDocumentFiles(next)
+
+    if (added.length === 0 || reservationId === null || profile !== 'broker') {
+      return
+    }
+
+    setUploadError(null)
+
+    try {
+      await brokerApi.uploadReservationDocuments(reservationId, added.map((item) => item.file))
+      setDocumentFiles((current) => current.filter((item) => !added.some((file) => file.id === item.id)))
+      await loadTimeline()
+    } catch {
+      setUploadError('Não foi possível enviar os arquivos.')
+    }
+  }
+
   async function handleRefresh() {
     onTimelineRefresh?.()
     notifyReservationBadgeRefresh()
@@ -187,6 +217,27 @@ export function ReservationProgressDialog({
   const column = timeline ? timelineKanbanColumn(timeline) : null
   const currentStep = timeline?.steps.find((step) => step.status === 'current')
   const currentWitnessSlot = currentStep?.key === 'contract_witness_2' ? 2 : 1
+  const unitAmount = listedAmount(timeline?.unit.price)
+  const garageLines = (timeline?.garage_units ?? []).map((spot) => {
+    const amount = listedAmount(spot.price)
+
+    return {
+      id: spot.id,
+      code: spot.code,
+      amount,
+      original: amount,
+    }
+  })
+  const garageTotal = garageLines.reduce((sum, spot) => sum + (spot.amount ?? 0), 0)
+  const proposalTotal = unitAmount == null
+    ? null
+    : formatListedPrice(String(Math.round((unitAmount + garageTotal) * 100) / 100))
+
+  const canDecideProposal =
+    profile === 'builder' &&
+    column === 'proposal_review' &&
+    timeline?.current_stage === 'proposal_pending' &&
+    timeline.current_proposal?.decision === null
 
   const proposalUnit: Unit | null = timeline?.unit
     ? {
@@ -216,45 +267,39 @@ export function ReservationProgressDialog({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="flex h-[min(90vh,48rem)] max-w-6xl sm:max-w-6xl flex-col gap-0 overflow-hidden p-0">
-          <DialogHeader className="shrink-0 border-b px-6 py-4 pr-12">
-            <DialogTitle>Andamento da reserva</DialogTitle>
-            <DialogDescription>
-              {column ? kanbanColumnLabel(column) : 'Acompanhe o que falta nesta etapa.'}
-            </DialogDescription>
+          <div className="flex min-h-0 flex-1 flex-row">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <DialogHeader className="shrink-0 gap-4 border-b px-6 py-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300">
+                <FileTextIcon className="size-5" aria-hidden />
+              </span>
+              <div className="flex min-w-0 flex-col gap-1">
+                <DialogTitle>Andamento da reserva</DialogTitle>
+                <DialogDescription>
+                  {column ? kanbanColumnLabel(column) : 'Acompanhe o que falta nesta etapa.'}
+                </DialogDescription>
+              </div>
+            </div>
+            {timeline ? (
+              <ReservationSubjectCard
+                buildingName={timeline.unit.building_name?.trim() ?? ''}
+                unitCode={timeline.unit.code}
+                unitAmount={unitAmount}
+                unitOriginal={unitAmount}
+                proposalTotal={proposalTotal}
+                garageLines={garageLines}
+              />
+            ) : null}
           </DialogHeader>
 
-          <DialogBody className="mx-0 min-h-0 flex-1 flex-row gap-0 overflow-hidden px-0">
+          <DialogBody className="mx-0 min-h-0 flex-1 flex-col gap-0 overflow-hidden px-0">
             {loading ? (
               <p className="p-6 text-sm text-muted-foreground">Carregando andamento...</p>
             ) : error ? (
               <p className="p-6 text-sm text-destructive">{error}</p>
             ) : timeline && column ? (
-              <>
-                <div className="flex min-h-0 w-[60%] flex-col gap-4 overflow-hidden p-6">
-                  {column === 'proposal_review' &&
-                  profile === 'builder' &&
-                  timeline.current_proposal &&
-                  timeline.current_stage === 'proposal_pending' &&
-                  timeline.current_proposal.decision === null ? (
-                    <div className="min-h-0 max-h-[50%] overflow-y-auto">
-                      <BuilderProposalDecisionPanel
-                        reservationId={timeline.reservation_id}
-                        proposal={timeline.current_proposal}
-                        attachments={timeline.attachments}
-                        onDecided={() => void handleRefresh()}
-                      />
-                    </div>
-                  ) : null}
-
-                  {timeline.current_stage === 'proposal_signing' ||
-                  timeline.current_stage === 'contract_signing' ? (
-                    <ProposalSignatureResend
-                      profile={profile}
-                      reservationId={timeline.reservation_id}
-                      document={timeline.current_stage === 'contract_signing' ? 'contract' : 'proposal'}
-                    />
-                  ) : null}
-
+                <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-6">
                   {column === 'proposal_review' && isReturnedOrRejectedProposal(timeline.current_proposal) ? (
                     <ProposalDecisionAlert proposal={timeline.current_proposal} showProposal={false} />
                   ) : null}
@@ -309,23 +354,57 @@ export function ReservationProgressDialog({
                     />
                   ) : null}
 
-                  <ReservationTimeline className="min-h-0 flex-1" timeline={timeline} onAction={handleAction} />
-                </div>
-
-                <div className="flex min-h-0 w-[40%] flex-col border-l bg-muted/20">
-                  <ReservationChatPanel
-                    profile={profile}
-                    reservationId={reservationId}
-                    active={open}
-                    onMessageSent={() => void handleRefresh()}
-                    readOnly={timeline.current_stage === 'cancelled'}
-                    composerId="reservation-progress-message"
-                    showHeading
+                  <ReservationTimeline
+                    className="shrink-0"
+                    timeline={timeline}
+                    onAction={handleAction}
+                    signatureResend={
+                      timeline.current_stage === 'proposal_signing' || timeline.current_stage === 'contract_signing'
+                        ? {
+                            profile,
+                            reservationId: timeline.reservation_id,
+                            document: timeline.current_stage === 'contract_signing' ? 'contract' : 'proposal',
+                          }
+                        : undefined
+                    }
                   />
                 </div>
-              </>
             ) : null}
           </DialogBody>
+          </div>
+          {timeline ? (
+            <div className="flex h-full min-h-0 w-[40%] shrink-0 flex-col border-l">
+              <ReservationFilesPanel
+                className="h-[60%] flex-none"
+                attachments={timeline.attachments}
+                files={profile === 'broker' ? documentFiles : undefined}
+                onFilesChange={
+                  profile === 'broker' && timeline.current_stage !== 'cancelled'
+                    ? (next) => void handleDocumentFiles(next)
+                    : undefined
+                }
+                uploadDisabled={timeline.current_stage === 'cancelled'}
+                uploadError={uploadError}
+              />
+              <ReservationChatPanel
+                className="h-[40%] flex-none border-t bg-background"
+                profile={profile}
+                reservationId={reservationId}
+                active={open}
+                onMessageSent={() => void handleRefresh()}
+                readOnly={timeline.current_stage === 'cancelled'}
+                composerId="reservation-progress-message"
+                showHeading
+              />
+            </div>
+          ) : null}
+          </div>
+          {canDecideProposal && timeline ? (
+            <BuilderProposalDecisionPanel
+              reservationId={timeline.reservation_id}
+              onDecided={() => void handleRefresh()}
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
 
@@ -379,11 +458,11 @@ export function ReservationProgressDialog({
 
       {profile === 'builder' && reservationId !== null ? (
         <>
-          <BuilderIssueContractDialog
-            open={issueContractOpen}
-            onOpenChange={setIssueContractOpen}
+          <ContractReviewDialog
+            open={reviewContractOpen}
+            onOpenChange={setReviewContractOpen}
             reservationId={reservationId}
-            onIssued={() => void handleRefresh()}
+            onAccepted={() => void handleRefresh()}
           />
           <BuilderSignedContractDialog
             open={builderSignedContractOpen}
@@ -420,4 +499,14 @@ export function ReservationProgressDialog({
       ) : null}
     </>
   )
+}
+
+function listedAmount(value: string | null | undefined): number | null {
+  if (value == null || value === '') {
+    return null
+  }
+
+  const amount = Number(value)
+
+  return Number.isFinite(amount) ? amount : null
 }

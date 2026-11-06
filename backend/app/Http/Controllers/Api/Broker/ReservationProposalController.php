@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Broker;
 
 use App\Enums\ReservationAttachmentKind;
 use App\Enums\ReservationTimelineEventType;
+use App\Enums\SignatureSignerRole;
 use App\Http\Controllers\Controller;
 use App\Models\Reservation;
 use App\Services\ProposalSignatureService;
@@ -11,6 +12,7 @@ use App\Services\ReservationProposalService;
 use App\Support\ReservationProposalRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 /**
  * @see REQ-RTL-005
@@ -44,7 +46,7 @@ class ReservationProposalController extends Controller
         }
 
         return response()->json([
-            'notified' => $this->signatures->resendPendingLinks($reservation),
+            'notified' => $this->signatures->resendPendingLinks($reservation, $this->signatureRole($request)),
         ]);
     }
 
@@ -66,6 +68,19 @@ class ReservationProposalController extends Controller
         );
 
         return response()->json($this->formatReservation($updated));
+    }
+
+    private function signatureRole(Request $request): ?SignatureSignerRole
+    {
+        $data = $request->validate([
+            'role' => ['sometimes', 'string', Rule::in([
+                SignatureSignerRole::Builder->value,
+                SignatureSignerRole::Broker->value,
+                SignatureSignerRole::Buyer->value,
+            ])],
+        ]);
+
+        return isset($data['role']) ? SignatureSignerRole::from($data['role']) : null;
     }
 
     /**

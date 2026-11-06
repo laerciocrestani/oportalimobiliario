@@ -9,19 +9,25 @@ use App\Enums\ProposalDecision;
 use App\Enums\ReservationAttachmentKind;
 use App\Enums\ReservationStatus;
 use App\Enums\ReservationTimelineEventType;
+use App\Enums\SignatureDocumentKind;
+use App\Enums\SignatureDocumentStatus;
+use App\Enums\SignatureSignerRole;
+use App\Enums\SignatureSignerStatus;
 use App\Enums\UnitStatus;
 use App\Models\BrokerClient;
 use App\Models\Building;
-use App\Models\BuildingAccess;
 use App\Models\Reservation;
 use App\Models\ReservationAttachment;
 use App\Models\ReservationProposal;
 use App\Models\ReservationTimelineEvent;
+use App\Models\SignatureDocument;
+use App\Models\SignatureSigner;
 use App\Models\Tenant;
 use App\Models\Unit;
 use App\Models\UnitAccess;
 use App\Models\User;
 use App\Support\BuilderPermissions;
+use Illuminate\Support\Carbon;
 use Laravel\Sanctum\Sanctum;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -64,7 +70,8 @@ it('returns timeline for broker pre-hold with dialogue step current', function (
         ->assertJsonPath('steps.0.status', 'completed')
         ->assertJsonPath('steps.1.key', 'dialogue')
         ->assertJsonPath('steps.1.status', 'current')
-        ->assertJsonPath('steps.1.actions', ['open_dialogue']);
+        ->assertJsonPath('steps.1.actions', ['open_dialogue'])
+        ->assertJsonPath('garage_units', []);
 });
 
 it('returns timeline for confirmed reservation with deposit window current', function () {
@@ -550,4 +557,178 @@ it('exposes hold actions on a client pre-hold timeline without deposit proof', f
 
     expect($builderActions)->toContain('extend_hold')
         ->and($builderActions)->toContain('drop_hold');
+});
+
+it('includes linked garage spots on the timeline', function () {
+    $tenant = Tenant::factory()->create();
+    $broker = User::factory()->broker()->create();
+    $building = Building::factory()->for($tenant)->create(['name' => 'Condomínio Jardim Europa']);
+    $unit = Unit::factory()->for($tenant)->for($building)->create([
+        'status' => UnitStatus::PreReserved,
+        'code' => '501',
+        'price' => 530660,
+    ]);
+    $garage = Unit::factory()->for($tenant)->for($building)->create([
+        'code' => 'S1-02',
+        'price' => 48000,
+        'status' => UnitStatus::PreReserved,
+    ]);
+
+    UnitAccess::factory()->create([
+        'tenant_id' => $tenant->id,
+        'broker_id' => $broker->id,
+        'unit_id' => $unit->id,
+    ]);
+
+    linkBrokerToTenant($broker, $tenant);
+
+    $reservation = Reservation::factory()->preHold()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+    ]);
+    $reservation->garageUnits()->attach($garage->id, ['tenant_id' => $tenant->id]);
+
+    ReservationTimelineEvent::factory()->create([
+        'reservation_id' => $reservation->id,
+        'type' => ReservationTimelineEventType::PreHoldCreated,
+        'actor_id' => $broker->id,
+    ]);
+
+    Sanctum::actingAs($broker);
+
+    $this->getJson("/api/broker/reservations/{$reservation->id}/timeline")
+        ->assertOk()
+        ->assertJsonPath('unit.code', '501')
+        ->assertJsonPath('unit.building_name', 'Condomínio Jardim Europa')
+        ->assertJsonPath('unit.price', '530660.00')
+        ->assertJsonPath('garage_units.0.code', 'S1-02')
+        ->assertJsonPath('garage_units.0.price', '48000.00')
+        ->assertJsonPath('garage_units.0.floor_kind', 'garage');
+});
+
+it('lists the signature process while the proposal is waiting for signatures', function () {
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create(['name' => 'Helena Vargas']);
+    $broker = User::factory()->broker()->create(['name' => 'João Corretor']);
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+    $reservation = Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+        'status' => ReservationStatus::ProposalSigning,
+        'expires_at' => null,
+    ]);
+    $sentAt = now()->subHours(2);
+    $document = SignatureDocument::query()->create([
+        'tenant_id' => $tenant->id,
+        'reservation_id' => $reservation->id,
+        'kind' => SignatureDocumentKind::Proposal,
+        'reference' => $tenant->id.':'.$reservation->id.':proposal',
+        'provider_document_id' => 'doc-1',
+        'status' => SignatureDocumentStatus::Sent,
+    ]);
+    $document->forceFill([
+        'created_at' => $sentAt,
+        'updated_at' => $sentAt,
+    ])->save();
+
+    foreach ([
+        [SignatureSignerRole::Builder, 'Helena Vargas', SignatureSignerStatus::Pending],
+        [SignatureSignerRole::Broker, 'João Corretor', SignatureSignerStatus::Pending],
+        [SignatureSignerRole::Buyer, 'Laércio Crestani', SignatureSignerStatus::Pending],
+    ] as [$role, $name, $status]) {
+        SignatureSigner::query()->create([
+            'tenant_id' => $tenant->id,
+            'signature_document_id' => $document->id,
+            'role' => $role,
+            'name' => $name,
+            'phone' => '11999999999',
+            'status' => $status,
+            'provider_signer_id' => $role->value,
+        ]);
+    }
+
+    Sanctum::actingAs($builder);
+
+    $response = $this->getJson("/api/builder/reservations/{$reservation->id}/timeline")
+        ->assertOk()
+        ->assertJsonPath('current_stage', 'proposal_signing')
+        ->assertJsonPath('signature_process.parties.0.role', 'builder')
+        ->assertJsonPath('signature_process.parties.0.label', 'Gestor da construtora')
+        ->assertJsonPath('signature_process.parties.0.name', 'Helena Vargas')
+        ->assertJsonPath('signature_process.parties.0.status', 'pending')
+        ->assertJsonPath('signature_process.parties.1.role', 'broker')
+        ->assertJsonPath('signature_process.parties.1.status', 'pending')
+        ->assertJsonPath('signature_process.parties.2.role', 'buyer')
+        ->assertJsonPath('signature_process.parties.2.name', 'Laércio Crestani');
+
+    $sent = Carbon::parse($response->json('signature_process.sent_at'));
+    $due = Carbon::parse($response->json('signature_process.due_at'));
+
+    expect($due->equalTo($sent->copy()->addHours(24)))->toBeTrue();
+});
+
+it('lists the contract signature process with both witnesses', function () {
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create(['name' => 'Helena Vargas']);
+    $broker = User::factory()->broker()->create(['name' => 'João Corretor']);
+    $unit = Unit::factory()->for($tenant)->create();
+    $reservation = Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+        'status' => ReservationStatus::ContractSigning,
+        'expires_at' => null,
+    ]);
+    $document = SignatureDocument::query()->create([
+        'tenant_id' => $tenant->id,
+        'reservation_id' => $reservation->id,
+        'kind' => SignatureDocumentKind::Contract,
+        'reference' => $tenant->id.':'.$reservation->id.':contract',
+        'provider_document_id' => 'doc-contract',
+        'status' => SignatureDocumentStatus::Sent,
+    ]);
+
+    foreach ([
+        ['buyer', SignatureSignerRole::Buyer, 'Laércio Crestani', SignatureSignerStatus::Signed],
+        ['builder', SignatureSignerRole::Builder, 'Helena Vargas', SignatureSignerStatus::Pending],
+        ['witness-1', SignatureSignerRole::Witness, 'João Corretor', SignatureSignerStatus::Pending],
+        ['witness-2', SignatureSignerRole::Witness, 'Paula Testemunha', SignatureSignerStatus::Pending],
+    ] as [$key, $role, $name, $status]) {
+        SignatureSigner::query()->create([
+            'tenant_id' => $tenant->id,
+            'signature_document_id' => $document->id,
+            'role' => $role,
+            'signer_key' => $key,
+            'name' => $name,
+            'phone' => '11999999999',
+            'status' => $status,
+            'provider_signer_id' => $key,
+            'signed_at' => $status === SignatureSignerStatus::Signed ? now() : null,
+        ]);
+    }
+
+    Sanctum::actingAs($builder);
+
+    $this->getJson("/api/builder/reservations/{$reservation->id}/timeline")
+        ->assertOk()
+        ->assertJsonPath('current_stage', 'contract_signing')
+        ->assertJsonPath('signature_process.parties.0.key', 'buyer')
+        ->assertJsonPath('signature_process.parties.0.label', 'Comprador')
+        ->assertJsonPath('signature_process.parties.0.name', 'Laércio Crestani')
+        ->assertJsonPath('signature_process.parties.0.status', 'signed')
+        ->assertJsonPath('signature_process.parties.1.key', 'builder')
+        ->assertJsonPath('signature_process.parties.1.name', 'Helena Vargas')
+        ->assertJsonPath('signature_process.parties.2.key', 'witness-1')
+        ->assertJsonPath('signature_process.parties.2.role', 'witness')
+        ->assertJsonPath('signature_process.parties.2.label', 'Testemunha 1')
+        ->assertJsonPath('signature_process.parties.2.name', 'João Corretor')
+        ->assertJsonPath('signature_process.parties.3.key', 'witness-2')
+        ->assertJsonPath('signature_process.parties.3.label', 'Testemunha 2')
+        ->assertJsonPath('signature_process.parties.3.name', 'Paula Testemunha');
 });

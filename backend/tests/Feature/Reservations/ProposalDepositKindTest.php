@@ -192,8 +192,8 @@ it('skips the pix proof when the signal is an asset already in the proposal', fu
     $this->getJson('/api/broker/reservations')
         ->assertOk()
         ->assertJsonPath('0.status', ReservationStatus::ContractDataPending->value)
-        ->assertJsonPath('0.kanban_column', 'docs_deposit')
-        ->assertJsonPath('0.pending_action', 'submit_contract_data');
+        ->assertJsonPath('0.kanban_column', 'contract')
+        ->assertJsonPath('0.pending_action', null);
 
     $steps = $this->getJson("/api/broker/reservations/{$reservation->id}/timeline")
         ->assertOk()
@@ -202,7 +202,7 @@ it('skips the pix proof when the signal is an asset already in the proposal', fu
 
     expect(collect($steps)->firstWhere('key', 'deposit_window')['status'])->toBe('skipped')
         ->and(collect($steps)->firstWhere('key', 'deposit_proof')['status'])->toBe('skipped')
-        ->and(collect($steps)->firstWhere('status', 'current')['key'])->toBe('contract_data');
+        ->and(collect($steps)->firstWhere('status', 'current')['key'])->toBe('contract_issue');
 
     $this->post("/api/broker/reservations/{$reservation->id}/deposit-proof", [
         'file' => UploadedFile::fake()->create('comprovante.pdf', 20, 'application/pdf'),

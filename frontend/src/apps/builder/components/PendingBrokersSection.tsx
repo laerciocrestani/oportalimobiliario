@@ -16,8 +16,8 @@ import { formatRelativeTimePtBr } from '@/lib/format-relative-time'
 type PendingBrokersSectionProps = {
   pendingBrokers: PendingBroker[]
   loading: boolean
-  onApprove: (id: number) => void
-  onReject: (id: number) => void
+  onApprove: (broker: PendingBroker) => void
+  onReject: (broker: PendingBroker) => void
 }
 
 export function PendingBrokersSection({
@@ -51,7 +51,7 @@ export function PendingBrokersSection({
           <Badge variant="secondary">{pendingBrokers.length}</Badge>
         </CardTitle>
         <CardDescription>
-          Corretores que se cadastraram pelo link aberto e aguardam sua aprovação.
+          Corretores que pediram acesso e aguardam aprovação. A aprovação de um empreendimento libera só ele.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -59,6 +59,7 @@ export function PendingBrokersSection({
           <TableHeader>
             <TableRow>
               <TableHead>Nome</TableHead>
+              <TableHead>Empreendimento</TableHead>
               <TableHead>Contato</TableHead>
               <TableHead>Solicitado</TableHead>
               <TableHead className="text-right">Ações</TableHead>
@@ -66,8 +67,9 @@ export function PendingBrokersSection({
           </TableHeader>
           <TableBody>
             {pendingBrokers.map((broker) => (
-              <TableRow key={broker.id}>
+              <TableRow key={broker.building_request_id ? `building-${broker.building_request_id}` : `broker-${broker.id}`}>
                 <TableCell className="font-medium">{broker.name}</TableCell>
+                <TableCell>{broker.building_name ?? '—'}</TableCell>
                 <TableCell>{broker.email ?? broker.phone ?? '—'}</TableCell>
                 <TableCell>{formatRelativeTimePtBr(broker.requested_at)}</TableCell>
                 <TableCell className="text-right">
@@ -76,7 +78,7 @@ export function PendingBrokersSection({
                       type="button"
                       size="sm"
                       variant="outline"
-                      onClick={() => onApprove(broker.id)}
+                      onClick={() => onApprove(broker)}
                     >
                       <CheckIcon />
                       Aprovar
@@ -85,7 +87,7 @@ export function PendingBrokersSection({
                       type="button"
                       size="sm"
                       variant="destructive"
-                      onClick={() => onReject(broker.id)}
+                      onClick={() => onReject(broker)}
                     >
                       <XIcon />
                       Recusar

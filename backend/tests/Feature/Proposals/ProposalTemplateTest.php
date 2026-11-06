@@ -65,10 +65,15 @@ it('replaces custom proposal templates with the commercial proposal', function (
         ->assertJsonPath('0.prefill.nome_cliente', 'Ana Silva');
 
     expect($response->json('0.body_markdown'))
+        ->toContain('PROPOSTA DE COMPRA DE IMÓVEL')
+        ->toContain('{{qualificacao_comprador}}')
         ->toContain('{{condicoes_pagamento}}')
+        ->toContain('{dados_unidade}')
         ->toContain('{reforcos}')
         ->toContain('{dacoes}')
-        ->not->toContain('valor_entrada');
+        ->not->toContain('valor_entrada')
+        ->not->toContain('Corretor | Cliente | Construtora')
+        ->not->toContain('Construtora | Corretor | Comprador');
     expect(collect($response->json('0.variables'))->pluck('slug')->all())
         ->toContain('condicoes_pagamento')
         ->not->toContain('comissao_extra')

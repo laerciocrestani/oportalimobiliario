@@ -45,7 +45,7 @@ class BuildingUnitGridController extends Controller
             'towers.*.floors.*.kind' => ['required', Rule::enum(FloorKind::class)],
             'towers.*.floors.*.customized' => ['sometimes', 'boolean'],
             'towers.*.reference_floor' => ['nullable', 'integer', 'min:-20', 'max:80'],
-            'towers.*.floors.*.units' => ['required', 'array'],
+            'towers.*.floors.*.units' => ['present', 'array'],
             'towers.*.floors.*.units.*.code' => ['nullable', 'string', 'max:50'],
             'towers.*.floors.*.units.*.area_m2' => ['nullable', 'numeric', 'min:0'],
             'towers.*.floors.*.units.*.private_area_m2' => ['nullable', 'numeric', 'min:0'],

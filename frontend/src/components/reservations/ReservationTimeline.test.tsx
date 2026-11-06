@@ -1,7 +1,9 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { ReservationTimeline } from '@/components/reservations/ReservationTimeline'
 import type { ReservationTimeline as ReservationTimelineData } from '@/lib/api'
+import { formatListedPrice } from '@/lib/unit-listing'
 
 const sampleTimeline: ReservationTimelineData = {
   reservation_id: 1,
@@ -39,7 +41,7 @@ const sampleTimeline: ReservationTimelineData = {
 }
 
 describe('ReservationTimeline', () => {
-  it('renders only the current step and keeps files visible', () => {
+  it('renders only the current step', () => {
     const onAction = vi.fn()
 
     render(<ReservationTimeline timeline={sampleTimeline} onAction={onAction} />)
@@ -47,40 +49,14 @@ describe('ReservationTimeline', () => {
     expect(screen.queryByText('Diálogo com construtora')).not.toBeInTheDocument()
     expect(screen.queryByText('Pré-reserva')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Abrir diálogo' })).not.toBeInTheDocument()
-    expect(screen.getByText('Arquivos da reserva')).toBeInTheDocument()
-    expect(screen.getByText('Nenhum arquivo enviado ainda')).toBeInTheDocument()
+    expect(screen.queryByText('Arquivos da reserva')).not.toBeInTheDocument()
     expect(screen.getByText('101')).toBeInTheDocument()
     expect(document.querySelector('.animate-ping')).not.toBeInTheDocument()
   })
 
-  it('lists historic attachments after the process moves forward', () => {
-    render(
-      <ReservationTimeline
-        timeline={{
-          ...sampleTimeline,
-          current_stage: 'contract_data_pending',
-          attachments: [
-            {
-              id: 9,
-              kind: 'deposit_proof',
-              original_name: 'pix.pdf',
-              mime_type: 'application/pdf',
-              size_bytes: 2048,
-              uploaded_by: 2,
-              created_at: '2026-07-10T19:30:00+00:00',
-              file_url: '/builder/reservations/1/attachments/9/file',
-            },
-          ],
-        }}
-      />,
-    )
+  it('compacts proposal review info', async () => {
+    const user = userEvent.setup()
 
-    expect(screen.getByText('Arquivos da reserva')).toBeInTheDocument()
-    expect(screen.getByText('Comprovante de pagamento')).toBeInTheDocument()
-    expect(screen.getByText('pix.pdf')).toBeInTheDocument()
-  })
-
-  it('compacts proposal review info and keeps files in the remaining space', () => {
     render(
       <ReservationTimeline
         timeline={{
@@ -92,7 +68,16 @@ describe('ReservationTimeline', () => {
             version: 2,
             client_name: 'Ana Silva',
             client_phone: '11999999999',
+            client_cpf: '52998224725',
             payment_terms: 'Entrada de R$ 50.000 + 24x de R$ 5.000',
+            commercial_terms: {
+              description: 'Entrada de R$ 50.000 + 24x de R$ 5.000',
+              reinforcements: [
+                { amount: '10000.00', due_on: '2026-11-10' },
+                { amount: '5000.00', due_on: null },
+              ],
+              dations: ['Apartamento na rua A'],
+            },
             decision: null,
             decision_note: null,
             submitted_by: 2,
@@ -100,13 +85,13 @@ describe('ReservationTimeline', () => {
             decided_at: null,
             created_at: '2026-08-22T11:00:00.000Z',
             client_email: '',
-            client_cpf: '',
-            address: '',
-            city: '',
-            state: '',
-            zip: '',
             marital_status: '',
-            nationality: '',
+            nationality: 'brasileira',
+            profession: 'Administrador',
+            address: 'Travessa Natal',
+            city: 'Lajeado',
+            state: 'RS',
+            zip: '95700500',
             land_value: 0,
           },
           steps: [
@@ -124,41 +109,37 @@ describe('ReservationTimeline', () => {
       />,
     )
 
-    expect(screen.getByText('101')).toBeInTheDocument()
-    expect(screen.getByText(/Proposta v2/)).toBeInTheDocument()
+    const listed = (value: string) => (text: string) => text.replace(/\s/g, ' ') === formatListedPrice(value).replace(/\s/g, ' ')
+    const whatsApp = screen.getByRole('link', { name: 'Conversar no WhatsApp com Ana Silva' })
+
+    expect(screen.queryByText('101')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Proposta v2/)).not.toBeInTheDocument()
+    expect(screen.getByText('Descrição')).toBeInTheDocument()
     expect(screen.getByText('Entrada de R$ 50.000 + 24x de R$ 5.000')).toBeInTheDocument()
-    expect(screen.queryByText('Ana Silva')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Ana Silva' })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'Ana Silva' }))
+
+    const details = await screen.findByRole('dialog', { name: 'Dados do cliente' })
+
+    expect(within(details).getByText('Administrador')).toBeInTheDocument()
+    expect(within(details).getByText('Travessa Natal')).toBeInTheDocument()
+    expect(within(details).getByText('95700-500')).toBeInTheDocument()
+    expect(within(details).getByText('Lajeado')).toBeInTheDocument()
+    expect(within(details).getByText('brasileira')).toBeInTheDocument()
+    expect(whatsApp).toHaveAttribute('href', 'https://wa.me/5511999999999')
+    expect(whatsApp).toHaveTextContent('(11) 99999-9999')
+    expect(screen.getByText((_, element) => element?.tagName === 'SPAN' && element.textContent === '529.982.247-25')).toBeInTheDocument()
+    expect(screen.getByText('Reforços')).toBeInTheDocument()
+    expect(screen.getByText((text) => text.replace(/\s/g, ' ').includes(formatListedPrice('10000.00').replace(/\s/g, ' ')) && text.includes('10/11/2026'))).toBeInTheDocument()
+    expect(screen.getByText(listed('5000.00'))).toBeInTheDocument()
+    expect(screen.getByText('Dação')).toBeInTheDocument()
+    expect(screen.getByText('Apartamento na rua A')).toBeInTheDocument()
     expect(screen.queryByText('Decisão do gestor')).not.toBeInTheDocument()
-    expect(screen.getByText('Arquivos da reserva')).toBeInTheDocument()
+    expect(screen.queryByText('Arquivos da reserva')).not.toBeInTheDocument()
   })
 
-  it('lists proposal attachments in the historic group', () => {
-    render(
-      <ReservationTimeline
-        timeline={{
-          ...sampleTimeline,
-          current_stage: 'proposal_pending',
-          attachments: [
-            {
-              id: 4,
-              kind: 'proposal',
-              original_name: 'simulacao.pdf',
-              mime_type: 'application/pdf',
-              size_bytes: 1024,
-              uploaded_by: 2,
-              created_at: '2026-07-10T19:10:00+00:00',
-              file_url: '/builder/reservations/1/attachments/4/file',
-            },
-          ],
-        }}
-      />,
-    )
-
-    expect(screen.getByText('Anexos da proposta')).toBeInTheDocument()
-    expect(screen.getByText('simulacao.pdf')).toBeInTheDocument()
-  })
-
-  it('renders contract data action for the current step', () => {
+  it('does not offer contract data collection on the contract column', () => {
     const onAction = vi.fn()
 
     render(
@@ -169,8 +150,8 @@ describe('ReservationTimeline', () => {
           client: { id: 2, name: 'Ana Silva', phone: '11999999999', email: null },
           steps: [
             {
-              key: 'contract_data',
-              label: 'Dados para contrato',
+              key: 'contract_issue',
+              label: 'Emissão do contrato',
               status: 'current',
               occurred_at: null,
               due_at: null,
@@ -183,8 +164,49 @@ describe('ReservationTimeline', () => {
       />,
     )
 
-    expect(screen.getByText('Dados para contrato')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Enviar dados do contrato' })).toBeInTheDocument()
+    expect(screen.getByText('Emissão do contrato')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Enviar dados do contrato' })).not.toBeInTheDocument()
+  })
+
+  it('shows the contract signature process instead of the issue step', () => {
+    render(
+      <ReservationTimeline
+        timeline={{
+          ...sampleTimeline,
+          current_stage: 'contract_signing',
+          expires_at: null,
+          client: { id: 2, name: 'Laércio Crestani', phone: '11999999999', email: null },
+          signature_process: {
+            sent_at: '2026-10-24T09:59:00-03:00',
+            due_at: '2026-10-25T09:59:00-03:00',
+            parties: [
+              { key: 'buyer', role: 'buyer', label: 'Comprador', name: 'Laércio Crestani', status: 'pending' },
+              { key: 'builder', role: 'builder', label: 'Gestor', name: 'Helena Vargas', status: 'pending' },
+              { key: 'witness-1', role: 'witness', label: 'Testemunha 1', name: 'João Corretor', status: 'pending' },
+              { key: 'witness-2', role: 'witness', label: 'Testemunha 2', name: 'Paula Testemunha', status: 'pending' },
+            ],
+          },
+          steps: [
+            {
+              key: 'contract_issue',
+              label: 'Emissão do contrato',
+              status: 'current',
+              occurred_at: '2026-10-24T09:59:00-03:00',
+              due_at: null,
+              actor: { id: 1, name: 'Construtora Alpha', role: 'builder' },
+              actions: [],
+            },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Aguardando assinatura Comprador')).toBeInTheDocument()
+    expect(screen.getByText('Aguardando assinatura Testemunha 1')).toBeInTheDocument()
+    expect(screen.getByText('Aguardando assinatura Testemunha 2')).toBeInTheDocument()
+    expect(screen.queryByText('Emissão do contrato')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Baixar PDF' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Cliente:')).not.toBeInTheDocument()
   })
 
   it('shows the issued contract PDF and download on the GOV signature step', () => {
@@ -328,7 +350,6 @@ describe('ReservationTimeline', () => {
     )
 
     expect(screen.getByRole('button', { name: 'Reemitir contrato' })).toBeInTheDocument()
-    expect(screen.getByText('contrato.pdf')).toBeInTheDocument()
   })
 
   it('does not render upcoming steps from other columns', () => {
@@ -364,6 +385,35 @@ describe('ReservationTimeline', () => {
     expect(screen.queryByText('Proposta')).not.toBeInTheDocument()
     expect(screen.queryByText('Aguardando sinal (48h)')).not.toBeInTheDocument()
     expect(screen.queryByText('Diálogo com construtora')).not.toBeInTheDocument()
+  })
+
+  it('shows only the deposit notice while waiting for the proof', () => {
+    render(
+      <ReservationTimeline
+        timeline={{
+          ...sampleTimeline,
+          current_stage: 'deposit_pending',
+          client: { id: 4, name: 'Laércio Crestani', phone: '54998494949', email: null },
+          steps: [
+            {
+              key: 'deposit_window',
+              label: 'Aguardando sinal (48h)',
+              status: 'current',
+              occurred_at: '2026-10-24T12:40:00.000Z',
+              due_at: null,
+              actor: null,
+              actions: ['submit_deposit_proof'],
+            },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Aguardando o comprovante do sinal.')).toBeInTheDocument()
+    expect(screen.queryByText('Aguardando sinal (48h)')).not.toBeInTheDocument()
+    expect(screen.queryByText('Unidade:')).not.toBeInTheDocument()
+    expect(screen.queryByText('Laércio Crestani')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Anexar comprovante' })).toBeInTheDocument()
   })
 
   it('labels hold actions for the builder on a current pre-reservation', () => {

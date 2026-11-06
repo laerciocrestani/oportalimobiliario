@@ -1,125 +1,49 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
+import { CheckIcon, XIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Field, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
-import { latestAttachmentByKind } from '@/components/reservations/download-reservation-attachment'
-import {
-  builderApi,
-  type ProposalDecision,
-  type ProposalIssuePreview,
-  type ReservationAttachment,
-  type ReservationProposal,
-} from '@/lib/api'
+import { builderApi, type ProposalDecision } from '@/lib/api'
 
 type BuilderProposalDecisionPanelProps = {
   reservationId: number
-  proposal: ReservationProposal
-  attachments?: ReservationAttachment[]
   onDecided: () => void
 }
 
 export function BuilderProposalDecisionPanel({
   reservationId,
-  attachments = [],
   onDecided,
 }: BuilderProposalDecisionPanelProps) {
-  const [decisionNote, setDecisionNote] = useState('')
-  const [submitting, setSubmitting] = useState<ProposalDecision | 'issue' | null>(null)
+  const [acceptOpen, setAcceptOpen] = useState(false)
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [acceptNote, setAcceptNote] = useState('')
+  const [rejectNote, setRejectNote] = useState('')
+  const [submitting, setSubmitting] = useState<ProposalDecision | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [templates, setTemplates] = useState<Array<{ id: number; name: string }>>([])
-  const [templateId, setTemplateId] = useState('')
-  const [preview, setPreview] = useState<ProposalIssuePreview | null>(null)
-  const [values, setValues] = useState<Record<string, string>>({})
-  const note = decisionNote.trim()
-  const generatedPdf = latestAttachmentByKind(attachments, 'proposal_pdf')
-  const requiredSlugs = preview?.required_custom_slugs ?? []
 
-  useEffect(() => {
-    let cancelled = false
-
-    async function loadTemplates() {
-      try {
-        const nextTemplates = await builderApi.listIssueProposalTemplates(reservationId)
-        if (cancelled) {
-          return
-        }
-        setTemplates(nextTemplates)
-        setTemplateId(nextTemplates[0] ? String(nextTemplates[0].id) : '')
-      } catch {
-        if (!cancelled) {
-          setTemplates([])
-        }
-      }
-    }
-
-    void loadTemplates()
-
-    return () => {
-      cancelled = true
-    }
-  }, [reservationId])
-
-  useEffect(() => {
-    if (templateId === '') {
-      setPreview(null)
-      return
-    }
-
-    let cancelled = false
-
-    async function loadPreview() {
-      try {
-        const nextPreview = await builderApi.previewProposalIssue(reservationId, Number(templateId))
-        if (cancelled) {
-          return
-        }
-        setPreview(nextPreview)
-        setValues({ ...nextPreview.system_values })
-      } catch {
-        if (!cancelled) {
-          setPreview(null)
-        }
-      }
-    }
-
-    void loadPreview()
-
-    return () => {
-      cancelled = true
-    }
-  }, [reservationId, templateId])
-
-  async function handleIssue() {
-    if (templateId === '') {
-      return
-    }
-
-    setSubmitting('issue')
+  function openAccept() {
     setError(null)
-
-    try {
-      await builderApi.issueProposal(reservationId, {
-        proposal_template_id: Number(templateId),
-        values,
-      })
-      onDecided()
-    } catch {
-      setError('Não foi possível gerar o PDF da proposta. Verifique o modelo e os campos.')
-    } finally {
-      setSubmitting(null)
-    }
+    setAcceptNote('')
+    setAcceptOpen(true)
   }
 
-  async function handleDecision(decision: ProposalDecision) {
-    if (decision === 'rejected' && note === '') {
+  function openReject() {
+    setError(null)
+    setRejectNote('')
+    setRejectOpen(true)
+  }
+
+  async function handleDecision(decision: ProposalDecision, note: string) {
+    if (decision === 'rejected' && note.trim() === '') {
       setError('Informe o motivo para recusar a proposta.')
       return
     }
@@ -128,7 +52,9 @@ export function BuilderProposalDecisionPanel({
     setError(null)
 
     try {
-      await builderApi.decideReservationProposal(reservationId, decision, decisionNote)
+      await builderApi.decideReservationProposal(reservationId, decision, note)
+      setAcceptOpen(false)
+      setRejectOpen(false)
       onDecided()
     } catch {
       setError('Não foi possível registrar a decisão da proposta.')
@@ -138,113 +64,117 @@ export function BuilderProposalDecisionPanel({
   }
 
   return (
-    <FieldGroup className="gap-3">
-      {templates.length > 0 ? (
-        <>
-          {templates.length > 1 ? (
+    <>
+      <DialogFooter className="mx-0 mb-0">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={submitting !== null}
+          onClick={openReject}
+        >
+          <XIcon data-icon="inline-start" />
+          Recusar
+        </Button>
+        <Button
+          type="button"
+          className="bg-emerald-600 text-white hover:bg-emerald-700"
+          disabled={submitting !== null}
+          onClick={openAccept}
+        >
+          <CheckIcon data-icon="inline-start" />
+          Aceitar
+        </Button>
+      </DialogFooter>
+
+      <Dialog
+        open={acceptOpen}
+        onOpenChange={(nextOpen) => {
+          if (submitting !== null) {
+            return
+          }
+          setAcceptOpen(nextOpen)
+          if (!nextOpen) {
+            setError(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Aceitar proposta</DialogTitle>
+            <DialogDescription>
+              Ao aceitar, a proposta segue para assinatura do cliente, do signatário da construtora e do corretor.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="pb-3">
             <Field>
-              <FieldLabel>Modelo</FieldLabel>
-              <Select
-                value={templateId === '' ? null : templateId}
-                onValueChange={(value) => {
-                  if (value === null) {
-                    return
-                  }
-                  setTemplateId(value)
-                }}
-              >
-                <SelectTrigger className="w-full" aria-label="Modelo de proposta">
-                  <SelectValue placeholder="Selecione um modelo">
-                    {templates.find((template) => String(template.id) === templateId)?.name || null}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent>
-                  {templates.map((template) => (
-                    <SelectItem key={template.id} value={String(template.id)}>
-                      {template.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FieldLabel htmlFor="accept-decision-note">Observação da decisão</FieldLabel>
+              <Textarea
+                id="accept-decision-note"
+                className="min-h-28"
+                value={acceptNote}
+                onChange={(event) => setAcceptNote(event.target.value)}
+                placeholder="Opcional."
+              />
             </Field>
-          ) : null}
-          <div>
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              type="button"
+              className="bg-emerald-600 text-white hover:bg-emerald-700"
+              disabled={submitting !== null}
+              onClick={() => void handleDecision('accepted', acceptNote)}
+            >
+              <CheckIcon data-icon="inline-start" />
+              {submitting === 'accepted' ? 'Processando...' : 'Aceitar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={rejectOpen}
+        onOpenChange={(nextOpen) => {
+          if (submitting !== null) {
+            return
+          }
+          setRejectOpen(nextOpen)
+          if (!nextOpen) {
+            setError(null)
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Recusar proposta</DialogTitle>
+            <DialogDescription>Informe o motivo da recusa.</DialogDescription>
+          </DialogHeader>
+          <DialogBody className="pb-3">
+            <Field>
+              <FieldLabel htmlFor="reject-decision-note">Observação da decisão</FieldLabel>
+              <Textarea
+                id="reject-decision-note"
+                className="min-h-28"
+                value={rejectNote}
+                onChange={(event) => setRejectNote(event.target.value)}
+                placeholder="Obrigatório para recusar."
+              />
+            </Field>
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          </DialogBody>
+          <DialogFooter>
             <Button
               type="button"
               variant="outline"
-              disabled={submitting !== null || templateId === ''}
-              onClick={() => void handleIssue()}
+              disabled={submitting !== null || rejectNote.trim() === ''}
+              onClick={() => void handleDecision('rejected', rejectNote)}
             >
-              {submitting === 'issue' ? 'Gerando...' : generatedPdf ? 'Reemitir PDF' : 'Gerar PDF'}
+              <XIcon data-icon="inline-start" />
+              {submitting === 'rejected' ? 'Processando...' : 'Recusar'}
             </Button>
-          </div>
-
-          {requiredSlugs.map((slug) => {
-            const variable = preview?.custom_variables.find((item) => item.slug === slug)
-            const label = variable?.label ?? slug
-
-            return (
-              <Field key={slug}>
-                <FieldLabel htmlFor={`proposal-value-${slug}`}>{label}</FieldLabel>
-                {variable?.multiline ? (
-                  <Textarea
-                    id={`proposal-value-${slug}`}
-                    className="min-h-28"
-                    placeholder={variable.placeholder}
-                    value={values[slug] ?? ''}
-                    onChange={(event) =>
-                      setValues((current) => ({ ...current, [slug]: event.target.value }))
-                    }
-                  />
-                ) : (
-                  <Input
-                    id={`proposal-value-${slug}`}
-                    value={values[slug] ?? ''}
-                    onChange={(event) =>
-                      setValues((current) => ({ ...current, [slug]: event.target.value }))
-                    }
-                  />
-                )}
-              </Field>
-            )
-          })}
-        </>
-      ) : null}
-
-      <p className="text-sm text-muted-foreground">
-        Ao aceitar, a proposta segue para assinatura do cliente, do signatário da construtora e do corretor.
-      </p>
-
-      <Field>
-        <FieldLabel htmlFor="decision-note">Observação da decisão</FieldLabel>
-        <Textarea
-          id="decision-note"
-          className="min-h-16"
-          value={decisionNote}
-          onChange={(e) => setDecisionNote(e.target.value)}
-          placeholder="Obrigatório para recusa."
-        />
-      </Field>
-
-      {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          disabled={submitting !== null}
-          onClick={() => void handleDecision('accepted')}
-        >
-          {submitting === 'accepted' ? 'Processando...' : 'Aceitar'}
-        </Button>
-        <Button
-          type="button"
-          variant="destructive"
-          disabled={submitting !== null || note === ''}
-          onClick={() => void handleDecision('rejected')}
-        >
-          {submitting === 'rejected' ? 'Processando...' : 'Recusar'}
-        </Button>
-      </div>
-    </FieldGroup>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

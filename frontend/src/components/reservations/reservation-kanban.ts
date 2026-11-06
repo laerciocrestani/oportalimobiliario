@@ -352,6 +352,8 @@ const COLUMN_ACTION_ALLOWLIST: Record<ReservationKanbanColumn, readonly string[]
     'issue_contract',
   ],
   contract: [
+    'issue_contract',
+    'review_contract',
     'mark_signed_gov',
     'upload_signed_contract',
     'upload_builder_signed_contract',
@@ -394,6 +396,10 @@ export function timelineKanbanColumn(
 
   if (stage === 'proposal_signing') {
     return 'proposal_formalization'
+  }
+
+  if (stage === 'contract_data_pending') {
+    return 'contract'
   }
 
   if (stage === 'pre_hold') {

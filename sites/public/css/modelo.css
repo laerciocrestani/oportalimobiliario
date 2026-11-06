@@ -176,6 +176,11 @@ select {
   align-items: center;
 }
 
+.modelo-nav > a[aria-current='page'] {
+  text-decoration: underline;
+  text-underline-offset: 0.3rem;
+}
+
 .modelo-account {
   position: relative;
 }
@@ -658,6 +663,98 @@ select {
   font-weight: 600;
 }
 
+.modelo-page {
+  padding: 1.25rem 0 3rem;
+}
+
+.modelo-page h1 {
+  margin: 0.35rem 0 0;
+  max-width: 22ch;
+  font-family: var(--sans);
+  font-size: clamp(1.8rem, 3vw, 2.6rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+}
+
+.modelo-page > p,
+.modelo-page .modelo-card__place {
+  margin-top: 0.75rem;
+  max-width: 40rem;
+}
+
+.modelo-builder-grid {
+  list-style: none;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.modelo-builder-card {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+  height: 100%;
+  padding: 1rem;
+  text-decoration: none;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  transition: transform 180ms var(--ease), box-shadow 180ms var(--ease);
+}
+
+.modelo-builder-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(31, 26, 22, 0.06);
+}
+
+.modelo-builder-card__logo {
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  background: #e6e0d6;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.modelo-builder-card__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.modelo-builder-card__body {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.modelo-builder-card h2 {
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 1.35rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.modelo-builder-buildings {
+  margin-top: 2rem;
+}
+
+.modelo-builder-card__stock strong,
+.modelo-page .modelo-builder-card__stock strong {
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
 .modelo-empty,
 .modelo-message {
   padding: 2.5rem 0 3rem;
@@ -778,12 +875,18 @@ select {
 }
 
 .modelo-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
   margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
 }
 
 .modelo-gallery button {
   display: block;
   width: 100%;
+  aspect-ratio: 1;
   padding: 0;
   border: 0;
   border-radius: var(--radius);
@@ -792,12 +895,21 @@ select {
   cursor: zoom-in;
 }
 
-.modelo-gallery img,
+.modelo-gallery img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .modelo-lightbox img {
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 3;
-  object-fit: cover;
+  height: auto;
+  max-height: calc(100dvh - 8rem);
+  margin-top: 1rem;
+  object-fit: contain;
+  background: #e6e0d6;
 }
 
 .modelo-section {
@@ -1106,11 +1218,43 @@ select {
   color: var(--accent);
 }
 
+.modelo-choice {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.modelo-choice button {
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.modelo-choice button[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: #fff;
+}
+
+.modelo-contact [data-access-session] {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.modelo-contact [data-access-session][hidden],
+.modelo-contact [data-access-auth][hidden],
+.modelo-contact__form[hidden] {
+  display: none;
+}
+
 .modelo-contact__form {
   display: grid;
-  margin-top: 0.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--line);
+  gap: 0.75rem;
+  margin-top: 1rem;
 }
 
 .modelo-contact__form h3 {
@@ -1175,8 +1319,13 @@ select {
 }
 
 @media (min-width: 800px) {
-  .modelo-grid {
+  .modelo-grid,
+  .modelo-builder-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .modelo-gallery {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .modelo-facts {
@@ -1249,6 +1398,15 @@ select {
 
   .modelo-brand__mark {
     height: 2.15rem;
+  }
+
+  .modelo-nav {
+    gap: 0.15rem 0.7rem;
+  }
+
+  .modelo-nav > a,
+  .modelo-account__toggle {
+    font-size: 0.9375rem;
   }
 
   .modelo-account__menu a {
@@ -1346,7 +1504,8 @@ select {
   }
 
   .modelo-card:hover,
-  .modelo-card:hover .modelo-card__media img {
+  .modelo-card:hover .modelo-card__media img,
+  .modelo-builder-card:hover {
     transform: none;
   }
 }

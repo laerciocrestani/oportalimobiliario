@@ -340,7 +340,7 @@ describe('timelineKanbanColumn', () => {
       timelineKanbanColumn(timeline('deposit_pending', [{ kind: 'proposal_signed_builder' }])),
     ).toBe('proposal_formalization')
     expect(timelineKanbanColumn(timeline('deposit_proof_pending'))).toBe('docs_deposit')
-    expect(timelineKanbanColumn(timeline('contract_data_pending'))).toBe('docs_deposit')
+    expect(timelineKanbanColumn(timeline('contract_data_pending'))).toBe('contract')
     expect(timelineKanbanColumn(timeline('contract_issued'))).toBe('contract')
     expect(timelineKanbanColumn(timeline('contract_signing'))).toBe('contract')
     expect(timelineKanbanColumn(timeline('sold'))).toBe('sold')

@@ -6,6 +6,7 @@ use App\Models\ContractTemplate;
 use App\Models\Reservation;
 use App\Models\ReservationProposal;
 use App\Support\ContractSystemVariables;
+use App\Support\PurchaseProposalClauses;
 use Illuminate\Support\Number;
 
 class ContractVariableResolver
@@ -69,7 +70,7 @@ class ContractVariableResolver
         $unit = $reservation->unit;
         $price = $finalPriceBrl ?? $unit?->frozen_price_brl ?? $unit?->price;
 
-        return [
+        $values = [
             'nome_cliente' => $this->string($proposal?->client_name ?? $reservation->client?->name),
             'telefone_cliente' => $this->string($proposal?->client_phone ?? $reservation->client?->phone),
             'email_cliente' => $this->string($proposal?->client_email ?? $reservation->client?->email),
@@ -104,6 +105,8 @@ class ContractVariableResolver
             'nome_corretor' => $this->string($reservation->broker?->name),
             'data_emissao' => now('America/Sao_Paulo')->format('d/m/Y'),
         ];
+
+        return PurchaseProposalClauses::augment($values, $reservation, $price);
     }
 
     /**

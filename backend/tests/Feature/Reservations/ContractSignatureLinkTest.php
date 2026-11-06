@@ -94,6 +94,48 @@ it('resends the contract link by whatsapp and email', function () {
     Mail::assertSentCount(2);
 });
 
+it('shows contract signature progress on the kanban card', function () {
+    ['builder' => $builder] = contractLinkReservation();
+
+    Sanctum::actingAs($builder);
+
+    $this->getJson('/api/builder/reservations')
+        ->assertOk()
+        ->assertJsonPath('0.kanban_column', 'contract')
+        ->assertJsonPath('0.signature_progress.signed', 0)
+        ->assertJsonPath('0.signature_progress.total', 4);
+});
+
+it('resends the contract link only to the chosen witness', function () {
+    configureContractLinkChannels();
+    ['builder' => $builder, 'reservation' => $reservation] = contractLinkReservation();
+    $documentId = SignatureSigner::query()->where('signer_key', 'buyer')->value('signature_document_id');
+
+    SignatureSigner::query()->create([
+        'tenant_id' => $reservation->tenant_id,
+        'signature_document_id' => $documentId,
+        'role' => SignatureSignerRole::Witness,
+        'signer_key' => 'witness-1',
+        'name' => 'Paula Testemunha',
+        'phone' => '11977776666',
+        'email' => 'paula@example.com',
+        'status' => SignatureSignerStatus::Pending,
+        'provider_signer_id' => 'sig-witness-1',
+        'sign_url' => 'https://zapsign.test/witness-1',
+    ]);
+
+    Sanctum::actingAs($builder);
+
+    $this->postJson("/api/builder/reservations/{$reservation->id}/contract/signature-links", [
+        'signer_key' => 'witness-1',
+    ])
+        ->assertOk()
+        ->assertJsonPath('notified', 1);
+
+    Mail::assertSent(SignatureLinkMail::class, fn (SignatureLinkMail $mail): bool => $mail->hasTo('paula@example.com'));
+    expect(SignatureSigner::query()->where('signer_key', 'buyer')->sole()->last_notified_at)->toBeNull();
+});
+
 it('rejects a contract resend when the reservation is not waiting for signatures', function () {
     configureContractLinkChannels();
     ['builder' => $builder, 'reservation' => $reservation] = contractLinkReservation();

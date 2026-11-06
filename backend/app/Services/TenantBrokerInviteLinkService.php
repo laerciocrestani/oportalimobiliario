@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\BrokerInviteChannel;
 use App\Models\BrokerTenant;
 use App\Models\TenantBrokerInviteLink;
 use App\Models\User;
-use App\Enums\BrokerInviteChannel;
 use App\Support\PhoneNumberNormalizer;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -16,6 +16,7 @@ class TenantBrokerInviteLinkService
     public function __construct(
         private PhoneNumberNormalizer $phoneNumberNormalizer,
         private BrokerInviteService $brokerInviteService,
+        private BrokerEmailConfirmationService $emailConfirmations,
     ) {}
 
     public function getOrCreateForTenant(int $tenantId, int $createdByUserId): TenantBrokerInviteLink
@@ -79,9 +80,9 @@ class TenantBrokerInviteLinkService
 
     /**
      * @return array{
-     *     token: string,
-     *     pending_approval: bool,
-     *     user: array{id: int, name: string, email: string, role: string, tenant_id: int|null}
+     *     email_confirmation_required: true,
+     *     pending_approval: true,
+     *     message: string
      * }
      */
     public function register(
@@ -167,18 +168,12 @@ class TenantBrokerInviteLinkService
             'approved_at' => null,
         ]);
 
-        $apiToken = $broker->createToken('api')->plainTextToken;
+        $this->emailConfirmations->send($broker);
 
         return [
-            'token' => $apiToken,
+            'email_confirmation_required' => true,
             'pending_approval' => true,
-            'user' => [
-                'id' => $broker->id,
-                'name' => $broker->name,
-                'email' => $broker->email,
-                'role' => $broker->role,
-                'tenant_id' => $broker->tenant_id,
-            ],
+            'message' => BrokerEmailConfirmationService::MESSAGE,
         ];
     }
 

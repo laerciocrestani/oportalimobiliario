@@ -1,6 +1,14 @@
-import { DownloadIcon } from 'lucide-react'
+import { useState } from 'react'
+import { BanknoteIcon, CalendarPlusIcon, DownloadIcon, HandshakeIcon, MessageCircleIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
 import { ReservationAttachmentPreview } from '@/components/reservations/ReservationAttachmentPreview'
 import {
@@ -18,10 +26,17 @@ import {
 } from '@/components/reservations/reservation-step-greens'
 import { reservationStepIcon } from '@/components/reservations/reservation-step-icons'
 import type {
+  ProposalCommercialTerms,
   ReservationAttachment,
+  ReservationProposal,
   ReservationTimeline,
   ReservationTimelineStepStatus,
 } from '@/lib/api'
+import { ProposalSignatureProcess } from '@/components/reservations/ProposalSignatureProcess'
+import { formatCnpj, formatCpf } from '@/lib/br-docs'
+import { formatBrazilianMobilePhone } from '@/lib/format-phone'
+import { formatListedPrice } from '@/lib/unit-listing'
+import { formatCep } from '@/lib/viacep'
 import { cn } from '@/lib/utils'
 
 const ACTION_LABELS: Record<string, string> = {
@@ -33,6 +48,7 @@ const ACTION_LABELS: Record<string, string> = {
   approve_deposit_proof: 'Validar comprovante',
   submit_contract_data: 'Enviar dados do contrato',
   issue_contract: 'Emitir contrato',
+  review_contract: 'Contrato',
   upload_signed_contract: 'Enviar contrato assinado pelo comprador',
   upload_builder_signed_contract: 'Enviar contrato assinado pela construtora',
   sign_as_witness: 'Registrar assinatura da testemunha',
@@ -40,29 +56,201 @@ const ACTION_LABELS: Record<string, string> = {
   validate_contract: 'Unidade vendida',
 }
 
-const ATTACHMENT_KIND_LABELS: Record<string, string> = {
-  proposal: 'Anexos da proposta',
-  proposal_pdf: 'Proposta gerada',
-  proposal_signed_builder: 'Proposta assinada pela construtora',
-  proposal_signed_both: 'Proposta assinada por ambas as partes',
-  deposit_proof: 'Comprovante de pagamento',
-  contract_documentation: 'Documentação do cliente',
-  contract_pdf: 'Contrato',
-  contract_signed: 'Contrato assinado pelo comprador',
-  contract_signed_builder: 'Contrato assinado pela construtora',
+function formatDueDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+
+  if (!match) {
+    return value
+  }
+
+  return `${match[3]}/${match[2]}/${match[1]}`
 }
 
-const ATTACHMENT_KIND_ORDER = [
-  'proposal',
-  'proposal_pdf',
-  'proposal_signed_builder',
-  'proposal_signed_both',
-  'deposit_proof',
-  'contract_documentation',
-  'contract_pdf',
-  'contract_signed',
-  'contract_signed_builder',
-] as const
+function reinforcementLabel(row: ProposalCommercialTerms['reinforcements'][number]): string {
+  const amount = row.amount ? formatListedPrice(row.amount) : null
+  const due = row.due_on ? formatDueDate(row.due_on) : null
+
+  return [amount, due].filter((part) => part !== null && part !== '').join(' · ')
+}
+
+function formatDocument(value: string): string {
+  const digits = value.replace(/\D/g, '')
+
+  if (digits === '') {
+    return ''
+  }
+
+  return digits.length > 11 ? formatCnpj(digits) : formatCpf(digits)
+}
+
+function whatsAppHref(phone: string): string | null {
+  const digits = phone.replace(/\D/g, '')
+
+  if (digits === '') {
+    return null
+  }
+
+  const withCountry = digits.startsWith('55') && digits.length > 11 ? digits : `55${digits}`
+
+  return `https://wa.me/${withCountry}`
+}
+
+function filled(value: string | null | undefined): string | null {
+  const text = value?.trim() ?? ''
+
+  return text === '' ? null : text
+}
+
+function clientDetailRows(proposal: ReservationProposal): Array<{ label: string; value: string }> {
+  const company = proposal.party_kind === 'company'
+  const document = formatDocument(proposal.client_cpf)
+  const phone = filled(proposal.client_phone)
+  const rows = [
+    ['Nome', filled(proposal.client_name)],
+    ['WhatsApp', phone ? formatBrazilianMobilePhone(phone) : null],
+    ['E-mail', filled(proposal.client_email)],
+    [company ? 'CNPJ' : 'CPF', document === '' ? null : document],
+    ['RG', filled(proposal.client_rg)],
+    ['Estado civil', filled(proposal.marital_status)],
+    ['Nacionalidade', filled(proposal.nationality)],
+    ['Profissão', filled(proposal.profession)],
+    ['CEP', filled(proposal.zip) ? formatCep(proposal.zip) : null],
+    ['Endereço', filled(proposal.address)],
+    ['Cidade', filled(proposal.city)],
+    ['UF', filled(proposal.state)],
+    ['Cônjuge', filled(proposal.spouse_name)],
+    ['CPF do cônjuge', filled(proposal.spouse_cpf) ? formatCpf(proposal.spouse_cpf ?? '') : null],
+    ['Telefone do cônjuge', filled(proposal.spouse_phone) ? formatBrazilianMobilePhone(proposal.spouse_phone ?? '') : null],
+    ['E-mail do cônjuge', filled(proposal.spouse_email)],
+    ['RG do cônjuge', filled(proposal.spouse_rg)],
+    ['Nacionalidade do cônjuge', filled(proposal.spouse_nationality)],
+  ] as const
+
+  return rows.flatMap(([label, value]) => (value ? [{ label, value }] : []))
+}
+
+function ProposalReviewSummary({ proposal }: { proposal: ReservationProposal }) {
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const name = proposal.client_name.trim()
+  const phone = proposal.client_phone.trim()
+  const document = formatDocument(proposal.client_cpf)
+  const whatsApp = whatsAppHref(phone)
+  const details = clientDetailRows(proposal)
+  const reinforcements = (proposal.commercial_terms?.reinforcements ?? []).flatMap((row) => {
+    const label = reinforcementLabel(row)
+
+    return label === '' ? [] : [label]
+  })
+  const dations = (proposal.commercial_terms?.dations ?? []).flatMap((line) => {
+    const text = line.trim()
+
+    return text === '' ? [] : [text]
+  })
+  const paymentDescription = filled(proposal.commercial_terms?.description)
+
+  return (
+    <div className="flex flex-col gap-3 text-sm">
+      <div className="flex flex-col gap-1">
+        <p className="flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground">Nome:</span>
+          <Button
+            type="button"
+            variant="link"
+            className="h-auto px-0 py-0 font-medium"
+            onClick={() => setDetailsOpen(true)}
+          >
+            {name === '' ? 'Ver dados' : name}
+          </Button>
+        </p>
+        <p className="flex flex-wrap items-center gap-1.5">
+          <span className="text-muted-foreground">WhatsApp:</span>
+          {whatsApp ? (
+            <a
+              href={whatsApp}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 font-medium underline-offset-4 hover:underline"
+              aria-label={`Conversar no WhatsApp com ${name === '' ? 'o cliente' : name}`}
+            >
+              {formatBrazilianMobilePhone(phone)}
+              <MessageCircleIcon className="size-4 text-emerald-600" aria-hidden />
+            </a>
+          ) : (
+            <span className="font-medium">—</span>
+          )}
+        </p>
+        <p>
+          <span className="text-muted-foreground">CPF:</span>{' '}
+          <span className="font-medium">{document === '' ? '—' : document}</span>
+        </p>
+      </div>
+      {paymentDescription || reinforcements.length > 0 || dations.length > 0 ? (
+        <>
+          <Separator />
+          {paymentDescription ? (
+            <div className="flex flex-col gap-2">
+              <p className="flex items-center gap-2 font-medium">
+                <BanknoteIcon className="size-4 text-primary" aria-hidden />
+                Descrição
+              </p>
+              <p className="whitespace-pre-wrap rounded-lg border bg-muted/20 p-3 text-muted-foreground">
+                {paymentDescription}
+              </p>
+            </div>
+          ) : null}
+          {reinforcements.length > 0 ? (
+            <div>
+              <p className="flex items-center gap-2 font-medium">
+                <CalendarPlusIcon className="size-4 text-primary" aria-hidden />
+                Reforços
+              </p>
+              <ul className="mt-1 flex flex-col gap-0.5 text-muted-foreground">
+                {reinforcements.map((label, index) => (
+                  <li key={`${index}-${label}`}>{label}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {dations.length > 0 ? (
+            <div>
+              <p className="flex items-center gap-2 font-medium">
+                <HandshakeIcon className="size-4 text-primary" aria-hidden />
+                Dação
+              </p>
+              <ul className="mt-1 flex flex-col gap-0.5 text-muted-foreground">
+                {dations.map((line, index) => (
+                  <li key={`${index}-${line}`}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+      <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Dados do cliente</DialogTitle>
+            <DialogDescription>Informações preenchidas na proposta.</DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            {details.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum dado informado.</p>
+            ) : (
+              <dl className="flex flex-col gap-2 text-sm">
+                {details.map((row) => (
+                  <div key={row.label} className="flex items-baseline gap-2">
+                    <dt className="shrink-0 text-muted-foreground">{row.label}:</dt>
+                    <dd className="min-w-0 font-medium">{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
 
 function formatDateTime(value: string | null): string | null {
   if (!value) {
@@ -73,31 +261,6 @@ function formatDateTime(value: string | null): string | null {
     dateStyle: 'short',
     timeStyle: 'short',
   }).format(new Date(value))
-}
-
-function groupedAttachments(attachments: ReservationAttachment[]): Array<{
-  kind: string
-  label: string
-  items: ReservationAttachment[]
-}> {
-  const byKind = new Map<string, ReservationAttachment[]>()
-
-  for (const attachment of attachments) {
-    const items = byKind.get(attachment.kind) ?? []
-    items.push(attachment)
-    byKind.set(attachment.kind, items)
-  }
-
-  const orderedKinds = [
-    ...ATTACHMENT_KIND_ORDER.filter((kind) => byKind.has(kind)),
-    ...[...byKind.keys()].filter((kind) => !ATTACHMENT_KIND_ORDER.includes(kind as (typeof ATTACHMENT_KIND_ORDER)[number])),
-  ]
-
-  return orderedKinds.map((kind) => ({
-    kind,
-    label: ATTACHMENT_KIND_LABELS[kind] ?? kind,
-    items: byKind.get(kind) ?? [],
-  }))
 }
 
 function StepIcon({ stepKey }: { stepKey: string }) {
@@ -147,9 +310,14 @@ type ReservationTimelineProps = {
   timeline: ReservationTimeline
   onAction?: (action: string) => void
   className?: string
+  signatureResend?: {
+    profile: 'broker' | 'builder'
+    reservationId: number
+    document?: 'proposal' | 'contract'
+  }
 }
 
-export function ReservationTimeline({ timeline, onAction, className }: ReservationTimelineProps) {
+export function ReservationTimeline({ timeline, onAction, className, signatureResend }: ReservationTimelineProps) {
   const column = timelineKanbanColumn(timeline)
   const currentStep = timeline.steps.find((step) => step.status === 'current' || step.status === 'failed')
   const actions = currentStep ? visibleColumnActions(column, currentStep.actions) : []
@@ -157,11 +325,17 @@ export function ReservationTimeline({ timeline, onAction, className }: Reservati
   const buyerSignedPdf = latestAttachmentByKind(timeline.attachments, 'contract_signed')
   const builderSignedPdf = latestAttachmentByKind(timeline.attachments, 'contract_signed_builder')
   const stepPdf =
-    currentStep && column === 'contract'
+    currentStep && column === 'contract' && timeline.current_stage !== 'contract_signing'
       ? currentStepContractPdf(currentStep.key, contractPdf, buyerSignedPdf, builderSignedPdf)
       : null
 
+  const signingProposal = timeline.current_stage === 'proposal_signing'
+  const signingContract = timeline.current_stage === 'contract_signing' && timeline.signature_process != null
+  const waitingDepositProof = column === 'docs_deposit' && currentStep?.key === 'deposit_window'
   const skipCurrentStep =
+    signingProposal ||
+    signingContract ||
+    waitingDepositProof ||
     column === 'cancelled' ||
     column === 'proposal_review' ||
     (column === 'pre_reservation' &&
@@ -172,41 +346,53 @@ export function ReservationTimeline({ timeline, onAction, className }: Reservati
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col gap-4', className)}>
       <div className="flex shrink-0 flex-col gap-3">
-        <div className="rounded-lg border bg-muted/20 p-3 text-sm">
-          <p>
-            <span className="text-muted-foreground">Unidade:</span>{' '}
-            <span className="font-medium">{timeline.unit.code}</span>
-            {column === 'proposal_review' && timeline.current_proposal ? (
-              <span className="text-muted-foreground">
-                {' '}
-                · Proposta v{timeline.current_proposal.version}
-              </span>
+        {column === 'proposal_review' && timeline.current_proposal ? (
+          <ProposalReviewSummary proposal={timeline.current_proposal} />
+        ) : signingProposal || signingContract || waitingDepositProof ? null : (
+          <div className="rounded-lg border bg-muted/20 p-3 text-sm">
+            <p>
+              <span className="text-muted-foreground">Unidade:</span>{' '}
+              <span className="font-medium">{timeline.unit.code}</span>
+            </p>
+            {column !== 'proposal_review' && timeline.client ? (
+              <p className="mt-1">
+                <span className="text-muted-foreground">Cliente:</span>{' '}
+                <span className="font-medium">{timeline.client.name}</span>
+              </p>
             ) : null}
-          </p>
-          {column === 'proposal_review' && timeline.current_proposal?.payment_terms ? (
-            <p className="mt-1 line-clamp-2 text-muted-foreground">
-              {timeline.current_proposal.payment_terms}
-            </p>
-          ) : null}
-          {column !== 'proposal_review' && timeline.client ? (
-            <p className="mt-1">
-              <span className="text-muted-foreground">Cliente:</span>{' '}
-              <span className="font-medium">{timeline.client.name}</span>
-            </p>
-          ) : null}
-          {timeline.expires_at ? (
-            <p className="mt-1 text-muted-foreground">
-              Prazo: {formatDateTime(timeline.expires_at)}
-            </p>
-          ) : null}
-          {timeline.deposit_overdue && column === 'docs_deposit' ? (
-            <p className="mt-1 text-sm text-destructive">
-              Prazo de sinal vencido — envie o comprovante o quanto antes.
-            </p>
-          ) : null}
-        </div>
+            {timeline.expires_at ? (
+              <p className="mt-1 text-muted-foreground">
+                Prazo: {formatDateTime(timeline.expires_at)}
+              </p>
+            ) : null}
+            {timeline.deposit_overdue && column === 'docs_deposit' ? (
+              <p className="mt-1 text-sm text-destructive">
+                Prazo de sinal vencido — envie o comprovante o quanto antes.
+              </p>
+            ) : null}
+          </div>
+        )}
 
-        {currentStep ? (
+        {waitingDepositProof ? (
+          <div className="flex flex-col gap-1">
+            <p className="text-sm text-muted-foreground">Aguardando o comprovante do sinal.</p>
+            {timeline.deposit_overdue ? (
+              <p className="text-sm text-destructive">
+                Prazo de sinal vencido — envie o comprovante o quanto antes.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {(signingProposal || signingContract) && timeline.signature_process ? (
+          <ProposalSignatureProcess
+            process={timeline.signature_process}
+            document={signingContract ? 'contract' : 'proposal'}
+            resend={signatureResend}
+          />
+        ) : null}
+
+        {currentStep && !((signingProposal || signingContract || waitingDepositProof) && actions.length === 0 && !stepPdf) ? (
           <div className="flex gap-3" aria-current={currentStep.status === 'current' ? 'step' : undefined}>
             {skipCurrentStep ? null : (
               <div className="relative z-10 mt-0.5 flex size-7 shrink-0 items-center justify-center">
@@ -240,7 +426,7 @@ export function ReservationTimeline({ timeline, onAction, className }: Reservati
                 </p>
               ) : null}
 
-              {currentStep.status === 'current' && currentStep.due_at ? (
+              {!waitingDepositProof && currentStep.status === 'current' && currentStep.due_at ? (
                 <p className="text-xs text-muted-foreground">
                   Vence em {formatDateTime(currentStep.due_at)}
                 </p>
@@ -282,36 +468,6 @@ export function ReservationTimeline({ timeline, onAction, className }: Reservati
             </div>
           </div>
         ) : null}
-      </div>
-
-      <Separator />
-
-      <div className="flex min-h-0 flex-1 flex-col gap-3">
-        <div>
-          <p className="font-medium">Arquivos da reserva</p>
-          <p className="text-xs text-muted-foreground">
-            Comprovantes, documentos, PDFs e contratos enviados nesta reserva.
-          </p>
-        </div>
-        {timeline.attachments.length === 0 ? (
-          <Empty className="min-h-0 flex-1 border border-dashed">
-            <EmptyHeader>
-              <EmptyTitle>Nenhum arquivo enviado ainda</EmptyTitle>
-              <EmptyDescription>Os arquivos desta reserva aparecem nesta área.</EmptyDescription>
-            </EmptyHeader>
-          </Empty>
-        ) : (
-          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
-            {groupedAttachments(timeline.attachments).map((group) => (
-              <div key={group.kind} className="flex flex-col gap-2">
-                <p className="text-xs font-medium text-muted-foreground">{group.label}</p>
-                {group.items.map((attachment) => (
-                  <ReservationAttachmentPreview key={attachment.id} attachment={attachment} />
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   )

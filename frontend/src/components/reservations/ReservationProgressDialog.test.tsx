@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { ReservationProgressDialog } from '@/components/reservations/ReservationProgressDialog'
+import { formatListedPrice } from '@/lib/unit-listing'
 
 const getReservationTimeline = vi.fn()
 const listReservationMessages = vi.fn()
@@ -24,7 +25,14 @@ describe('ReservationProgressDialog', () => {
       reservation_id: 1,
       current_stage: 'proposal_pending',
       expires_at: null,
-      unit: { id: 10, code: '101', status: 'pre_reserved' },
+      unit: {
+        id: 10,
+        code: '101',
+        status: 'pre_reserved',
+        price: '530660',
+        building_name: 'Condomínio Jardim Europa',
+      },
+      garage_units: [{ id: 30, code: 'S1-02', price: '48000', status: 'pre_reserved', floor_kind: 'garage' }],
       deposit_overdue: false,
       client: { id: 1, name: 'João Silva', phone: '11999999999', email: null },
       current_proposal: null,
@@ -68,17 +76,35 @@ describe('ReservationProgressDialog', () => {
       />,
     )
 
+    const listed = (value: string) => (text: string) => text.replace(/\s/g, ' ') === formatListedPrice(value).replace(/\s/g, ' ')
+
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: 'Andamento da reserva' })).toBeInTheDocument()
-      expect(screen.getByText('Proposta em análise')).toBeInTheDocument()
+      expect(screen.getByText('Proposta em análise')).toBeVisible()
     })
 
+    expect(screen.getByText('Andamento da reserva')).toBeVisible()
+
+    expect(screen.getByLabelText('Unidade da proposta')).toBeInTheDocument()
+    expect(screen.getByText('Condomínio Jardim Europa')).toBeInTheDocument()
+    expect(screen.getByText('Unidade 101')).toBeInTheDocument()
+    expect(screen.getByText('Valor da unidade')).toBeInTheDocument()
+    expect(screen.getByText('Vagas vinculadas')).toBeInTheDocument()
+    expect(screen.getByText('S1-02')).toBeInTheDocument()
+    expect(screen.getByText('Total da proposta')).toBeInTheDocument()
+    expect(screen.getByText(listed('530660'))).toBeInTheDocument()
+    expect(screen.getByText(listed('48000'))).toBeInTheDocument()
+    expect(screen.getByText(listed('578660'))).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Editar valor da unidade' })).not.toBeInTheDocument()
     expect(screen.getByText('101')).toBeInTheDocument()
     expect(screen.queryByText('João Silva')).not.toBeInTheDocument()
     expect(screen.queryByText('Decisão do gestor')).not.toBeInTheDocument()
-    expect(screen.getByText('Diálogo')).toBeInTheDocument()
-    expect(screen.getByText('Arquivos da reserva')).toBeInTheDocument()
-    expect(screen.getByText('Nenhum arquivo enviado ainda')).toBeInTheDocument()
+    const files = screen.getByRole('complementary', { name: 'Arquivos da reserva' })
+    expect(files).toHaveClass('h-[60%]')
+    expect(files).toHaveTextContent('Nenhum arquivo enviado ainda')
+    expect(files).not.toHaveTextContent('Diálogo')
+    expect(screen.getByText('Diálogo').parentElement?.parentElement).toHaveClass('h-[40%]')
+    expect(files.compareDocumentPosition(screen.getByText('Diálogo'))).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
     expect(screen.queryByText('Aguardando sinal (48h)')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Abrir diálogo' })).not.toBeInTheDocument()
     expect(listReservationMessages).toHaveBeenCalledWith(1)

@@ -29,6 +29,7 @@ final class ProposalModuleMarkdown
     public static function expand(string $markdown, array $values): string
     {
         $fixed = ($values['correcao_modo'] ?? 'incc') === 'fixed';
+        $markdown = str_replace('{dados_unidade}', trim((string) ($values['dados_unidade'] ?? '')), $markdown);
         $markdown = str_replace('{bloco_preco_unidade}', self::priceBlock(
             $fixed ? 'Valor da unidade' : 'Valor corrigido da unidade',
             $values['preco_unidade_corrigido'] ?? '',

@@ -177,6 +177,34 @@ it('resends only to signers who have not signed or refused', function () {
     expect(SignatureSigner::query()->where('status', SignatureSignerStatus::Refused)->sole()->last_notified_at)->toBeNull();
 });
 
+it('resends the link only to the signer who currently has the signature', function () {
+    configureSignatureChannels();
+    ['builder' => $builder, 'reservation' => $reservation, 'document' => $document] = signatureLinkReservation();
+
+    SignatureSigner::query()->create([
+        'tenant_id' => $document->tenant_id,
+        'signature_document_id' => $document->id,
+        'role' => SignatureSignerRole::Builder,
+        'name' => 'Helena Vargas',
+        'phone' => '11988887777',
+        'email' => 'helena@example.com',
+        'status' => SignatureSignerStatus::Pending,
+        'provider_signer_id' => 'sig-builder',
+        'sign_url' => 'https://zapsign.test/builder',
+    ]);
+
+    Sanctum::actingAs($builder);
+
+    $this->postJson("/api/builder/reservations/{$reservation->id}/proposal/signature-links", [
+        'role' => 'builder',
+    ])
+        ->assertOk()
+        ->assertJsonPath('notified', 1);
+
+    Mail::assertSent(SignatureLinkMail::class, fn (SignatureLinkMail $mail): bool => $mail->hasTo('helena@example.com'));
+    expect(SignatureSigner::query()->where('role', SignatureSignerRole::Buyer)->sole()->last_notified_at)->toBeNull();
+});
+
 it('still emails when whatsapp fails and keeps the reservation in signing', function () {
     configureSignatureChannels(500);
     ['builder' => $builder, 'reservation' => $reservation] = signatureLinkReservation();
@@ -225,7 +253,7 @@ it('requires authentication to resend the signature link', function () {
     $this->postJson('/api/broker/reservations/1/proposal/signature-links')->assertUnauthorized();
 });
 
-it('notifies every signer when the proposal is sent to ZapSign', function () {
+it('emails every signer when the proposal is sent to ZapSign', function () {
     Storage::fake('local');
     configureSignatureChannels();
     config([
@@ -289,4 +317,102 @@ it('notifies every signer when the proposal is sent to ZapSign', function () {
     Mail::assertSentCount(2);
     expect(whatsAppCalls())->toBe(3);
     expect($reservation->fresh()->status)->toBe(ReservationStatus::ProposalSigning);
+});
+
+it('sends the signature email when notify is clicked before the document was sent', function () {
+    Storage::fake('local');
+    configureSignatureChannels();
+    config([
+        'services.zapsign.base_url' => 'https://sandbox.zapsign.test',
+        'services.zapsign.token' => 'test-token',
+    ]);
+    Http::fake([
+        'https://sandbox.zapsign.test/api/v1/docs/' => Http::response([
+            'token' => 'doc-1',
+            'signers' => [
+                ['external_id' => 'buyer', 'token' => 'sig-buyer', 'sign_url' => 'https://zapsign.test/buyer'],
+                ['external_id' => 'builder', 'token' => 'sig-builder', 'sign_url' => 'https://zapsign.test/builder'],
+                ['external_id' => 'broker', 'token' => 'sig-broker', 'sign_url' => 'https://zapsign.test/broker'],
+            ],
+        ], 201),
+        'https://graph.facebook.com/*' => Http::response(['messages' => [['id' => 'wamid.1']]], 200),
+    ]);
+
+    $tenant = Tenant::factory()->create();
+    $builder = User::factory()->builder()->withBuilderPermissions([
+        BuilderPermissions::CANCEL_RESERVATIONS,
+    ])->for($tenant)->create();
+    $signer = User::factory()->builder()->for($tenant)->create([
+        'name' => 'Alcindo André Alpha',
+        'phone' => '54999001001',
+        'email' => 'alcindoalpha@pidia.com.br',
+    ]);
+    $broker = User::factory()->broker()->create([
+        'name' => 'Corretor da Venda',
+        'phone' => '11977776666',
+        'email' => 'corretor@alpha.test',
+    ]);
+    $unit = Unit::factory()->for($tenant)->create(['status' => UnitStatus::PreReserved]);
+    $reservation = Reservation::factory()->create([
+        'tenant_id' => $tenant->id,
+        'unit_id' => $unit->id,
+        'broker_id' => $broker->id,
+        'status' => ReservationStatus::ProposalSigning,
+        'expires_at' => null,
+    ]);
+    ReservationProposal::factory()->create([
+        'reservation_id' => $reservation->id,
+        'submitted_by' => $broker->id,
+        'client_name' => 'Maria Silva',
+        'client_phone' => '11999999999',
+        'client_email' => 'maria@example.com',
+    ]);
+    TenantSignatureSetting::query()->create([
+        'tenant_id' => $tenant->id,
+        'proposal_signer_user_id' => $signer->id,
+    ]);
+    SignatureDocument::query()->create([
+        'tenant_id' => $tenant->id,
+        'reservation_id' => $reservation->id,
+        'kind' => SignatureDocumentKind::Proposal,
+        'reference' => $tenant->id.':'.$reservation->id.':proposal',
+        'status' => SignatureDocumentStatus::Failed,
+        'error' => 'Defina o signatário da proposta em Assinaturas.',
+    ]);
+    Storage::disk('local')->put('reservations/proposta.pdf', '%PDF-1.1');
+    ReservationAttachment::factory()->create([
+        'reservation_id' => $reservation->id,
+        'kind' => ReservationAttachmentKind::ProposalPdf,
+        'path' => 'reservations/proposta.pdf',
+        'uploaded_by' => $broker->id,
+    ]);
+
+    Sanctum::actingAs($builder);
+
+    $this->postJson("/api/builder/reservations/{$reservation->id}/proposal/signature-links", [
+        'role' => 'builder',
+    ])
+        ->assertOk()
+        ->assertJsonPath('notified', 1);
+
+    Mail::assertSent(SignatureLinkMail::class, fn (SignatureLinkMail $mail): bool => $mail->hasTo('alcindoalpha@pidia.com.br'));
+    expect(SignatureDocument::query()->sole()->status)->toBe(SignatureDocumentStatus::Sent);
+});
+
+it('tells when the buyer has no email to receive the signature link', function () {
+    configureSignatureChannels(500);
+    ['builder' => $builder, 'reservation' => $reservation, 'document' => $document] = signatureLinkReservation([
+        'email' => null,
+        'role' => SignatureSignerRole::Buyer,
+    ]);
+
+    Sanctum::actingAs($builder);
+
+    $this->postJson("/api/builder/reservations/{$reservation->id}/proposal/signature-links", [
+        'role' => 'buyer',
+    ])
+        ->assertUnprocessable()
+        ->assertJsonPath('message', 'O comprador não tem e-mail cadastrado para receber o link.');
+
+    Mail::assertNothingSent();
 });

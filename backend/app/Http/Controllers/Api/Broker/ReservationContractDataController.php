@@ -63,8 +63,12 @@ class ReservationContractDataController extends Controller
             return response()->json(['message' => 'Forbidden.'], 403);
         }
 
+        $data = $request->validate([
+            'signer_key' => ['sometimes', 'string', 'max:40'],
+        ]);
+
         return response()->json([
-            'notified' => $this->signatures->resendPendingLinks($reservation),
+            'notified' => $this->signatures->resendPendingLinks($reservation, $data['signer_key'] ?? null),
         ]);
     }
 }

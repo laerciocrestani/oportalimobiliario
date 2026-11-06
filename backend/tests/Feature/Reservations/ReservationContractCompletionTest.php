@@ -44,9 +44,9 @@ it('registers GOV signature for client and broker', function () {
     $this->getJson("/api/broker/reservations/{$reservation->id}/timeline")
         ->assertOk()
         ->assertJsonPath('current_stage', 'contract_issued')
-        ->assertJsonPath('steps.9.key', 'contract_upload')
-        ->assertJsonPath('steps.9.status', 'current')
-        ->assertJsonPath('steps.9.actions', ['upload_signed_contract']);
+        ->assertJsonPath('steps.8.key', 'contract_upload')
+        ->assertJsonPath('steps.8.status', 'current')
+        ->assertJsonPath('steps.8.actions', ['upload_signed_contract']);
 });
 
 it('forbids another broker from registering GOV signature', function () {
@@ -156,9 +156,9 @@ it('uploads builder-signed contract after the buyer PDF', function () {
     $this->getJson("/api/builder/reservations/{$reservation->id}/timeline")
         ->assertOk()
         ->assertJsonPath('current_stage', 'contract_uploaded')
-        ->assertJsonPath('steps.10.key', 'contract_builder_sign')
-        ->assertJsonPath('steps.10.status', 'current')
-        ->assertJsonPath('steps.10.actions', ['upload_builder_signed_contract']);
+        ->assertJsonPath('steps.9.key', 'contract_builder_sign')
+        ->assertJsonPath('steps.9.status', 'current')
+        ->assertJsonPath('steps.9.actions', ['upload_builder_signed_contract']);
 
     $this->post("/api/builder/reservations/{$reservation->id}/contract/signed", [
         'file' => UploadedFile::fake()->create('contrato-construtora.pdf', 120, 'application/pdf'),
@@ -176,9 +176,9 @@ it('uploads builder-signed contract after the buyer PDF', function () {
     $this->getJson("/api/builder/reservations/{$reservation->id}/timeline")
         ->assertOk()
         ->assertJsonPath('current_stage', 'contract_builder_signed')
-        ->assertJsonPath('steps.11.key', 'contract_witness_1')
-        ->assertJsonPath('steps.11.status', 'current')
-        ->assertJsonPath('steps.11.actions', []);
+        ->assertJsonPath('steps.10.key', 'contract_witness_1')
+        ->assertJsonPath('steps.10.status', 'current')
+        ->assertJsonPath('steps.10.actions', []);
 });
 
 it('rejects builder-signed upload before the buyer PDF', function () {

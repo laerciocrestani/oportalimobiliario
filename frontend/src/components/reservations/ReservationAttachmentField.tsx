@@ -144,7 +144,7 @@ export function ReservationAttachmentField({
         <Attachment
           state="idle"
           orientation="vertical"
-          className="h-full min-h-48 w-full! flex-1 items-center justify-center text-center has-data-[slot=attachment-content]:w-full!"
+          className="h-full min-h-48 w-full! flex-1 items-center justify-center text-center has-data-[slot=attachment-content]:w-full! [&_[data-slot=attachment-content]]:flex-none"
         >
           <AttachmentMedia className="size-12! w-12! group-data-[orientation=vertical]/attachment:w-12!">
             <FileTextIcon />

@@ -7,6 +7,7 @@ function BuildingWizardShell() {
 
   return (
     <BuilderDashboardShell
+      fill
       title={
         state.updatingExisting
           ? `Editar ${state.form.name || 'empreendimento'}`

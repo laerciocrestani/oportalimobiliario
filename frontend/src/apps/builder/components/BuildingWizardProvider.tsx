@@ -443,9 +443,9 @@ function WizardFrame({ children }: { children: ReactNode }) {
       onSubmit={(event) => {
         void actions.submit(event)
       }}
-      className="mx-auto flex w-full max-w-6xl flex-col gap-6"
+      className="flex h-full min-h-0 w-full flex-1 flex-col gap-6"
     >
-      <header className="flex flex-col gap-6 border-b pb-5">
+      <header className="flex shrink-0 flex-col gap-6 border-b pb-5">
         <div className="flex flex-col gap-1.5">
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
@@ -493,30 +493,26 @@ function WizardIdentitySection() {
 function WizardCurrentStep() {
   const { state } = useBuildingWizard()
 
+  let step = <WizardPublishStep />
+
   if (state.loading) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>
+    step = <p className="text-sm text-muted-foreground">Carregando...</p>
+  } else if (state.currentStep === 1) {
+    step = <WizardIdentitySection />
+  } else if (state.currentStep === 2) {
+    step = <WizardStructureStep />
+  } else if (state.currentStep === 3) {
+    step = <WizardReviewStep />
   }
 
-  if (state.currentStep === 1) {
-    return <WizardIdentitySection />
-  }
-
-  if (state.currentStep === 2) {
-    return <WizardStructureStep />
-  }
-
-  if (state.currentStep === 3) {
-    return <WizardReviewStep />
-  }
-
-  return <WizardPublishStep />
+  return <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">{step}</div>
 }
 
 function WizardFooter() {
   const { state, actions, meta } = useBuildingWizard()
 
   return (
-    <div className="flex items-center justify-between gap-2">
+    <div className="flex shrink-0 items-center justify-between gap-2">
       {state.currentStep === 1 ? (
         <Button variant="outline" nativeButton={false} render={<Link to="/buildings" />}>
           Cancelar

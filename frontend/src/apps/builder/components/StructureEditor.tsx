@@ -665,7 +665,7 @@ function FloorUnitRow({
   )
 }
 
-function StructureEditorFloorWorkspace() {
+function StructureEditorFloorWorkspace({ diagram = true }: { diagram?: boolean } = {}) {
   const { state, actions, meta } = useStructureEditor()
   const floor = meta.selectedFloor
   const tower = meta.selectedTower
@@ -775,13 +775,15 @@ function StructureEditorFloorWorkspace() {
         </Button>
       </div>
       {tower ? (
-        <div className="grid items-start gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
-          <FloorPerspective
-            className="lg:sticky lg:top-4"
-            floors={tower.floors}
-            selectedNumber={state.selectedFloorNumber}
-            onSelect={actions.selectFloor}
-          />
+        <div className={cn('grid items-start gap-4', diagram && 'lg:grid-cols-[22rem_minmax(0,1fr)]')}>
+          {diagram ? (
+            <FloorPerspective
+              className="lg:sticky lg:top-4"
+              floors={tower.floors}
+              selectedNumber={state.selectedFloorNumber}
+              onSelect={actions.selectFloor}
+            />
+          ) : null}
           <Card size="sm">
         <CardHeader>
           <CardTitle>{floor ? floorLabel(floor.number) : 'Pavimento'}</CardTitle>

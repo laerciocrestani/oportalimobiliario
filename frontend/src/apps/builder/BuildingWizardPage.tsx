@@ -17,7 +17,6 @@ function BuildingWizardShell() {
       }
     >
       <BuildingWizard.Frame>
-        <BuildingWizard.Steps />
         <BuildingWizard.Error />
         <BuildingWizard.CurrentStep />
         <BuildingWizard.Footer />

@@ -140,6 +140,32 @@ describe('WizardStructureStep', () => {
     expect(actions.addTower).toHaveBeenCalledWith({ name: 'Torre Cópia', sourceKey: towers[1].key })
   })
 
+  it('shows the floor map and selects a pavement', async () => {
+    const user = userEvent.setup()
+    const { actions } = renderStep()
+
+    expect(screen.getByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Mapa de pavimentos' })).toBeInTheDocument()
+    expect(screen.getByText('Pavimento selecionado')).toBeInTheDocument()
+    expect(screen.getAllByText('1º pavimento').length).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole('button', { name: /Térreo/ }))
+
+    expect(actions.setSelectedFloor).toHaveBeenCalledWith(0)
+  })
+
+  it('filters the floor map by kind', async () => {
+    const user = userEvent.setup()
+    renderStep()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Filtros' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Garagem' }))
+
+    expect(screen.getByRole('button', { name: /Subsolo 1/ })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Térreo/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /1º pavimento/ })).not.toBeInTheDocument()
+  })
+
   it('starts from an empty structure with skeleton and manual options', async () => {
     const user = userEvent.setup()
     const { actions } = renderStep({}, [])

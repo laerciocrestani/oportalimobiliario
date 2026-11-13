@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Building2Icon, PlusIcon } from 'lucide-react'
 import { StructureEditor } from '@/apps/builder/components/StructureEditor'
+import { StructureFloorMap } from '@/apps/builder/components/StructureFloorMap'
 import { useBuildingWizard } from '@/apps/builder/components/building-wizard-context'
 import { towerLetterName } from '@/apps/builder/lib/floor-stack'
 import { Button } from '@/components/ui/button'
@@ -64,12 +65,7 @@ export function WizardStructureStep() {
 
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <h2 className="text-base font-semibold">Estrutura</h2>
-        <p className="text-sm text-muted-foreground">
-          Monte a estrutura de {state.form.name || 'o empreendimento'}. Crie um pavimento com suas unidades e replique o modelo para os demais andares.
-        </p>
-      </div>
+      <h2 className="sr-only">Estrutura</h2>
       <StructureEditor.Provider
         state={{
           towers: state.stackTowers,
@@ -96,6 +92,7 @@ export function WizardStructureStep() {
         }}
       >
         {hasStructure && selectedTower ? (
+          <>
           <div className="flex items-center gap-3">
             <Tabs
               className="w-fit"
@@ -132,8 +129,17 @@ export function WizardStructureStep() {
                 </Button>
               </div>
             </Tabs>
-            <StructureEditor.Skeleton open={skeletonOpen} onOpenChange={setSkeletonOpen} />
           </div>
+          <StructureFloorMap
+            isDraft={state.isDraft}
+            onOpenSkeleton={() => setSkeletonOpen(true)}
+            onAddTower={openDialog}
+          />
+          <div id="structure-floor-editor">
+            <StructureEditor.FloorWorkspace diagram={false} />
+          </div>
+          <StructureEditor.Skeleton open={skeletonOpen} onOpenChange={setSkeletonOpen} showTrigger={false} />
+          </>
         ) : (
           <>
             <Empty className="border">
@@ -164,7 +170,6 @@ export function WizardStructureStep() {
             />
           </>
         )}
-        {hasStructure ? <StructureEditor.FloorWorkspace /> : null}
       </StructureEditor.Provider>
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>

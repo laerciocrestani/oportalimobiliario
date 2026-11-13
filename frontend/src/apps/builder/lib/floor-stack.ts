@@ -39,6 +39,7 @@ export type StackUnit = {
   ceilingType: string
   openingType: string
   flooringType: string
+  status?: string
 }
 
 export type StackFloor = {
@@ -522,6 +523,7 @@ function unitFromApi(unit: Unit, floorNumber: number, index: number): StackUnit 
     ceilingType: unit.ceiling_type ?? '',
     openingType: unit.opening_type ?? '',
     flooringType: unit.flooring_type ?? '',
+    status: unit.status,
   }
 }
 

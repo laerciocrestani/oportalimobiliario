@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { ArrowLeftIcon } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   BuildingWizardIdentityStep,
@@ -460,6 +461,7 @@ function WizardFrame({ children }: { children: ReactNode }) {
     : state.buildingId
       ? 'Continuar cadastro'
       : 'Novo empreendimento'
+  const place = [state.form.city.trim(), state.form.state.trim()].filter(Boolean).join(', ')
 
   return (
     <form
@@ -468,15 +470,21 @@ function WizardFrame({ children }: { children: ReactNode }) {
       }}
       className="flex h-full min-h-0 w-full flex-1 flex-col gap-6"
     >
-      <header className="flex shrink-0 flex-col gap-6 border-b pb-5">
-        <div className="flex flex-col gap-1.5">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-            {state.updatingExisting ? null : <Badge variant="secondary">Rascunho</Badge>}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Cadastre os dados e monte a estrutura do seu empreendimento.
+      <header className="flex shrink-0 flex-col gap-4 border-b pb-5">
+        <div className="flex min-w-0 flex-col gap-1">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            {place ? `Empreendimento · ${place}` : 'Empreendimento'}
           </p>
+          <p className="truncate text-2xl font-semibold tracking-tight">{state.form.name || 'Empreendimento'}</p>
+          <p className="text-sm text-muted-foreground">
+            {state.currentStep === 2
+              ? 'Acompanhe os pavimentos e as unidades do empreendimento.'
+              : 'Cadastre os dados e monte a estrutura do seu empreendimento.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-base font-medium">{title}</h1>
+          {state.updatingExisting ? null : <Badge variant="secondary">Rascunho</Badge>}
         </div>
       </header>
       {children}
@@ -535,37 +543,48 @@ function WizardFooter() {
   const { state, actions, meta } = useBuildingWizard()
 
   return (
-    <div className="flex shrink-0 items-center justify-between gap-2">
-      {state.currentStep === 1 ? (
-        <Button variant="outline" nativeButton={false} render={<Link to="/buildings" />}>
-          Cancelar
+    <div className="flex shrink-0 items-center gap-4 border-t pt-4">
+      <div className="min-w-0 flex-1">
+        <WizardStepsNav />
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {state.currentStep === 1 ? (
+          <Button variant="outline" nativeButton={false} render={<Link to="/buildings" />}>
+            Cancelar
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Voltar"
+            onClick={() => actions.setCurrentStep(state.currentStep - 1)}
+          >
+            <ArrowLeftIcon />
+          </Button>
+        )}
+        <Button type="submit" disabled={state.saving || state.loading || !meta.canContinue} aria-label={
+          state.saving
+            ? 'Salvando...'
+            : state.currentStep === WIZARD_LAST_STEP
+              ? state.updatingExisting
+                ? 'Atualizar empreendimento'
+                : state.isDraft
+                  ? 'Salvar rascunho'
+                  : 'Publicar'
+              : 'Salvar e continuar'
+        }>
+          {state.saving
+            ? 'Salvando...'
+            : state.currentStep === WIZARD_LAST_STEP
+              ? state.updatingExisting
+                ? 'Atualizar empreendimento'
+                : state.isDraft
+                  ? 'Salvar rascunho'
+                  : 'Publicar'
+              : 'Continuar'}
         </Button>
-      ) : (
-        <Button type="button" variant="outline" onClick={() => actions.setCurrentStep(state.currentStep - 1)}>
-          Voltar
-        </Button>
-      )}
-      <Button type="submit" disabled={state.saving || state.loading || !meta.canContinue} aria-label={
-        state.saving
-          ? 'Salvando...'
-          : state.currentStep === WIZARD_LAST_STEP
-            ? state.updatingExisting
-              ? 'Atualizar empreendimento'
-              : state.isDraft
-                ? 'Salvar rascunho'
-                : 'Publicar'
-            : 'Salvar e continuar'
-      }>
-        {state.saving
-          ? 'Salvando...'
-          : state.currentStep === WIZARD_LAST_STEP
-            ? state.updatingExisting
-              ? 'Atualizar empreendimento'
-              : state.isDraft
-                ? 'Salvar rascunho'
-                : 'Publicar'
-            : 'Continuar'}
-      </Button>
+      </div>
     </div>
   )
 }

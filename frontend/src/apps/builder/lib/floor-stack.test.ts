@@ -16,6 +16,8 @@ import {
   structurePayload,
   unitCode,
   unitGridPayload,
+  duplicateFloor,
+  duplicateUnit,
   type StackTower,
   type StackUnit,
 } from '@/apps/builder/lib/floor-stack'
@@ -169,6 +171,40 @@ describe('floor-stack', () => {
 
     const unchanged = [source]
     expect(appendTower(unchanged, { name: '   ', skeleton: DEFAULT_SKELETON })).toBe(unchanged)
+  })
+
+  it('duplicates a unit and inserts a copy of the floor above or below', () => {
+    const [skeleton] = buildSkeleton({ ...DEFAULT_SKELETON, towerCount: 1, floorsAbove: 2, basementCount: 1, unitsPerFloor: 1 })
+    const tower = withUnits(skeleton, 2, [{ areaM2: '41.41', bedrooms: '2' }])
+    const source = floor(tower, 2).units[0]
+    const duplicated = duplicateUnit(tower, 2, source.key)
+
+    expect(floor(duplicated, 2).customized).toBe(true)
+    expect(floor(duplicated, 2).units.map((unit) => [unit.code, unit.areaM2, unit.bedrooms])).toEqual([
+      ['201', '41.41', '2'],
+      ['202', '41.41', '2'],
+    ])
+    expect(floor(duplicated, 2).units[1].key).not.toBe(source.key)
+
+    const above = duplicateFloor(tower, 2, 'above')
+
+    expect(above.floors.map((item) => item.number)).toEqual([-1, 1, 2, 3, 4])
+    expect(floor(above, 3).units[0]).toMatchObject({ code: '301', areaM2: '41.41' })
+    expect(floor(above, 2).units[0].code).toBe('201')
+    expect(above.referenceFloor).toBe(2)
+
+    const below = duplicateFloor(tower, 2, 'below')
+
+    expect(below.floors.map((item) => item.number)).toEqual([-1, 1, 2, 3, 4])
+    expect(floor(below, 2).units[0]).toMatchObject({ code: '201', areaM2: '41.41' })
+    expect(floor(below, 3).units[0].code).toBe('301')
+    expect(below.referenceFloor).toBe(3)
+
+    const deeper = duplicateFloor(tower, -1, 'below')
+
+    expect(deeper.floors.map((item) => item.number)).toEqual([-2, -1, 1, 2, 3])
+    expect(floor(deeper, -2).kind).toBe('garage')
+    expect(floor(deeper, -2).units[0].code).toBe('S2-01')
   })
 
   it('offers garage on the floor directly above the hall', () => {

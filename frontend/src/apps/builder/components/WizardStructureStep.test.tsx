@@ -148,12 +148,13 @@ describe('WizardStructureStep', () => {
 
     expect(screen.getByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Mapa de pavimentos' })).toBeInTheDocument()
-    expect(screen.getByText('Pavimento selecionado')).toBeInTheDocument()
+    expect(screen.queryByText('Pavimento selecionado')).not.toBeInTheDocument()
+    expect(screen.getByText('Selecione uma unidade no pavimento.')).toBeInTheDocument()
     expect(screen.getAllByText('1 pavimento (térreo)').length).toBeGreaterThan(0)
 
-    await user.click(screen.getByRole('button', { name: /1 pavimento \(térreo\)/ }))
+    await user.click(screen.getByRole('button', { name: /2º pavimento/ }))
 
-    expect(actions.setSelectedFloor).toHaveBeenCalledWith(1)
+    expect(actions.setSelectedFloor).toHaveBeenCalledWith(2)
   })
 
   it('opens unit mini cards under the selected floor', () => {
@@ -181,6 +182,85 @@ describe('WizardStructureStep', () => {
     expect(open).toHaveTextContent('38,00 m²')
     expect(open).toHaveTextContent('Vendido')
     expect(document.getElementById('floor-units-1')?.parentElement).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('collapses the floor accordion from its header or when another floor opens', async () => {
+    const user = userEvent.setup()
+    const towers = buildSkeleton({ ...DEFAULT_SKELETON, towerCount: 1, floorsAbove: 1, unitsPerFloor: 1 })
+    renderStep({}, towers, { selectedFloor: 2 })
+
+    expect(document.getElementById('floor-units-2')?.parentElement).not.toHaveAttribute('aria-hidden')
+
+    fireEvent.pointerDown(screen.getByRole('heading', { name: 'Mapa de pavimentos' }))
+
+    expect(document.getElementById('floor-units-2')?.parentElement).not.toHaveAttribute('aria-hidden')
+
+    await user.click(screen.getByRole('button', { name: /2º pavimento/ }))
+
+    expect(document.getElementById('floor-units-2')?.parentElement).toHaveAttribute('aria-hidden', 'true')
+
+    await user.click(screen.getByRole('button', { name: /1 pavimento \(térreo\)/ }))
+
+    expect(document.getElementById('floor-units-1')?.parentElement).not.toHaveAttribute('aria-hidden')
+    expect(document.getElementById('floor-units-2')?.parentElement).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('edits the unit chosen from the floor accordion', async () => {
+    const user = userEvent.setup()
+    const towers = buildSkeleton({ ...DEFAULT_SKELETON, towerCount: 1, floorsAbove: 1, unitsPerFloor: 1 })
+    const { actions } = renderStep({}, towers, { selectedFloor: 2 })
+    const open = document.getElementById('floor-units-2')
+
+    if (!open) {
+      throw new Error('Sanfona do pavimento ausente')
+    }
+
+    await user.click(open.querySelector('button') as HTMLButtonElement)
+
+    expect(screen.getByLabelText('Área privativa 201 (m²)')).toBeInTheDocument()
+    expect(screen.queryByRole('cell', { name: '201' })).not.toBeInTheDocument()
+
+    await user.type(screen.getByLabelText('Área privativa 201 (m²)'), '5')
+
+    expect(actions.updateStackUnit).toHaveBeenCalled()
+  })
+
+  it('duplicates and removes a unit from the card menu', async () => {
+    const user = userEvent.setup()
+    const towers = buildSkeleton({ ...DEFAULT_SKELETON, towerCount: 1, floorsAbove: 1, unitsPerFloor: 2 })
+    const { actions } = renderStep({}, towers, { selectedFloor: 2 })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ações da unidade 201' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Duplicar unidade' }))
+
+    const duplicated = actions.updateSelectedTower.mock.calls.at(-1)?.[0]
+    expect(duplicated.floors.find((item: { number: number }) => item.number === 2).units).toHaveLength(3)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ações do pavimento 2' }))
+    expect(await screen.findByRole('menuitem', { name: 'Duplicar pavimento acima' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Duplicar pavimento abaixo' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Remover pavimento' })).toBeInTheDocument()
+  })
+
+  it('confirms before removing a unit or a floor', async () => {
+    const user = userEvent.setup()
+    const towers = buildSkeleton({ ...DEFAULT_SKELETON, towerCount: 1, floorsAbove: 1, unitsPerFloor: 2 })
+    const { actions } = renderStep({}, towers, { selectedFloor: 2 })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ações da unidade 201' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Remover unidade' }))
+
+    expect(screen.getByRole('dialog', { name: 'Remover unidade 201?' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }))
+    expect(actions.updateSelectedTower).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ações do pavimento 2' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Remover pavimento' }))
+    expect(screen.getByRole('dialog', { name: 'Remover 2º pavimento?' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Remover' }))
+
+    expect(actions.updateSelectedTower).toHaveBeenCalled()
+    expect(actions.setSelectedFloor).toHaveBeenCalled()
   })
 
   it('filters the floor map by kind', async () => {

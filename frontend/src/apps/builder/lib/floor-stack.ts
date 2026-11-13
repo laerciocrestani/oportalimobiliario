@@ -182,6 +182,80 @@ export function removeFloor(tower: StackTower, floorNumber: number): StackTower 
   }
 }
 
+export function duplicateUnit(tower: StackTower, floorNumber: number, unitKey: string): StackTower {
+  return markException(
+    {
+      ...tower,
+      floors: tower.floors.map((floor) => {
+        if (floor.number !== floorNumber || floor.kind === 'hall') {
+          return floor
+        }
+
+        const source = floor.units.find((unit) => unit.key === unitKey)
+
+        if (!source) {
+          return floor
+        }
+
+        const position = floor.units.length + 1
+
+        return {
+          ...floor,
+          units: [
+            ...floor.units,
+            {
+              ...source,
+              key: draftKey(`u-${floor.number}-${position}`),
+              code: unitCode(floor.number, position),
+            },
+          ],
+        }
+      }),
+    },
+    floorNumber,
+  )
+}
+
+export function duplicateFloor(tower: StackTower, floorNumber: number, direction: 'above' | 'below'): StackTower {
+  const source = tower.floors.find((floor) => floor.number === floorNumber)
+
+  if (!source) {
+    return tower
+  }
+
+  const insertAt = duplicateFloorInsertNumber(floorNumber, direction)
+
+  function movedNumber(number: number): number {
+    if (direction === 'below' && floorNumber < 0) {
+      return number <= insertAt ? number - 1 : number
+    }
+
+    return number >= insertAt ? nextFloorNumber(number, 1) : number
+  }
+
+  const moved = tower.floors.map((floor) => renumberFloor(floor, movedNumber(floor.number)))
+
+  return {
+    ...tower,
+    referenceFloor: tower.referenceFloor == null ? null : movedNumber(tower.referenceFloor),
+    floors: settleTopFloorTypes([...moved, cloneFloorAt(source, insertAt)]).toSorted(
+      (left, right) => left.number - right.number,
+    ),
+  }
+}
+
+export function duplicateFloorInsertNumber(floorNumber: number, direction: 'above' | 'below'): number {
+  if (direction === 'above') {
+    return nextFloorNumber(floorNumber, 1)
+  }
+
+  if (floorNumber < 0) {
+    return floorNumber - 1
+  }
+
+  return floorNumber
+}
+
 export function setReferenceFloor(tower: StackTower, floorNumber: number): StackTower {
   if (!tower.floors.some((floor) => floor.number === floorNumber) || tower.referenceFloor === floorNumber) {
     return tower
@@ -859,6 +933,54 @@ function copyUnitsToFloor(units: StackUnit[], floorNumber: number): StackUnit[] 
     key: draftKey(`u-${floorNumber}-${index + 1}`),
     code: unitCode(floorNumber, index + 1),
   }))
+}
+
+function nextFloorNumber(number: number, delta: 1 | -1): number {
+  const next = number + delta
+
+  if (next === 0) {
+    return delta > 0 ? 1 : -1
+  }
+
+  return next
+}
+
+function renumberFloor(floor: StackFloor, number: number): StackFloor {
+  if (floor.number === number) {
+    return floor
+  }
+
+  return {
+    ...floor,
+    number,
+    units: floor.units.map((unit, index) => ({
+      ...unit,
+      code: unitCode(number, index + 1),
+    })),
+  }
+}
+
+function cloneFloorAt(source: StackFloor, number: number): StackFloor {
+  return {
+    number,
+    kind: source.kind,
+    unitType: source.unitType ?? null,
+    customized: true,
+    units: copyUnitsToFloor(source.units, number),
+  }
+}
+
+function settleTopFloorTypes(floors: StackFloor[]): StackFloor[] {
+  const highest = floors.reduce((max, floor) => Math.max(max, floor.number), Number.NEGATIVE_INFINITY)
+  const topOnly = new Set<FloorUnitType>(['penthouse', 'duplex', 'triplex', 'garden', 'loft', 'studio', 'flat'])
+
+  return floors.map((floor) => {
+    if (floor.number === highest || floor.unitType == null || !topOnly.has(floor.unitType)) {
+      return floor
+    }
+
+    return { ...floor, unitType: 'apartment' }
+  })
 }
 
 function inCloneRange(floorNumber: number, referenceNumber: number, range: CloneRange): boolean {

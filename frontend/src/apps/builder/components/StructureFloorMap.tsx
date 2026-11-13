@@ -1,20 +1,26 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
+  ArrowDownIcon,
+  ArrowUpIcon,
   Building2Icon,
   CheckIcon,
+  CopyPlusIcon,
   DoorOpenIcon,
-  EllipsisIcon,
+  EllipsisVerticalIcon,
   ListFilterIcon,
   StoreIcon,
+  Trash2Icon,
   WarehouseIcon,
   type LucideIcon,
 } from 'lucide-react'
-import { addFloor, floorKindLabel, floorLabel, floorPurposeOptions, floorUnitTypeLabel, floorUnitTypeOptions, floorsTopToBottom, isTopFloor, setFloorPurpose, setFloorUnitType, type StackFloor, type StackUnit } from '@/apps/builder/lib/floor-stack'
+import { addFloor, duplicateFloor, duplicateFloorInsertNumber, duplicateUnit, floorKindLabel, floorLabel, floorPurposeOptions, floorUnitTypeLabel, floorUnitTypeOptions, floorsTopToBottom, isTopFloor, removeFloor, removeUnit, setFloorPurpose, setFloorUnitType, type StackFloor, type StackUnit } from '@/apps/builder/lib/floor-stack'
 import { unitStatusLabels, type UnitStatus } from '@/apps/builder/lib/unit-status'
 import { useStructureEditor } from '@/apps/builder/components/structure-editor-context'
+import { StructureEditor } from '@/apps/builder/components/StructureEditor'
+import { ConfirmRemovalDialog } from '@/apps/builder/components/ConfirmRemovalDialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -110,8 +116,15 @@ export function StructureFloorMap({
   const tower = meta.selectedTower
   const floor = meta.selectedFloor
   const [filter, setFilter] = useState<FloorFilter>('all')
+  const [selectedUnitKey, setSelectedUnitKey] = useState<string | null>(null)
+  const [openFloor, setOpenFloor] = useState<number | null>(floor?.number ?? null)
   const floors = tower ? floorsTopToBottom(tower.floors) : []
   const visibleFloors = filter === 'all' ? floors : floors.filter((item) => item.kind === filter)
+  const selectedUnit = floor?.units.find((unit) => unit.key === selectedUnitKey) ?? null
+
+  useEffect(() => {
+    setOpenFloor(floor?.number ?? null)
+  }, [floor?.number])
 
   function insertFloor(where: 'above' | 'basement') {
     if (!tower) {
@@ -132,12 +145,12 @@ export function StructureFloorMap({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex flex-col gap-1">
           <h3 className="text-base font-semibold">Mapa de pavimentos</h3>
-          <p className="text-sm text-muted-foreground">Selecione um pavimento para ver os detalhes e unidades.</p>
+          <p className="text-sm text-muted-foreground">Selecione um pavimento e escolha a unidade para editar.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button type="button" variant="outline" />}>
-              <EllipsisIcon data-icon="inline-start" />
+              <EllipsisVerticalIcon data-icon="inline-start" />
               Mais opções
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
@@ -200,66 +213,27 @@ export function StructureFloorMap({
                   floor={item}
                   top={isTopFloor(floors, item.number)}
                   selected={floor?.number === item.number}
+                  expanded={openFloor === item.number}
+                  selectedUnitKey={selectedUnit?.key ?? null}
                   share={floorOccupancy(item).percent}
-                  onSelect={() => actions.selectFloor(item.number)}
+                  onSelect={() => {
+                    if (openFloor === item.number) {
+                      setOpenFloor(null)
+                      return
+                    }
+
+                    setOpenFloor(item.number)
+                    actions.selectFloor(item.number)
+                  }}
+                  onSelectUnit={setSelectedUnitKey}
                 />
               ))
             )}
           </CardContent>
         </Card>
 
-        <Card size="sm" className="md:sticky md:top-4">
-          <CardHeader>
-            <CardDescription className="tracking-wide uppercase">Pavimento selecionado</CardDescription>
-            <CardAction>
-              <Badge>{floor ? floor.number : '—'}</Badge>
-            </CardAction>
-            <p className="text-xl font-semibold">{floor ? floorLabel(floor.number) : 'Pavimento'}</p>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {floor ? (
-              <>
-                <div className="grid grid-cols-3 gap-2">
-                  <FloorStat label="Unidades" value={floor.units.length} />
-                  <FloorStat label="Ocupadas" value={floorOccupancy(floor).occupied} />
-                  <FloorStat label="Disponíveis" value={floorOccupancy(floor).available} />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between gap-3 text-sm">
-                    <span>Taxa de ocupação</span>
-                    <span className="text-muted-foreground tabular-nums">{floorOccupancy(floor).percent}%</span>
-                  </div>
-                  <Progress value={floorOccupancy(floor).percent} />
-                  <p className="text-xs text-muted-foreground">
-                    {floorKindLabel(floor.kind)} · {floor.units.length} {unitNoun(floor.kind, floor.units.length)}
-                    {floor.customized ? ' · exceção' : ''}
-                    {tower?.referenceFloor === floor.number ? ' · pavimento-modelo' : ''}
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  variant="link"
-                  className="self-start px-0"
-                  onClick={() => document.getElementById('structure-floor-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                >
-                  Editar unidades
-                </Button>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">Selecione um pavimento no mapa.</p>
-            )}
-          </CardContent>
-        </Card>
+        <StructureEditor.SelectedUnit unit={selectedUnit} />
       </div>
-    </div>
-  )
-}
-
-function FloorStat({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-xl font-semibold tabular-nums">{value}</span>
     </div>
   )
 }
@@ -268,14 +242,20 @@ function FloorRow({
   floor,
   top,
   selected,
+  expanded,
+  selectedUnitKey,
   share,
   onSelect,
+  onSelectUnit,
 }: {
   floor: StackFloor
   top: boolean
   selected: boolean
+  expanded: boolean
+  selectedUnitKey: string | null
   share: number
   onSelect: () => void
+  onSelectUnit: (unitKey: string) => void
 }) {
   const { actions, meta } = useStructureEditor()
   const tower = meta.selectedTower
@@ -315,7 +295,7 @@ function FloorRow({
       <button
         type="button"
         aria-pressed={selected}
-        aria-expanded={selected}
+        aria-expanded={expanded}
         aria-controls={unitsId}
         onClick={onSelect}
         className="flex min-w-0 flex-1 items-center gap-3 text-left"
@@ -397,21 +377,31 @@ function FloorRow({
         </span>
       ) : null}
       {selected ? <CheckIcon className="size-4 shrink-0 text-primary" /> : <span className="size-4 shrink-0" />}
+      <FloorActionsMenu floor={floor} selected={selected} />
       </div>
       <div
         className={cn(
           'grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none',
-          selected ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+          expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
         )}
       >
-        <div className="overflow-hidden" inert={selected ? undefined : true} aria-hidden={selected ? undefined : true}>
+        <div className="overflow-hidden" inert={expanded ? undefined : true} aria-hidden={expanded ? undefined : true}>
           <div id={unitsId} className="flex flex-wrap gap-2 px-2 pb-3">
             {floor.units.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 {floor.kind === 'hall' ? 'Hall não tem unidades privadas.' : 'Nenhuma unidade neste pavimento.'}
               </p>
             ) : (
-              floor.units.map((unit) => <UnitMiniCard key={unit.key} unit={unit} />)
+              floor.units.map((unit) => (
+                <UnitMiniCard
+                  key={unit.key}
+                  floor={floor}
+                  unit={unit}
+                  selected={selectedUnitKey === unit.key}
+                  onSelect={() => onSelectUnit(unit.key)}
+                  onSelectUnit={onSelectUnit}
+                />
+              ))
             )}
           </div>
         </div>
@@ -420,16 +410,184 @@ function FloorRow({
   )
 }
 
-function UnitMiniCard({ unit }: { unit: StackUnit }) {
+function UnitMiniCard({
+  floor,
+  unit,
+  selected,
+  onSelect,
+  onSelectUnit,
+}: {
+  floor: StackFloor
+  unit: StackUnit
+  selected: boolean
+  onSelect: () => void
+  onSelectUnit: (unitKey: string) => void
+}) {
   return (
-    <Card size="sm" className="w-fit shrink-0">
+    <Card size="sm" className={cn('w-fit shrink-0', selected && 'ring-2 ring-primary')}>
       <CardHeader>
-        <CardTitle className="tabular-nums">{unit.code}</CardTitle>
-        <CardDescription className="tabular-nums">{formatArea(unit.areaM2)}</CardDescription>
+        <div className="flex items-center justify-between gap-1">
+          <button type="button" aria-pressed={selected} onClick={onSelect} className="text-left">
+            <CardTitle className="tabular-nums">{unit.code}</CardTitle>
+          </button>
+          <UnitActionsMenu floor={floor} unit={unit} onSelectUnit={onSelectUnit} />
+        </div>
+        <button type="button" onClick={onSelect} className="text-left">
+          <CardDescription className="tabular-nums">{formatArea(unit.areaM2)}</CardDescription>
+        </button>
       </CardHeader>
       <CardContent>
-        <Badge variant={isTaken(unit.status) ? 'default' : 'secondary'}>{statusLabel(unit.status)}</Badge>
+        <button type="button" onClick={onSelect} className="text-left">
+          <Badge variant={isTaken(unit.status) ? 'default' : 'secondary'}>{statusLabel(unit.status)}</Badge>
+        </button>
       </CardContent>
     </Card>
+  )
+}
+
+function FloorActionsMenu({
+  floor,
+  selected,
+}: {
+  floor: StackFloor
+  selected: boolean
+}) {
+  const { actions, meta } = useStructureEditor()
+  const tower = meta.selectedTower
+  const onlyFloor = (tower?.floors.length ?? 0) <= 1
+  const [confirming, setConfirming] = useState(false)
+
+  function duplicate(direction: 'above' | 'below') {
+    if (!tower) {
+      return
+    }
+
+    actions.updateTower(duplicateFloor(tower, floor.number, direction))
+    actions.selectFloor(duplicateFloorInsertNumber(floor.number, direction))
+  }
+
+  function remove() {
+    if (!tower || onlyFloor) {
+      return
+    }
+
+    const next = removeFloor(tower, floor.number)
+    actions.updateTower(next)
+
+    if (!selected) {
+      return
+    }
+
+    const fallback = next.floors[next.floors.length - 1]
+
+    if (fallback) {
+      actions.selectFloor(fallback.number)
+    }
+  }
+
+  return (
+    <>
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button type="button" variant="ghost" size="icon-sm" aria-label={`Ações do pavimento ${floor.number}`} />
+        }
+      >
+        <EllipsisVerticalIcon />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={() => duplicate('above')}>
+            <ArrowUpIcon />
+            Duplicar pavimento acima
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => duplicate('below')}>
+            <ArrowDownIcon />
+            Duplicar pavimento abaixo
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" disabled={onlyFloor} onClick={() => setConfirming(true)}>
+            <Trash2Icon />
+            Remover pavimento
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <ConfirmRemovalDialog
+      open={confirming}
+      title={`Remover ${floorLabel(floor.number)}?`}
+      description="O pavimento e as unidades dele saem da estrutura."
+      onOpenChange={setConfirming}
+      onConfirm={remove}
+    />
+  </>
+  )
+}
+
+function UnitActionsMenu({
+  floor,
+  unit,
+  onSelectUnit,
+}: {
+  floor: StackFloor
+  unit: StackUnit
+  onSelectUnit: (unitKey: string) => void
+}) {
+  const { actions, meta } = useStructureEditor()
+  const tower = meta.selectedTower
+  const onlyUnit = floor.units.length <= 1
+  const [confirming, setConfirming] = useState(false)
+  const noun = floor.kind === 'garage' ? 'vaga' : 'unidade'
+
+  function duplicate() {
+    if (!tower) {
+      return
+    }
+
+    const next = duplicateUnit(tower, floor.number, unit.key)
+    actions.updateTower(next)
+    const created = next.floors.find((item) => item.number === floor.number)?.units.at(-1)
+
+    if (created) {
+      onSelectUnit(created.key)
+    }
+  }
+
+  function remove() {
+    if (!tower || onlyUnit) {
+      return
+    }
+
+    actions.updateTower(removeUnit(tower, floor.number, unit.key))
+  }
+
+  return (
+    <>
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={<Button type="button" variant="ghost" size="icon-sm" aria-label={`Ações da unidade ${unit.code}`} />}
+      >
+        <EllipsisVerticalIcon />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-52">
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={duplicate}>
+            <CopyPlusIcon />
+            Duplicar unidade
+          </DropdownMenuItem>
+          <DropdownMenuItem variant="destructive" disabled={onlyUnit} onClick={() => setConfirming(true)}>
+            <Trash2Icon />
+            Remover unidade
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <ConfirmRemovalDialog
+      open={confirming}
+      title={`Remover ${noun} ${unit.code}?`}
+      description={`A ${noun} ${unit.code} sai deste pavimento.`}
+      onOpenChange={setConfirming}
+      onConfirm={remove}
+    />
+    </>
   )
 }

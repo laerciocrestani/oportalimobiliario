@@ -136,7 +136,7 @@ export function WizardStructureStep() {
             onAddTower={openDialog}
           />
           <div id="structure-floor-editor">
-            <StructureEditor.FloorWorkspace diagram={false} />
+            <StructureEditor.FloorWorkspace diagram={false} showUnitTable={false} />
           </div>
           <StructureEditor.Skeleton open={skeletonOpen} onOpenChange={setSkeletonOpen} showTrigger={false} />
           </>

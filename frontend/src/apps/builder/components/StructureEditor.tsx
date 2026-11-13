@@ -22,6 +22,7 @@ import {
   type StructureEditorMeta,
   type StructureEditorState,
 } from '@/apps/builder/components/structure-editor-context'
+import { ConfirmRemovalDialog } from '@/apps/builder/components/ConfirmRemovalDialog'
 import { BuildingWizardEnumSelect } from '@/apps/builder/components/BuildingWizardEnumSelect'
 import { FloorPerspective } from '@/apps/builder/components/FloorPerspective'
 import {
@@ -36,7 +37,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -297,17 +298,29 @@ function RemoveUnitButton({ unitKey }: { unitKey: string }) {
 
   const isSpot = floor.kind === 'garage'
   const blocked = floor.kind !== 'hall' && floor.units.length <= 1
+  const noun = isSpot ? 'vaga' : 'unidade'
+  const unit = floor.units.find((item) => item.key === unitKey)
+  const [confirming, setConfirming] = useState(false)
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      disabled={blocked}
-      onClick={() => actions.updateTower(removeUnit(tower, floor.number, unitKey))}
-    >
-      Remover {isSpot ? 'vaga' : 'unidade'}
-    </Button>
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={blocked}
+        onClick={() => setConfirming(true)}
+      >
+        Remover {noun}
+      </Button>
+      <ConfirmRemovalDialog
+        open={confirming}
+        title={`Remover ${noun} ${unit?.code ?? ''}?`}
+        description={`A ${noun} ${unit?.code ?? ''} sai deste pavimento.`}
+        onOpenChange={setConfirming}
+        onConfirm={() => actions.updateTower(removeUnit(tower, floor.number, unitKey))}
+      />
+    </>
   )
 }
 
@@ -618,12 +631,83 @@ function FloorUnitRow({
   )
 }
 
-function StructureEditorFloorWorkspace({ diagram = true }: { diagram?: boolean } = {}) {
+function StructureEditorSelectedUnit({ unit }: { unit: StackUnit | null }) {
+  const { actions, meta } = useStructureEditor()
+  const floor = meta.selectedFloor
+
+  if (!unit || !floor || floor.units.some((item) => item.key === unit.key) === false) {
+    return (
+      <Card size="sm" className="md:sticky md:top-4">
+        <CardHeader>
+          <CardTitle>Unidade</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Selecione uma unidade no pavimento.</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const garage = floor.kind === 'garage'
+  const fixed = meta.priceMode === 'fixed'
+
+  return (
+    <Card size="sm" className="md:sticky md:top-4">
+      <CardHeader>
+        <CardTitle className="tabular-nums">{unit.code}</CardTitle>
+        <CardDescription>{unitTypeLabel(floor.kind, floor.unitType)}</CardDescription>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-4">
+        <Field>
+          <FieldLabel htmlFor={`side-area-${unit.key}`}>
+            {garage ? `Área ${unit.code} (m²)` : `Área privativa ${unit.code} (m²)`}
+          </FieldLabel>
+          <Input
+            id={`side-area-${unit.key}`}
+            value={unit.areaM2}
+            inputMode="decimal"
+            onChange={(event) => actions.updateUnit(unit.key, { areaM2: event.target.value })}
+          />
+        </Field>
+        {garage ? null : (
+          <Field>
+            <FieldLabel htmlFor={`side-bedrooms-${unit.key}`}>Dormitórios {unit.code}</FieldLabel>
+            <Input
+              id={`side-bedrooms-${unit.key}`}
+              value={unit.bedrooms}
+              inputMode="numeric"
+              onChange={(event) => actions.updateUnit(unit.key, { bedrooms: event.target.value })}
+            />
+          </Field>
+        )}
+        <Field>
+          <FieldLabel htmlFor={`side-price-${unit.key}`}>{priceInputLabel(unit.code, fixed)}</FieldLabel>
+          <Input
+            id={`side-price-${unit.key}`}
+            value={unit.priceBase}
+            inputMode="decimal"
+            onChange={(event) => actions.updateUnit(unit.key, { priceBase: event.target.value })}
+          />
+        </Field>
+        {garage ? <GarageUnitDetails unit={unit} /> : <LivingUnitDetails unit={unit} />}
+      </CardContent>
+    </Card>
+  )
+}
+
+function StructureEditorFloorWorkspace({
+  diagram = true,
+  showUnitTable = true,
+}: {
+  diagram?: boolean
+  showUnitTable?: boolean
+} = {}) {
   const { state, actions, meta } = useStructureEditor()
   const floor = meta.selectedFloor
   const tower = meta.selectedTower
   const [openUnitKey, setOpenUnitKey] = useState<string | null>(null)
   const [cloning, setCloning] = useState(false)
+  const [confirmingRemoval, setConfirmingRemoval] = useState(false)
   const preview = tower ? clonePreview(tower, state.mirror.referenceNumber, state.mirror) : []
 
   function defineModel() {
@@ -752,7 +836,7 @@ function StructureEditorFloorWorkspace({ diagram = true }: { diagram?: boolean }
               onChange={changeCount}
             />
           ) : null}
-          {floor && floor.units.length > 0 ? (
+          {showUnitTable && floor && floor.units.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-left text-muted-foreground">
@@ -801,7 +885,7 @@ function StructureEditorFloorWorkspace({ diagram = true }: { diagram?: boolean }
               type="button"
               variant="outline"
               disabled={!floor || (tower?.floors.length ?? 0) <= 1}
-              onClick={() => remove()}
+              onClick={() => setConfirmingRemoval(true)}
             >
               Remover pavimento
             </Button>
@@ -926,6 +1010,13 @@ function StructureEditorFloorWorkspace({ diagram = true }: { diagram?: boolean }
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmRemovalDialog
+        open={confirmingRemoval}
+        title={floor ? `Remover ${floorLabel(floor.number)}?` : 'Remover pavimento?'}
+        description="O pavimento e as unidades dele saem da estrutura."
+        onOpenChange={setConfirmingRemoval}
+        onConfirm={remove}
+      />
     </div>
   )
 }
@@ -935,6 +1026,7 @@ export const StructureEditor = {
   Skeleton: StructureEditorSkeleton,
   TowerTabs: StructureEditorTowerTabs,
   FloorWorkspace: StructureEditorFloorWorkspace,
+  SelectedUnit: StructureEditorSelectedUnit,
   MirrorPanel: StructureEditorMirrorPanel,
   UnitEditor: StructureEditorUnitEditor,
   GaragePanel: StructureEditorGaragePanel,

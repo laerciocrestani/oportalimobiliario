@@ -95,6 +95,7 @@ describe('StructureEditor', () => {
     const user = userEvent.setup()
     render(<StructureEditorHarness />)
 
+    await user.click(screen.getByRole('button', { name: 'Esqueleto do prédio' }))
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
 
     expect(screen.getByRole('tab', { name: 'Torre A' })).toBeInTheDocument()
@@ -111,6 +112,7 @@ describe('StructureEditor', () => {
     const user = userEvent.setup()
     render(<StructureEditorHarness />)
 
+    await user.click(screen.getByRole('button', { name: 'Esqueleto do prédio' }))
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: /Andar 1/ }))
     await user.type(screen.getByLabelText('Área privativa 101 (m²)'), '50')
@@ -124,6 +126,7 @@ describe('StructureEditor', () => {
     const user = userEvent.setup()
     render(<StructureEditorHarness />)
 
+    await user.click(screen.getByRole('button', { name: 'Esqueleto do prédio' }))
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: /Andar 1/ }))
 
@@ -140,18 +143,20 @@ describe('StructureEditor', () => {
     const user = userEvent.setup()
     render(<StructureEditorHarness />)
 
+    await user.click(screen.getByRole('button', { name: 'Esqueleto do prédio' }))
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: /Andar 1/ }))
     await user.type(screen.getByLabelText('Área privativa 101 (m²)'), '61')
 
-    expect(screen.getByRole('button', { name: /Andar 1/ })).toHaveTextContent('Exceção')
-    expect(screen.getByRole('button', { name: /Andar 2/ })).not.toHaveTextContent('Exceção')
+    expect(screen.getByText(/Residencial · 2 unidades · exceção/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Andar 2' })).not.toHaveTextContent('Exceção')
   })
 
   it('clones the mirror floor without overwriting exceptions', async () => {
     const user = userEvent.setup()
     render(<StructureEditorHarness />)
 
+    await user.click(screen.getByRole('button', { name: 'Esqueleto do prédio' }))
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: /Andar 1/ }))
     await user.type(screen.getByLabelText('Área privativa 101 (m²)'), '50')
@@ -161,8 +166,8 @@ describe('StructureEditor', () => {
 
     await user.click(screen.getByRole('button', { name: /^Clonar$/ }))
 
-    expect(screen.getByRole('button', { name: /Andar 2/ })).toHaveTextContent('Exceção')
-    expect(screen.getByRole('button', { name: /Andar 3/ })).not.toHaveTextContent('Exceção')
+    expect(screen.getByText(/Residencial · 2 unidades · exceção/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Andar 3' })).not.toHaveTextContent('Exceção')
     expect(screen.getByLabelText('Área privativa 201 (m²)')).toHaveValue('61')
 
     await user.click(screen.getByRole('button', { name: /Andar 3/ }))
@@ -173,6 +178,7 @@ describe('StructureEditor', () => {
     const user = userEvent.setup()
     render(<StructureEditorHarness />)
 
+    await user.click(screen.getByRole('button', { name: 'Esqueleto do prédio' }))
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: /Subsolo 1/ }))
 
@@ -185,13 +191,14 @@ describe('StructureEditor', () => {
 
     expect(screen.getByLabelText('Área S1-01 (m²)')).toHaveValue('12.5')
     expect(screen.getByLabelText('Valor-base INCC S1-01')).toHaveValue('45000')
-    expect(screen.getByRole('button', { name: /Subsolo 1/ })).toHaveTextContent('Exceção')
+    expect(screen.getByText(/Garagem · 2 vagas · exceção/)).toBeInTheDocument()
   })
 
   it('selects another tower and floor in the stack', async () => {
     const user = userEvent.setup()
     render(<StructureEditorHarness />)
 
+    await user.click(screen.getByRole('button', { name: 'Esqueleto do prédio' }))
     await user.clear(screen.getByLabelText('Torres'))
     await user.type(screen.getByLabelText('Torres'), '2')
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))

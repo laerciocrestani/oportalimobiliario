@@ -111,7 +111,8 @@ describe('BuildingWizardPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
     expect(screen.getAllByText('Continuar cadastro').length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'Gerar esqueleto' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Criar esqueleto do prédio' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Criar prédio manual' })).toBeInTheDocument()
     expect(screen.queryByText('Padrão do empreendimento')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Suítes')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Lavabos')).not.toBeInTheDocument()
@@ -150,6 +151,7 @@ describe('BuildingWizardPage', () => {
     renderWizard('/buildings/10/wizard')
 
     await screen.findByRole('heading', { name: 'Estrutura' })
+    await user.click(screen.getByRole('button', { name: 'Criar esqueleto do prédio' }))
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
 
@@ -160,8 +162,14 @@ describe('BuildingWizardPage', () => {
             name: 'Torre A',
             reference_floor: 1,
             floors: [
+              { number: -2, kind: 'garage' },
+              { number: -1, kind: 'garage' },
               { number: 0, kind: 'commercial' },
               { number: 1, kind: 'residential' },
+              { number: 2, kind: 'residential' },
+              { number: 3, kind: 'residential' },
+              { number: 4, kind: 'residential' },
+              { number: 5, kind: 'residential' },
             ],
           },
         ],
@@ -202,6 +210,7 @@ describe('BuildingWizardPage', () => {
     renderWizard('/buildings/10/wizard')
 
     expect(await screen.findByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Criar esqueleto do prédio' }))
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
 
@@ -212,7 +221,15 @@ describe('BuildingWizardPage', () => {
           towers: [
             expect.objectContaining({
               id: '1',
-              floors: [
+              floors: expect.arrayContaining([
+                expect.objectContaining({
+                  number: -1,
+                  kind: 'garage',
+                  units: expect.arrayContaining([
+                    expect.objectContaining({ code: 'S1-01' }),
+                    expect.objectContaining({ code: 'S1-10' }),
+                  ]),
+                }),
                 expect.objectContaining({
                   number: 0,
                   kind: 'commercial',
@@ -223,10 +240,15 @@ describe('BuildingWizardPage', () => {
                   kind: 'residential',
                   units: expect.arrayContaining([
                     expect.objectContaining({ code: '101' }),
-                    expect.objectContaining({ code: '102' }),
+                    expect.objectContaining({ code: '104' }),
                   ]),
                 }),
-              ],
+                expect.objectContaining({
+                  number: 5,
+                  kind: 'residential',
+                  units: expect.arrayContaining([expect.objectContaining({ code: '501' })]),
+                }),
+              ]),
             }),
           ],
         }),

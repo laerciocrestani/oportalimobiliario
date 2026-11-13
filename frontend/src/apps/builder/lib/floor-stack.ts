@@ -61,10 +61,10 @@ export const DEFAULT_UNITS_PER_FLOOR = 4
 
 export const DEFAULT_SKELETON: SkeletonInput = {
   towerCount: 1,
-  floorsAbove: 1,
-  basementCount: 0,
+  floorsAbove: 5,
+  basementCount: 2,
   unitsPerFloor: DEFAULT_UNITS_PER_FLOOR,
-  spotsPerBasement: DEFAULT_UNITS_PER_FLOOR,
+  spotsPerBasement: 10,
 }
 
 export function unitCode(floorNumber: number, position: number): string {
@@ -553,6 +553,22 @@ export function towerLetterName(index: number): string {
   return `Torre ${index + 1}`
 }
 
+export function buildEntranceHall(): StackTower {
+  return {
+    key: draftKey('tower'),
+    name: towerLetterName(0),
+    referenceFloor: 0,
+    floors: [
+      {
+        number: 0,
+        kind: 'hall',
+        customized: false,
+        units: [],
+      },
+    ],
+  }
+}
+
 export function copyTowerFromPrevious(towers: StackTower[]): StackTower[] {
   const source = towers[towers.length - 1]
 
@@ -560,21 +576,45 @@ export function copyTowerFromPrevious(towers: StackTower[]): StackTower[] {
     return towers
   }
 
-  return [
-    ...towers,
-    {
-      key: draftKey('tower'),
-      name: towerLetterName(towers.length),
-      referenceFloor: source.referenceFloor,
-      floors: source.floors.map((floor) => ({
-        ...floor,
-        units: floor.units.map((unit) => ({
-          ...unit,
-          key: draftKey(`u-${floor.number}`),
-        })),
+  return [...towers, duplicateTower(source, towerLetterName(towers.length))]
+}
+
+export function appendTower(
+  towers: StackTower[],
+  input: { name: string; source?: StackTower; skeleton: SkeletonInput },
+): StackTower[] {
+  const name = input.name.trim()
+
+  if (name === '') {
+    return towers
+  }
+
+  if (input.source) {
+    return [...towers, duplicateTower(input.source, name)]
+  }
+
+  const [created] = buildSkeleton({ ...input.skeleton, towerCount: 1 })
+
+  if (!created) {
+    return towers
+  }
+
+  return [...towers, { ...created, name }]
+}
+
+function duplicateTower(source: StackTower, name: string): StackTower {
+  return {
+    key: draftKey('tower'),
+    name,
+    referenceFloor: source.referenceFloor,
+    floors: source.floors.map((floor) => ({
+      ...floor,
+      units: floor.units.map((unit) => ({
+        ...unit,
+        key: draftKey(`u-${floor.number}`),
       })),
-    },
-  ]
+    })),
+  }
 }
 
 export function structurePayload(towers: StackTower[]): BuildingStructurePayload {

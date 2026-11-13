@@ -19,9 +19,10 @@ import { defaultsFromBuilding, defaultsUpdatePayload, identityFromBuilding, iden
 import { emptyBuildingDefaults } from '@/apps/builder/lib/unit-spec'
 import {
   applySavedTowerIds,
+  buildEntranceHall,
   buildSkeleton,
   cloneMirror,
-  copyTowerFromPrevious,
+  appendTower,
   DEFAULT_MIRROR,
   DEFAULT_SKELETON,
   isFloorStackValid,
@@ -176,14 +177,35 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
     setMirrorState(mirrorDraftFromTower(next[0]))
   }
 
+  function startEntranceHall() {
+    const tower = buildEntranceHall()
+    setStackTowers([tower])
+    setSelectedTowerIndex(0)
+    setSelectedFloor(tower.floors[0]?.number ?? 0)
+    setMirrorState(mirrorDraftFromTower(tower))
+  }
+
   function updateSelectedTower(tower: StackTower) {
     setStackTowers((current) =>
       current.map((item, index) => (index === selectedTowerIndex ? tower : item)),
     )
   }
 
-  function addTowerCopy() {
-    const next = copyTowerFromPrevious(stackTowers)
+  function addTower(input: { name: string; sourceKey?: string | null }) {
+    const source = input.sourceKey
+      ? stackTowers.find((tower) => tower.key === input.sourceKey)
+      : undefined
+
+    if (input.sourceKey && !source) {
+      return
+    }
+
+    const next = appendTower(stackTowers, { name: input.name, source, skeleton })
+
+    if (next.length === stackTowers.length) {
+      return
+    }
+
     const index = next.length - 1
     const created = next[index]
 
@@ -407,9 +429,10 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       setForm,
       setSkeleton,
       generateSkeleton,
+      startEntranceHall,
       updateStackUnit,
       updateSelectedTower,
-      addTowerCopy,
+      addTower,
       removeSelectedTower,
       setMirror,
       cloneMirror: cloneSelectedMirror,

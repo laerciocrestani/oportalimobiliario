@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react'
+import { PencilIcon } from 'lucide-react'
 import {
   clonePreview,
   addFloor,
@@ -63,83 +64,122 @@ function clampCount(value: number, min: number, max: number): number {
   return Math.min(max, value)
 }
 
-function StructureEditorSkeleton() {
+function StructureEditorSkeleton({
+  open: openProp,
+  onOpenChange,
+  showTrigger = true,
+}: {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  showTrigger?: boolean
+} = {}) {
   const { state, actions, meta } = useStructureEditor()
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = openProp ?? uncontrolledOpen
+
+  function setOpen(next: boolean) {
+    onOpenChange?.(next)
+
+    if (openProp === undefined) {
+      setUncontrolledOpen(next)
+    }
+  }
 
   function update(field: keyof SkeletonInput, min: number, max: number, raw: string) {
     actions.setSkeleton({ [field]: clampCount(Number(raw), min, max) })
   }
 
+  function generate() {
+    actions.generateSkeleton()
+    setOpen(false)
+  }
+
   return (
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle>Esqueleto do prédio</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <FieldGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {meta.singleTower ? null : (
+    <>
+      {showTrigger ? (
+        <Button type="button" variant="outline" className="ml-auto" onClick={() => setOpen(true)}>
+          <PencilIcon data-icon="inline-start" />
+          Esqueleto do prédio
+        </Button>
+      ) : null}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Esqueleto do prédio</DialogTitle>
+            <DialogDescription>
+              Defina andares, subsolos e unidades. Gerar esqueleto monta a estrutura a partir desses números.
+            </DialogDescription>
+          </DialogHeader>
+          <FieldGroup className="grid gap-4 sm:grid-cols-2">
+            {meta.singleTower ? null : (
+              <Field>
+                <FieldLabel htmlFor="structure-tower-count">Torres</FieldLabel>
+                <Input
+                  id="structure-tower-count"
+                  type="number"
+                  min={1}
+                  max={26}
+                  value={state.skeleton.towerCount}
+                  onChange={(event) => update('towerCount', 1, 26, event.target.value)}
+                />
+              </Field>
+            )}
             <Field>
-              <FieldLabel htmlFor="structure-tower-count">Torres</FieldLabel>
+              <FieldLabel htmlFor="structure-floors-above">Andares acima</FieldLabel>
               <Input
-                id="structure-tower-count"
+                id="structure-floors-above"
                 type="number"
-                min={1}
-                max={26}
-                value={state.skeleton.towerCount}
-                onChange={(event) => update('towerCount', 1, 26, event.target.value)}
+                min={0}
+                max={80}
+                value={state.skeleton.floorsAbove}
+                onChange={(event) => update('floorsAbove', 0, 80, event.target.value)}
               />
             </Field>
-          )}
-          <Field>
-            <FieldLabel htmlFor="structure-floors-above">Andares acima</FieldLabel>
-            <Input
-              id="structure-floors-above"
-              type="number"
-              min={0}
-              max={80}
-              value={state.skeleton.floorsAbove}
-              onChange={(event) => update('floorsAbove', 0, 80, event.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="structure-basements">Subsolos</FieldLabel>
-            <Input
-              id="structure-basements"
-              type="number"
-              min={0}
-              max={20}
-              value={state.skeleton.basementCount}
-              onChange={(event) => update('basementCount', 0, 20, event.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="structure-units-per-floor">Unidades por andar</FieldLabel>
-            <Input
-              id="structure-units-per-floor"
-              type="number"
-              min={1}
-              max={20}
-              value={state.skeleton.unitsPerFloor}
-              onChange={(event) => update('unitsPerFloor', 1, 20, event.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="structure-spots-per-basement">Vagas por subsolo</FieldLabel>
-            <Input
-              id="structure-spots-per-basement"
-              type="number"
-              min={1}
-              max={40}
-              value={state.skeleton.spotsPerBasement ?? state.skeleton.unitsPerFloor}
-              onChange={(event) => update('spotsPerBasement', 1, 40, event.target.value)}
-            />
-          </Field>
-        </FieldGroup>
-        <Button type="button" className="mt-4" onClick={actions.generateSkeleton}>
-          Gerar esqueleto
-        </Button>
-      </CardContent>
-    </Card>
+            <Field>
+              <FieldLabel htmlFor="structure-basements">Subsolos</FieldLabel>
+              <Input
+                id="structure-basements"
+                type="number"
+                min={0}
+                max={20}
+                value={state.skeleton.basementCount}
+                onChange={(event) => update('basementCount', 0, 20, event.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="structure-units-per-floor">Unidades por andar</FieldLabel>
+              <Input
+                id="structure-units-per-floor"
+                type="number"
+                min={1}
+                max={20}
+                value={state.skeleton.unitsPerFloor}
+                onChange={(event) => update('unitsPerFloor', 1, 20, event.target.value)}
+              />
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="structure-spots-per-basement">Vagas por subsolo</FieldLabel>
+              <Input
+                id="structure-spots-per-basement"
+                type="number"
+                min={1}
+                max={40}
+                value={state.skeleton.spotsPerBasement ?? state.skeleton.unitsPerFloor}
+                onChange={(event) => update('spotsPerBasement', 1, 40, event.target.value)}
+              />
+            </Field>
+          </FieldGroup>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={generate}>
+              Gerar esqueleto
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -165,77 +205,6 @@ function StructureEditorTowerTabs() {
         ))}
       </TabsList>
     </Tabs>
-  )
-}
-
-function StructureEditorFloorRow({
-  number,
-  kind,
-  customized,
-  unitCount,
-  model,
-  selected,
-  onSelect,
-}: {
-  number: number
-  kind: 'residential' | 'commercial' | 'garage' | 'hall'
-  customized: boolean
-  unitCount: number
-  model: boolean
-  selected: boolean
-  onSelect: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        'flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left [content-visibility:auto]',
-        selected ? 'border-primary ring-2 ring-primary/40' : 'border-border',
-      )}
-    >
-      <span className="flex min-w-0 flex-col">
-        <span className="font-medium">{floorLabel(number)}</span>
-        <span className="text-xs text-muted-foreground">
-          {unitCount} {kind === 'garage' ? 'vagas' : 'unidades'}
-        </span>
-      </span>
-      <span className="flex flex-wrap justify-end gap-1">
-        {model ? <Badge variant="default">Modelo</Badge> : null}
-        <Badge variant="secondary">{floorKindLabel(kind)}</Badge>
-        {customized ? <Badge variant="warning">Exceção</Badge> : null}
-      </span>
-    </button>
-  )
-}
-
-function StructureEditorFloorStack() {
-  const { state, actions, meta } = useStructureEditor()
-
-  if (!meta.selectedTower) {
-    return null
-  }
-
-  return (
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle>Pavimentos</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-2">
-        {floorsTopToBottom(meta.selectedTower.floors).map((floor) => (
-          <StructureEditorFloorRow
-            key={floor.number}
-            number={floor.number}
-            kind={floor.kind}
-            customized={floor.customized}
-            unitCount={floor.units.length}
-            model={meta.selectedTower.referenceFloor === floor.number}
-            selected={state.selectedFloorNumber === floor.number}
-            onSelect={() => actions.selectFloor(floor.number)}
-          />
-        ))}
-      </CardContent>
-    </Card>
   )
 }
 
@@ -790,33 +759,30 @@ function StructureEditorFloorWorkspace() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,18rem)_1fr]">
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-col gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="border-dashed"
-            disabled={!tower}
-            onClick={() => add('above')}
-          >
-            Adicionar pavimento
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={!tower}
-            onClick={() => add('basement')}
-          >
-            Adicionar subsolo
-          </Button>
-          <StructureEditorFloorStack />
-        </div>
+    <div className="flex min-w-0 flex-col gap-4">
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="border-dashed"
+          disabled={!tower}
+          onClick={() => add('above')}
+        >
+          Adicionar pavimento
+        </Button>
+        <Button type="button" variant="ghost" size="sm" disabled={!tower} onClick={() => add('basement')}>
+          Adicionar subsolo
+        </Button>
       </div>
-      <div className="flex min-w-0 flex-col gap-4">
-        {tower ? <FloorPerspective floors={tower.floors} /> : null}
-      <Card size="sm">
+      {tower ? (
+        <div className="grid items-start gap-4 lg:grid-cols-[22rem_minmax(0,1fr)]">
+          <FloorPerspective
+            className="lg:sticky lg:top-4"
+            floors={tower.floors}
+            selectedNumber={state.selectedFloorNumber}
+            onSelect={actions.selectFloor}
+          />
+          <Card size="sm">
         <CardHeader>
           <CardTitle>{floor ? floorLabel(floor.number) : 'Pavimento'}</CardTitle>
         </CardHeader>
@@ -895,7 +861,17 @@ function StructureEditorFloorWorkspace() {
           </div>
         </CardContent>
       </Card>
-      </div>
+        </div>
+      ) : (
+        <Card size="sm">
+          <CardHeader>
+            <CardTitle>Pavimento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">Gere o esqueleto e escolha um pavimento.</p>
+          </CardContent>
+        </Card>
+      )}
       <Dialog open={cloning} onOpenChange={setCloning}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
@@ -1011,9 +987,7 @@ export const StructureEditor = {
   Provider: StructureEditorProvider,
   Skeleton: StructureEditorSkeleton,
   TowerTabs: StructureEditorTowerTabs,
-  FloorStack: StructureEditorFloorStack,
   FloorWorkspace: StructureEditorFloorWorkspace,
-  FloorRow: StructureEditorFloorRow,
   MirrorPanel: StructureEditorMirrorPanel,
   UnitEditor: StructureEditorUnitEditor,
   GaragePanel: StructureEditorGaragePanel,

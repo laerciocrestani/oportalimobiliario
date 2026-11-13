@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  appendTower,
+  buildEntranceHall,
   buildSkeleton,
   cloneMirror,
   copyTowerFromPrevious,
+  DEFAULT_SKELETON,
   stacksFromBuilding,
   towerHasReference,
   markException,
@@ -50,6 +53,15 @@ describe('floor-stack', () => {
     expect(unitCode(0, 12)).toBe('L12')
     expect(unitCode(-1, 1)).toBe('S1-01')
     expect(unitCode(-2, 3)).toBe('S2-03')
+  })
+
+  it('starts with five floors, two basements, four units and ten spots', () => {
+    expect(DEFAULT_SKELETON).toMatchObject({
+      floorsAbove: 5,
+      basementCount: 2,
+      unitsPerFloor: 4,
+      spotsPerBasement: 10,
+    })
   })
 
   it('builds a skeleton with garage basements, ground shops and residential floors', () => {
@@ -124,6 +136,54 @@ describe('floor-stack', () => {
     expect(towerHasReference([{ status: 'available' }])).toBe(false)
     expect(towerHasReference([{ status: 'sold' }])).toBe(true)
     expect(towerHasReference([{ status: 'available', reservation: { id: 1 } }])).toBe(true)
+  })
+
+  it('appends a named clone or a fresh tower from the skeleton', () => {
+    const source = withUnits(
+      buildSkeleton({ towerCount: 1, floorsAbove: 1, basementCount: 0, unitsPerFloor: 1 })[0],
+      1,
+      [{ areaM2: '88' }],
+    )
+    source.id = 'tower-1'
+    source.name = 'Torre A'
+    const sourceUnitKey = floor(source, 1).units[0].key
+
+    const cloned = appendTower([source], { name: '  Torre Norte  ', source, skeleton: DEFAULT_SKELETON })
+
+    expect(cloned).toHaveLength(2)
+    expect(cloned[0]).toBe(source)
+    expect(cloned[1].name).toBe('Torre Norte')
+    expect(cloned[1].id).toBeUndefined()
+    expect(floor(cloned[1], 1).units[0].areaM2).toBe('88')
+    expect(floor(cloned[1], 1).units[0].key).not.toBe(sourceUnitKey)
+
+    const fresh = appendTower([source], {
+      name: 'Torre Sul',
+      skeleton: { ...DEFAULT_SKELETON, floorsAbove: 2, basementCount: 0, unitsPerFloor: 1 },
+    })
+
+    expect(fresh[1].name).toBe('Torre Sul')
+    expect(fresh[1].floors.map((item) => item.number)).toEqual([0, 1, 2])
+    expect(floor(fresh[1], 1).units[0].areaM2).toBe('')
+
+    const unchanged = [source]
+    expect(appendTower(unchanged, { name: '   ', skeleton: DEFAULT_SKELETON })).toBe(unchanged)
+  })
+
+  it('builds a tower with only the entrance hall', () => {
+    const tower = buildEntranceHall()
+
+    expect(tower.name).toBe('Torre A')
+    expect(tower.id).toBeUndefined()
+    expect(tower.referenceFloor).toBe(0)
+    expect(tower.floors).toEqual([
+      {
+        number: 0,
+        kind: 'hall',
+        customized: false,
+        units: [],
+      },
+    ])
   })
 
   it('clones the mirror floor to a range above without touching other kinds', () => {

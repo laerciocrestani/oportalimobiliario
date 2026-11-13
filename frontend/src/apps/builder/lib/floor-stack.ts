@@ -121,14 +121,14 @@ export function isTopFloor(floors: Array<{ number: number }>, number: number): b
   return number > 0 && number === highest
 }
 
-export const DEFAULT_UNITS_PER_FLOOR = 4
+export const DEFAULT_UNITS_PER_FLOOR = 1
 
 export const DEFAULT_SKELETON: SkeletonInput = {
   towerCount: 1,
   floorsAbove: 5,
   basementCount: 2,
   unitsPerFloor: DEFAULT_UNITS_PER_FLOOR,
-  spotsPerBasement: 10,
+  spotsPerBasement: 1,
 }
 
 export function unitCode(floorNumber: number, position: number): string {

@@ -108,7 +108,7 @@ function StructureEditorSkeleton({
           <DialogHeader>
             <DialogTitle>Esqueleto do prédio</DialogTitle>
             <DialogDescription>
-              Defina andares, subsolos e unidades. Gerar esqueleto monta a estrutura a partir desses números.
+              Informe a quantidade de pavimentos e de subsolos. Cada pavimento nasce com uma unidade.
             </DialogDescription>
           </DialogHeader>
           <FieldGroup className="grid gap-4 sm:grid-cols-2">
@@ -126,7 +126,7 @@ function StructureEditorSkeleton({
               </Field>
             )}
             <Field>
-              <FieldLabel htmlFor="structure-floors-above">Andares acima</FieldLabel>
+              <FieldLabel htmlFor="structure-floors-above">Qtd pavimentos</FieldLabel>
               <Input
                 id="structure-floors-above"
                 type="number"
@@ -137,7 +137,7 @@ function StructureEditorSkeleton({
               />
             </Field>
             <Field>
-              <FieldLabel htmlFor="structure-basements">Subsolos</FieldLabel>
+              <FieldLabel htmlFor="structure-basements">Qtd subsolos</FieldLabel>
               <Input
                 id="structure-basements"
                 type="number"
@@ -145,28 +145,6 @@ function StructureEditorSkeleton({
                 max={20}
                 value={state.skeleton.basementCount}
                 onChange={(event) => update('basementCount', 0, 20, event.target.value)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="structure-units-per-floor">Unidades por andar</FieldLabel>
-              <Input
-                id="structure-units-per-floor"
-                type="number"
-                min={1}
-                max={20}
-                value={state.skeleton.unitsPerFloor}
-                onChange={(event) => update('unitsPerFloor', 1, 20, event.target.value)}
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="structure-spots-per-basement">Vagas por subsolo</FieldLabel>
-              <Input
-                id="structure-spots-per-basement"
-                type="number"
-                min={1}
-                max={40}
-                value={state.skeleton.spotsPerBasement ?? state.skeleton.unitsPerFloor}
-                onChange={(event) => update('spotsPerBasement', 1, 40, event.target.value)}
               />
             </Field>
           </FieldGroup>
@@ -492,6 +470,14 @@ function StructureEditorGaragePanel() {
       ))}
     </div>
   )
+}
+
+function floorUnitCountLabel(kind: FloorKind, count: number): string {
+  if (kind === 'garage') {
+    return count === 1 ? '1 vaga' : `${count} vagas`
+  }
+
+  return count === 1 ? '1 unidade' : `${count} unidades`
 }
 
 function unitTypeLabel(kind: FloorKind, unitType?: FloorUnitType | null): string {
@@ -820,8 +806,7 @@ function StructureEditorFloorWorkspace({
         <CardContent className="flex flex-col gap-4">
           {floor ? (
             <p className="text-sm text-muted-foreground">
-              {floorKindLabel(floor.kind)} · {floor.units.length}{' '}
-              {floor.kind === 'garage' ? 'vagas' : 'unidades'}
+              {floorKindLabel(floor.kind)} · {floorUnitCountLabel(floor.kind, floor.units.length)}
               {floor.customized ? ' · exceção' : ''}
               {tower?.referenceFloor === floor.number ? ' · pavimento-modelo' : ''}
             </p>

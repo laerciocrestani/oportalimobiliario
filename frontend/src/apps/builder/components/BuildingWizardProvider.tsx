@@ -171,7 +171,14 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
   }
 
   function generateSkeleton() {
-    const next = buildSkeleton({ ...skeleton, towerCount: 1 })
+    const input: SkeletonInput = {
+      ...skeleton,
+      towerCount: 1,
+      unitsPerFloor: 1,
+      spotsPerBasement: 1,
+    }
+    setSkeletonState(input)
+    const next = buildSkeleton(input)
     setStackTowers(next)
     setSelectedTowerIndex(0)
     setSelectedFloor(preferredFloorNumber(next))

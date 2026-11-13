@@ -44,7 +44,9 @@ function StructureEditorHarness({ initialTowers = [] }: { initialTowers?: StackT
       actions={{
         setSkeleton: (patch) => setSkeleton((current) => ({ ...current, ...patch })),
         generateSkeleton: () => {
-          const next = buildSkeleton(skeleton)
+          const input = { ...skeleton, unitsPerFloor: 1, spotsPerBasement: 1 }
+          setSkeleton(input)
+          const next = buildSkeleton(input)
           setTowers(next)
           setSelectedTowerIndex(0)
           setSelectedFloorNumber(next[0]?.floors.find((floor) => floor.kind === 'residential')?.number ?? next[0]?.floors[0]?.number ?? null)
@@ -96,6 +98,12 @@ describe('StructureEditor', () => {
     render(<StructureEditorHarness />)
 
     await user.click(screen.getByRole('button', { name: 'Esqueleto do prédio' }))
+
+    expect(screen.getByLabelText('Qtd pavimentos')).toHaveValue(3)
+    expect(screen.getByLabelText('Qtd subsolos')).toHaveValue(1)
+    expect(screen.queryByLabelText('Unidades por andar')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Vagas por subsolo')).not.toBeInTheDocument()
+
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
 
     expect(screen.getByRole('tab', { name: 'Torre A' })).toBeInTheDocument()
@@ -105,6 +113,8 @@ describe('StructureEditor', () => {
     expect(screen.getByRole('button', { name: /1 pavimento \(térreo\)/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Subsolo 1/ })).toBeInTheDocument()
     expect(screen.getByRole('cell', { name: '201' })).toBeInTheDocument()
+    expect(screen.queryByRole('cell', { name: '202' })).not.toBeInTheDocument()
+    expect(screen.getByText(/Residencial · 1 unidade/)).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Editar' })).not.toBeInTheDocument()
   })
 
@@ -148,7 +158,7 @@ describe('StructureEditor', () => {
     await user.click(screen.getByRole('button', { name: /2º pavimento/ }))
     await user.type(screen.getByLabelText('Área privativa 201 (m²)'), '61')
 
-    expect(screen.getByText(/Residencial · 2 unidades · exceção/)).toBeInTheDocument()
+    expect(screen.getByText(/Residencial · 1 unidade · exceção/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '3º pavimento' })).not.toHaveTextContent('Exceção')
   })
 
@@ -166,7 +176,7 @@ describe('StructureEditor', () => {
 
     await user.click(screen.getByRole('button', { name: /^Clonar$/ }))
 
-    expect(screen.getByText(/Residencial · 2 unidades · exceção/)).toBeInTheDocument()
+    expect(screen.getByText(/Residencial · 1 unidade · exceção/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '4º pavimento' })).not.toHaveTextContent('Exceção')
     expect(screen.getByLabelText('Área privativa 301 (m²)')).toHaveValue('61')
 
@@ -182,7 +192,7 @@ describe('StructureEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: /Subsolo 1/ }))
 
-    expect(screen.getByText(/Garagem · 2 vagas/)).toBeInTheDocument()
+    expect(screen.getByText(/Garagem · 1 vaga/)).toBeInTheDocument()
     expect(screen.queryByLabelText('Dormitórios S1-01')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Área privativa S1-01 (m²)')).not.toBeInTheDocument()
 
@@ -191,7 +201,7 @@ describe('StructureEditor', () => {
 
     expect(screen.getByLabelText('Área S1-01 (m²)')).toHaveValue('12.5')
     expect(screen.getByLabelText('Valor-base INCC S1-01')).toHaveValue('45000')
-    expect(screen.getByText(/Garagem · 2 vagas · exceção/)).toBeInTheDocument()
+    expect(screen.getByText(/Garagem · 1 vaga · exceção/)).toBeInTheDocument()
   })
 
   it('selects another tower and floor in the stack', async () => {

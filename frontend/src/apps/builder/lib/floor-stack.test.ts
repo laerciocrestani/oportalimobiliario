@@ -58,12 +58,12 @@ describe('floor-stack', () => {
     expect(unitCode(-2, 3)).toBe('S2-03')
   })
 
-  it('starts with five floors, two basements, four units and ten spots', () => {
+  it('starts with five floors, two basements and one unit per floor', () => {
     expect(DEFAULT_SKELETON).toMatchObject({
       floorsAbove: 5,
       basementCount: 2,
-      unitsPerFloor: 4,
-      spotsPerBasement: 10,
+      unitsPerFloor: 1,
+      spotsPerBasement: 1,
     })
   })
 

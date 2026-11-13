@@ -196,7 +196,7 @@ it('replaces structure with ground floor, garage basements and reference floor',
                     ['number' => -1, 'kind' => 'garage'],
                     ['number' => 0, 'kind' => 'commercial'],
                     ['number' => 1, 'kind' => 'residential'],
-                    ['number' => 2, 'kind' => 'residential'],
+                    ['number' => 2, 'kind' => 'residential', 'unit_type' => 'penthouse'],
                 ],
             ],
         ],
@@ -212,7 +212,8 @@ it('replaces structure with ground floor, garage basements and reference floor',
         ->assertJsonPath('towers.0.floors.2.number', 0)
         ->assertJsonPath('towers.0.floors.2.kind', 'commercial')
         ->assertJsonPath('towers.0.floors.3.number', 1)
-        ->assertJsonPath('towers.0.floors.3.kind', 'residential');
+        ->assertJsonPath('towers.0.floors.3.kind', 'residential')
+        ->assertJsonPath('towers.0.floors.4.unit_type', 'penthouse');
 
     $tower = Tower::query()->where('building_id', $building->id)->first();
 
@@ -245,7 +246,7 @@ it('rejects duplicate floor numbers in a tower', function () {
         ->assertJsonValidationErrors(['towers.0.floors.1.number']);
 });
 
-it('rejects garage floors that are not negative', function () {
+it('accepts a garage floor above the hall', function () {
     $tenant = Tenant::factory()->create();
     $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
     $building = Building::factory()->for($tenant)->create(['published' => false]);
@@ -257,13 +258,20 @@ it('rejects garage floors that are not negative', function () {
             [
                 'name' => 'Torre A',
                 'floors' => [
-                    ['number' => 1, 'kind' => 'garage'],
+                    ['number' => -2, 'kind' => 'garage'],
+                    ['number' => -1, 'kind' => 'garage'],
+                    ['number' => 1, 'kind' => 'hall'],
+                    ['number' => 2, 'kind' => 'garage'],
                 ],
             ],
         ],
     ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['towers.0.floors.0.kind']);
+        ->assertOk()
+        ->assertJsonPath('towers.0.floors.0.kind', 'garage')
+        ->assertJsonPath('towers.0.floors.1.kind', 'garage')
+        ->assertJsonPath('towers.0.floors.2.kind', 'hall')
+        ->assertJsonPath('towers.0.floors.3.number', 2)
+        ->assertJsonPath('towers.0.floors.3.kind', 'garage');
 });
 
 it('rejects negative floors that are not garage', function () {

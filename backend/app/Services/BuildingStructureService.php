@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\FloorKind;
+use App\Enums\FloorUnitType;
 use App\Enums\UnitStatus;
 use App\Models\Building;
 use App\Models\Floor;
@@ -111,12 +112,6 @@ class BuildingStructureService
 
                 $numbers[$number] = true;
 
-                if ($kind === FloorKind::Garage && $number >= 0) {
-                    throw ValidationException::withMessages([
-                        "towers.{$towerIndex}.floors.{$floorIndex}.kind" => 'Garage floors must have a negative number.',
-                    ]);
-                }
-
                 if ($number < 0 && $kind !== FloorKind::Garage) {
                     throw ValidationException::withMessages([
                         "towers.{$towerIndex}.floors.{$floorIndex}.kind" => 'Negative floors must be garage.',
@@ -205,16 +200,21 @@ class BuildingStructureService
     }
 
     /**
-     * @param  array{number: int, kind: string|FloorKind}  $floorData
-     * @return array{number: int, kind: FloorKind}
+     * @param  array{number: int, kind: string|FloorKind, unit_type?: string|FloorUnitType|null}  $floorData
+     * @return array{number: int, kind: FloorKind, unit_type: ?string}
      */
     private function floorAttributes(array $floorData): array
     {
+        $unitType = $floorData['unit_type'] ?? null;
+
         return [
             'number' => (int) $floorData['number'],
             'kind' => $floorData['kind'] instanceof FloorKind
                 ? $floorData['kind']
                 : FloorKind::from($floorData['kind']),
+            'unit_type' => $unitType instanceof FloorUnitType
+                ? $unitType->value
+                : ($unitType === null || $unitType === '' ? null : FloorUnitType::from((string) $unitType)->value),
         ];
     }
 
@@ -256,7 +256,10 @@ class BuildingStructureService
             $current = $existing->get($attributes['number']);
 
             if ($current instanceof Floor) {
-                $current->update(['kind' => $attributes['kind']]);
+                $current->update([
+                    'kind' => $attributes['kind'],
+                    'unit_type' => $attributes['unit_type'],
+                ]);
 
                 continue;
             }

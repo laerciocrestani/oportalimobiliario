@@ -9,12 +9,12 @@ import {
   WarehouseIcon,
   type LucideIcon,
 } from 'lucide-react'
-import { addFloor, floorKindLabel, floorsTopToBottom, type StackFloor } from '@/apps/builder/lib/floor-stack'
+import { addFloor, floorKindLabel, floorLabel, floorPurposeOptions, floorUnitTypeLabel, floorUnitTypeOptions, floorsTopToBottom, isTopFloor, setFloorPurpose, setFloorUnitType, type StackFloor, type StackUnit } from '@/apps/builder/lib/floor-stack'
 import { unitStatusLabels, type UnitStatus } from '@/apps/builder/lib/unit-status'
 import { useStructureEditor } from '@/apps/builder/components/structure-editor-context'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardAction, CardContent, CardDescription, CardHeader } from '@/components/ui/card'
+import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,8 +25,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Progress } from '@/components/ui/progress'
-import { Separator } from '@/components/ui/separator'
-import type { FloorKind } from '@/lib/api'
+import type { FloorKind, FloorUnitType } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
 type FloorFilter = 'all' | FloorKind
@@ -38,18 +37,6 @@ const FILTERS: { value: FloorFilter; label: string }[] = [
   { value: 'hall', label: 'Hall' },
   { value: 'garage', label: 'Garagem' },
 ]
-
-function pavementTitle(number: number): string {
-  if (number > 0) {
-    return `${number}º pavimento`
-  }
-
-  if (number === 0) {
-    return 'Térreo'
-  }
-
-  return `Subsolo ${Math.abs(number)}`
-}
 
 function unitNoun(kind: FloorKind, count: number): string {
   if (kind === 'garage') {
@@ -89,6 +76,17 @@ function statusLabel(status: string | undefined): string {
   }
 
   return 'Ocupada'
+}
+
+function formatArea(value: string): string {
+  const normalized = value.trim().replace(',', '.')
+  const amount = Number(normalized)
+
+  if (normalized === '' || !Number.isFinite(amount)) {
+    return '—'
+  }
+
+  return `${amount.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} m²`
 }
 
 function floorOccupancy(floor: StackFloor): { occupied: number; available: number; percent: number } {
@@ -200,6 +198,7 @@ export function StructureFloorMap({
                 <FloorRow
                   key={item.number}
                   floor={item}
+                  top={isTopFloor(floors, item.number)}
                   selected={floor?.number === item.number}
                   share={floorOccupancy(item).percent}
                   onSelect={() => actions.selectFloor(item.number)}
@@ -215,7 +214,7 @@ export function StructureFloorMap({
             <CardAction>
               <Badge>{floor ? floor.number : '—'}</Badge>
             </CardAction>
-            <p className="text-xl font-semibold">{floor ? pavementTitle(floor.number) : 'Pavimento'}</p>
+            <p className="text-xl font-semibold">{floor ? floorLabel(floor.number) : 'Pavimento'}</p>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             {floor ? (
@@ -237,27 +236,6 @@ export function StructureFloorMap({
                     {tower?.referenceFloor === floor.number ? ' · pavimento-modelo' : ''}
                   </p>
                 </div>
-                <Separator />
-                <div className="flex items-center justify-between gap-3">
-                  <p className="text-sm font-medium">Unidades neste pavimento</p>
-                </div>
-                {floor.units.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    {floor.kind === 'hall' ? 'Hall não tem unidades privadas.' : 'Nenhuma unidade neste pavimento.'}
-                  </p>
-                ) : (
-                  <div className="flex max-h-80 flex-col gap-2 overflow-y-auto">
-                    {floor.units.map((unit) => (
-                      <div key={unit.key} className="flex items-center gap-3 rounded-lg px-1 py-1.5">
-                        <span className="flex size-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                          <Building2Icon />
-                        </span>
-                        <span className="min-w-0 flex-1 truncate text-sm font-medium">Unidade {unit.code}</span>
-                        <Badge variant={isTaken(unit.status) ? 'default' : 'secondary'}>{statusLabel(unit.status)}</Badge>
-                      </div>
-                    ))}
-                  </div>
-                )}
                 <Button
                   type="button"
                   variant="link"
@@ -288,53 +266,170 @@ function FloorStat({ label, value }: { label: string; value: number }) {
 
 function FloorRow({
   floor,
+  top,
   selected,
   share,
   onSelect,
 }: {
   floor: StackFloor
+  top: boolean
   selected: boolean
   share: number
   onSelect: () => void
 }) {
+  const { actions, meta } = useStructureEditor()
+  const tower = meta.selectedTower
   const Icon = floorIcon(floor.kind)
+  const purposes = floor.number > 0 ? floorPurposeOptions(floor.number, tower?.floors ?? []) : []
+  const types = floorUnitTypeOptions(floor.kind, top)
+  const typeLabel =
+    floor.kind === 'hall'
+      ? 'Hall'
+      : floor.unitType
+        ? floorUnitTypeLabel(floor.unitType)
+        : floor.kind === 'commercial'
+          ? 'Loja'
+          : 'Apartamento'
+
+  function choosePurpose(kind: 'hall' | 'residential' | 'commercial' | 'garage') {
+    if (!tower) {
+      return
+    }
+
+    actions.updateTower(setFloorPurpose(tower, floor.number, kind))
+  }
+
+  function chooseType(unitType: FloorUnitType) {
+    if (!tower) {
+      return
+    }
+
+    actions.updateTower(setFloorUnitType(tower, floor.number, unitType))
+  }
+
+  const unitsId = `floor-units-${floor.number}`
 
   return (
-    <button
-      type="button"
-      aria-pressed={selected}
-      onClick={onSelect}
-      className={cn(
-        'flex w-full items-center gap-3 rounded-lg px-2 py-3 text-left',
-        selected ? 'bg-accent' : 'hover:bg-muted',
-      )}
-    >
-      <span className="flex w-14 shrink-0 flex-col items-center gap-1">
-        <span className="flex items-center gap-1">
-          <span className="flex size-8 items-center justify-center rounded-md bg-muted text-primary">
-            <Icon className="size-4" />
+    <div className={cn('flex w-full flex-col rounded-lg', selected ? 'bg-accent' : 'hover:bg-muted')}>
+      <div className="flex w-full items-center gap-3 px-2 py-3">
+      <button
+        type="button"
+        aria-pressed={selected}
+        aria-expanded={selected}
+        aria-controls={unitsId}
+        onClick={onSelect}
+        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+      >
+        <span className="flex w-14 shrink-0 flex-col items-center gap-1">
+          <span className="flex items-center gap-1">
+            <span className="flex size-8 items-center justify-center rounded-md bg-muted text-primary">
+              <Icon className="size-4" />
+            </span>
+            <span
+              className={cn(
+                'flex size-6 items-center justify-center rounded-full text-xs font-medium',
+                selected ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground ring-1 ring-foreground/15',
+              )}
+            >
+              {floor.number}
+            </span>
           </span>
-          <span
-            className={cn(
-              'flex size-6 items-center justify-center rounded-full text-xs font-medium',
-              selected ? 'bg-primary text-primary-foreground' : 'bg-background text-foreground ring-1 ring-foreground/15',
-            )}
-          >
-            {floor.number}
-          </span>
+          <span className="text-xs text-muted-foreground tabular-nums">{share}%</span>
         </span>
-        <span className="text-xs text-muted-foreground tabular-nums">{share}%</span>
-      </span>
-      <span className="flex min-w-0 flex-1 flex-col gap-2">
-        <span className="flex items-baseline justify-between gap-3">
-          <span className="truncate text-sm font-medium">{pavementTitle(floor.number)}</span>
-          <span className="shrink-0 text-sm text-muted-foreground">
-            {floor.units.length} {unitNoun(floor.kind, floor.units.length)}
+        <span className="flex min-w-0 flex-1 flex-col gap-2">
+          <span className="flex items-baseline justify-between gap-3">
+            <span className="truncate text-sm font-medium">{floorLabel(floor.number)}</span>
+            <span className="shrink-0 text-sm text-muted-foreground">
+              {floor.units.length} {unitNoun(floor.kind, floor.units.length)}
+            </span>
           </span>
+          <Progress value={share} />
         </span>
-        <Progress value={share} />
-      </span>
+      </button>
+      {purposes.length > 0 ? (
+        <span className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button type="button" variant="outline" size="sm" aria-label={`Finalidade do pavimento ${floor.number}`} />
+              }
+            >
+              {floorKindLabel(floor.kind)}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>Finalidade</DropdownMenuLabel>
+                {purposes.map((kind) => (
+                  <DropdownMenuItem key={kind} onClick={() => choosePurpose(kind)}>
+                    {floorKindLabel(kind)}
+                    {floor.kind === kind ? <CheckIcon className="ml-auto" /> : null}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          {types.length > 0 ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button type="button" variant="outline" size="sm" aria-label={`Tipo do pavimento ${floor.number}`} />
+                }
+              >
+                {typeLabel}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuGroup>
+                  <DropdownMenuLabel>Tipo</DropdownMenuLabel>
+                  {types.map((unitType) => (
+                    <DropdownMenuItem key={unitType} onClick={() => chooseType(unitType)}>
+                      {floorUnitTypeLabel(unitType)}
+                      {floor.unitType === unitType ? <CheckIcon className="ml-auto" /> : null}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : floor.kind === 'hall' ? (
+            <Button type="button" variant="outline" size="sm" disabled>
+              Hall
+            </Button>
+          ) : null}
+        </span>
+      ) : null}
       {selected ? <CheckIcon className="size-4 shrink-0 text-primary" /> : <span className="size-4 shrink-0" />}
-    </button>
+      </div>
+      <div
+        className={cn(
+          'grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none',
+          selected ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+        )}
+      >
+        <div className="overflow-hidden" inert={selected ? undefined : true} aria-hidden={selected ? undefined : true}>
+          <div id={unitsId} className="flex flex-wrap gap-2 px-2 pb-3">
+            {floor.units.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {floor.kind === 'hall' ? 'Hall não tem unidades privadas.' : 'Nenhuma unidade neste pavimento.'}
+              </p>
+            ) : (
+              floor.units.map((unit) => <UnitMiniCard key={unit.key} unit={unit} />)
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function UnitMiniCard({ unit }: { unit: StackUnit }) {
+  return (
+    <Card size="sm" className="w-fit shrink-0">
+      <CardHeader>
+        <CardTitle className="tabular-nums">{unit.code}</CardTitle>
+        <CardDescription className="tabular-nums">{formatArea(unit.areaM2)}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Badge variant={isTaken(unit.status) ? 'default' : 'secondary'}>{statusLabel(unit.status)}</Badge>
+      </CardContent>
+    </Card>
   )
 }

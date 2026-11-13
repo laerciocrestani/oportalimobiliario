@@ -6,6 +6,7 @@ import {
   cloneMirror,
   copyTowerFromPrevious,
   DEFAULT_SKELETON,
+  floorPurposeOptions,
   stacksFromBuilding,
   towerHasReference,
   markException,
@@ -74,17 +75,17 @@ describe('floor-stack', () => {
     })
 
     expect(tower.name).toBe('Torre A')
-    expect(tower.referenceFloor).toBe(1)
+    expect(tower.referenceFloor).toBe(2)
     expect(tower.floors.map((item) => [item.number, item.kind, item.customized, item.units.length])).toEqual([
       [-2, 'garage', false, 3],
       [-1, 'garage', false, 3],
-      [0, 'commercial', false, 2],
-      [1, 'residential', false, 2],
+      [1, 'hall', false, 0],
       [2, 'residential', false, 2],
       [3, 'residential', false, 2],
+      [4, 'residential', false, 2],
     ])
-    expect(floor(tower, 1).units.map((unit) => unit.code)).toEqual(['101', '102'])
-    expect(floor(tower, 0).units.map((unit) => unit.code)).toEqual(['L01', 'L02'])
+    expect(floor(tower, 2).units.map((unit) => unit.code)).toEqual(['201', '202'])
+    expect(floor(tower, 1).units).toEqual([])
     expect(floor(tower, -1).units.map((unit) => unit.code)).toEqual(['S1-01', 'S1-02', 'S1-03'])
   })
 
@@ -97,10 +98,10 @@ describe('floor-stack', () => {
     })
 
     expect(mirrorDraftFromTower(tower)).toEqual({
-      referenceNumber: 1,
+      referenceNumber: 2,
       direction: 'up',
-      from: 2,
-      to: 3,
+      from: 3,
+      to: 4,
     })
     expect(mirrorDraftFromTower({ ...tower, referenceFloor: -1 })).toEqual({
       referenceNumber: -1,
@@ -129,8 +130,8 @@ describe('floor-stack', () => {
     expect(copy.name).toBe('Torre B')
     expect(copy.id).toBeUndefined()
     expect(copy.floors).toHaveLength(source.floors.length)
-    expect(copy.floors[0].units[0].key).not.toBe(source.floors[0].units[0].key)
-    expect(copy.floors[0].units[0].code).toBe(source.floors[0].units[0].code)
+    expect(floor(copy, 2).units[0].key).not.toBe(floor(source, 2).units[0].key)
+    expect(floor(copy, 2).units[0].code).toBe(floor(source, 2).units[0].code)
     expect(structurePayload([source, copy]).towers[0].id).toBe('tower-1')
     expect(structurePayload([source, copy]).towers[1].id).toBeUndefined()
     expect(towerHasReference([{ status: 'available' }])).toBe(false)
@@ -141,12 +142,12 @@ describe('floor-stack', () => {
   it('appends a named clone or a fresh tower from the skeleton', () => {
     const source = withUnits(
       buildSkeleton({ towerCount: 1, floorsAbove: 1, basementCount: 0, unitsPerFloor: 1 })[0],
-      1,
+      2,
       [{ areaM2: '88' }],
     )
     source.id = 'tower-1'
     source.name = 'Torre A'
-    const sourceUnitKey = floor(source, 1).units[0].key
+    const sourceUnitKey = floor(source, 2).units[0].key
 
     const cloned = appendTower([source], { name: '  Torre Norte  ', source, skeleton: DEFAULT_SKELETON })
 
@@ -154,8 +155,8 @@ describe('floor-stack', () => {
     expect(cloned[0]).toBe(source)
     expect(cloned[1].name).toBe('Torre Norte')
     expect(cloned[1].id).toBeUndefined()
-    expect(floor(cloned[1], 1).units[0].areaM2).toBe('88')
-    expect(floor(cloned[1], 1).units[0].key).not.toBe(sourceUnitKey)
+    expect(floor(cloned[1], 2).units[0].areaM2).toBe('88')
+    expect(floor(cloned[1], 2).units[0].key).not.toBe(sourceUnitKey)
 
     const fresh = appendTower([source], {
       name: 'Torre Sul',
@@ -163,11 +164,25 @@ describe('floor-stack', () => {
     })
 
     expect(fresh[1].name).toBe('Torre Sul')
-    expect(fresh[1].floors.map((item) => item.number)).toEqual([0, 1, 2])
-    expect(floor(fresh[1], 1).units[0].areaM2).toBe('')
+    expect(fresh[1].floors.map((item) => item.number)).toEqual([1, 2, 3])
+    expect(floor(fresh[1], 2).units[0].areaM2).toBe('')
 
     const unchanged = [source]
     expect(appendTower(unchanged, { name: '   ', skeleton: DEFAULT_SKELETON })).toBe(unchanged)
+  })
+
+  it('offers garage on the floor directly above the hall', () => {
+    const floors = [
+      { number: -2, kind: 'garage' as const },
+      { number: -1, kind: 'garage' as const },
+      { number: 1, kind: 'hall' as const },
+      { number: 2, kind: 'residential' as const },
+      { number: 3, kind: 'residential' as const },
+    ]
+
+    expect(floorPurposeOptions(1, floors)).toEqual(['hall', 'residential', 'commercial'])
+    expect(floorPurposeOptions(2, floors)).toEqual(['residential', 'commercial', 'garage'])
+    expect(floorPurposeOptions(3, floors)).toEqual(['residential', 'commercial'])
   })
 
   it('builds a tower with only the entrance hall', () => {
@@ -175,10 +190,10 @@ describe('floor-stack', () => {
 
     expect(tower.name).toBe('Torre A')
     expect(tower.id).toBeUndefined()
-    expect(tower.referenceFloor).toBe(0)
+    expect(tower.referenceFloor).toBe(1)
     expect(tower.floors).toEqual([
       {
-        number: 0,
+        number: 1,
         kind: 'hall',
         customized: false,
         units: [],
@@ -189,59 +204,59 @@ describe('floor-stack', () => {
   it('clones the mirror floor to a range above without touching other kinds', () => {
     const source = withUnits(
       buildSkeleton({ towerCount: 1, floorsAbove: 4, basementCount: 1, unitsPerFloor: 2 })[0],
-      1,
+      2,
       [
         { areaM2: '50', bedrooms: '2', bathrooms: '1', priceBase: '320000', priceCompetence: '2026-08' },
         { areaM2: '44.9', bedrooms: '1', bathrooms: '1', priceBase: '280000', priceCompetence: '2026-08' },
       ],
     )
-    const cloned = cloneMirror(source, 1, { direction: 'up', from: 2, to: 4 })
+    const cloned = cloneMirror(source, 2, { direction: 'up', from: 3, to: 5 })
 
-    expect(cloned.referenceFloor).toBe(1)
-    expect(floor(cloned, 2).units.map((unit) => [unit.code, unit.areaM2, unit.bedrooms])).toEqual([
-      ['201', '50', '2'],
-      ['202', '44.9', '1'],
+    expect(cloned.referenceFloor).toBe(2)
+    expect(floor(cloned, 3).units.map((unit) => [unit.code, unit.areaM2, unit.bedrooms])).toEqual([
+      ['301', '50', '2'],
+      ['302', '44.9', '1'],
     ])
-    expect(floor(cloned, 4).units.map((unit) => unit.code)).toEqual(['401', '402'])
-    expect(floor(cloned, 0).units.map((unit) => unit.code)).toEqual(['L01', 'L02'])
+    expect(floor(cloned, 5).units.map((unit) => unit.code)).toEqual(['501', '502'])
+    expect(floor(cloned, 1).units).toEqual([])
     expect(floor(cloned, -1).units.map((unit) => unit.code)).toEqual(['S1-01', 'S1-02'])
-    expect(floor(source, 2).units[0].areaM2).toBe('')
+    expect(floor(source, 3).units[0].areaM2).toBe('')
   })
 
   it('clones the mirror floor to a range below', () => {
     const source = withUnits(
       buildSkeleton({ towerCount: 1, floorsAbove: 4, basementCount: 0, unitsPerFloor: 1 })[0],
-      4,
+      5,
       [{ areaM2: '72.5', bedrooms: '3', bathrooms: '2' }],
     )
-    const cloned = cloneMirror(source, 4, { direction: 'down', from: 2, to: 3 })
+    const cloned = cloneMirror(source, 5, { direction: 'down', from: 3, to: 4 })
 
-    expect(floor(cloned, 3).units[0]).toMatchObject({ code: '301', areaM2: '72.5', bedrooms: '3' })
-    expect(floor(cloned, 2).units[0]).toMatchObject({ code: '201', areaM2: '72.5' })
-    expect(floor(cloned, 1).units[0].areaM2).toBe('')
+    expect(floor(cloned, 4).units[0]).toMatchObject({ code: '401', areaM2: '72.5', bedrooms: '3' })
+    expect(floor(cloned, 3).units[0]).toMatchObject({ code: '301', areaM2: '72.5' })
+    expect(floor(cloned, 2).units[0].areaM2).toBe('')
   })
 
   it('preserves customized floors when recloning the same range', () => {
     const source = withUnits(
       buildSkeleton({ towerCount: 1, floorsAbove: 3, basementCount: 0, unitsPerFloor: 1 })[0],
-      1,
+      2,
       [{ areaM2: '50' }],
     )
-    const first = cloneMirror(source, 1, { direction: 'up', from: 2, to: 3 })
+    const first = cloneMirror(source, 2, { direction: 'up', from: 3, to: 4 })
     const exceptional = markException(
-      withUnits(first, 2, [{ areaM2: '61', bedrooms: '3' }]),
-      2,
+      withUnits(first, 3, [{ areaM2: '61', bedrooms: '3' }]),
+      3,
     )
     const recloned = cloneMirror(
-      withUnits(exceptional, 1, [{ areaM2: '55' }]),
-      1,
-      { direction: 'up', from: 2, to: 3 },
+      withUnits(exceptional, 2, [{ areaM2: '55' }]),
+      2,
+      { direction: 'up', from: 3, to: 4 },
     )
 
-    expect(floor(recloned, 2)).toMatchObject({ customized: true })
-    expect(floor(recloned, 2).units[0]).toMatchObject({ code: '201', areaM2: '61', bedrooms: '3' })
-    expect(floor(recloned, 3).customized).toBe(false)
-    expect(floor(recloned, 3).units[0]).toMatchObject({ code: '301', areaM2: '55' })
+    expect(floor(recloned, 3)).toMatchObject({ customized: true })
+    expect(floor(recloned, 3).units[0]).toMatchObject({ code: '301', areaM2: '61', bedrooms: '3' })
+    expect(floor(recloned, 4).customized).toBe(false)
+    expect(floor(recloned, 4).units[0]).toMatchObject({ code: '401', areaM2: '55' })
   })
 
   it('clones garage floors between negative numbers', () => {
@@ -266,21 +281,21 @@ describe('floor-stack', () => {
       ['S2-02', '13', '47000'],
     ])
     expect(floor(cloned, -3).units[0].code).toBe('S3-01')
-    expect(floor(cloned, 1).units[0].areaM2).toBe('')
+    expect(floor(cloned, 2).units[0].areaM2).toBe('')
   })
 
   it('resets an exception by reapplying the reference floor', () => {
     const source = withUnits(
       buildSkeleton({ towerCount: 1, floorsAbove: 2, basementCount: 0, unitsPerFloor: 1 })[0],
-      1,
+      2,
       [{ areaM2: '50', bedrooms: '2' }],
     )
-    const cloned = cloneMirror(source, 1, { direction: 'up', from: 2, to: 2 })
-    const exceptional = markException(withUnits(cloned, 2, [{ areaM2: '90' }]), 2)
-    const reset = resetFloor(exceptional, 2)
+    const cloned = cloneMirror(source, 2, { direction: 'up', from: 3, to: 3 })
+    const exceptional = markException(withUnits(cloned, 3, [{ areaM2: '90' }]), 3)
+    const reset = resetFloor(exceptional, 3)
 
-    expect(floor(reset, 2).customized).toBe(false)
-    expect(floor(reset, 2).units[0]).toMatchObject({ code: '201', areaM2: '50', bedrooms: '2' })
+    expect(floor(reset, 3).customized).toBe(false)
+    expect(floor(reset, 3).units[0]).toMatchObject({ code: '301', areaM2: '50', bedrooms: '2' })
   })
 
   it('keeps a hall floor empty when the building has no units there', () => {
@@ -323,7 +338,7 @@ describe('floor-stack', () => {
       spotsPerBasement: 1,
     })
     const tower: StackTower = {
-      ...withUnits(withUnits(draft, 0, [{ areaM2: '38', bedrooms: '0', bathrooms: '1', priceBase: '210000' }]), -1, [
+      ...withUnits(withUnits(draft, 2, [{ areaM2: '38', bedrooms: '0', bathrooms: '1', priceBase: '210000' }]), -1, [
         { areaM2: '12.5', priceBase: '45000', priceCompetence: '2026-08' },
       ]),
       id: 10,
@@ -337,9 +352,9 @@ describe('floor-stack', () => {
           name: 'Torre A',
           reference_floor: 1,
           floors: [
-            { number: -1, kind: 'garage' },
-            { number: 0, kind: 'commercial' },
-            { number: 1, kind: 'residential' },
+            { number: -1, kind: 'garage', unit_type: null },
+            { number: 1, kind: 'hall', unit_type: null },
+            { number: 2, kind: 'residential', unit_type: 'apartment' },
           ],
         },
       ],
@@ -353,6 +368,7 @@ describe('floor-stack', () => {
             {
               number: -1,
               kind: 'garage',
+              unit_type: null,
               customized: false,
               units: [
                 {
@@ -375,12 +391,20 @@ describe('floor-stack', () => {
               ],
             },
             {
-              number: 0,
-              kind: 'commercial',
+              number: 1,
+              kind: 'hall',
+              unit_type: null,
+              customized: false,
+              units: [],
+            },
+            {
+              number: 2,
+              kind: 'residential',
+              unit_type: 'apartment',
               customized: false,
               units: [
                 {
-                  code: 'L01',
+                  code: '201',
                   private_area_m2: 38,
                   bedrooms: 0,
                   bathrooms: 1,
@@ -388,30 +412,6 @@ describe('floor-stack', () => {
                   powder_rooms: null,
                   balconies: null,
                   price_base: 210000,
-                  price_competence: null,
-                  property_position: null,
-                  solar_position: null,
-                  sun_period: null,
-                  ceiling_type: null,
-                  opening_type: null,
-                  flooring_type: null,
-                },
-              ],
-            },
-            {
-              number: 1,
-              kind: 'residential',
-              customized: false,
-              units: [
-                {
-                  code: '101',
-                  private_area_m2: null,
-                  bedrooms: null,
-                  bathrooms: null,
-                  suites: null,
-                  powder_rooms: null,
-                  balconies: null,
-                  price_base: null,
                   price_competence: null,
                   property_position: null,
                   solar_position: null,

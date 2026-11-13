@@ -1,4 +1,4 @@
-import type { Building, BuildingStructurePayload, BuildingUnitGridPayload, FloorKind, Unit } from '@/lib/api'
+import type { Building, BuildingStructurePayload, BuildingUnitGridPayload, FloorKind, FloorUnitType, Unit } from '@/lib/api'
 
 /** @see REQ-WZR-002 @see REQ-WZR-004 @see REQ-WZR-005 @see REQ-WZR-006 */
 
@@ -45,6 +45,7 @@ export type StackUnit = {
 export type StackFloor = {
   number: number
   kind: FloorKind
+  unitType?: FloorUnitType | null
   customized: boolean
   units: StackUnit[]
 }
@@ -56,6 +57,68 @@ export type StackTower = {
   referenceFloor: number | null
   floors: StackFloor[]
   locked?: boolean
+}
+
+export const TOP_FLOOR_UNIT_TYPES = [
+  'penthouse',
+  'duplex',
+  'triplex',
+  'garden',
+  'loft',
+  'studio',
+  'flat',
+  'apartment',
+] as const satisfies readonly FloorUnitType[]
+
+const UNIT_TYPE_LABELS: Record<FloorUnitType, string> = {
+  apartment: 'Apartamento',
+  penthouse: 'Cobertura',
+  duplex: 'Duplex',
+  triplex: 'Triplex',
+  garden: 'Garden',
+  loft: 'Loft',
+  studio: 'Studio',
+  flat: 'Flat',
+  store: 'Loja',
+}
+
+export function floorUnitTypeLabel(type: FloorUnitType): string {
+  return UNIT_TYPE_LABELS[type]
+}
+
+export function floorPurposeOptions(
+  number: number,
+  floors: Array<{ number: number; kind: FloorKind }> = [],
+): Array<'hall' | 'residential' | 'commercial' | 'garage'> {
+  if (number === 1) {
+    return ['hall', 'residential', 'commercial']
+  }
+
+  const aboveHall = floors.some((floor) => floor.kind === 'hall' && floor.number === number - 1)
+
+  if (aboveHall) {
+    return ['residential', 'commercial', 'garage']
+  }
+
+  return ['residential', 'commercial']
+}
+
+export function floorUnitTypeOptions(kind: FloorKind, isTop: boolean): FloorUnitType[] {
+  if (kind === 'commercial') {
+    return ['store']
+  }
+
+  if (kind !== 'residential') {
+    return []
+  }
+
+  return isTop ? [...TOP_FLOOR_UNIT_TYPES] : ['apartment']
+}
+
+export function isTopFloor(floors: Array<{ number: number }>, number: number): boolean {
+  const highest = floors.reduce((max, floor) => Math.max(max, floor.number), number)
+
+  return number > 0 && number === highest
 }
 
 export const DEFAULT_UNITS_PER_FLOOR = 4
@@ -145,14 +208,30 @@ export function addFloor(tower: StackTower, where: 'above' | 'basement'): StackT
   }
 
   const highest = tower.floors.reduce((max, floor) => Math.max(max, floor.number), 0)
+  const number = highest < 1 ? 1 : highest + 1
+
+  if (number === 1) {
+    return {
+      ...tower,
+      floors: [...tower.floors, makeFloor(1, 'hall', 0)].toSorted((left, right) => left.number - right.number),
+    }
+  }
+
   const sample =
     tower.floors.find((floor) => floor.number === tower.referenceFloor && floor.kind === 'residential') ??
     tower.floors.find((floor) => floor.kind === 'residential')
   const count = Math.max(1, sample?.units.length ?? 1)
+  const floors = tower.floors.map((floor) => {
+    if (floor.number !== highest || floor.unitType == null || floor.unitType === 'apartment' || floor.unitType === 'store') {
+      return floor
+    }
+
+    return { ...floor, unitType: 'apartment' as const }
+  })
 
   return {
     ...tower,
-    floors: [...tower.floors, makeFloor(highest + 1, 'residential', count)].toSorted(
+    floors: [...floors, makeFloor(number, 'residential', count, 'apartment')].toSorted(
       (left, right) => left.number - right.number,
     ),
   }
@@ -172,16 +251,16 @@ export function buildSkeleton(input: SkeletonInput): StackTower[] {
       floors.push(makeFloor(-level, 'garage', spotsPerBasement))
     }
 
-    floors.push(makeFloor(0, 'commercial', unitsPerFloor))
+    floors.push(makeFloor(1, 'hall', 0))
 
-    for (let number = 1; number <= floorsAbove; number += 1) {
-      floors.push(makeFloor(number, 'residential', unitsPerFloor))
+    for (let number = 2; number <= floorsAbove + 1; number += 1) {
+      floors.push(makeFloor(number, 'residential', unitsPerFloor, 'apartment'))
     }
 
     return {
       key: draftKey(`tower-${index}`),
       name: `Torre ${String.fromCharCode(65 + (index % 26))}`,
-      referenceFloor: floorsAbove > 0 ? 1 : 0,
+      referenceFloor: floorsAbove > 0 ? 2 : 1,
       floors,
     }
   })
@@ -302,8 +381,12 @@ export function updateFloorUnit(
 }
 
 export function floorLabel(number: number): string {
-  if (number > 0) {
-    return `Andar ${number}`
+  if (number > 1) {
+    return `${number}º pavimento`
+  }
+
+  if (number === 1) {
+    return '1 pavimento (térreo)'
   }
 
   if (number === 0) {
@@ -327,6 +410,58 @@ export function floorKindLabel(kind: FloorKind): string {
   }
 
   return 'Residencial'
+}
+
+export function setFloorPurpose(
+  tower: StackTower,
+  floorNumber: number,
+  kind: 'hall' | 'residential' | 'commercial' | 'garage',
+): StackTower {
+  const next = setFloorKind(tower, floorNumber, kind)
+  const top = isTopFloor(next.floors, floorNumber)
+
+  return {
+    ...next,
+    floors: next.floors.map((floor) => {
+      if (floor.number !== floorNumber) {
+        return floor
+      }
+
+      if (kind === 'hall' || kind === 'garage') {
+        return { ...floor, unitType: null }
+      }
+
+      if (kind === 'commercial') {
+        return { ...floor, unitType: 'store' }
+      }
+
+      const allowed = floorUnitTypeOptions('residential', top)
+
+      return {
+        ...floor,
+        unitType: floor.unitType != null && allowed.includes(floor.unitType) ? floor.unitType : 'apartment',
+      }
+    }),
+  }
+}
+
+export function setFloorUnitType(tower: StackTower, floorNumber: number, unitType: FloorUnitType): StackTower {
+  const current = tower.floors.find((floor) => floor.number === floorNumber)
+
+  if (!current || floorUnitTypeOptions(current.kind === 'hall' ? 'residential' : current.kind, isTopFloor(tower.floors, floorNumber)).includes(unitType) === false) {
+    return tower
+  }
+
+  const kind = unitType === 'store' ? 'commercial' : 'residential'
+  const withKind = current.kind === kind ? tower : setFloorKind(tower, floorNumber, kind)
+
+  return markException(
+    {
+      ...withKind,
+      floors: withKind.floors.map((floor) => (floor.number === floorNumber ? { ...floor, kind, unitType } : floor)),
+    },
+    floorNumber,
+  )
 }
 
 export function floorsTopToBottom(floors: StackFloor[]): StackFloor[] {
@@ -492,6 +627,7 @@ export function stacksFromBuilding(building: Building): StackTower[] {
           return {
             number: meta.number,
             kind: meta.kind,
+            unitType: 'unit_type' in meta ? (meta.unit_type ?? null) : null,
             customized: meta.customized ?? false,
             units:
               existing.length > 0
@@ -559,10 +695,10 @@ export function buildEntranceHall(): StackTower {
   return {
     key: draftKey('tower'),
     name: towerLetterName(0),
-    referenceFloor: 0,
+    referenceFloor: 1,
     floors: [
       {
-        number: 0,
+        number: 1,
         kind: 'hall',
         customized: false,
         units: [],
@@ -628,6 +764,7 @@ export function structurePayload(towers: StackTower[]): BuildingStructurePayload
       floors: tower.floors.map((item) => ({
         number: item.number,
         kind: item.kind,
+        unit_type: payloadUnitType(item),
       })),
     })),
   }
@@ -647,6 +784,7 @@ export function unitGridPayload(towers: StackTower[]): BuildingUnitGridPayload {
           floors: tower.floors.map((item) => ({
             number: item.number,
             kind: item.kind,
+            unit_type: payloadUnitType(item),
             customized: item.customized,
             units: item.units.map((unit) => ({
               code: unit.code.trim(),
@@ -672,10 +810,23 @@ export function unitGridPayload(towers: StackTower[]): BuildingUnitGridPayload {
   }
 }
 
-function makeFloor(number: number, kind: FloorKind, unitCount: number): StackFloor {
+function payloadUnitType(floor: StackFloor): FloorUnitType | null {
+  if (floor.kind === 'hall' || floor.kind === 'garage') {
+    return null
+  }
+
+  if (floor.unitType) {
+    return floor.unitType
+  }
+
+  return floor.kind === 'commercial' ? 'store' : 'apartment'
+}
+
+function makeFloor(number: number, kind: FloorKind, unitCount: number, unitType?: FloorUnitType | null): StackFloor {
   return {
     number,
     kind,
+    unitType: unitType ?? (kind === 'residential' ? 'apartment' : kind === 'commercial' ? 'store' : null),
     customized: false,
     units: Array.from({ length: unitCount }, (_, index) => emptyUnit(number, index + 1)),
   }

@@ -41,6 +41,7 @@ function wizardActions(overrides: Partial<WizardActions> = {}): WizardActions {
 function renderStep(
   overrides: Partial<BuildingWizardContextValue['actions']> = {},
   towers = buildSkeleton({ ...DEFAULT_SKELETON, towerCount: 2, floorsAbove: 1, unitsPerFloor: 1 }),
+  state: Partial<BuildingWizardContextValue['state']> = {},
 ) {
   const actions = wizardActions(overrides)
   const value: BuildingWizardContextValue = {
@@ -64,6 +65,7 @@ function renderStep(
       lookingUpCep: false,
       cepHint: null,
       error: null,
+      ...state,
     },
     actions,
     meta: { canContinue: true },
@@ -147,11 +149,38 @@ describe('WizardStructureStep', () => {
     expect(screen.getByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Mapa de pavimentos' })).toBeInTheDocument()
     expect(screen.getByText('Pavimento selecionado')).toBeInTheDocument()
-    expect(screen.getAllByText('1º pavimento').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('1 pavimento (térreo)').length).toBeGreaterThan(0)
 
-    await user.click(screen.getByRole('button', { name: /Térreo/ }))
+    await user.click(screen.getByRole('button', { name: /1 pavimento \(térreo\)/ }))
 
-    expect(actions.setSelectedFloor).toHaveBeenCalledWith(0)
+    expect(actions.setSelectedFloor).toHaveBeenCalledWith(1)
+  })
+
+  it('opens unit mini cards under the selected floor', () => {
+    const towers = buildSkeleton({ ...DEFAULT_SKELETON, towerCount: 1, floorsAbove: 1, unitsPerFloor: 2 })
+    const residential = towers[0]?.floors.find((item) => item.number === 2)
+
+    if (!residential) {
+      throw new Error('Pavimento residencial ausente')
+    }
+
+    residential.units[0].areaM2 = '41.41'
+    residential.units[0].status = 'available'
+    residential.units[1].areaM2 = '38'
+    residential.units[1].status = 'sold'
+
+    renderStep({}, towers, { selectedFloor: 2 })
+
+    const open = document.getElementById('floor-units-2')
+
+    expect(open?.parentElement).not.toHaveAttribute('aria-hidden')
+    expect(open).toHaveTextContent('201')
+    expect(open).toHaveTextContent('41,41 m²')
+    expect(open).toHaveTextContent('Disponível')
+    expect(open).toHaveTextContent('202')
+    expect(open).toHaveTextContent('38,00 m²')
+    expect(open).toHaveTextContent('Vendido')
+    expect(document.getElementById('floor-units-1')?.parentElement).toHaveAttribute('aria-hidden', 'true')
   })
 
   it('filters the floor map by kind', async () => {
@@ -162,8 +191,8 @@ describe('WizardStructureStep', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'Garagem' }))
 
     expect(screen.getByRole('button', { name: /Subsolo 1/ })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Térreo/ })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /1º pavimento/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /1 pavimento \(térreo\)/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /2º pavimento/ })).not.toBeInTheDocument()
   })
 
   it('starts from an empty structure with skeleton and manual options', async () => {

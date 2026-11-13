@@ -10,11 +10,11 @@ import {
   floorLabel,
   floorsTopToBottom,
   resizeFloorUnits,
-  setFloorKind,
+  floorUnitTypeLabel,
   type SkeletonInput,
   type StackUnit,
 } from '@/apps/builder/lib/floor-stack'
-import type { FloorKind } from '@/lib/api'
+import type { FloorKind, FloorUnitType } from '@/lib/api'
 import {
   StructureEditorContext,
   useStructureEditor,
@@ -481,23 +481,11 @@ function StructureEditorGaragePanel() {
   )
 }
 
-function kindHint(kind: FloorKind): string {
-  if (kind === 'garage') {
-    return 'Vagas de garagem'
+function unitTypeLabel(kind: FloorKind, unitType?: FloorUnitType | null): string {
+  if (unitType) {
+    return floorUnitTypeLabel(unitType)
   }
 
-  if (kind === 'commercial') {
-    return 'Salas'
-  }
-
-  if (kind === 'hall') {
-    return 'Áreas comuns'
-  }
-
-  return 'Apartamentos'
-}
-
-function unitTypeLabel(kind: FloorKind): string {
   if (kind === 'garage') {
     return 'Vaga'
   }
@@ -507,51 +495,10 @@ function unitTypeLabel(kind: FloorKind): string {
   }
 
   if (kind === 'hall') {
-    return 'Área comum'
+    return 'Hall'
   }
 
   return 'Apartamento'
-}
-
-function floorKindChoices(number: number): FloorKind[] {
-  if (number < 0) {
-    return ['garage']
-  }
-
-  return ['residential', 'commercial', 'hall']
-}
-
-function FloorKindPicker({
-  number,
-  kind,
-  onChoose,
-}: {
-  number: number
-  kind: FloorKind
-  onChoose: (kind: FloorKind) => void
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm font-medium">Tipo de pavimento</p>
-      <div className="flex flex-wrap gap-2">
-        {floorKindChoices(number).map((choice) => (
-          <button
-            key={choice}
-            type="button"
-            aria-pressed={kind === choice}
-            className={cn(
-              'rounded-lg border px-3 py-2 text-left',
-              kind === choice ? 'border-primary ring-2 ring-primary/30' : 'border-border',
-            )}
-            onClick={() => onChoose(choice)}
-          >
-            <span className="block text-sm font-medium">{floorKindLabel(choice)}</span>
-            <span className="block text-xs text-muted-foreground">{kindHint(choice)}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  )
 }
 
 function FloorUnitCounter({
@@ -584,7 +531,11 @@ function FloorUnitCounter({
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        {number < 0 ? 'Vaga + subsolo (S1-01...)' : 'Andar + sequência (101, 102...)'}
+        {kind === 'garage'
+          ? number < 0
+            ? 'Vaga + subsolo (S1-01...)'
+            : 'Vaga + pavimento (201, 202...)'
+          : 'Andar + sequência (101, 102...)'}
       </p>
     </div>
   )
@@ -593,12 +544,14 @@ function FloorUnitCounter({
 function FloorUnitRow({
   unit,
   kind,
+  unitType,
   open,
   columnCount,
   onToggle,
 }: {
   unit: StackUnit
   kind: FloorKind
+  unitType?: FloorUnitType | null
   open: boolean
   columnCount: number
   onToggle: () => void
@@ -611,7 +564,7 @@ function FloorUnitRow({
     <>
       <tr className="border-t">
         <td className="py-2 pr-3">{unit.code}</td>
-        <td className="py-2 pr-3">{unitTypeLabel(kind)}</td>
+        <td className="py-2 pr-3">{unitTypeLabel(kind, unitType)}</td>
         <td className="py-2 pr-3">
           <Input
             aria-label={garage ? `Área ${unit.code} (m²)` : `Área privativa ${unit.code} (m²)`}
@@ -710,14 +663,6 @@ function StructureEditorFloorWorkspace({ diagram = true }: { diagram?: boolean }
     }
   }
 
-  function chooseKind(kind: FloorKind) {
-    if (!tower || !floor) {
-      return
-    }
-
-    actions.updateTower(setFloorKind(tower, floor.number, kind))
-  }
-
   function changeCount(delta: number) {
     if (!tower || !floor) {
       return
@@ -799,7 +744,6 @@ function StructureEditorFloorWorkspace({ diagram = true }: { diagram?: boolean }
           ) : (
             <p className="text-sm text-muted-foreground">Gere o esqueleto e escolha um pavimento.</p>
           )}
-          {floor ? <FloorKindPicker number={floor.number} kind={floor.kind} onChoose={chooseKind} /> : null}
           {floor ? (
             <FloorUnitCounter
               number={floor.number}
@@ -829,6 +773,7 @@ function StructureEditorFloorWorkspace({ diagram = true }: { diagram?: boolean }
                       key={unit.key}
                       unit={unit}
                       kind={floor.kind}
+                      unitType={floor.unitType}
                       open={openUnitKey === unit.key}
                       columnCount={floor.kind === 'garage' ? 5 : 6}
                       onToggle={() =>
@@ -959,7 +904,7 @@ function StructureEditorFloorWorkspace({ diagram = true }: { diagram?: boolean }
               <Alert>
                 <AlertTitle>Nenhum pavimento existente será sobrescrito</AlertTitle>
                 <AlertDescription>
-                  Destinos ocupados e de outro tipo ficam protegidos. Térreo, hall e garagem já existentes não são substituídos.
+                  Destinos ocupados e de outro tipo ficam protegidos. Hall e garagem já existentes não são substituídos.
                 </AlertDescription>
               </Alert>
             </div>

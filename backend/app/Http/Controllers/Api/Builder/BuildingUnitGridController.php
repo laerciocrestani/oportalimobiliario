@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Builder;
 use App\Enums\CeilingType;
 use App\Enums\FlooringType;
 use App\Enums\FloorKind;
+use App\Enums\FloorUnitType;
 use App\Enums\OpeningType;
 use App\Enums\PropertyPosition;
 use App\Enums\SolarPosition;
@@ -43,6 +44,7 @@ class BuildingUnitGridController extends Controller
             'towers.*.floors' => ['required', 'array', 'min:1'],
             'towers.*.floors.*.number' => ['required', 'integer', 'min:-20', 'max:80'],
             'towers.*.floors.*.kind' => ['required', Rule::enum(FloorKind::class)],
+            'towers.*.floors.*.unit_type' => ['nullable', Rule::enum(FloorUnitType::class)],
             'towers.*.floors.*.customized' => ['sometimes', 'boolean'],
             'towers.*.reference_floor' => ['nullable', 'integer', 'min:-20', 'max:80'],
             'towers.*.floors.*.units' => ['present', 'array'],

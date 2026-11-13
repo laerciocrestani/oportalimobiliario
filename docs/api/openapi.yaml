@@ -622,9 +622,13 @@ paths:
                               type: integer
                               minimum: -20
                               maximum: 80
-                              description: 0 = ground floor; negative = garage basement.
+                              description: 1 = térreo; negative = basement garage. A floor above the hall may also be garage.
                             kind:
                               $ref: '#/components/schemas/FloorKind'
+                            unit_type:
+                              oneOf:
+                                - $ref: '#/components/schemas/FloorUnitType'
+                                - type: 'null'
       responses:
         '200':
           description: Building with replaced towers and floors
@@ -685,9 +689,13 @@ paths:
                               type: integer
                               minimum: -20
                               maximum: 80
-                              description: 0 = ground floor; negative = garage basement.
+                              description: 1 = térreo; negative = basement garage. A floor above the hall may also be garage.
                             kind:
                               $ref: '#/components/schemas/FloorKind'
+                            unit_type:
+                              oneOf:
+                                - $ref: '#/components/schemas/FloorUnitType'
+                                - type: 'null'
                             customized:
                               type: boolean
                               description: When true, recloning the mirror floor must not overwrite this floor.
@@ -4419,6 +4427,9 @@ components:
     FloorKind:
       type: string
       enum: [residential, commercial, garage, hall]
+    FloorUnitType:
+      type: string
+      enum: [apartment, penthouse, duplex, triplex, garden, loft, studio, flat, store]
     Floor:
       type: object
       properties:
@@ -4427,9 +4438,13 @@ components:
           format: uuid
         number:
           type: integer
-          description: 0 = ground floor; negative = garage basement.
+          description: 1 = térreo; negative = garage basement.
         kind:
           $ref: '#/components/schemas/FloorKind'
+        unit_type:
+          oneOf:
+            - $ref: '#/components/schemas/FloorUnitType'
+            - type: 'null'
         customized:
           type: boolean
     Tower:

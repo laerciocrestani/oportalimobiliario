@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 560" role="img" aria-labelledby="titulo desc">
+  <title id="titulo">Planta garden · 142 m²</title>
+  <desc id="desc">Unidade garden com estar, jantar, cozinha, suíte, dois dormitórios e jardim privativo. Áreas somam 142 m².</desc>
+  <rect width="820" height="560" fill="#f7f4ee"/>
+  <g fill="#1b1814" font-family="Georgia, serif">
+    <text x="36" y="42" font-size="22">Planta garden</text>
+    <text x="36" y="66" font-size="14" fill="#6f5430">142 m² · área privativa, com jardim</text>
+  </g>
+  <g fill="none" stroke="#1b1814" stroke-width="2.5">
+    <rect x="36" y="92" width="500" height="300"/>
+    <rect x="536" y="92" width="248" height="420"/>
+    <rect x="36" y="392" width="500" height="120"/>
+    <path d="M250 92 V392 M250 250 H536 M390 250 V392"/>
+  </g>
+  <g fill="#6f675d" font-family="Outfit, Avenir Next, sans-serif" font-size="13" text-anchor="middle">
+    <text x="143" y="160">Estar</text>
+    <text x="143" y="180" fill="#1b1814">28 m²</text>
+    <text x="393" y="160">Suíte</text>
+    <text x="393" y="180" fill="#1b1814">16 m²</text>
+    <text x="143" y="310">Jantar</text>
+    <text x="143" y="330" fill="#1b1814">14 m²</text>
+    <text x="320" y="310">Cozinha</text>
+    <text x="320" y="330" fill="#1b1814">12 m²</text>
+    <text x="463" y="310">Lavabo</text>
+    <text x="463" y="330" fill="#1b1814">2 m²</text>
+    <text x="286" y="450">Dormitórios 2 e 3</text>
+    <text x="286" y="470" fill="#1b1814">12 m² + 11 m²</text>
+    <text x="660" y="250">Garden</text>
+    <text x="660" y="272" fill="#1b1814">38 m²</text>
+    <text x="660" y="420">Banho suíte 5 m²</text>
+    <text x="660" y="440">Banho social 4 m²</text>
+  </g>
+</svg>

@@ -1,9 +1,11 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Building2Icon, PlusIcon } from 'lucide-react'
 import { StructureEditor } from '@/apps/builder/components/StructureEditor'
 import { StructureFloorMap } from '@/apps/builder/components/StructureFloorMap'
 import { useBuildingWizard } from '@/apps/builder/components/building-wizard-context'
+import type { InccQuote } from '@/apps/builder/lib/incc-price'
 import { towerLetterName } from '@/apps/builder/lib/floor-stack'
+import { builderApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -40,7 +42,34 @@ export function WizardStructureStep() {
   const canAdd = trimmedName !== '' && (!cloneExisting || sourceKey != null)
   const sourceTower = state.stackTowers.find((tower) => tower.key === sourceKey) ?? null
   const [skeletonOpen, setSkeletonOpen] = useState(false)
+  const [inccIndices, setInccIndices] = useState<InccQuote[]>([])
   const hasStructure = state.stackTowers.length > 0
+  const priceMode = state.form.priceMode
+
+  useEffect(() => {
+    if (priceMode !== 'incc') {
+      return
+    }
+
+    let active = true
+
+    builderApi
+      .listInccIndices()
+      .then((rows) => {
+        if (active) {
+          setInccIndices(rows)
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setInccIndices([])
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [priceMode])
 
   function openDialog() {
     setName(towerLetterName(state.stackTowers.length))
@@ -88,6 +117,7 @@ export function WizardStructureStep() {
           selectedTower,
           selectedFloor,
           priceMode: state.form.priceMode,
+          inccIndices,
           singleTower: true,
         }}
       >
@@ -130,15 +160,7 @@ export function WizardStructureStep() {
               </div>
             </Tabs>
           </div>
-          <StructureFloorMap
-            isDraft={state.isDraft}
-            onOpenSkeleton={() => setSkeletonOpen(true)}
-            onAddTower={openDialog}
-          />
-          <div id="structure-floor-editor">
-            <StructureEditor.FloorWorkspace diagram={false} showUnitTable={false} />
-          </div>
-          <StructureEditor.Skeleton open={skeletonOpen} onOpenChange={setSkeletonOpen} showTrigger={false} />
+          <StructureFloorMap />
           </>
         ) : (
           <>

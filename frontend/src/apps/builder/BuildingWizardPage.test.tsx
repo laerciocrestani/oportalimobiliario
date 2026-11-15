@@ -110,7 +110,11 @@ describe('BuildingWizardPage', () => {
     renderWizard('/buildings/10/wizard')
 
     expect(await screen.findByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
-    expect(screen.getAllByText('Continuar cadastro').length).toBeGreaterThan(0)
+    expect(screen.getByRole('heading', { name: 'Continuar cadastro' })).toBeInTheDocument()
+    expect(screen.getByText('Residencial Aurora')).toBeInTheDocument()
+    expect(screen.getByText('Rascunho')).toBeInTheDocument()
+    expect(screen.queryByText('Empreendimento · São Paulo, SP')).not.toBeInTheDocument()
+    expect(screen.queryByText('Acompanhe os pavimentos e as unidades do empreendimento.')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Criar esqueleto do prédio' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Criar prédio manual' })).toBeInTheDocument()
     expect(screen.queryByText('Padrão do empreendimento')).not.toBeInTheDocument()

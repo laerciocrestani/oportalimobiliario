@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 520" role="img" aria-labelledby="titulo desc">
+  <title id="titulo">Planta 2 dormitórios · 67 m²</title>
+  <desc id="desc">Estar, jantar, cozinha, suíte, dormitório, dois banhos, lavabo e sacada. Áreas somam 67 m².</desc>
+  <rect width="760" height="520" fill="#f7f4ee"/>
+  <g fill="#1b1814" font-family="Georgia, serif">
+    <text x="36" y="42" font-size="22">Planta 2 dormitórios</text>
+    <text x="36" y="66" font-size="14" fill="#6f5430">67 m² · área privativa</text>
+  </g>
+  <g fill="none" stroke="#1b1814" stroke-width="2.5">
+    <rect x="36" y="92" width="688" height="380"/>
+    <path d="M36 292 H500 M500 92 V472 M500 250 H724 M250 292 V392 M250 392 H500 M620 250 V392 M620 392 H724"/>
+  </g>
+  <g fill="#6f675d" font-family="Outfit, Avenir Next, sans-serif" font-size="13" text-anchor="middle">
+    <text x="268" y="180">Estar</text>
+    <text x="268" y="200" fill="#1b1814">18,4 m²</text>
+    <text x="150" y="340">Jantar</text>
+    <text x="150" y="360" fill="#1b1814">8,2 m²</text>
+    <text x="375" y="340">Cozinha</text>
+    <text x="375" y="360" fill="#1b1814">7,6 m²</text>
+    <text x="268" y="440">Sacada</text>
+    <text x="268" y="458" fill="#1b1814">2,0 m²</text>
+    <text x="612" y="160">Suíte</text>
+    <text x="612" y="180" fill="#1b1814">12,8 m²</text>
+    <text x="560" y="320">Banho</text>
+    <text x="560" y="338" fill="#1b1814">3,8 m²</text>
+    <text x="672" y="310">Dormitório</text>
+    <text x="672" y="330" fill="#1b1814">9,4 m²</text>
+    <text x="672" y="420">Banho social</text>
+    <text x="672" y="438" fill="#1b1814">3,2 m²</text>
+    <text x="430" y="430">Lavabo</text>
+    <text x="430" y="448" fill="#1b1814">1,6 m²</text>
+  </g>
+</svg>

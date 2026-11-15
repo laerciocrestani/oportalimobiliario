@@ -1,8 +1,28 @@
 import { useState, type ReactNode } from 'react'
-import { PencilIcon } from 'lucide-react'
+import {
+  AppWindowIcon,
+  BathIcon,
+  BedDoubleIcon,
+  BedIcon,
+  CalendarIcon,
+  ChevronDownIcon,
+  CircleDollarSignIcon,
+  CompassIcon,
+  DropletsIcon,
+  FenceIcon,
+  Grid2x2Icon,
+  HashIcon,
+  PanelTopIcon,
+  PencilIcon,
+  RulerIcon,
+  SunIcon,
+  SunriseIcon,
+  type LucideIcon,
+} from 'lucide-react'
 import {
   clonePreview,
   addFloor,
+  isBelowEntranceHall,
   removeFloor,
   removeUnit,
   setReferenceFloor,
@@ -12,6 +32,8 @@ import {
   resizeFloorUnits,
   floorUnitTypeLabel,
   type SkeletonInput,
+  type StackFloor,
+  type StackTower,
   type StackUnit,
 } from '@/apps/builder/lib/floor-stack'
 import type { FloorKind, FloorUnitType } from '@/lib/api'
@@ -33,13 +55,15 @@ import {
   SOLAR_OPTIONS,
   SUN_PERIOD_OPTIONS,
 } from '@/apps/builder/lib/unit-spec'
+import { canonicalDecimal, canonicalGroupedInteger, formatDecimalMask, formatGroupedInteger, maskInteger } from '@/apps/builder/lib/unit-input-mask'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
@@ -274,9 +298,8 @@ function RemoveUnitButton({ unitKey }: { unitKey: string }) {
     return null
   }
 
-  const isSpot = floor.kind === 'garage'
   const blocked = floor.kind !== 'hall' && floor.units.length <= 1
-  const noun = isSpot ? 'vaga' : 'unidade'
+  const noun = 'unidade'
   const unit = floor.units.find((item) => item.key === unitKey)
   const [confirming, setConfirming] = useState(false)
 
@@ -334,14 +357,16 @@ function UnitCompetenceField({
   )
 }
 
-function LivingUnitDetails({ unit }: { unit: StackUnit }) {
+function LivingUnitDetails({ unit, showRemove = true }: { unit: StackUnit; showRemove?: boolean }) {
   const { actions } = useStructureEditor()
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <div className="sm:col-span-2 lg:col-span-3">
-        <RemoveUnitButton unitKey={unit.key} />
-      </div>
+      {showRemove ? (
+        <div className="sm:col-span-2 lg:col-span-3">
+          <RemoveUnitButton unitKey={unit.key} />
+        </div>
+      ) : null}
       <Field>
         <FieldLabel htmlFor={`unit-bathrooms-${unit.key}`}>Banheiros {unit.code}</FieldLabel>
         <Input
@@ -431,19 +456,10 @@ function LivingUnitDetails({ unit }: { unit: StackUnit }) {
   )
 }
 
-function GarageUnitDetails({ unit }: { unit: StackUnit }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <RemoveUnitButton unitKey={unit.key} />
-      <UnitCompetenceField unitKey={unit.key} code={unit.code} priceCompetence={unit.priceCompetence} />
-    </div>
-  )
-}
-
 function StructureEditorUnitEditor() {
   const floor = useStructureEditor().meta.selectedFloor
 
-  if (!floor || floor.kind === 'garage') {
+  if (!floor || floor.kind === 'hall') {
     return null
   }
 
@@ -457,27 +473,7 @@ function StructureEditorUnitEditor() {
 }
 
 function StructureEditorGaragePanel() {
-  const floor = useStructureEditor().meta.selectedFloor
-
-  if (!floor || floor.kind !== 'garage') {
-    return null
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      {floor.units.map((unit) => (
-        <GarageUnitDetails key={unit.key} unit={unit} />
-      ))}
-    </div>
-  )
-}
-
-function floorUnitCountLabel(kind: FloorKind, count: number): string {
-  if (kind === 'garage') {
-    return count === 1 ? '1 vaga' : `${count} vagas`
-  }
-
-  return count === 1 ? '1 unidade' : `${count} unidades`
+  return <StructureEditorUnitEditor />
 }
 
 function unitTypeLabel(kind: FloorKind, unitType?: FloorUnitType | null): string {
@@ -486,7 +482,7 @@ function unitTypeLabel(kind: FloorKind, unitType?: FloorUnitType | null): string
   }
 
   if (kind === 'garage') {
-    return 'Vaga'
+    return 'Unidade'
   }
 
   if (kind === 'commercial') {
@@ -515,7 +511,7 @@ function FloorUnitCounter({
     return <p className="text-sm text-muted-foreground">Hall não tem unidades privadas.</p>
   }
 
-  const label = kind === 'garage' ? 'Vagas' : 'Unidades'
+  const label = 'Unidades'
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -530,11 +526,7 @@ function FloorUnitCounter({
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        {kind === 'garage'
-          ? number < 0
-            ? 'Vaga + subsolo (S1-01...)'
-            : 'Vaga + pavimento (201, 202...)'
-          : 'Andar + sequência (101, 102...)'}
+        {number < 0 ? 'Subsolo + sequência (S1-01...)' : 'Andar + sequência (101, 102...)'}
       </p>
     </div>
   )
@@ -556,7 +548,6 @@ function FloorUnitRow({
   onToggle: () => void
 }) {
   const { actions, meta } = useStructureEditor()
-  const garage = kind === 'garage'
   const fixed = meta.priceMode === 'fixed'
 
   return (
@@ -566,24 +557,22 @@ function FloorUnitRow({
         <td className="py-2 pr-3">{unitTypeLabel(kind, unitType)}</td>
         <td className="py-2 pr-3">
           <Input
-            aria-label={garage ? `Área ${unit.code} (m²)` : `Área privativa ${unit.code} (m²)`}
+            aria-label={`Área privativa ${unit.code} (m²)`}
             value={unit.areaM2}
             inputMode="decimal"
             className="h-8 min-w-24"
             onChange={(event) => actions.updateUnit(unit.key, { areaM2: event.target.value })}
           />
         </td>
-        {garage ? null : (
-          <td className="py-2 pr-3">
-            <Input
-              aria-label={`Dormitórios ${unit.code}`}
-              value={unit.bedrooms}
-              inputMode="numeric"
-              className="h-8 w-20"
-              onChange={(event) => actions.updateUnit(unit.key, { bedrooms: event.target.value })}
-            />
-          </td>
-        )}
+        <td className="py-2 pr-3">
+          <Input
+            aria-label={`Dormitórios ${unit.code}`}
+            value={unit.bedrooms}
+            inputMode="numeric"
+            className="h-8 w-20"
+            onChange={(event) => actions.updateUnit(unit.key, { bedrooms: event.target.value })}
+          />
+        </td>
         <td className="py-2 pr-3">
           <Input
             aria-label={priceInputLabel(unit.code, fixed)}
@@ -609,11 +598,272 @@ function FloorUnitRow({
       {open ? (
         <tr className="border-t bg-muted/40">
           <td colSpan={columnCount} className="px-1 py-3">
-            {garage ? <GarageUnitDetails unit={unit} /> : <LivingUnitDetails unit={unit} />}
+            <LivingUnitDetails unit={unit} />
           </td>
         </tr>
       ) : null}
     </>
+  )
+}
+
+function parkingUnitFloor(floor: StackFloor, tower: StackTower | null): boolean {
+  return floor.kind === 'garage' || (tower != null && isBelowEntranceHall(floor.number, tower.floors))
+}
+
+function UnitTextField({
+  id,
+  label,
+  icon: Icon,
+  value,
+  mask,
+  placeholder,
+  onChange,
+}: {
+  id: string
+  label: string
+  icon: LucideIcon
+  value: string
+  mask: 'integer' | 'area' | 'money' | 'quantity' | 'text'
+  placeholder?: string
+  onChange: (value: string) => void
+}) {
+  const labelNode = (
+    <FieldLabel htmlFor={id} className="items-center">
+      <Icon className="size-3.5 text-muted-foreground" aria-hidden />
+      {label}
+    </FieldLabel>
+  )
+
+  if (mask === 'area' || mask === 'money') {
+    return (
+      <Field>
+        {labelNode}
+        <InputGroup>
+          {mask === 'money' ? <InputGroupAddon align="inline-start">R$</InputGroupAddon> : null}
+          <InputGroupInput
+            id={id}
+            inputMode="decimal"
+            value={formatDecimalMask(value)}
+            onChange={(event) => onChange(canonicalDecimal(event.target.value))}
+          />
+          {mask === 'area' ? <InputGroupAddon align="inline-end">m²</InputGroupAddon> : null}
+        </InputGroup>
+      </Field>
+    )
+  }
+
+  const shown = mask === 'integer' ? maskInteger(value) : mask === 'quantity' ? formatGroupedInteger(value) : value
+
+  return (
+    <Field>
+      {labelNode}
+      <Input
+        id={id}
+        inputMode={mask === 'text' ? 'text' : 'numeric'}
+        placeholder={placeholder}
+        value={shown}
+        onChange={(event) => {
+          const next = event.target.value
+
+          if (mask === 'integer') {
+            onChange(maskInteger(next))
+            return
+          }
+
+          if (mask === 'quantity') {
+            onChange(canonicalGroupedInteger(next))
+            return
+          }
+
+          onChange(next)
+        }}
+      />
+    </Field>
+  )
+}
+
+function UnitPriceField({ unit }: { unit: StackUnit }) {
+  const { actions, meta } = useStructureEditor()
+  const fixed = meta.priceMode === 'fixed'
+
+  return (
+    <UnitTextField
+      id={`side-price-${unit.key}`}
+      icon={CircleDollarSignIcon}
+      label={fixed ? 'Valor' : 'Valor (INCC)'}
+      value={unit.priceBase}
+      mask={fixed ? 'money' : 'quantity'}
+      onChange={(priceBase) => actions.updateUnit(unit.key, { priceBase })}
+    />
+  )
+}
+
+function ParkingUnitFields({ unit }: { unit: StackUnit }) {
+  const { actions } = useStructureEditor()
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <UnitTextField
+        id={`side-area-${unit.key}`}
+        icon={RulerIcon}
+        label="Área privativa"
+        value={unit.areaM2}
+        mask="area"
+        onChange={(areaM2) => actions.updateUnit(unit.key, { areaM2 })}
+      />
+      <UnitPriceField unit={unit} />
+    </div>
+  )
+}
+
+function LivingUnitFields({ unit }: { unit: StackUnit }) {
+  const { actions, meta } = useStructureEditor()
+  const [moreOpen, setMoreOpen] = useState(false)
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-3">
+        <UnitTextField
+          id={`side-area-${unit.key}`}
+          icon={RulerIcon}
+          label="Área privativa"
+          value={unit.areaM2}
+          mask="area"
+          onChange={(areaM2) => actions.updateUnit(unit.key, { areaM2 })}
+        />
+        <UnitTextField
+          id={`side-bedrooms-${unit.key}`}
+          icon={BedIcon}
+          label="Dormitórios"
+          value={unit.bedrooms}
+          mask="integer"
+          onChange={(bedrooms) => actions.updateUnit(unit.key, { bedrooms })}
+        />
+        <UnitTextField
+          id={`side-bathrooms-${unit.key}`}
+          icon={BathIcon}
+          label="Banheiros"
+          value={unit.bathrooms}
+          mask="integer"
+          onChange={(bathrooms) => actions.updateUnit(unit.key, { bathrooms })}
+        />
+        <UnitTextField
+          id={`side-suites-${unit.key}`}
+          icon={BedDoubleIcon}
+          label="Suítes"
+          value={unit.suites ?? ''}
+          mask="integer"
+          onChange={(suites) => actions.updateUnit(unit.key, { suites })}
+        />
+        <UnitTextField
+          id={`side-powder-${unit.key}`}
+          icon={DropletsIcon}
+          label="Lavabos"
+          value={unit.powderRooms}
+          mask="integer"
+          onChange={(powderRooms) => actions.updateUnit(unit.key, { powderRooms })}
+        />
+        <UnitPriceField unit={unit} />
+      </div>
+      <button
+        type="button"
+        aria-expanded={moreOpen}
+        className="flex w-full items-center gap-3 text-xs font-medium tracking-wide text-muted-foreground"
+        onClick={() => setMoreOpen((open) => !open)}
+      >
+        <span className="h-px flex-1 bg-border" />
+        MAIS
+        <ChevronDownIcon aria-hidden className={cn('size-3.5 transition-transform', moreOpen && 'rotate-180')} />
+        <span className="h-px flex-1 bg-border" />
+      </button>
+      <div
+        id={`unit-more-${unit.key}`}
+        inert={moreOpen ? undefined : true}
+        aria-hidden={moreOpen ? undefined : true}
+        className={cn(
+          'grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none',
+          moreOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="grid grid-cols-2 gap-3">
+            <UnitTextField
+              id={`side-balconies-${unit.key}`}
+              icon={FenceIcon}
+              label="Sacadas"
+              value={unit.balconies}
+              mask="integer"
+              onChange={(balconies) => actions.updateUnit(unit.key, { balconies })}
+            />
+            {meta.priceMode === 'fixed' ? null : (
+              <UnitTextField
+                id={`side-competence-${unit.key}`}
+                icon={CalendarIcon}
+                label="Competência"
+                value={unit.priceCompetence}
+                mask="text"
+                placeholder="AAAA-MM"
+                onChange={(priceCompetence) => actions.updateUnit(unit.key, { priceCompetence })}
+              />
+            )}
+            <BuildingWizardEnumSelect
+              id={`side-position-${unit.key}`}
+              icon={CompassIcon}
+              label="Posição"
+              value={unit.propertyPosition}
+              emptyLabel="Não informado"
+              options={PROPERTY_POSITION_OPTIONS}
+              onChange={(propertyPosition) => actions.updateUnit(unit.key, { propertyPosition })}
+            />
+            <BuildingWizardEnumSelect
+              id={`side-solar-${unit.key}`}
+              icon={SunIcon}
+              label="Sol"
+              value={unit.solarPosition}
+              emptyLabel="Não informado"
+              options={SOLAR_OPTIONS}
+              onChange={(solarPosition) => actions.updateUnit(unit.key, { solarPosition })}
+            />
+            <BuildingWizardEnumSelect
+              id={`side-sun-${unit.key}`}
+              icon={SunriseIcon}
+              label="Período"
+              value={unit.sunPeriod}
+              emptyLabel="Não informado"
+              options={SUN_PERIOD_OPTIONS}
+              onChange={(sunPeriod) => actions.updateUnit(unit.key, { sunPeriod })}
+            />
+            <BuildingWizardEnumSelect
+              id={`side-ceiling-${unit.key}`}
+              icon={PanelTopIcon}
+              label="Forro"
+              value={unit.ceilingType}
+              emptyLabel="Não informado"
+              options={CEILING_OPTIONS}
+              onChange={(ceilingType) => actions.updateUnit(unit.key, { ceilingType })}
+            />
+            <BuildingWizardEnumSelect
+              id={`side-opening-${unit.key}`}
+              icon={AppWindowIcon}
+              label="Aberturas"
+              value={unit.openingType}
+              emptyLabel="Não informado"
+              options={OPENING_OPTIONS}
+              onChange={(openingType) => actions.updateUnit(unit.key, { openingType })}
+            />
+            <BuildingWizardEnumSelect
+              id={`side-flooring-${unit.key}`}
+              icon={Grid2x2Icon}
+              label="Piso"
+              value={unit.flooringType}
+              emptyLabel="Não informado"
+              options={FLOORING_OPTIONS}
+              onChange={(flooringType) => actions.updateUnit(unit.key, { flooringType })}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -634,48 +884,25 @@ function StructureEditorSelectedUnit({ unit }: { unit: StackUnit | null }) {
     )
   }
 
-  const garage = floor.kind === 'garage'
-  const fixed = meta.priceMode === 'fixed'
+  const parking = parkingUnitFloor(floor, meta.selectedTower)
 
   return (
     <Card size="sm" className="md:sticky md:top-4">
       <CardHeader>
-        <CardTitle className="tabular-nums">{unit.code}</CardTitle>
-        <CardDescription>{unitTypeLabel(floor.kind, floor.unitType)}</CardDescription>
+        <InputGroup>
+          <InputGroupAddon align="inline-start">
+            <HashIcon className="size-3.5" aria-hidden />
+          </InputGroupAddon>
+          <InputGroupInput
+            id={`side-code-${unit.key}`}
+            aria-label="Unidade"
+            value={unit.code}
+            onChange={(event) => actions.updateUnit(unit.key, { code: event.target.value })}
+          />
+        </InputGroup>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <Field>
-          <FieldLabel htmlFor={`side-area-${unit.key}`}>
-            {garage ? `Área ${unit.code} (m²)` : `Área privativa ${unit.code} (m²)`}
-          </FieldLabel>
-          <Input
-            id={`side-area-${unit.key}`}
-            value={unit.areaM2}
-            inputMode="decimal"
-            onChange={(event) => actions.updateUnit(unit.key, { areaM2: event.target.value })}
-          />
-        </Field>
-        {garage ? null : (
-          <Field>
-            <FieldLabel htmlFor={`side-bedrooms-${unit.key}`}>Dormitórios {unit.code}</FieldLabel>
-            <Input
-              id={`side-bedrooms-${unit.key}`}
-              value={unit.bedrooms}
-              inputMode="numeric"
-              onChange={(event) => actions.updateUnit(unit.key, { bedrooms: event.target.value })}
-            />
-          </Field>
-        )}
-        <Field>
-          <FieldLabel htmlFor={`side-price-${unit.key}`}>{priceInputLabel(unit.code, fixed)}</FieldLabel>
-          <Input
-            id={`side-price-${unit.key}`}
-            value={unit.priceBase}
-            inputMode="decimal"
-            onChange={(event) => actions.updateUnit(unit.key, { priceBase: event.target.value })}
-          />
-        </Field>
-        {garage ? <GarageUnitDetails unit={unit} /> : <LivingUnitDetails unit={unit} />}
+      <CardContent>
+        {parking ? <ParkingUnitFields key={unit.key} unit={unit} /> : <LivingUnitFields key={unit.key} unit={unit} />}
       </CardContent>
     </Card>
   )
@@ -806,7 +1033,7 @@ function StructureEditorFloorWorkspace({
         <CardContent className="flex flex-col gap-4">
           {floor ? (
             <p className="text-sm text-muted-foreground">
-              {floorKindLabel(floor.kind)} · {floorUnitCountLabel(floor.kind, floor.units.length)}
+              {floorKindLabel(floor.kind)} · {floor.units.length === 1 ? '1 unidade' : `${floor.units.length} unidades`}
               {floor.customized ? ' · exceção' : ''}
               {tower?.referenceFloor === floor.number ? ' · pavimento-modelo' : ''}
             </p>
@@ -829,7 +1056,7 @@ function StructureEditorFloorWorkspace({
                     <th className="py-1 font-medium">Código</th>
                     <th className="py-1 font-medium">Tipo</th>
                     <th className="py-1 font-medium">Área</th>
-                    {floor.kind === 'garage' ? null : <th className="py-1 font-medium">Dormitórios</th>}
+                    <th className="py-1 font-medium">Dormitórios</th>
                     <th className="py-1 font-medium">{meta.priceMode === 'fixed' ? 'Valor' : 'Valor-base'}</th>
                     <th className="py-1">
                       <span className="sr-only">Detalhes</span>
@@ -844,7 +1071,7 @@ function StructureEditorFloorWorkspace({
                       kind={floor.kind}
                       unitType={floor.unitType}
                       open={openUnitKey === unit.key}
-                      columnCount={floor.kind === 'garage' ? 5 : 6}
+                      columnCount={6}
                       onToggle={() =>
                         setOpenUnitKey((current) => (current === unit.key ? null : unit.key))
                       }

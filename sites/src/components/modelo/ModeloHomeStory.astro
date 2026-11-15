@@ -1,0 +1,226 @@
+---
+import { BROKER_URL, BUILDER_URL } from '@/lib/modelo'
+import type { ModeloTheme } from '@/lib/modelo-theme'
+
+interface CityCard {
+  city: string
+  href: string
+  count: number
+  image: string | null
+}
+
+interface StoryCard {
+  name: string
+  href: string
+  place: string | null
+  text: string
+  image: string | null
+}
+
+interface Props {
+  theme: ModeloTheme
+  stats: { label: string; value: number }[]
+  cities: CityCard[]
+  builders: string[]
+  stories: StoryCard[]
+  financeValue: number
+}
+
+const { theme, stats, cities, builders, stories, financeValue } = Astro.props
+
+const steps = [
+  { n: '01', title: 'Busque a cidade', text: 'O localizador filtra os lançamentos publicados.' },
+  { n: '02', title: 'Abra o empreendimento', text: 'Fotos, tipologias, área e o contato da construtora.' },
+  { n: '03', title: 'Peça acesso', text: 'O corretor solicita autorização para comercializar.' },
+  { n: '04', title: 'Fale com a construtora', text: 'Telefone e e-mail ficam na ficha do lançamento.' },
+]
+
+const kinds = [
+  { title: 'Residencial', text: 'Apartamentos e condomínios.' },
+  { title: 'Comercial', text: 'Salas e conjuntos.' },
+  { title: 'Uso misto', text: 'Quando o empreendimento reúne os dois.' },
+]
+---
+
+<section class="theme-band theme-stats" aria-label="Números do portal" data-theme={theme}>
+  <div class="modelo-wrap theme-stats__grid">
+    {
+      stats.map((stat) => (
+        <div>
+          <strong data-count={stat.value}>{stat.value.toLocaleString('pt-BR')}</strong>
+          <span>{stat.label}</span>
+        </div>
+      ))
+    }
+  </div>
+</section>
+
+{
+  cities.length > 0 && (
+    <section class="theme-band" aria-labelledby="cidades-titulo">
+      <div class="modelo-wrap">
+        <p class="modelo-kicker">Cidades</p>
+        <h2 id="cidades-titulo" class="theme-display">Explore por cidade.</h2>
+        <ul class="theme-cities">
+          {
+            cities.map((city) => (
+              <li>
+                <a href={city.href}>
+                  <span class="theme-cities__media">
+                    {city.image ? <img src={city.image} alt="" width="640" height="420" loading="lazy" /> : <span>{city.city}</span>}
+                  </span>
+                  <span class="theme-cities__name">{city.city}</span>
+                  <span class="theme-cities__count">{city.count.toLocaleString('pt-BR')} {city.count === 1 ? 'lançamento' : 'lançamentos'}</span>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </section>
+  )
+}
+
+<section class="theme-band" aria-labelledby="tipos-titulo">
+  <div class="modelo-wrap">
+    <p class="modelo-kicker">Tipos</p>
+    <h2 id="tipos-titulo" class="theme-display">O que a construtora publica.</h2>
+    <ul class="theme-kinds">
+      {
+        kinds.map((kind) => (
+          <li>
+            <a href="#lancamentos">
+              <strong>{kind.title}</strong>
+              <span>{kind.text}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<section class="theme-band" aria-labelledby="passos-titulo">
+  <div class="modelo-wrap">
+    <p class="modelo-kicker">Como funciona</p>
+    <h2 id="passos-titulo" class="theme-display">Do anúncio ao contato.</h2>
+    <ol class="theme-steps">
+      {
+        steps.map((step) => (
+          <li>
+            <span>{step.n}</span>
+            <strong>{step.title}</strong>
+            <p>{step.text}</p>
+          </li>
+        ))
+      }
+    </ol>
+  </div>
+</section>
+
+{
+  builders.length > 0 && (
+    <section class="theme-band" aria-labelledby="parceiros-titulo">
+      <div class="modelo-wrap">
+        <p class="modelo-kicker">Construtoras</p>
+        <h2 id="parceiros-titulo" class="theme-display">Quem publica neste portal.</h2>
+        <ul class="theme-partners">
+          {builders.map((name) => <li>{name}</li>)}
+        </ul>
+      </div>
+    </section>
+  )
+}
+
+<section class="theme-broker">
+  <div class="modelo-wrap theme-broker__inner">
+    <div>
+      <p class="modelo-kicker">Corretores e construtoras</p>
+      <h2 class="theme-display">Anuncie ou peça um empreendimento para comercializar.</h2>
+    </div>
+    <div class="theme-broker__actions">
+      <a class="modelo-button" href={BUILDER_URL}>Área da construtora</a>
+      <a class="modelo-button modelo-button--quiet" href={BROKER_URL}>Sou corretor</a>
+    </div>
+  </div>
+</section>
+
+<section class="theme-band" aria-labelledby="simulador-titulo">
+  <div class="modelo-wrap theme-finance">
+    <div>
+      <p class="modelo-kicker">Simulador</p>
+      <h2 id="simulador-titulo" class="theme-display">Parcela estimada.</h2>
+      <p class="theme-note">Tabela Price com taxa de exemplo de 0,99% ao mês. Não é proposta de banco.</p>
+    </div>
+    <form class="theme-finance__form" data-finance>
+      <label>
+        <span>Valor do imóvel</span>
+        <input name="valor" inputmode="numeric" value={financeValue > 0 ? String(financeValue) : ''} autocomplete="off" />
+      </label>
+      <label>
+        <span>Entrada (%)</span>
+        <input name="entrada" inputmode="numeric" value="20" autocomplete="off" />
+      </label>
+      <label>
+        <span>Prazo (meses)</span>
+        <input name="prazo" inputmode="numeric" value="360" autocomplete="off" />
+      </label>
+      <p data-finance-out>Informe o valor do imóvel.</p>
+    </form>
+  </div>
+</section>
+
+{
+  stories.length > 0 && (
+    <section class="theme-band" aria-labelledby="conteudo-titulo">
+      <div class="modelo-wrap">
+        <p class="modelo-kicker">Conteúdo</p>
+        <h2 id="conteudo-titulo" class="theme-display">Para conhecer antes da visita.</h2>
+        <ul class="theme-stories">
+          {
+            stories.map((story) => (
+              <li>
+                <a href={story.href}>
+                  {story.image && <img src={story.image} alt="" width="640" height="400" loading="lazy" />}
+                  <strong>{story.name}</strong>
+                  {story.place && <span>{story.place}</span>}
+                  <p>{story.text}</p>
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </div>
+    </section>
+  )
+}
+
+<section class="theme-band" id="captacao" aria-labelledby="captacao-titulo">
+  <div class="modelo-wrap theme-lead">
+    <div>
+      <p class="modelo-kicker">Contato</p>
+      <h2 id="captacao-titulo" class="theme-display">Siga para a área certa.</h2>
+      <p class="theme-note">O formulário não grava um lead. Ele abre a área do corretor ou da construtora.</p>
+    </div>
+    <form class="theme-lead__form" data-lead data-broker={BROKER_URL} data-builder={BUILDER_URL}>
+      <label>
+        <span>Nome</span>
+        <input name="nome" required autocomplete="name" />
+      </label>
+      <label>
+        <span>E-mail</span>
+        <input name="email" type="email" required autocomplete="email" />
+      </label>
+      <label>
+        <span>Perfil</span>
+        <select name="perfil">
+          <option value="corretor">Sou corretor</option>
+          <option value="construtora">Sou construtora</option>
+        </select>
+      </label>
+      <button type="submit" class="modelo-button">Continuar</button>
+      <p data-lead-note hidden>O próximo passo é entrar na área correspondente.</p>
+      <a class="modelo-button modelo-button--quiet" data-lead-next href={BROKER_URL} hidden>Abrir área</a>
+    </form>
+  </div>
+</section>

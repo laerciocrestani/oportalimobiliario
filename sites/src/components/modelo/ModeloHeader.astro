@@ -4,14 +4,15 @@ import { BROKER_URL, BUILDER_URL } from '@/lib/modelo'
 interface Props {
   lancamentosHref?: string
   restoreList?: boolean
+  homeHref?: string
 }
 
-const { lancamentosHref = '/modelo#lancamentos', restoreList = false } = Astro.props
+const { lancamentosHref = '/modelo#lancamentos', restoreList = false, homeHref = '/modelo' } = Astro.props
 ---
 
 <header class="modelo-header">
   <div class="modelo-wrap modelo-header__inner">
-    <a href="/modelo" class="modelo-brand">
+    <a href={homeHref} class="modelo-brand">
       <span class="modelo-brand__mark" aria-hidden="true"></span>
       <span class="modelo-sr">O Portal Imobiliário</span>
     </a>
@@ -29,6 +30,7 @@ const { lancamentosHref = '/modelo#lancamentos', restoreList = false } = Astro.p
       >
         Construtoras
       </a>
+      <a class="modelo-header__announce" href={BUILDER_URL}>Anunciar imóvel</a>
       <div class="modelo-account">
         <button
           type="button"
@@ -50,7 +52,7 @@ const { lancamentosHref = '/modelo#lancamentos', restoreList = false } = Astro.p
 <script>
   const header = document.querySelector<HTMLElement>('.modelo-header')
 
-  if (header && document.querySelector('.modelo-hero')) {
+  if (header && document.querySelector('.modelo-hero, [data-modelo-hero]')) {
     header.classList.add('is-over-hero')
   }
 

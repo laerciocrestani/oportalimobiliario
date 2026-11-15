@@ -135,7 +135,7 @@ export function initModeloHome(): void {
     cardGrid.hidden = visible === 0
     renderChips(query)
 
-    const search = toHomeSearch(query)
+    const search = listingSearch(query)
     sessionStorage.setItem(LIST_STORAGE_KEY, search)
 
     if (options.history === 'push') {
@@ -332,6 +332,13 @@ export function initModeloHome(): void {
   }
 
   apply({ history: 'none' })
+}
+
+function listingSearch(query: HomeQuery): string {
+  const params = new URLSearchParams(toHomeSearch(query).replace(/^\?/, ''))
+  const search = params.toString()
+
+  return search ? `?${search}` : ''
 }
 
 function readCities(): string[] {

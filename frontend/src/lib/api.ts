@@ -977,6 +977,7 @@ export const builderApi = {
     }),
   lookupCep: (cep: string) => apiFetch<CepAddress>(`/builder/cep/${cep}`),
   listAmenities: () => apiFetch<Amenity[]>('/builder/amenities'),
+  listInccIndices: () => apiFetch<Pick<InccIndex, 'competence' | 'value'>[]>('/builder/incc-indices'),
   updateBuilding: (id: string, data: Partial<Building> & { amenity_ids?: number[] }) =>
     apiFetch<Building>(`/builder/buildings/${id}`, {
       method: 'PATCH',

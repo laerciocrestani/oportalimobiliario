@@ -73,6 +73,18 @@ export type PublicUnit = {
 
 export type PublicBuildingDetail = PublicBuildingListItem & {
   units?: PublicUnit[]
+  category?: string | null
+  street?: string | null
+  number?: string | null
+  neighborhood?: string | null
+  complement?: string | null
+  zip?: string | null
+  amenities?: PublicAmenity[]
+  ceiling_type?: string | null
+  opening_type?: string | null
+  flooring_type?: string | null
+  solar_position?: string | null
+  sun_period?: string | null
 }
 
 export type PublicBuildingMedia = {
@@ -81,6 +93,7 @@ export type PublicBuildingMedia = {
   mime_type: string
   original_name: string
   sort_order: number
+  category?: string | null
 }
 
 export class PublicApiError extends Error {

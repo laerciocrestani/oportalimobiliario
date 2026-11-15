@@ -7,6 +7,12 @@ import {
   copyTowerFromPrevious,
   DEFAULT_SKELETON,
   floorPurposeOptions,
+  isBelowEntranceHall,
+  normalizeFloorsBelowHall,
+  addFloor,
+  floorUnitTypeOptions,
+  setFloorPurpose,
+  setFloorUnitType,
   stacksFromBuilding,
   towerHasReference,
   markException,
@@ -18,6 +24,7 @@ import {
   unitGridPayload,
   duplicateFloor,
   duplicateUnit,
+  unitCharacteristics,
   type StackTower,
   type StackUnit,
 } from '@/apps/builder/lib/floor-stack'
@@ -207,18 +214,79 @@ describe('floor-stack', () => {
     expect(floor(deeper, -2).units[0].code).toBe('S2-01')
   })
 
-  it('offers garage on the floor directly above the hall', () => {
+  it('copies every unit characteristic and keeps identity out of the clipboard', () => {
+    const [skeleton] = buildSkeleton({ ...DEFAULT_SKELETON, towerCount: 1, floorsAbove: 1, basementCount: 0, unitsPerFloor: 1 })
+    const source = {
+      ...floor(skeleton, 2).units[0],
+      areaM2: '41.41',
+      bedrooms: '2',
+      status: 'available',
+      futureField: 'varanda',
+    }
+    const copied = unitCharacteristics(source)
+
+    expect(copied).toMatchObject({ areaM2: '41.41', bedrooms: '2', futureField: 'varanda' })
+    expect(copied).not.toHaveProperty('key')
+    expect(copied).not.toHaveProperty('code')
+    expect(copied).not.toHaveProperty('status')
+  })
+
+  it('offers garage on every floor except the hall and the floors below it', () => {
     const floors = [
       { number: -2, kind: 'garage' as const },
-      { number: -1, kind: 'garage' as const },
+      { number: -1, kind: 'residential' as const },
       { number: 1, kind: 'hall' as const },
       { number: 2, kind: 'residential' as const },
-      { number: 3, kind: 'residential' as const },
+      { number: 3, kind: 'commercial' as const },
     ]
 
+    expect(isBelowEntranceHall(-1, floors)).toBe(true)
+    expect(isBelowEntranceHall(0, floors)).toBe(true)
+    expect(isBelowEntranceHall(1, floors)).toBe(false)
+    expect(isBelowEntranceHall(2, floors)).toBe(false)
+    expect(isBelowEntranceHall(-1, [{ number: 0, kind: 'hall' }])).toBe(true)
+    expect(isBelowEntranceHall(1, [{ number: 0, kind: 'hall' }])).toBe(false)
+    expect(isBelowEntranceHall(0, [{ number: 0, kind: 'commercial' }, { number: 1, kind: 'residential' }])).toBe(false)
     expect(floorPurposeOptions(1, floors)).toEqual(['hall', 'residential', 'commercial'])
+    expect(floorPurposeOptions(-1, floors)).toEqual([])
+    expect(floorPurposeOptions(-2, floors)).toEqual([])
+    expect(floorPurposeOptions(0, floors)).toEqual([])
     expect(floorPurposeOptions(2, floors)).toEqual(['residential', 'commercial', 'garage'])
-    expect(floorPurposeOptions(3, floors)).toEqual(['residential', 'commercial'])
+    expect(floorPurposeOptions(3, floors)).toEqual(['residential', 'commercial', 'garage'])
+    expect(floorPurposeOptions(1, [{ number: 1, kind: 'residential' }])).toEqual([
+      'hall',
+      'residential',
+      'commercial',
+      'garage',
+    ])
+  })
+
+  it('turns floors below the entrance hall into garage basements', () => {
+    const [skeleton] = buildSkeleton({
+      ...DEFAULT_SKELETON,
+      towerCount: 1,
+      floorsAbove: 1,
+      basementCount: 1,
+      unitsPerFloor: 1,
+    })
+    const residentialBasement = {
+      ...skeleton,
+      floors: skeleton.floors.map((item) =>
+        item.number === -1 ? { ...item, kind: 'residential' as const, unitType: 'apartment' as const } : item,
+      ),
+    }
+
+    const normalized = normalizeFloorsBelowHall(residentialBasement)
+
+    expect(floor(normalized, -1).kind).toBe('garage')
+    expect(floor(normalized, -1).unitType).toBeNull()
+    expect(floor(normalized, -1).units[0].code).toBe('S1-01')
+    expect(floor(normalized, 1).kind).toBe('hall')
+    expect(floor(normalized, 2).kind).toBe('residential')
+    expect(normalizeFloorsBelowHall(normalized)).toBe(normalized)
+    expect(setFloorPurpose(residentialBasement, -1, 'commercial').floors.find((item) => item.number === -1)?.kind).toBe(
+      'garage',
+    )
   })
 
   it('builds a tower with only the entrance hall', () => {
@@ -462,5 +530,35 @@ describe('floor-stack', () => {
         },
       ],
     })
+  })
+
+  it('offers every residential type above the hall and keeps duplex when a floor is added', () => {
+    const [tower] = buildSkeleton({
+      ...DEFAULT_SKELETON,
+      towerCount: 1,
+      floorsAbove: 3,
+      basementCount: 1,
+      unitsPerFloor: 1,
+    })
+
+    expect(floorUnitTypeOptions('residential', 2, tower.floors)).toEqual([
+      'penthouse',
+      'duplex',
+      'triplex',
+      'garden',
+      'loft',
+      'studio',
+      'flat',
+      'apartment',
+    ])
+    expect(floorUnitTypeOptions('hall', 1, tower.floors)).toEqual([])
+    expect(floorUnitTypeOptions('garage', -1, tower.floors)).toEqual([])
+    expect(floorUnitTypeOptions('commercial', 0, tower.floors)).toEqual(['store'])
+
+    const withDuplex = setFloorUnitType(tower, 2, 'duplex')
+
+    expect(floor(withDuplex, 2).unitType).toBe('duplex')
+    expect(floor(addFloor(withDuplex, 'above'), 2).unitType).toBe('duplex')
+    expect(floor(setFloorUnitType(tower, -1, 'duplex'), -1).unitType).not.toBe('duplex')
   })
 })

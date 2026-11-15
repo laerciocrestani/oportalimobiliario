@@ -38,7 +38,7 @@ function occupancy(floor: StackFloor): string {
   }
 
   if (floor.kind === 'garage') {
-    return `${floor.units.length} vagas`
+    return `${floor.units.length} ${floor.units.length === 1 ? 'unidade' : 'unidades'}`
   }
 
   if (floor.kind === 'commercial') {
@@ -107,12 +107,12 @@ export function WizardReviewStep() {
         </Card>
         <Card size="sm">
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Vagas de garagem</CardTitle>
+            <CardTitle>Unidades de garagem</CardTitle>
             <CarIcon className="text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <p className="text-2xl font-semibold">{spots}</p>
-            <p className="text-xs text-muted-foreground">subsolos</p>
+            <p className="text-xs text-muted-foreground">em pavimentos de garagem</p>
           </CardContent>
         </Card>
         <Card size="sm">
@@ -143,7 +143,7 @@ export function WizardReviewStep() {
                   <tr>
                     <th className="px-3 py-2 font-medium">Pavimento</th>
                     <th className="px-3 py-2 font-medium">Tipo</th>
-                    <th className="px-3 py-2 font-medium">Unidades / vagas</th>
+                    <th className="px-3 py-2 font-medium">Unidades</th>
                     <th className="px-3 py-2 font-medium">Numeração</th>
                     <th className="px-3 py-2 font-medium">Origem</th>
                   </tr>

@@ -1,0 +1,61 @@
+---
+import type { HomeQuery } from '@/lib/modelo'
+
+interface Props {
+  query: HomeQuery
+  cities: string[]
+  heroUrl: string
+  cityHref: (city: string) => string
+}
+
+const { query, cities, heroUrl, cityHref } = Astro.props
+---
+
+<section class="theme-hero theme-hero--photo" data-modelo-hero style={`background-image: url('${heroUrl.replace(/'/g, '%27')}')`}>
+  <div class="modelo-wrap theme-hero__copy">
+    <p class="modelo-kicker">Editorial</p>
+    <h1>O endereço certo, com a calma de uma revista.</h1>
+    <p class="theme-hero__lead">Lançamentos publicados pelas construtoras, buscados pela cidade.</p>
+    <form id="modelo-busca" class="theme-search" method="get" action="/modelo">
+      {
+        cities.length > 0 && (
+          <div class="modelo-field modelo-city">
+            <label class="modelo-sr" for="cidade">Cidade</label>
+            <input
+              id="cidade"
+              name="cidade"
+              type="search"
+              value={query.cidade}
+              placeholder="Busque por cidade"
+              role="combobox"
+              autocomplete="off"
+              aria-autocomplete="list"
+              aria-expanded="false"
+              aria-controls="cidade-sugestoes"
+            />
+            <ul id="cidade-sugestoes" class="modelo-suggest" role="listbox" hidden />
+          </div>
+        )
+      }
+      <button type="submit" class="modelo-button">Buscar</button>
+    </form>
+    {
+      cities.length > 0 && (
+        <ul class="theme-chips">
+          <li>
+            <a href={cityHref('')} aria-current={query.cidade ? undefined : 'true'}>Todas</a>
+          </li>
+          {
+            cities.map((city) => (
+              <li>
+                <a href={cityHref(city)} aria-current={query.cidade === city ? 'true' : undefined}>
+                  {city}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      )
+    }
+  </div>
+</section>

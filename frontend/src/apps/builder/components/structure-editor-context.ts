@@ -1,4 +1,5 @@
 import { createContext, use } from 'react'
+import type { InccQuote } from '@/apps/builder/lib/incc-price'
 import type { MirrorDraft, SkeletonInput, StackFloor, StackTower, StackUnit } from '@/apps/builder/lib/floor-stack'
 
 export type StructureEditorState = {
@@ -24,6 +25,7 @@ export type StructureEditorMeta = {
   selectedTower: StackTower | null
   selectedFloor: StackFloor | null
   priceMode?: 'incc' | 'fixed'
+  inccIndices?: readonly InccQuote[]
   singleTower?: boolean
 }
 

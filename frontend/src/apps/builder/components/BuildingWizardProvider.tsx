@@ -11,7 +11,6 @@ import {
   useBuildingWizard,
   type BuildingWizardContextValue,
 } from '@/apps/builder/components/building-wizard-context'
-import { Badge } from '@/components/ui/badge'
 import { BuildingWizardSteps } from '@/apps/builder/components/BuildingWizardSteps'
 import { WizardPublishStep } from '@/apps/builder/components/WizardPublishStep'
 import { WizardReviewStep } from '@/apps/builder/components/WizardReviewStep'
@@ -462,13 +461,7 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
 }
 
 function WizardFrame({ children }: { children: ReactNode }) {
-  const { state, actions } = useBuildingWizard()
-  const title = state.updatingExisting
-    ? `Editar ${state.form.name || 'empreendimento'}`
-    : state.buildingId
-      ? 'Continuar cadastro'
-      : 'Novo empreendimento'
-  const place = [state.form.city.trim(), state.form.state.trim()].filter(Boolean).join(', ')
+  const { actions } = useBuildingWizard()
 
   return (
     <form
@@ -477,23 +470,6 @@ function WizardFrame({ children }: { children: ReactNode }) {
       }}
       className="flex h-full min-h-0 w-full flex-1 flex-col gap-6"
     >
-      <header className="flex shrink-0 flex-col gap-4 border-b pb-5">
-        <div className="flex min-w-0 flex-col gap-1">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            {place ? `Empreendimento · ${place}` : 'Empreendimento'}
-          </p>
-          <p className="truncate text-2xl font-semibold tracking-tight">{state.form.name || 'Empreendimento'}</p>
-          <p className="text-sm text-muted-foreground">
-            {state.currentStep === 2
-              ? 'Acompanhe os pavimentos e as unidades do empreendimento.'
-              : 'Cadastre os dados e monte a estrutura do seu empreendimento.'}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-base font-medium">{title}</h1>
-          {state.updatingExisting ? null : <Badge variant="secondary">Rascunho</Badge>}
-        </div>
-      </header>
       {children}
     </form>
   )
@@ -543,7 +519,11 @@ function WizardCurrentStep() {
     step = <WizardReviewStep />
   }
 
-  return <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto">{step}</div>
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-1 [scrollbar-gutter:stable]">
+      {step}
+    </div>
+  )
 }
 
 function WizardFooter() {

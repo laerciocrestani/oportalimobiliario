@@ -36,6 +36,7 @@ use App\Http\Controllers\Api\Builder\BuildingRequestController as BuilderBuildin
 use App\Http\Controllers\Api\Builder\BuildingStructureController;
 use App\Http\Controllers\Api\Builder\BuildingUnitGridController;
 use App\Http\Controllers\Api\Builder\CepController;
+use App\Http\Controllers\Api\Builder\InccIndexController as BuilderInccIndexController;
 use App\Http\Controllers\Api\Builder\ContractIssueController;
 use App\Http\Controllers\Api\Builder\ContractTemplateController;
 use App\Http\Controllers\Api\Builder\ProposalIssueController;
@@ -126,6 +127,7 @@ Route::middleware(['auth:sanctum', 'tenant.from.user', 'tenant.ensure', 'permiss
     Route::get('/activity', [BuilderActivityController::class, 'index']);
     Route::get('/cep/{cep}', [CepController::class, 'show']);
     Route::get('/amenities', [BuilderAmenityController::class, 'index']);
+    Route::get('/incc-indices', [BuilderInccIndexController::class, 'index']);
     Route::apiResource('buildings', BuildingController::class);
     Route::put('/buildings/{building}/structure', [BuildingStructureController::class, 'update']);
     Route::put('/buildings/{building}/unit-grid', [BuildingUnitGridController::class, 'update']);

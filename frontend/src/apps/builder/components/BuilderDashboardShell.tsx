@@ -7,11 +7,12 @@ import { useReservationNavBadge } from '@/hooks/use-reservation-nav-badge'
 type BuilderDashboardShellProps = {
   title: string
   children: ReactNode
+  detail?: ReactNode
   actions?: ReactNode
   fill?: boolean
 }
 
-export function BuilderDashboardShell({ title, children, actions, fill = false }: BuilderDashboardShellProps) {
+export function BuilderDashboardShell({ title, children, detail, actions, fill = false }: BuilderDashboardShellProps) {
   const { user, permissions } = useBuilderPermissions()
   const canManageReservations = permissions.includes('reservations.cancel')
   const { count: pendingActionsCount, witnessScope } = useReservationNavBadge('builder', true)
@@ -58,7 +59,7 @@ export function BuilderDashboardShell({ title, children, actions, fill = false }
   }, [canAccessReservations, pendingActionsCount, permissions, user])
 
   return (
-    <DashboardShell role="builder" title={title} navConfig={navConfig} actions={actions} fill={fill}>
+    <DashboardShell role="builder" title={title} navConfig={navConfig} detail={detail} actions={actions} fill={fill}>
       {children}
     </DashboardShell>
   )

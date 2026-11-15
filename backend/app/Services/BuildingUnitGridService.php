@@ -229,7 +229,6 @@ class BuildingUnitGridService
             }
 
             foreach ($towerData['floors'] as $floorIndex => $floorData) {
-                $this->assertFloorKind((int) $floorData['number'], $floorData['kind'], $towerIndex, $floorIndex);
                 $this->assertFloorUnitCount($floorData, $towerIndex, $floorIndex);
             }
         }
@@ -273,19 +272,6 @@ class BuildingUnitGridService
         }
 
         return $towers;
-    }
-
-    private function assertFloorKind(int $number, mixed $kind, int $towerIndex, int $floorIndex): void
-    {
-        $floorKind = $kind instanceof FloorKind
-            ? $kind
-            : FloorKind::from((string) $kind);
-
-        if ($number < 0 && $floorKind !== FloorKind::Garage) {
-            throw ValidationException::withMessages([
-                "towers.{$towerIndex}.floors.{$floorIndex}.kind" => 'Negative floors must be garage.',
-            ]);
-        }
     }
 
     /**

@@ -100,9 +100,6 @@ class BuildingStructureService
 
             foreach ($towerData['floors'] as $floorIndex => $floorData) {
                 $number = (int) $floorData['number'];
-                $kind = $floorData['kind'] instanceof FloorKind
-                    ? $floorData['kind']
-                    : FloorKind::from((string) $floorData['kind']);
 
                 if (isset($numbers[$number])) {
                     throw ValidationException::withMessages([
@@ -111,12 +108,6 @@ class BuildingStructureService
                 }
 
                 $numbers[$number] = true;
-
-                if ($number < 0 && $kind !== FloorKind::Garage) {
-                    throw ValidationException::withMessages([
-                        "towers.{$towerIndex}.floors.{$floorIndex}.kind" => 'Negative floors must be garage.',
-                    ]);
-                }
             }
 
             if (! array_key_exists('reference_floor', $towerData) || $towerData['reference_floor'] === null) {

@@ -274,7 +274,7 @@ it('accepts a garage floor above the hall', function () {
         ->assertJsonPath('towers.0.floors.3.kind', 'garage');
 });
 
-it('rejects negative floors that are not garage', function () {
+it('accepts a residential basement and garage on an upper floor', function () {
     $tenant = Tenant::factory()->create();
     $user = User::factory()->builder()->withBuilderPermissions()->for($tenant)->create();
     $building = Building::factory()->for($tenant)->create(['published' => false]);
@@ -287,12 +287,17 @@ it('rejects negative floors that are not garage', function () {
                 'name' => 'Torre A',
                 'floors' => [
                     ['number' => -1, 'kind' => 'residential'],
+                    ['number' => 1, 'kind' => 'hall'],
+                    ['number' => 4, 'kind' => 'garage'],
                 ],
             ],
         ],
     ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['towers.0.floors.0.kind']);
+        ->assertOk()
+        ->assertJsonPath('towers.0.floors.0.kind', 'residential')
+        ->assertJsonPath('towers.0.floors.1.kind', 'hall')
+        ->assertJsonPath('towers.0.floors.2.number', 4)
+        ->assertJsonPath('towers.0.floors.2.kind', 'garage');
 });
 
 it('rejects a reference floor that does not exist in the tower', function () {

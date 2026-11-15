@@ -6,9 +6,11 @@ interface Props {
   building: PublicBuildingListItem
   index: number
   hidden?: boolean
+  query?: string
 }
 
-const { building, index, hidden = false } = Astro.props
+const { building, index, hidden = false, query = '' } = Astro.props
+const href = `/modelo/empreendimentos/${encodeURIComponent(building.slug)}${query ? `?${query.replace(/^\?/, '')}` : ''}`
 const coverUrl = building.cover_image?.url ? browserMediaUrl(building.cover_image.url) : null
 const place = formatPlace(building.city, building.state)
 const price = listPrice(building)
@@ -24,7 +26,7 @@ const meta = cheapest ? cardMeta(cheapest) : null
   data-price={price ?? ''}
   hidden={hidden}
 >
-  <a class="modelo-card" href={`/modelo/empreendimentos/${encodeURIComponent(building.slug)}`}>
+  <a class="modelo-card" href={href}>
     <span class="modelo-card__media">
       {
         coverUrl ? (

@@ -184,7 +184,7 @@ describe('StructureEditor', () => {
     expect(screen.getByLabelText('Área privativa 401 (m²)')).toHaveValue('50')
   })
 
-  it('edits garage spot area and price without living fields', async () => {
+  it('edits a garage floor unit like any other unit', async () => {
     const user = userEvent.setup()
     render(<StructureEditorHarness />)
 
@@ -192,16 +192,17 @@ describe('StructureEditor', () => {
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: /Subsolo 1/ }))
 
-    expect(screen.getByText(/Garagem · 1 vaga/)).toBeInTheDocument()
-    expect(screen.queryByLabelText('Dormitórios S1-01')).not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Área privativa S1-01 (m²)')).not.toBeInTheDocument()
+    expect(screen.getByText(/Garagem · 1 unidade/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Dormitórios S1-01')).toBeInTheDocument()
 
-    await user.type(screen.getByLabelText('Área S1-01 (m²)'), '12.5')
+    await user.type(screen.getByLabelText('Área privativa S1-01 (m²)'), '12.5')
+    await user.type(screen.getByLabelText('Dormitórios S1-01'), '1')
     await user.type(screen.getByLabelText('Valor-base INCC S1-01'), '45000')
 
-    expect(screen.getByLabelText('Área S1-01 (m²)')).toHaveValue('12.5')
+    expect(screen.getByLabelText('Área privativa S1-01 (m²)')).toHaveValue('12.5')
+    expect(screen.getByLabelText('Dormitórios S1-01')).toHaveValue('1')
     expect(screen.getByLabelText('Valor-base INCC S1-01')).toHaveValue('45000')
-    expect(screen.getByText(/Garagem · 1 vaga · exceção/)).toBeInTheDocument()
+    expect(screen.getByText(/Garagem · 1 unidade · exceção/)).toBeInTheDocument()
   })
 
   it('selects another tower and floor in the stack', async () => {

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 560" role="img" aria-labelledby="titulo desc">
+  <title id="titulo">Planta geral do térreo</title>
+  <desc id="desc">Acesso, lobby, conveniência, care laundry, espaço pet, espaço kids, gourmet e piscina.</desc>
+  <rect width="860" height="560" fill="#f7f4ee"/>
+  <g fill="#1b1814" font-family="Georgia, serif">
+    <text x="36" y="42" font-size="22">Planta geral · térreo</text>
+    <text x="36" y="66" font-size="14" fill="#6f5430">Lazer e acesso · sem unidades residenciais</text>
+  </g>
+  <g fill="none" stroke="#1b1814" stroke-width="2.5">
+    <rect x="36" y="96" width="788" height="420"/>
+    <path d="M36 250 H360 M360 96 V516 M560 96 V516 M560 300 H824 M200 250 V516 M200 390 H360"/>
+  </g>
+  <g fill="#6f675d" font-family="Outfit, Avenir Next, sans-serif" font-size="14" text-anchor="middle">
+    <text x="198" y="160">Acesso</text>
+    <text x="198" y="182" fill="#1b1814">Lobby</text>
+    <text x="118" y="330">Conveniência</text>
+    <text x="280" y="320">Care Laundry</text>
+    <text x="280" y="450">Espaço Pet</text>
+    <text x="460" y="220">Espaço Kids</text>
+    <text x="460" y="400">Gourmet</text>
+    <text x="692" y="180">Piscina aquecida</text>
+    <text x="692" y="400">Deck e jardim</text>
+  </g>
+</svg>

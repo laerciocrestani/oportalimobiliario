@@ -32,12 +32,12 @@
 
 ## Sessão atual
 
-- **Fase:** `reservation-witness-permission` execute done
-- **Branch:** `docs/kanban-dono-da-bola-colunas`
-- **Última etapa concluída:** REQ-WIT-001…004 — `reservations.witness` no catálogo, seletor filtrado, slot assina após revoke
-- **Próxima etapa:** push/PR se solicitado
-- **Spec:** `.specs/features/reservation-witness-permission/`
-- **Nota:** sem role/portal testemunha; supervisor demo acumula gestor + testemunha
+- **Fase:** estrutura de testes (Pest, Vitest, Playwright)
+- **Branch:** `main`
+- **Última etapa concluída:** workflow de qualidade, boot E2E em SQLite e duas jornadas Playwright
+- **Próxima etapa:** aplicar a ruleset da `main` com `bash scripts/apply-quality-ruleset.sh`
+- **Spec:** `docs/discovery/resumo-estrutura-de-testes.md`
+- **Nota:** a ruleset não foi aplicada neste passo para não bloquear outros PRs antes do workflow existir na `main`
 
 ## Preferences
 

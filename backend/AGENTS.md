@@ -27,14 +27,16 @@ Documentação válida **somente neste repositório** — projetos com stack par
 3. Consultar `TRACEABILITY.md` para arquivos já implementados.
 4. Ao concluir: atualizar traceability se criou arquivos novos; apenas o orquestrador atualiza `STATE.md`.
 
-## Comandos (sempre via Docker)
+## Comandos
 
 ```bash
 docker compose exec backend php artisan test --compact
 docker compose exec frontend pnpm test
+bash scripts/e2e.sh
 ```
 
-**Proibido no host:** `php artisan`, `composer`, `pnpm`, `npm`.  
+**Proibido no host:** `php artisan`, `composer`, `pnpm`, `npm`. 
+**Exceção:** `bash scripts/e2e.sh` sobe API, Vite, Astro e Chromium no host, com SQLite, no mesmo boot do GitHub Actions. Pest e Vitest do dia a dia continuam no Compose.
 **Proibido sem pedido explícito:** `migrate:fresh`, `db:wipe`.
 
 ## Stack resumida
@@ -75,6 +77,7 @@ Laravel Boost (`boost:mcp` via Docker) — preferir `database-schema`, `search-d
 2. Atualizar `docs/api/openapi.yaml` se mudou contrato
 3. Vitest para componentes com interação
 4. Rodar testes afetados antes de concluir
+5. Merge na `main` exige os checks `Pest`, `Vitest` e `Playwright` (`.github/workflows/quality.yml`)
 
 ## Estrutura de specs
 

@@ -1,0 +1,95 @@
+name: Qualidade
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  Pest:
+    name: Pest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, xml, curl, zip, bcmath, intl, sqlite, pdo_sqlite
+          coverage: none
+      - name: Dependências
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - name: Pest
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ":memory:"
+        run: php artisan test --compact
+
+  Vitest:
+    name: Vitest
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Dependências
+        run: pnpm install --frozen-lockfile
+      - name: Vitest
+        run: pnpm test
+
+  Playwright:
+    name: Playwright
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: mbstring, xml, curl, zip, bcmath, intl, sqlite, pdo_sqlite, dom
+          coverage: none
+      - name: Dependências do backend
+        working-directory: backend
+        run: composer install --no-interaction --prefer-dist --no-progress
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            frontend/pnpm-lock.yaml
+            sites/pnpm-lock.yaml
+            e2e/pnpm-lock.yaml
+      - name: Dependências do frontend
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Dependências do portal público
+        working-directory: sites
+        run: pnpm install --frozen-lockfile
+      - name: Dependências do Playwright
+        working-directory: e2e
+        run: pnpm install --frozen-lockfile
+      - name: Chromium
+        working-directory: e2e
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Playwright
+        working-directory: e2e
+        run: pnpm test

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 560" role="img" aria-labelledby="titulo desc">
+  <title id="titulo">Planta geral do pavimento tipo</title>
+  <desc id="desc">Seis unidades por andar ao redor do núcleo de elevadores.</desc>
+  <rect width="860" height="560" fill="#f7f4ee"/>
+  <g fill="#1b1814" font-family="Georgia, serif">
+    <text x="36" y="42" font-size="22">Planta geral · pavimento tipo</text>
+    <text x="36" y="66" font-size="14" fill="#6f5430">6 unidades por andar</text>
+  </g>
+  <g fill="none" stroke="#1b1814" stroke-width="2.5">
+    <rect x="36" y="100" width="788" height="400"/>
+    <path d="M300 100 V500 M560 100 V500 M36 300 H824 M300 200 H560 M300 400 H560"/>
+  </g>
+  <g fill="#6f675d" font-family="Outfit, Avenir Next, sans-serif" font-size="14" text-anchor="middle">
+    <text x="168" y="190">Unidade 01</text>
+    <text x="168" y="212" fill="#1b1814">67 m²</text>
+    <text x="168" y="390">Unidade 03</text>
+    <text x="168" y="412" fill="#1b1814">67 m²</text>
+    <text x="692" y="190">Unidade 02</text>
+    <text x="692" y="212" fill="#1b1814">67 m²</text>
+    <text x="692" y="390">Unidade 04</text>
+    <text x="692" y="412" fill="#1b1814">67 m²</text>
+    <text x="430" y="155">Unidade 05 · 98 m²</text>
+    <text x="430" y="300" fill="#1b1814">Núcleo</text>
+    <text x="430" y="455">Unidade 06 · 98 m²</text>
+  </g>
+</svg>

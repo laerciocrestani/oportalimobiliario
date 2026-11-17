@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\FloorKind;
+use App\Enums\FloorUnitType;
 use App\Enums\UnitStatus;
 use App\Models\Building;
 use App\Models\Floor;
@@ -71,12 +72,21 @@ class BuildingUnitGridService
                         continue;
                     }
 
-                    $floor->update([
+                    $attributes = [
                         'kind' => $floorData['kind'] instanceof FloorKind
                             ? $floorData['kind']
                             : FloorKind::from($floorData['kind']),
                         'customized' => (bool) ($floorData['customized'] ?? false),
-                    ]);
+                    ];
+
+                    if (array_key_exists('unit_type', $floorData)) {
+                        $unitType = $floorData['unit_type'];
+                        $attributes['unit_type'] = $unitType instanceof FloorUnitType
+                            ? $unitType->value
+                            : ($unitType === null || $unitType === '' ? null : FloorUnitType::from((string) $unitType)->value);
+                    }
+
+                    $floor->update($attributes);
 
                     foreach ($floorData['units'] as $unitData) {
                         if ($locked->contains(fn (Unit $unit): bool => $unit->code === (string) $unitData['code'])) {
@@ -219,7 +229,6 @@ class BuildingUnitGridService
             }
 
             foreach ($towerData['floors'] as $floorIndex => $floorData) {
-                $this->assertFloorKind((int) $floorData['number'], $floorData['kind'], $towerIndex, $floorIndex);
                 $this->assertFloorUnitCount($floorData, $towerIndex, $floorIndex);
             }
         }
@@ -263,25 +272,6 @@ class BuildingUnitGridService
         }
 
         return $towers;
-    }
-
-    private function assertFloorKind(int $number, mixed $kind, int $towerIndex, int $floorIndex): void
-    {
-        $floorKind = $kind instanceof FloorKind
-            ? $kind
-            : FloorKind::from((string) $kind);
-
-        if ($floorKind === FloorKind::Garage && $number >= 0) {
-            throw ValidationException::withMessages([
-                "towers.{$towerIndex}.floors.{$floorIndex}.kind" => 'Garage floors must have a negative number.',
-            ]);
-        }
-
-        if ($number < 0 && $floorKind !== FloorKind::Garage) {
-            throw ValidationException::withMessages([
-                "towers.{$towerIndex}.floors.{$floorIndex}.kind" => 'Negative floors must be garage.',
-            ]);
-        }
     }
 
     /**

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 520" role="img" aria-labelledby="titulo desc">
+  <title id="titulo">Planta geral da cobertura</title>
+  <desc id="desc">Lounge, deck, apoio e área descoberta do rooftop.</desc>
+  <rect width="860" height="520" fill="#f7f4ee"/>
+  <g fill="#1b1814" font-family="Georgia, serif">
+    <text x="36" y="42" font-size="22">Planta geral · cobertura</text>
+    <text x="36" y="66" font-size="14" fill="#6f5430">Rooftop · lounge e deck</text>
+  </g>
+  <g fill="none" stroke="#1b1814" stroke-width="2.5">
+    <rect x="36" y="96" width="788" height="370"/>
+    <path d="M360 96 V466 M620 96 V466 M36 300 H360"/>
+  </g>
+  <g fill="#6f675d" font-family="Outfit, Avenir Next, sans-serif" font-size="14" text-anchor="middle">
+    <text x="198" y="180">Lounge Terrace</text>
+    <text x="198" y="380">Warm Terrace</text>
+    <text x="490" y="270">Deck descoberto</text>
+    <text x="730" y="200">Apoio</text>
+    <text x="730" y="360">Circulação</text>
+  </g>
+</svg>

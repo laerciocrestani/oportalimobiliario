@@ -1,10 +1,10 @@
 export const WIZARD_LAST_STEP = 4
 
 export const WIZARD_STEPS = [
-  { id: 1, label: 'Dados básicos' },
-  { id: 2, label: 'Estrutura' },
-  { id: 3, label: 'Revisão estrutural' },
-  { id: 4, label: 'Fotos e descritivo' },
+  { id: 1, label: 'Dados básicos', description: 'Identificação e localização' },
+  { id: 2, label: 'Estrutura', description: 'Pavimentos e unidades' },
+  { id: 3, label: 'Revisão estrutural', description: 'Confirma as informações' },
+  { id: 4, label: 'Fotos e descritivo', description: 'Apresentação do projeto' },
 ] as const
 
 export type WizardStepId = (typeof WIZARD_STEPS)[number]['id']

@@ -1,4 +1,4 @@
-import type { Building, BuildingStructurePayload, BuildingUnitGridPayload, FloorKind, Unit } from '@/lib/api'
+import type { Building, BuildingStructurePayload, BuildingUnitGridPayload, FloorKind, FloorUnitType, Unit } from '@/lib/api'
 
 /** @see REQ-WZR-002 @see REQ-WZR-004 @see REQ-WZR-005 @see REQ-WZR-006 */
 
@@ -39,11 +39,13 @@ export type StackUnit = {
   ceilingType: string
   openingType: string
   flooringType: string
+  status?: string
 }
 
 export type StackFloor = {
   number: number
   kind: FloorKind
+  unitType?: FloorUnitType | null
   customized: boolean
   units: StackUnit[]
 }
@@ -57,14 +59,162 @@ export type StackTower = {
   locked?: boolean
 }
 
-export const DEFAULT_UNITS_PER_FLOOR = 4
+export const TOP_FLOOR_UNIT_TYPES = [
+  'penthouse',
+  'duplex',
+  'triplex',
+  'garden',
+  'loft',
+  'studio',
+  'flat',
+  'apartment',
+] as const satisfies readonly FloorUnitType[]
+
+const UNIT_TYPE_LABELS: Record<FloorUnitType, string> = {
+  apartment: 'Apartamento',
+  penthouse: 'Cobertura',
+  duplex: 'Duplex',
+  triplex: 'Triplex',
+  garden: 'Garden',
+  loft: 'Loft',
+  studio: 'Studio',
+  flat: 'Flat',
+  store: 'Loja',
+}
+
+export function floorUnitTypeLabel(type: FloorUnitType): string {
+  return UNIT_TYPE_LABELS[type]
+}
+
+function entranceHallNumber(floors: Array<{ number: number; kind: FloorKind }>): number | null {
+  return floors.reduce<number | null>((found, floor) => {
+    if (floor.kind !== 'hall') {
+      return found
+    }
+
+    return found == null ? floor.number : Math.min(found, floor.number)
+  }, null)
+}
+
+export function isBelowEntranceHall(
+  number: number,
+  floors: Array<{ number: number; kind: FloorKind }>,
+): boolean {
+  const hallNumber = entranceHallNumber(floors)
+
+  if (hallNumber == null) {
+    return number < 0
+  }
+
+  return number < hallNumber
+}
+
+export function isAboveEntranceHall(
+  number: number,
+  floors: Array<{ number: number; kind: FloorKind }>,
+): boolean {
+  const hallNumber = entranceHallNumber(floors)
+
+  if (hallNumber == null) {
+    return number > 1
+  }
+
+  return number > hallNumber
+}
+
+export function floorStackLabel(
+  number: number,
+  floors: Array<{ number: number; kind: FloorKind }>,
+): string {
+  if (isBelowEntranceHall(number, floors) && number >= 0) {
+    return 'Subsolo'
+  }
+
+  return floorLabel(number)
+}
+
+export function normalizeFloorsBelowHall(tower: StackTower): StackTower {
+  let changed = false
+  const floors = tower.floors.map((floor) => {
+    if (!isBelowEntranceHall(floor.number, tower.floors)) {
+      return floor
+    }
+
+    if (floor.kind === 'garage' && floor.unitType == null && floor.units.length > 0) {
+      return floor
+    }
+
+    changed = true
+
+    return {
+      ...floor,
+      kind: 'garage' as const,
+      unitType: null,
+      units: floor.units.length > 0 ? floor.units : [emptyUnit(floor.number, 1)],
+    }
+  })
+
+  if (!changed) {
+    return tower
+  }
+
+  return {
+    ...tower,
+    floors,
+  }
+}
+
+export function floorPurposeOptions(
+  number: number,
+  floors: Array<{ number: number; kind: FloorKind }> = [],
+): Array<'hall' | 'residential' | 'commercial' | 'garage'> {
+  if (isBelowEntranceHall(number, floors)) {
+    return []
+  }
+
+  const current = floors.find((floor) => floor.number === number)
+
+  if (current?.kind === 'hall' || (number === 1 && current == null)) {
+    return ['hall', 'residential', 'commercial']
+  }
+
+  if (number === 1) {
+    return ['hall', 'residential', 'commercial', 'garage']
+  }
+
+  return ['residential', 'commercial', 'garage']
+}
+
+export function floorUnitTypeOptions(
+  kind: FloorKind,
+  floorNumber: number,
+  floors: Array<{ number: number; kind: FloorKind }>,
+): FloorUnitType[] {
+  if (kind === 'commercial') {
+    return ['store']
+  }
+
+  if (kind !== 'residential' || isBelowEntranceHall(floorNumber, floors)) {
+    return []
+  }
+
+  return [...TOP_FLOOR_UNIT_TYPES]
+}
+
+export function isTopFloor(floors: Array<{ number: number }>, number: number): boolean {
+  const highest = floors.reduce((max, floor) => Math.max(max, floor.number), number)
+
+  return number > 0 && number === highest
+}
+
+export const DEFAULT_UNITS_PER_FLOOR = 1
 
 export const DEFAULT_SKELETON: SkeletonInput = {
   towerCount: 1,
-  floorsAbove: 1,
-  basementCount: 0,
+  floorsAbove: 5,
+  basementCount: 2,
   unitsPerFloor: DEFAULT_UNITS_PER_FLOOR,
-  spotsPerBasement: DEFAULT_UNITS_PER_FLOOR,
+  spotsPerBasement: 1,
 }
 
 export function unitCode(floorNumber: number, position: number): string {
@@ -118,6 +268,80 @@ export function removeFloor(tower: StackTower, floorNumber: number): StackTower 
   }
 }
 
+export function duplicateUnit(tower: StackTower, floorNumber: number, unitKey: string): StackTower {
+  return markException(
+    {
+      ...tower,
+      floors: tower.floors.map((floor) => {
+        if (floor.number !== floorNumber || floor.kind === 'hall') {
+          return floor
+        }
+
+        const source = floor.units.find((unit) => unit.key === unitKey)
+
+        if (!source) {
+          return floor
+        }
+
+        const position = floor.units.length + 1
+
+        return {
+          ...floor,
+          units: [
+            ...floor.units,
+            {
+              ...source,
+              key: draftKey(`u-${floor.number}-${position}`),
+              code: unitCode(floor.number, position),
+            },
+          ],
+        }
+      }),
+    },
+    floorNumber,
+  )
+}
+
+export function duplicateFloor(tower: StackTower, floorNumber: number, direction: 'above' | 'below'): StackTower {
+  const source = tower.floors.find((floor) => floor.number === floorNumber)
+
+  if (!source) {
+    return tower
+  }
+
+  const insertAt = duplicateFloorInsertNumber(floorNumber, direction)
+
+  function movedNumber(number: number): number {
+    if (direction === 'below' && floorNumber < 0) {
+      return number <= insertAt ? number - 1 : number
+    }
+
+    return number >= insertAt ? nextFloorNumber(number, 1) : number
+  }
+
+  const moved = tower.floors.map((floor) => renumberFloor(floor, movedNumber(floor.number)))
+
+  return normalizeFloorsBelowHall({
+    ...tower,
+    referenceFloor: tower.referenceFloor == null ? null : movedNumber(tower.referenceFloor),
+    floors: [...moved, cloneFloorAt(source, insertAt)].toSorted(
+      (left, right) => left.number - right.number,
+    ),
+  })
+}
+
+export function duplicateFloorInsertNumber(floorNumber: number, direction: 'above' | 'below'): number {
+  if (direction === 'above') {
+    return nextFloorNumber(floorNumber, 1)
+  }
+
+  if (floorNumber < 0) {
+    return floorNumber - 1
+  }
+
+  return floorNumber
+}
+
 export function setReferenceFloor(tower: StackTower, floorNumber: number): StackTower {
   if (!tower.floors.some((floor) => floor.number === floorNumber) || tower.referenceFloor === floorNumber) {
     return tower
@@ -135,26 +359,35 @@ export function addFloor(tower: StackTower, where: 'above' | 'basement'): StackT
     const number = lowest > 0 ? -1 : lowest - 1
     const spots = tower.floors.find((floor) => floor.kind === 'garage')?.units.length ?? 1
 
-    return {
+    return normalizeFloorsBelowHall({
       ...tower,
       floors: [...tower.floors, makeFloor(number, 'garage', Math.max(1, spots))].toSorted(
         (left, right) => left.number - right.number,
       ),
-    }
+    })
   }
 
   const highest = tower.floors.reduce((max, floor) => Math.max(max, floor.number), 0)
+  const number = highest < 1 ? 1 : highest + 1
+
+  if (number === 1) {
+    return normalizeFloorsBelowHall({
+      ...tower,
+      floors: [...tower.floors, makeFloor(1, 'hall', 0)].toSorted((left, right) => left.number - right.number),
+    })
+  }
+
   const sample =
     tower.floors.find((floor) => floor.number === tower.referenceFloor && floor.kind === 'residential') ??
     tower.floors.find((floor) => floor.kind === 'residential')
   const count = Math.max(1, sample?.units.length ?? 1)
 
-  return {
+  return normalizeFloorsBelowHall({
     ...tower,
-    floors: [...tower.floors, makeFloor(highest + 1, 'residential', count)].toSorted(
+    floors: [...tower.floors, makeFloor(number, 'residential', count, 'apartment')].toSorted(
       (left, right) => left.number - right.number,
     ),
-  }
+  })
 }
 
 export function buildSkeleton(input: SkeletonInput): StackTower[] {
@@ -171,16 +404,16 @@ export function buildSkeleton(input: SkeletonInput): StackTower[] {
       floors.push(makeFloor(-level, 'garage', spotsPerBasement))
     }
 
-    floors.push(makeFloor(0, 'commercial', unitsPerFloor))
+    floors.push(makeFloor(1, 'hall', 0))
 
-    for (let number = 1; number <= floorsAbove; number += 1) {
-      floors.push(makeFloor(number, 'residential', unitsPerFloor))
+    for (let number = 2; number <= floorsAbove + 1; number += 1) {
+      floors.push(makeFloor(number, 'residential', unitsPerFloor, 'apartment'))
     }
 
     return {
       key: draftKey(`tower-${index}`),
       name: `Torre ${String.fromCharCode(65 + (index % 26))}`,
-      referenceFloor: floorsAbove > 0 ? 1 : 0,
+      referenceFloor: floorsAbove > 0 ? 2 : 1,
       floors,
     }
   })
@@ -300,9 +533,25 @@ export function updateFloorUnit(
   )
 }
 
+const UNIT_IDENTITY_FIELDS = ['key', 'code', 'status'] as const
+
+export function unitCharacteristics<T extends StackUnit>(unit: T): Omit<T, (typeof UNIT_IDENTITY_FIELDS)[number]> {
+  const copy = { ...unit }
+
+  for (const field of UNIT_IDENTITY_FIELDS) {
+    delete copy[field]
+  }
+
+  return structuredClone(copy)
+}
+
 export function floorLabel(number: number): string {
-  if (number > 0) {
-    return `Andar ${number}`
+  if (number > 1) {
+    return `${number}º pavimento`
+  }
+
+  if (number === 1) {
+    return '1 pavimento (térreo)'
   }
 
   if (number === 0) {
@@ -326,6 +575,65 @@ export function floorKindLabel(kind: FloorKind): string {
   }
 
   return 'Residencial'
+}
+
+export function setFloorPurpose(
+  tower: StackTower,
+  floorNumber: number,
+  kind: 'hall' | 'residential' | 'commercial' | 'garage',
+): StackTower {
+  if (isBelowEntranceHall(floorNumber, tower.floors)) {
+    return normalizeFloorsBelowHall(tower)
+  }
+
+  const next = setFloorKind(tower, floorNumber, kind)
+
+  return normalizeFloorsBelowHall({
+    ...next,
+    floors: next.floors.map((floor) => {
+      if (floor.number !== floorNumber) {
+        return floor
+      }
+
+      if (kind === 'hall' || kind === 'garage') {
+        return { ...floor, unitType: null }
+      }
+
+      if (kind === 'commercial') {
+        return { ...floor, unitType: 'store' }
+      }
+
+      const allowed = floorUnitTypeOptions('residential', floorNumber, next.floors)
+
+      return {
+        ...floor,
+        unitType: floor.unitType != null && allowed.includes(floor.unitType) ? floor.unitType : 'apartment',
+      }
+    }),
+  })
+}
+
+export function setFloorUnitType(tower: StackTower, floorNumber: number, unitType: FloorUnitType): StackTower {
+  if (isBelowEntranceHall(floorNumber, tower.floors)) {
+    return normalizeFloorsBelowHall(tower)
+  }
+
+  const current = tower.floors.find((floor) => floor.number === floorNumber)
+
+  if (!current || floorUnitTypeOptions(current.kind === 'hall' ? 'residential' : current.kind, floorNumber, tower.floors).includes(unitType) === false) {
+    return tower
+  }
+
+  const kind = unitType === 'store' ? 'commercial' : 'residential'
+  const withKind = current.kind === kind ? tower : setFloorKind(tower, floorNumber, kind)
+
+  return markException(
+    {
+      ...withKind,
+      floors: withKind.floors.map((floor) => (floor.number === floorNumber ? { ...floor, kind, unitType } : floor)),
+    },
+    floorNumber,
+  )
 }
 
 export function floorsTopToBottom(floors: StackFloor[]): StackFloor[] {
@@ -477,7 +785,7 @@ export function stacksFromBuilding(building: Building): StackTower[] {
             customized: false,
           }))
 
-      return {
+      return normalizeFloorsBelowHall({
         key: String(tower.id ?? `tower-${index}`),
         id: tower.id,
         name: tower.name,
@@ -491,6 +799,7 @@ export function stacksFromBuilding(building: Building): StackTower[] {
           return {
             number: meta.number,
             kind: meta.kind,
+            unitType: 'unit_type' in meta ? (meta.unit_type ?? null) : null,
             customized: meta.customized ?? false,
             units:
               existing.length > 0
@@ -500,7 +809,7 @@ export function stacksFromBuilding(building: Building): StackTower[] {
                   : [emptyUnit(meta.number, 1)],
           }
         }),
-      }
+      })
     })
 }
 
@@ -522,6 +831,7 @@ function unitFromApi(unit: Unit, floorNumber: number, index: number): StackUnit 
     ceilingType: unit.ceiling_type ?? '',
     openingType: unit.opening_type ?? '',
     flooringType: unit.flooring_type ?? '',
+    status: unit.status,
   }
 }
 
@@ -553,6 +863,22 @@ export function towerLetterName(index: number): string {
   return `Torre ${index + 1}`
 }
 
+export function buildEntranceHall(): StackTower {
+  return {
+    key: draftKey('tower'),
+    name: towerLetterName(0),
+    referenceFloor: 1,
+    floors: [
+      {
+        number: 1,
+        kind: 'hall',
+        customized: false,
+        units: [],
+      },
+    ],
+  }
+}
+
 export function copyTowerFromPrevious(towers: StackTower[]): StackTower[] {
   const source = towers[towers.length - 1]
 
@@ -560,40 +886,71 @@ export function copyTowerFromPrevious(towers: StackTower[]): StackTower[] {
     return towers
   }
 
-  return [
-    ...towers,
-    {
-      key: draftKey('tower'),
-      name: towerLetterName(towers.length),
-      referenceFloor: source.referenceFloor,
-      floors: source.floors.map((floor) => ({
-        ...floor,
-        units: floor.units.map((unit) => ({
-          ...unit,
-          key: draftKey(`u-${floor.number}`),
-        })),
-      })),
-    },
-  ]
+  return [...towers, duplicateTower(source, towerLetterName(towers.length))]
 }
 
-export function structurePayload(towers: StackTower[]): BuildingStructurePayload {
+export function appendTower(
+  towers: StackTower[],
+  input: { name: string; source?: StackTower; skeleton: SkeletonInput },
+): StackTower[] {
+  const name = input.name.trim()
+
+  if (name === '') {
+    return towers
+  }
+
+  if (input.source) {
+    return [...towers, duplicateTower(input.source, name)]
+  }
+
+  const [created] = buildSkeleton({ ...input.skeleton, towerCount: 1 })
+
+  if (!created) {
+    return towers
+  }
+
+  return [...towers, { ...created, name }]
+}
+
+function duplicateTower(source: StackTower, name: string): StackTower {
   return {
-    towers: towers.map((tower) => ({
-      ...(tower.id ? { id: tower.id } : {}),
-      name: tower.name,
-      reference_floor: tower.referenceFloor,
-      floors: tower.floors.map((item) => ({
-        number: item.number,
-        kind: item.kind,
+    key: draftKey('tower'),
+    name,
+    referenceFloor: source.referenceFloor,
+    floors: source.floors.map((floor) => ({
+      ...floor,
+      units: floor.units.map((unit) => ({
+        ...unit,
+        key: draftKey(`u-${floor.number}`),
       })),
     })),
   }
 }
 
+export function structurePayload(towers: StackTower[]): BuildingStructurePayload {
+  return {
+    towers: towers.map((source) => {
+      const tower = normalizeFloorsBelowHall(source)
+
+      return {
+        ...(tower.id ? { id: tower.id } : {}),
+        name: tower.name,
+        reference_floor: tower.referenceFloor,
+        floors: tower.floors.map((item) => ({
+          number: item.number,
+          kind: item.kind,
+          unit_type: payloadUnitType(item),
+        })),
+      }
+    }),
+  }
+}
+
 export function unitGridPayload(towers: StackTower[]): BuildingUnitGridPayload {
   return {
-    towers: towers.flatMap((tower) => {
+    towers: towers.flatMap((source) => {
+      const tower = normalizeFloorsBelowHall(source)
+
       if (tower.id == null || tower.id <= 0) {
         return []
       }
@@ -605,6 +962,7 @@ export function unitGridPayload(towers: StackTower[]): BuildingUnitGridPayload {
           floors: tower.floors.map((item) => ({
             number: item.number,
             kind: item.kind,
+            unit_type: payloadUnitType(item),
             customized: item.customized,
             units: item.units.map((unit) => ({
               code: unit.code.trim(),
@@ -630,10 +988,23 @@ export function unitGridPayload(towers: StackTower[]): BuildingUnitGridPayload {
   }
 }
 
-function makeFloor(number: number, kind: FloorKind, unitCount: number): StackFloor {
+function payloadUnitType(floor: StackFloor): FloorUnitType | null {
+  if (floor.kind === 'hall' || floor.kind === 'garage') {
+    return null
+  }
+
+  if (floor.unitType) {
+    return floor.unitType
+  }
+
+  return floor.kind === 'commercial' ? 'store' : 'apartment'
+}
+
+function makeFloor(number: number, kind: FloorKind, unitCount: number, unitType?: FloorUnitType | null): StackFloor {
   return {
     number,
     kind,
+    unitType: unitType ?? (kind === 'residential' ? 'apartment' : kind === 'commercial' ? 'store' : null),
     customized: false,
     units: Array.from({ length: unitCount }, (_, index) => emptyUnit(number, index + 1)),
   }
@@ -666,6 +1037,41 @@ function copyUnitsToFloor(units: StackUnit[], floorNumber: number): StackUnit[] 
     key: draftKey(`u-${floorNumber}-${index + 1}`),
     code: unitCode(floorNumber, index + 1),
   }))
+}
+
+function nextFloorNumber(number: number, delta: 1 | -1): number {
+  const next = number + delta
+
+  if (next === 0) {
+    return delta > 0 ? 1 : -1
+  }
+
+  return next
+}
+
+function renumberFloor(floor: StackFloor, number: number): StackFloor {
+  if (floor.number === number) {
+    return floor
+  }
+
+  return {
+    ...floor,
+    number,
+    units: floor.units.map((unit, index) => ({
+      ...unit,
+      code: unitCode(number, index + 1),
+    })),
+  }
+}
+
+function cloneFloorAt(source: StackFloor, number: number): StackFloor {
+  return {
+    number,
+    kind: source.kind,
+    unitType: source.unitType ?? null,
+    customized: true,
+    units: copyUnitsToFloor(source.units, number),
+  }
 }
 
 function inCloneRange(floorNumber: number, referenceNumber: number, range: CloneRange): boolean {

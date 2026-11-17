@@ -1,4 +1,3 @@
-import { unitStatusLabels } from '@/apps/builder/lib/unit-status'
 import { BrokerPreHoldDialog } from '@/apps/broker/components/BrokerPreHoldDialog'
 import { BrokerReservationDialog } from '@/apps/broker/components/BrokerReservationDialog'
 import { ReservationMessagesDialog } from '@/apps/builder/components/ReservationMessagesDialog'
@@ -13,10 +12,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import type { BuildingWithUnits } from '@/apps/broker/lib/group-units-by-building'
-import { brokerApi, ApiRequestError, type GarageUnit, type Unit } from '@/lib/api'
 import {
-  formatAmenityNames,
+  bedroomSummary,
+  floorPriceSummary,
+  floorStockSummary,
+  floorTitle,
+  groupUnitsByFloor,
+  type BrokerFloorRow,
+} from '@/apps/broker/lib/broker-floor-rows'
+import type { BuildingWithUnits } from '@/apps/broker/lib/group-units-by-building'
+import { brokerApi, ApiRequestError, type FloorKind, type GarageUnit, type Unit } from '@/lib/api'
+import {
   formatListedPrice,
   formatPriceCompetence,
   formatUnitSpecSummary,
@@ -26,6 +32,8 @@ import {
   detectPreHoldTransitionToast,
   PRE_RESERVE_POLL_MS,
 } from '@/lib/reservation-polling'
+import { cn } from '@/lib/utils'
+import { Building2Icon, ChevronDownIcon, DoorOpenIcon, StoreIcon, WarehouseIcon, type LucideIcon } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 
@@ -58,25 +66,26 @@ function UnitRowActions({
   cancelling: boolean
 }) {
   if (isGarageUnit(unit)) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        {unit.status === 'available' ? 'Vaga disponível' : unitStatusLabels[unit.status as keyof typeof unitStatusLabels] ?? unit.status}
-      </p>
-    )
+    if (unit.status !== 'available') {
+      return null
+    }
+
+    return <p className="text-sm text-muted-foreground">Vaga disponível</p>
   }
 
   const clientName = unit.reservation?.client?.name
 
   if (clientName) {
     return (
-      <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center">
-        <p className="text-sm text-muted-foreground">Reservado para {clientName}</p>
-        <Button size="sm" variant="secondary" onClick={() => onOpenMessages(unit)}>
+      <div className="flex w-full flex-col gap-2">
+        <p className="text-sm">Reservado para {clientName}</p>
+        <Button size="sm" variant="secondary" className="w-full" onClick={() => onOpenMessages(unit)}>
           Ver conversa
         </Button>
         <Button
           size="sm"
           variant="outline"
+          className="w-full"
           disabled={cancelling}
           onClick={() => onCancelReservation(unit)}
         >
@@ -86,26 +95,24 @@ function UnitRowActions({
     )
   }
 
-  if (unit.status === 'pre_reserved') {
-    if (unit.pre_hold?.held_by_me || unit.reservation) {
-      return (
-        <Button
-          size="sm"
-          disabled={holdingUnitId === unit.id}
-          onClick={() => onContinueReservation(unit)}
-        >
-          {holdingUnitId === unit.id ? 'Reservando...' : 'Continuar reserva'}
-        </Button>
-      )
-    }
-
-    return <p className="text-sm text-muted-foreground">Reservada</p>
+  if (unit.status === 'pre_reserved' && (unit.pre_hold?.held_by_me || unit.reservation)) {
+    return (
+      <Button
+        size="sm"
+        className="w-full"
+        disabled={holdingUnitId === unit.id}
+        onClick={() => onContinueReservation(unit)}
+      >
+        {holdingUnitId === unit.id ? 'Reservando...' : 'Continuar reserva'}
+      </Button>
+    )
   }
 
   if (unit.status === 'available') {
     return (
       <Button
         size="sm"
+        className="w-full"
         disabled={holdingUnitId === unit.id}
         onClick={() => onPreReserve(unit)}
       >
@@ -115,6 +122,222 @@ function UnitRowActions({
   }
 
   return null
+}
+
+const FLOOR_ROW_TONE = {
+  hall: 'bg-amber-100 dark:bg-amber-950/40',
+  residential: 'bg-[#e4efe0] dark:bg-[#1c2b1e]',
+  commercial: 'bg-orange-100 dark:bg-orange-950/35',
+  garage: 'bg-sky-100 dark:bg-sky-950/40',
+} as const
+
+const UNIT_CARD_TONE = {
+  open: 'bg-card ring-1 ring-foreground/10',
+  sold: 'border border-dashed border-slate-400 bg-slate-50 text-slate-700 dark:bg-slate-950/40 dark:text-slate-200',
+  reserved: 'border border-dashed border-orange-500 bg-orange-50 text-orange-950 dark:bg-orange-950/40 dark:text-orange-100',
+  pre_reserved: 'border border-dashed border-amber-500 bg-amber-50 text-amber-950 dark:bg-amber-950/40 dark:text-amber-100',
+  unavailable: 'border border-dashed border-red-400 bg-red-50 text-red-950 dark:bg-red-950/40 dark:text-red-100',
+} as const
+
+function floorTone(row: BrokerFloorRow): keyof typeof FLOOR_ROW_TONE {
+  if (row.kind === 'garage' || (row.floor != null && row.floor < 0)) {
+    return 'garage'
+  }
+
+  if (row.kind === 'hall' || row.kind === 'commercial' || row.kind === 'residential') {
+    return row.kind
+  }
+
+  return 'residential'
+}
+
+function floorIcon(kind: FloorKind | null, floor: number | null): LucideIcon {
+  if (kind === 'garage' || (floor != null && floor < 0)) {
+    return WarehouseIcon
+  }
+
+  if (kind === 'commercial') {
+    return StoreIcon
+  }
+
+  if (kind === 'hall') {
+    return DoorOpenIcon
+  }
+
+  return Building2Icon
+}
+
+function unitCardTone(unit: Unit): keyof typeof UNIT_CARD_TONE {
+  if (unit.status === 'sold' || unit.status === 'reserved' || unit.status === 'pre_reserved' || unit.status === 'unavailable') {
+    return unit.status
+  }
+
+  return 'open'
+}
+
+function unitStatusStamp(unit: Unit): string | null {
+  if (unit.status === 'sold') {
+    return 'Vendido'
+  }
+
+  if (unit.status === 'unavailable') {
+    return 'Indisponível'
+  }
+
+  if (unit.reservation?.client?.name) {
+    return null
+  }
+
+  if (unit.status === 'reserved' || unit.status === 'pre_reserved') {
+    return 'Reservado'
+  }
+
+  return null
+}
+
+function FloorMapRow({
+  row,
+  title,
+  showBedrooms,
+  expanded,
+  priceMode,
+  holdingUnitId,
+  cancellingUnitId,
+  onToggle,
+  onPreReserve,
+  onContinueReservation,
+  onCancelReservation,
+  onOpenMessages,
+}: {
+  row: BrokerFloorRow
+  title: string
+  showBedrooms: boolean
+  expanded: boolean
+  priceMode?: 'incc' | 'fixed'
+  holdingUnitId: string | null
+  cancellingUnitId: string | null
+  onToggle: () => void
+  onPreReserve: (unit: Unit) => void
+  onContinueReservation: (unit: Unit) => void
+  onCancelReservation: (unit: Unit) => void
+  onOpenMessages: (unit: Unit) => void
+}) {
+  const Icon = floorIcon(row.kind, row.floor)
+  const bedrooms = row.kind === 'garage' ? null : bedroomSummary(row.units)
+  const unitsId = `broker-floor-${row.key}`
+  const tone = floorTone(row)
+
+  return (
+    <div data-floor-tone={tone} className={cn('flex w-full flex-col rounded-lg', FLOOR_ROW_TONE[tone])}>
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={unitsId}
+        onClick={onToggle}
+        className={cn(
+          'grid w-full grid-cols-1 items-center gap-x-4 gap-y-1 px-3 py-3 text-left',
+          showBedrooms
+            ? 'sm:grid-cols-[max-content_max-content_minmax(0,1fr)_max-content_max-content]'
+            : 'sm:grid-cols-[max-content_minmax(0,1fr)_max-content_max-content]',
+        )}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-background/80 text-primary">
+            <Icon className="size-4" />
+          </span>
+          <span className="font-medium">{title}</span>
+        </span>
+        {showBedrooms ? <span className="text-sm text-muted-foreground">{bedrooms}</span> : null}
+        <span className="text-sm">{floorStockSummary(row.units, row.kind === 'garage')}</span>
+        <span className="text-sm font-medium tabular-nums whitespace-nowrap sm:text-right">{floorPriceSummary(row.units)}</span>
+        <ChevronDownIcon className={cn('size-4 justify-self-end transition-transform', expanded && 'rotate-180')} />
+      </button>
+      <div
+        className={cn(
+          'grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none',
+          expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+        )}
+      >
+        <div className="overflow-hidden" inert={expanded ? undefined : true} aria-hidden={expanded ? undefined : true}>
+          <div id={unitsId} className="flex flex-wrap gap-2 p-2">
+            {row.units.map((unit) => (
+              <UnitFloorCard
+                key={unit.id}
+                unit={unit}
+                priceMode={priceMode}
+                holdingUnitId={holdingUnitId}
+                cancelling={cancellingUnitId === unit.id}
+                onPreReserve={onPreReserve}
+                onContinueReservation={onContinueReservation}
+                onCancelReservation={onCancelReservation}
+                onOpenMessages={onOpenMessages}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function UnitFloorCard({
+  unit,
+  priceMode,
+  holdingUnitId,
+  cancelling,
+  onPreReserve,
+  onContinueReservation,
+  onCancelReservation,
+  onOpenMessages,
+}: {
+  unit: Unit
+  priceMode?: 'incc' | 'fixed'
+  holdingUnitId: string | null
+  cancelling: boolean
+  onPreReserve: (unit: Unit) => void
+  onContinueReservation: (unit: Unit) => void
+  onCancelReservation: (unit: Unit) => void
+  onOpenMessages: (unit: Unit) => void
+}) {
+  const tone = unitCardTone(unit)
+  const stamp = unitStatusStamp(unit)
+  const hasOwnActions = Boolean(unit.reservation?.client?.name) || Boolean(unit.pre_hold?.held_by_me)
+  const locked = tone !== 'open' && !hasOwnActions
+  const area = formatUnitSpecSummary({
+    private_area_m2: unit.private_area_m2,
+    area_m2: unit.area_m2,
+  })
+  const competence = formatPriceCompetence(unit.price_competence)
+
+  return (
+    <div
+      data-unit-status={unit.status}
+      aria-disabled={locked || undefined}
+      className={cn('flex w-fit min-w-36 flex-col items-start gap-1 rounded-xl px-3 py-3 text-left', UNIT_CARD_TONE[tone])}
+    >
+      <span className="text-sm font-bold tabular-nums">{unit.code}</span>
+      {stamp ? <span className="text-xs font-semibold tracking-wide uppercase">{stamp}</span> : null}
+      <span className="text-sm font-bold tabular-nums whitespace-nowrap">{formatListedPrice(unit.price)}</span>
+      {area ? <span className="text-sm text-muted-foreground tabular-nums whitespace-nowrap">{area}</span> : null}
+      {unit.price && competence && priceMode !== 'fixed' ? (
+        <span className="text-xs text-muted-foreground whitespace-nowrap">INCC-M · {competence}</span>
+      ) : null}
+      {priceMode === 'fixed' && unit.price ? (
+        <span className="text-xs text-muted-foreground">Valor fixo</span>
+      ) : null}
+      <div className="mt-1 w-full">
+        <UnitRowActions
+          unit={unit}
+          holdingUnitId={holdingUnitId}
+          onPreReserve={onPreReserve}
+          onContinueReservation={onContinueReservation}
+          onCancelReservation={onCancelReservation}
+          onOpenMessages={onOpenMessages}
+          cancelling={cancelling}
+        />
+      </div>
+    </div>
+  )
 }
 
 export function BrokerUnitsDialog({
@@ -138,6 +361,7 @@ export function BrokerUnitsDialog({
   const [error, setError] = useState<string | null>(null)
   const [garagePickerUnit, setGaragePickerUnit] = useState<Unit | null>(null)
   const [selectedGarageIds, setSelectedGarageIds] = useState<number[]>([])
+  const [openFloorKey, setOpenFloorKey] = useState<string | null>(null)
 
   const previousStatusRef = useRef(buildStatusSnapshot(building?.units ?? []))
   const toastShownForRef = useRef(new Set<number>())
@@ -148,12 +372,15 @@ export function BrokerUnitsDialog({
     [units],
   )
 
-  const listedUnits = useMemo(() => {
-    const primary = units.filter((unit) => !isGarageUnit(unit))
-    const garages = units.filter((unit) => isGarageUnit(unit))
-
-    return [...primary, ...garages]
-  }, [units])
+  const floorRows = useMemo(() => groupUnitsByFloor(units), [units])
+  const showTowerName = useMemo(() => {
+    const names = new Set(floorRows.flatMap((row) => (row.towerName ? [row.towerName] : [])))
+    return names.size > 1
+  }, [floorRows])
+  const showBedrooms = useMemo(
+    () => floorRows.some((row) => row.kind !== 'garage' && bedroomSummary(row.units) != null),
+    [floorRows],
+  )
 
   useEffect(() => {
     if (!open || !building) {
@@ -164,6 +391,10 @@ export function BrokerUnitsDialog({
     previousStatusRef.current = buildStatusSnapshot(building.units)
     toastShownForRef.current.clear()
   }, [building, open])
+
+  useEffect(() => {
+    setOpenFloorKey(null)
+  }, [building?.id, open])
 
   useEffect(() => {
     if (!open || !building || preHoldFormOpen || proposalOpen || cancelUnit !== null || garagePickerUnit !== null) {
@@ -345,67 +576,43 @@ export function BrokerUnitsDialog({
           onOpenChange(nextOpen)
         }}
       >
-        <DialogContent className="sm:max-w-2xl">
+        <DialogContent className="max-w-4xl sm:max-w-4xl">
           <DialogHeader>
             <DialogTitle>{building?.name ?? 'Unidades'}</DialogTitle>
             <DialogDescription>
-              Selecione uma unidade disponível para reservar. Vagas de garagem só podem
-              ser atreladas à reserva da unidade.
+              Abra um pavimento para ver as unidades. Vendidas e reservadas não podem ser
+              escolhidas. Vagas de garagem só entram na reserva da unidade.
             </DialogDescription>
           </DialogHeader>
 
           <DialogBody>
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
 
-          <ul className="divide-y rounded-lg border">
-            {listedUnits.map((unit) => {
-              const spec = formatUnitSpecSummary(unit)
-              const amenities = formatAmenityNames(unit.amenities)
-              const competence = formatPriceCompetence(unit.price_competence)
-              const garage = isGarageUnit(unit)
-
-              return (
-              <li key={unit.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                <div className="flex min-w-0 flex-col gap-0.5">
-                  <p className="font-medium">
-                    {unit.code}
-                    {garage ? (
-                      <span className="ml-2 text-xs font-normal text-muted-foreground">vaga</span>
-                    ) : null}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {unitStatusLabels[unit.status as keyof typeof unitStatusLabels] ?? unit.status}
-                    {` · ${formatListedPrice(unit.price)}`}
-                  </p>
-                  {spec ? <p className="text-xs text-muted-foreground">{spec}</p> : null}
-                  {amenities ? <p className="text-xs text-muted-foreground">{amenities}</p> : null}
-                  {unit.price && competence && building?.price_mode !== 'fixed' ? (
-                    <p className="text-xs text-muted-foreground">
-                      Corrigido pelo INCC-M · competência {competence}
-                    </p>
-                  ) : null}
-                  {building?.price_mode === 'fixed' && unit.price ? (
-                    <p className="text-xs text-muted-foreground">Valor fixo</p>
-                  ) : null}
-                </div>
-                <UnitRowActions
-                  unit={unit}
+          {floorRows.length === 0 ? (
+            <p className="rounded-lg border px-4 py-6 text-center text-sm text-muted-foreground">
+              Nenhuma unidade liberada neste empreendimento.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {floorRows.map((row) => (
+                <FloorMapRow
+                  key={row.key}
+                  row={row}
+                  title={showTowerName && row.towerName ? `${row.towerName} · ${floorTitle(row.floor, row.kind)}` : floorTitle(row.floor, row.kind)}
+                  showBedrooms={showBedrooms}
+                  expanded={openFloorKey === row.key}
+                  priceMode={building?.price_mode}
                   holdingUnitId={holdingUnitId}
+                  cancellingUnitId={cancellingUnitId}
+                  onToggle={() => setOpenFloorKey((current) => (current === row.key ? null : row.key))}
                   onPreReserve={handlePreReserveClick}
                   onContinueReservation={handleContinueReservation}
                   onCancelReservation={setCancelUnit}
                   onOpenMessages={handleOpenMessages}
-                  cancelling={cancellingUnitId === unit.id}
                 />
-              </li>
-              )
-            })}
-            {listedUnits.length === 0 ? (
-              <li className="px-4 py-6 text-center text-sm text-muted-foreground">
-                Nenhuma unidade liberada neste empreendimento.
-              </li>
-            ) : null}
-          </ul>
+              ))}
+            </div>
+          )}
           </DialogBody>
         </DialogContent>
       </Dialog>

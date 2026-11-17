@@ -1,12 +1,15 @@
 ---
 import type { SeoMeta } from '@/lib/seo'
+import type { ModeloTheme } from '@/lib/modelo-theme'
 
 interface Props {
   seo: SeoMeta
   robots?: string
+  theme?: ModeloTheme
 }
 
-const { seo, robots = 'noindex, follow' } = Astro.props
+const { seo, robots = 'noindex, follow', theme } = Astro.props
+const fontHref = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Outfit:wght@400;500;600&display=swap'
 const jsonLd = seo.jsonLd ? (Array.isArray(seo.jsonLd) ? seo.jsonLd : [seo.jsonLd]) : []
 ---
 
@@ -28,10 +31,19 @@ const jsonLd = seo.jsonLd ? (Array.isArray(seo.jsonLd) ? seo.jsonLd : [seo.jsonL
     <meta name="twitter:title" content={seo.title} />
     <meta name="twitter:description" content={seo.description} />
     {seo.ogImage && <meta name="twitter:image" content={seo.ogImage} />}
-    <link rel="stylesheet" href="/css/modelo.css" />
+    {
+      theme && (
+        <link
+          rel="stylesheet"
+          href={fontHref}
+        />
+      )
+    }
+    <link rel="stylesheet" href="/css/modelo.css?v=10" />
+    {theme && <link rel="stylesheet" href="/css/modelo-themes.css?v=5" />}
     {jsonLd.map((entry) => <script type="application/ld+json" set:html={JSON.stringify(entry)} />)}
   </head>
-  <body class="modelo">
+  <body class:list={['modelo', theme && `theme-${theme}`]}>
     <a class="modelo-skip" href="#conteudo">Ir para o conteúdo</a>
     <slot name="header" />
     <main id="conteudo" class="modelo-main">

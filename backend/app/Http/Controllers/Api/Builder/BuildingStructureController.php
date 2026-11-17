@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Builder;
 
 use App\Enums\FloorKind;
+use App\Enums\FloorUnitType;
 use App\Http\Controllers\Controller;
 use App\Models\Building;
 use App\Services\BuildingStructureService;
@@ -35,6 +36,7 @@ class BuildingStructureController extends Controller
             'towers.*.floors' => ['required_without:towers.*.floors_count', 'array', 'min:1', 'max:101'],
             'towers.*.floors.*.number' => ['required', 'integer', 'min:-20', 'max:80'],
             'towers.*.floors.*.kind' => ['required', Rule::enum(FloorKind::class)],
+            'towers.*.floors.*.unit_type' => ['nullable', Rule::enum(FloorUnitType::class)],
         ]);
 
         $building = $structure->replace($building, $data['towers']);

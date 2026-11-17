@@ -1,7 +1,28 @@
 import { useState, type ReactNode } from 'react'
 import {
+  AppWindowIcon,
+  BathIcon,
+  BedDoubleIcon,
+  BedIcon,
+  CalendarIcon,
+  ChevronDownIcon,
+  CircleDollarSignIcon,
+  CompassIcon,
+  DropletsIcon,
+  FenceIcon,
+  Grid2x2Icon,
+  HashIcon,
+  PanelTopIcon,
+  PencilIcon,
+  RulerIcon,
+  SunIcon,
+  SunriseIcon,
+  type LucideIcon,
+} from 'lucide-react'
+import {
   clonePreview,
   addFloor,
+  isBelowEntranceHall,
   removeFloor,
   removeUnit,
   setReferenceFloor,
@@ -9,11 +30,13 @@ import {
   floorLabel,
   floorsTopToBottom,
   resizeFloorUnits,
-  setFloorKind,
+  floorUnitTypeLabel,
   type SkeletonInput,
+  type StackFloor,
+  type StackTower,
   type StackUnit,
 } from '@/apps/builder/lib/floor-stack'
-import type { FloorKind } from '@/lib/api'
+import type { FloorKind, FloorUnitType } from '@/lib/api'
 import {
   StructureEditorContext,
   useStructureEditor,
@@ -21,6 +44,7 @@ import {
   type StructureEditorMeta,
   type StructureEditorState,
 } from '@/apps/builder/components/structure-editor-context'
+import { ConfirmRemovalDialog } from '@/apps/builder/components/ConfirmRemovalDialog'
 import { BuildingWizardEnumSelect } from '@/apps/builder/components/BuildingWizardEnumSelect'
 import { FloorPerspective } from '@/apps/builder/components/FloorPerspective'
 import {
@@ -31,6 +55,7 @@ import {
   SOLAR_OPTIONS,
   SUN_PERIOD_OPTIONS,
 } from '@/apps/builder/lib/unit-spec'
+import { canonicalDecimal, canonicalGroupedInteger, formatDecimalMask, formatGroupedInteger, maskInteger } from '@/apps/builder/lib/unit-input-mask'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
@@ -38,6 +63,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { cn } from '@/lib/utils'
@@ -63,83 +89,100 @@ function clampCount(value: number, min: number, max: number): number {
   return Math.min(max, value)
 }
 
-function StructureEditorSkeleton() {
+function StructureEditorSkeleton({
+  open: openProp,
+  onOpenChange,
+  showTrigger = true,
+}: {
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  showTrigger?: boolean
+} = {}) {
   const { state, actions, meta } = useStructureEditor()
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false)
+  const open = openProp ?? uncontrolledOpen
+
+  function setOpen(next: boolean) {
+    onOpenChange?.(next)
+
+    if (openProp === undefined) {
+      setUncontrolledOpen(next)
+    }
+  }
 
   function update(field: keyof SkeletonInput, min: number, max: number, raw: string) {
     actions.setSkeleton({ [field]: clampCount(Number(raw), min, max) })
   }
 
+  function generate() {
+    actions.generateSkeleton()
+    setOpen(false)
+  }
+
   return (
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle>Esqueleto do prédio</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <FieldGroup className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {meta.singleTower ? null : (
+    <>
+      {showTrigger ? (
+        <Button type="button" variant="outline" className="ml-auto" onClick={() => setOpen(true)}>
+          <PencilIcon data-icon="inline-start" />
+          Esqueleto do prédio
+        </Button>
+      ) : null}
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Esqueleto do prédio</DialogTitle>
+            <DialogDescription>
+              Informe a quantidade de pavimentos e de subsolos. Cada pavimento nasce com uma unidade.
+            </DialogDescription>
+          </DialogHeader>
+          <FieldGroup className="grid gap-4 sm:grid-cols-2">
+            {meta.singleTower ? null : (
+              <Field>
+                <FieldLabel htmlFor="structure-tower-count">Torres</FieldLabel>
+                <Input
+                  id="structure-tower-count"
+                  type="number"
+                  min={1}
+                  max={26}
+                  value={state.skeleton.towerCount}
+                  onChange={(event) => update('towerCount', 1, 26, event.target.value)}
+                />
+              </Field>
+            )}
             <Field>
-              <FieldLabel htmlFor="structure-tower-count">Torres</FieldLabel>
+              <FieldLabel htmlFor="structure-floors-above">Qtd pavimentos</FieldLabel>
               <Input
-                id="structure-tower-count"
+                id="structure-floors-above"
                 type="number"
-                min={1}
-                max={26}
-                value={state.skeleton.towerCount}
-                onChange={(event) => update('towerCount', 1, 26, event.target.value)}
+                min={0}
+                max={80}
+                value={state.skeleton.floorsAbove}
+                onChange={(event) => update('floorsAbove', 0, 80, event.target.value)}
               />
             </Field>
-          )}
-          <Field>
-            <FieldLabel htmlFor="structure-floors-above">Andares acima</FieldLabel>
-            <Input
-              id="structure-floors-above"
-              type="number"
-              min={0}
-              max={80}
-              value={state.skeleton.floorsAbove}
-              onChange={(event) => update('floorsAbove', 0, 80, event.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="structure-basements">Subsolos</FieldLabel>
-            <Input
-              id="structure-basements"
-              type="number"
-              min={0}
-              max={20}
-              value={state.skeleton.basementCount}
-              onChange={(event) => update('basementCount', 0, 20, event.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="structure-units-per-floor">Unidades por andar</FieldLabel>
-            <Input
-              id="structure-units-per-floor"
-              type="number"
-              min={1}
-              max={20}
-              value={state.skeleton.unitsPerFloor}
-              onChange={(event) => update('unitsPerFloor', 1, 20, event.target.value)}
-            />
-          </Field>
-          <Field>
-            <FieldLabel htmlFor="structure-spots-per-basement">Vagas por subsolo</FieldLabel>
-            <Input
-              id="structure-spots-per-basement"
-              type="number"
-              min={1}
-              max={40}
-              value={state.skeleton.spotsPerBasement ?? state.skeleton.unitsPerFloor}
-              onChange={(event) => update('spotsPerBasement', 1, 40, event.target.value)}
-            />
-          </Field>
-        </FieldGroup>
-        <Button type="button" className="mt-4" onClick={actions.generateSkeleton}>
-          Gerar esqueleto
-        </Button>
-      </CardContent>
-    </Card>
+            <Field>
+              <FieldLabel htmlFor="structure-basements">Qtd subsolos</FieldLabel>
+              <Input
+                id="structure-basements"
+                type="number"
+                min={0}
+                max={20}
+                value={state.skeleton.basementCount}
+                onChange={(event) => update('basementCount', 0, 20, event.target.value)}
+              />
+            </Field>
+          </FieldGroup>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+              Cancelar
+            </Button>
+            <Button type="button" onClick={generate}>
+              Gerar esqueleto
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -165,77 +208,6 @@ function StructureEditorTowerTabs() {
         ))}
       </TabsList>
     </Tabs>
-  )
-}
-
-function StructureEditorFloorRow({
-  number,
-  kind,
-  customized,
-  unitCount,
-  model,
-  selected,
-  onSelect,
-}: {
-  number: number
-  kind: 'residential' | 'commercial' | 'garage' | 'hall'
-  customized: boolean
-  unitCount: number
-  model: boolean
-  selected: boolean
-  onSelect: () => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={cn(
-        'flex w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left [content-visibility:auto]',
-        selected ? 'border-primary ring-2 ring-primary/40' : 'border-border',
-      )}
-    >
-      <span className="flex min-w-0 flex-col">
-        <span className="font-medium">{floorLabel(number)}</span>
-        <span className="text-xs text-muted-foreground">
-          {unitCount} {kind === 'garage' ? 'vagas' : 'unidades'}
-        </span>
-      </span>
-      <span className="flex flex-wrap justify-end gap-1">
-        {model ? <Badge variant="default">Modelo</Badge> : null}
-        <Badge variant="secondary">{floorKindLabel(kind)}</Badge>
-        {customized ? <Badge variant="warning">Exceção</Badge> : null}
-      </span>
-    </button>
-  )
-}
-
-function StructureEditorFloorStack() {
-  const { state, actions, meta } = useStructureEditor()
-
-  if (!meta.selectedTower) {
-    return null
-  }
-
-  return (
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle>Pavimentos</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-2">
-        {floorsTopToBottom(meta.selectedTower.floors).map((floor) => (
-          <StructureEditorFloorRow
-            key={floor.number}
-            number={floor.number}
-            kind={floor.kind}
-            customized={floor.customized}
-            unitCount={floor.units.length}
-            model={meta.selectedTower.referenceFloor === floor.number}
-            selected={state.selectedFloorNumber === floor.number}
-            onSelect={() => actions.selectFloor(floor.number)}
-          />
-        ))}
-      </CardContent>
-    </Card>
   )
 }
 
@@ -326,19 +298,30 @@ function RemoveUnitButton({ unitKey }: { unitKey: string }) {
     return null
   }
 
-  const isSpot = floor.kind === 'garage'
   const blocked = floor.kind !== 'hall' && floor.units.length <= 1
+  const noun = 'unidade'
+  const unit = floor.units.find((item) => item.key === unitKey)
+  const [confirming, setConfirming] = useState(false)
 
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      disabled={blocked}
-      onClick={() => actions.updateTower(removeUnit(tower, floor.number, unitKey))}
-    >
-      Remover {isSpot ? 'vaga' : 'unidade'}
-    </Button>
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={blocked}
+        onClick={() => setConfirming(true)}
+      >
+        Remover {noun}
+      </Button>
+      <ConfirmRemovalDialog
+        open={confirming}
+        title={`Remover ${noun} ${unit?.code ?? ''}?`}
+        description={`A ${noun} ${unit?.code ?? ''} sai deste pavimento.`}
+        onOpenChange={setConfirming}
+        onConfirm={() => actions.updateTower(removeUnit(tower, floor.number, unitKey))}
+      />
+    </>
   )
 }
 
@@ -374,14 +357,16 @@ function UnitCompetenceField({
   )
 }
 
-function LivingUnitDetails({ unit }: { unit: StackUnit }) {
+function LivingUnitDetails({ unit, showRemove = true }: { unit: StackUnit; showRemove?: boolean }) {
   const { actions } = useStructureEditor()
 
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <div className="sm:col-span-2 lg:col-span-3">
-        <RemoveUnitButton unitKey={unit.key} />
-      </div>
+      {showRemove ? (
+        <div className="sm:col-span-2 lg:col-span-3">
+          <RemoveUnitButton unitKey={unit.key} />
+        </div>
+      ) : null}
       <Field>
         <FieldLabel htmlFor={`unit-bathrooms-${unit.key}`}>Banheiros {unit.code}</FieldLabel>
         <Input
@@ -471,19 +456,10 @@ function LivingUnitDetails({ unit }: { unit: StackUnit }) {
   )
 }
 
-function GarageUnitDetails({ unit }: { unit: StackUnit }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <RemoveUnitButton unitKey={unit.key} />
-      <UnitCompetenceField unitKey={unit.key} code={unit.code} priceCompetence={unit.priceCompetence} />
-    </div>
-  )
-}
-
 function StructureEditorUnitEditor() {
   const floor = useStructureEditor().meta.selectedFloor
 
-  if (!floor || floor.kind === 'garage') {
+  if (!floor || floor.kind === 'hall') {
     return null
   }
 
@@ -497,40 +473,16 @@ function StructureEditorUnitEditor() {
 }
 
 function StructureEditorGaragePanel() {
-  const floor = useStructureEditor().meta.selectedFloor
-
-  if (!floor || floor.kind !== 'garage') {
-    return null
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      {floor.units.map((unit) => (
-        <GarageUnitDetails key={unit.key} unit={unit} />
-      ))}
-    </div>
-  )
+  return <StructureEditorUnitEditor />
 }
 
-function kindHint(kind: FloorKind): string {
+function unitTypeLabel(kind: FloorKind, unitType?: FloorUnitType | null): string {
+  if (unitType) {
+    return floorUnitTypeLabel(unitType)
+  }
+
   if (kind === 'garage') {
-    return 'Vagas de garagem'
-  }
-
-  if (kind === 'commercial') {
-    return 'Salas'
-  }
-
-  if (kind === 'hall') {
-    return 'Áreas comuns'
-  }
-
-  return 'Apartamentos'
-}
-
-function unitTypeLabel(kind: FloorKind): string {
-  if (kind === 'garage') {
-    return 'Vaga'
+    return 'Unidade'
   }
 
   if (kind === 'commercial') {
@@ -538,51 +490,10 @@ function unitTypeLabel(kind: FloorKind): string {
   }
 
   if (kind === 'hall') {
-    return 'Área comum'
+    return 'Hall'
   }
 
   return 'Apartamento'
-}
-
-function floorKindChoices(number: number): FloorKind[] {
-  if (number < 0) {
-    return ['garage']
-  }
-
-  return ['residential', 'commercial', 'hall']
-}
-
-function FloorKindPicker({
-  number,
-  kind,
-  onChoose,
-}: {
-  number: number
-  kind: FloorKind
-  onChoose: (kind: FloorKind) => void
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <p className="text-sm font-medium">Tipo de pavimento</p>
-      <div className="flex flex-wrap gap-2">
-        {floorKindChoices(number).map((choice) => (
-          <button
-            key={choice}
-            type="button"
-            aria-pressed={kind === choice}
-            className={cn(
-              'rounded-lg border px-3 py-2 text-left',
-              kind === choice ? 'border-primary ring-2 ring-primary/30' : 'border-border',
-            )}
-            onClick={() => onChoose(choice)}
-          >
-            <span className="block text-sm font-medium">{floorKindLabel(choice)}</span>
-            <span className="block text-xs text-muted-foreground">{kindHint(choice)}</span>
-          </button>
-        ))}
-      </div>
-    </div>
-  )
 }
 
 function FloorUnitCounter({
@@ -600,7 +511,7 @@ function FloorUnitCounter({
     return <p className="text-sm text-muted-foreground">Hall não tem unidades privadas.</p>
   }
 
-  const label = kind === 'garage' ? 'Vagas' : 'Unidades'
+  const label = 'Unidades'
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -615,7 +526,7 @@ function FloorUnitCounter({
         </Button>
       </div>
       <p className="text-xs text-muted-foreground">
-        {number < 0 ? 'Vaga + subsolo (S1-01...)' : 'Andar + sequência (101, 102...)'}
+        {number < 0 ? 'Subsolo + sequência (S1-01...)' : 'Andar + sequência (101, 102...)'}
       </p>
     </div>
   )
@@ -624,45 +535,44 @@ function FloorUnitCounter({
 function FloorUnitRow({
   unit,
   kind,
+  unitType,
   open,
   columnCount,
   onToggle,
 }: {
   unit: StackUnit
   kind: FloorKind
+  unitType?: FloorUnitType | null
   open: boolean
   columnCount: number
   onToggle: () => void
 }) {
   const { actions, meta } = useStructureEditor()
-  const garage = kind === 'garage'
   const fixed = meta.priceMode === 'fixed'
 
   return (
     <>
       <tr className="border-t">
         <td className="py-2 pr-3">{unit.code}</td>
-        <td className="py-2 pr-3">{unitTypeLabel(kind)}</td>
+        <td className="py-2 pr-3">{unitTypeLabel(kind, unitType)}</td>
         <td className="py-2 pr-3">
           <Input
-            aria-label={garage ? `Área ${unit.code} (m²)` : `Área privativa ${unit.code} (m²)`}
+            aria-label={`Área privativa ${unit.code} (m²)`}
             value={unit.areaM2}
             inputMode="decimal"
             className="h-8 min-w-24"
             onChange={(event) => actions.updateUnit(unit.key, { areaM2: event.target.value })}
           />
         </td>
-        {garage ? null : (
-          <td className="py-2 pr-3">
-            <Input
-              aria-label={`Dormitórios ${unit.code}`}
-              value={unit.bedrooms}
-              inputMode="numeric"
-              className="h-8 w-20"
-              onChange={(event) => actions.updateUnit(unit.key, { bedrooms: event.target.value })}
-            />
-          </td>
-        )}
+        <td className="py-2 pr-3">
+          <Input
+            aria-label={`Dormitórios ${unit.code}`}
+            value={unit.bedrooms}
+            inputMode="numeric"
+            className="h-8 w-20"
+            onChange={(event) => actions.updateUnit(unit.key, { bedrooms: event.target.value })}
+          />
+        </td>
         <td className="py-2 pr-3">
           <Input
             aria-label={priceInputLabel(unit.code, fixed)}
@@ -688,7 +598,7 @@ function FloorUnitRow({
       {open ? (
         <tr className="border-t bg-muted/40">
           <td colSpan={columnCount} className="px-1 py-3">
-            {garage ? <GarageUnitDetails unit={unit} /> : <LivingUnitDetails unit={unit} />}
+            <LivingUnitDetails unit={unit} />
           </td>
         </tr>
       ) : null}
@@ -696,12 +606,321 @@ function FloorUnitRow({
   )
 }
 
-function StructureEditorFloorWorkspace() {
+function parkingUnitFloor(floor: StackFloor, tower: StackTower | null): boolean {
+  return floor.kind === 'garage' || (tower != null && isBelowEntranceHall(floor.number, tower.floors))
+}
+
+function UnitTextField({
+  id,
+  label,
+  icon: Icon,
+  value,
+  mask,
+  placeholder,
+  onChange,
+}: {
+  id: string
+  label: string
+  icon: LucideIcon
+  value: string
+  mask: 'integer' | 'area' | 'money' | 'quantity' | 'text'
+  placeholder?: string
+  onChange: (value: string) => void
+}) {
+  const labelNode = (
+    <FieldLabel htmlFor={id} className="items-center">
+      <Icon className="size-3.5 text-muted-foreground" aria-hidden />
+      {label}
+    </FieldLabel>
+  )
+
+  if (mask === 'area' || mask === 'money') {
+    return (
+      <Field>
+        {labelNode}
+        <InputGroup>
+          {mask === 'money' ? <InputGroupAddon align="inline-start">R$</InputGroupAddon> : null}
+          <InputGroupInput
+            id={id}
+            inputMode="decimal"
+            value={formatDecimalMask(value)}
+            onChange={(event) => onChange(canonicalDecimal(event.target.value))}
+          />
+          {mask === 'area' ? <InputGroupAddon align="inline-end">m²</InputGroupAddon> : null}
+        </InputGroup>
+      </Field>
+    )
+  }
+
+  const shown = mask === 'integer' ? maskInteger(value) : mask === 'quantity' ? formatGroupedInteger(value) : value
+
+  return (
+    <Field>
+      {labelNode}
+      <Input
+        id={id}
+        inputMode={mask === 'text' ? 'text' : 'numeric'}
+        placeholder={placeholder}
+        value={shown}
+        onChange={(event) => {
+          const next = event.target.value
+
+          if (mask === 'integer') {
+            onChange(maskInteger(next))
+            return
+          }
+
+          if (mask === 'quantity') {
+            onChange(canonicalGroupedInteger(next))
+            return
+          }
+
+          onChange(next)
+        }}
+      />
+    </Field>
+  )
+}
+
+function UnitPriceField({ unit }: { unit: StackUnit }) {
+  const { actions, meta } = useStructureEditor()
+  const fixed = meta.priceMode === 'fixed'
+
+  return (
+    <UnitTextField
+      id={`side-price-${unit.key}`}
+      icon={CircleDollarSignIcon}
+      label={fixed ? 'Valor' : 'Valor (INCC)'}
+      value={unit.priceBase}
+      mask={fixed ? 'money' : 'quantity'}
+      onChange={(priceBase) => actions.updateUnit(unit.key, { priceBase })}
+    />
+  )
+}
+
+function ParkingUnitFields({ unit }: { unit: StackUnit }) {
+  const { actions } = useStructureEditor()
+
+  return (
+    <div className="grid grid-cols-2 gap-3">
+      <UnitTextField
+        id={`side-area-${unit.key}`}
+        icon={RulerIcon}
+        label="Área privativa"
+        value={unit.areaM2}
+        mask="area"
+        onChange={(areaM2) => actions.updateUnit(unit.key, { areaM2 })}
+      />
+      <UnitPriceField unit={unit} />
+    </div>
+  )
+}
+
+function LivingUnitFields({ unit }: { unit: StackUnit }) {
+  const { actions, meta } = useStructureEditor()
+  const [moreOpen, setMoreOpen] = useState(false)
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-2 gap-3">
+        <UnitTextField
+          id={`side-area-${unit.key}`}
+          icon={RulerIcon}
+          label="Área privativa"
+          value={unit.areaM2}
+          mask="area"
+          onChange={(areaM2) => actions.updateUnit(unit.key, { areaM2 })}
+        />
+        <UnitTextField
+          id={`side-bedrooms-${unit.key}`}
+          icon={BedIcon}
+          label="Dormitórios"
+          value={unit.bedrooms}
+          mask="integer"
+          onChange={(bedrooms) => actions.updateUnit(unit.key, { bedrooms })}
+        />
+        <UnitTextField
+          id={`side-bathrooms-${unit.key}`}
+          icon={BathIcon}
+          label="Banheiros"
+          value={unit.bathrooms}
+          mask="integer"
+          onChange={(bathrooms) => actions.updateUnit(unit.key, { bathrooms })}
+        />
+        <UnitTextField
+          id={`side-suites-${unit.key}`}
+          icon={BedDoubleIcon}
+          label="Suítes"
+          value={unit.suites ?? ''}
+          mask="integer"
+          onChange={(suites) => actions.updateUnit(unit.key, { suites })}
+        />
+        <UnitTextField
+          id={`side-powder-${unit.key}`}
+          icon={DropletsIcon}
+          label="Lavabos"
+          value={unit.powderRooms}
+          mask="integer"
+          onChange={(powderRooms) => actions.updateUnit(unit.key, { powderRooms })}
+        />
+        <UnitPriceField unit={unit} />
+      </div>
+      <button
+        type="button"
+        aria-expanded={moreOpen}
+        className="flex w-full items-center gap-3 text-xs font-medium tracking-wide text-muted-foreground"
+        onClick={() => setMoreOpen((open) => !open)}
+      >
+        <span className="h-px flex-1 bg-border" />
+        MAIS
+        <ChevronDownIcon aria-hidden className={cn('size-3.5 transition-transform', moreOpen && 'rotate-180')} />
+        <span className="h-px flex-1 bg-border" />
+      </button>
+      <div
+        id={`unit-more-${unit.key}`}
+        inert={moreOpen ? undefined : true}
+        aria-hidden={moreOpen ? undefined : true}
+        className={cn(
+          'grid transition-[grid-template-rows] duration-300 ease-out motion-reduce:transition-none',
+          moreOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]',
+        )}
+      >
+        <div className="overflow-hidden">
+          <div className="grid grid-cols-2 gap-3">
+            <UnitTextField
+              id={`side-balconies-${unit.key}`}
+              icon={FenceIcon}
+              label="Sacadas"
+              value={unit.balconies}
+              mask="integer"
+              onChange={(balconies) => actions.updateUnit(unit.key, { balconies })}
+            />
+            {meta.priceMode === 'fixed' ? null : (
+              <UnitTextField
+                id={`side-competence-${unit.key}`}
+                icon={CalendarIcon}
+                label="Competência"
+                value={unit.priceCompetence}
+                mask="text"
+                placeholder="AAAA-MM"
+                onChange={(priceCompetence) => actions.updateUnit(unit.key, { priceCompetence })}
+              />
+            )}
+            <BuildingWizardEnumSelect
+              id={`side-position-${unit.key}`}
+              icon={CompassIcon}
+              label="Posição"
+              value={unit.propertyPosition}
+              emptyLabel="Não informado"
+              options={PROPERTY_POSITION_OPTIONS}
+              onChange={(propertyPosition) => actions.updateUnit(unit.key, { propertyPosition })}
+            />
+            <BuildingWizardEnumSelect
+              id={`side-solar-${unit.key}`}
+              icon={SunIcon}
+              label="Sol"
+              value={unit.solarPosition}
+              emptyLabel="Não informado"
+              options={SOLAR_OPTIONS}
+              onChange={(solarPosition) => actions.updateUnit(unit.key, { solarPosition })}
+            />
+            <BuildingWizardEnumSelect
+              id={`side-sun-${unit.key}`}
+              icon={SunriseIcon}
+              label="Período"
+              value={unit.sunPeriod}
+              emptyLabel="Não informado"
+              options={SUN_PERIOD_OPTIONS}
+              onChange={(sunPeriod) => actions.updateUnit(unit.key, { sunPeriod })}
+            />
+            <BuildingWizardEnumSelect
+              id={`side-ceiling-${unit.key}`}
+              icon={PanelTopIcon}
+              label="Forro"
+              value={unit.ceilingType}
+              emptyLabel="Não informado"
+              options={CEILING_OPTIONS}
+              onChange={(ceilingType) => actions.updateUnit(unit.key, { ceilingType })}
+            />
+            <BuildingWizardEnumSelect
+              id={`side-opening-${unit.key}`}
+              icon={AppWindowIcon}
+              label="Aberturas"
+              value={unit.openingType}
+              emptyLabel="Não informado"
+              options={OPENING_OPTIONS}
+              onChange={(openingType) => actions.updateUnit(unit.key, { openingType })}
+            />
+            <BuildingWizardEnumSelect
+              id={`side-flooring-${unit.key}`}
+              icon={Grid2x2Icon}
+              label="Piso"
+              value={unit.flooringType}
+              emptyLabel="Não informado"
+              options={FLOORING_OPTIONS}
+              onChange={(flooringType) => actions.updateUnit(unit.key, { flooringType })}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StructureEditorSelectedUnit({ unit }: { unit: StackUnit | null }) {
+  const { actions, meta } = useStructureEditor()
+  const floor = meta.selectedFloor
+
+  if (!unit || !floor || floor.units.some((item) => item.key === unit.key) === false) {
+    return (
+      <Card size="sm" className="md:sticky md:top-4">
+        <CardHeader>
+          <CardTitle>Unidade</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Selecione uma unidade no pavimento.</p>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const parking = parkingUnitFloor(floor, meta.selectedTower)
+
+  return (
+    <Card size="sm" className="md:sticky md:top-4">
+      <CardHeader>
+        <InputGroup>
+          <InputGroupAddon align="inline-start">
+            <HashIcon className="size-3.5" aria-hidden />
+          </InputGroupAddon>
+          <InputGroupInput
+            id={`side-code-${unit.key}`}
+            aria-label="Unidade"
+            value={unit.code}
+            onChange={(event) => actions.updateUnit(unit.key, { code: event.target.value })}
+          />
+        </InputGroup>
+      </CardHeader>
+      <CardContent>
+        {parking ? <ParkingUnitFields key={unit.key} unit={unit} /> : <LivingUnitFields key={unit.key} unit={unit} />}
+      </CardContent>
+    </Card>
+  )
+}
+
+function StructureEditorFloorWorkspace({
+  diagram = true,
+  showUnitTable = true,
+}: {
+  diagram?: boolean
+  showUnitTable?: boolean
+} = {}) {
   const { state, actions, meta } = useStructureEditor()
   const floor = meta.selectedFloor
   const tower = meta.selectedTower
   const [openUnitKey, setOpenUnitKey] = useState<string | null>(null)
   const [cloning, setCloning] = useState(false)
+  const [confirmingRemoval, setConfirmingRemoval] = useState(false)
   const preview = tower ? clonePreview(tower, state.mirror.referenceNumber, state.mirror) : []
 
   function defineModel() {
@@ -739,14 +958,6 @@ function StructureEditorFloorWorkspace() {
     if (created) {
       actions.selectFloor(created.number)
     }
-  }
-
-  function chooseKind(kind: FloorKind) {
-    if (!tower || !floor) {
-      return
-    }
-
-    actions.updateTower(setFloorKind(tower, floor.number, kind))
   }
 
   function changeCount(delta: number) {
@@ -790,48 +1001,45 @@ function StructureEditorFloorWorkspace() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,18rem)_1fr]">
-      <div className="flex flex-col gap-2">
-        <div className="flex flex-col gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="border-dashed"
-            disabled={!tower}
-            onClick={() => add('above')}
-          >
-            Adicionar pavimento
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            disabled={!tower}
-            onClick={() => add('basement')}
-          >
-            Adicionar subsolo
-          </Button>
-          <StructureEditorFloorStack />
-        </div>
+    <div className="flex min-w-0 flex-col gap-4">
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="border-dashed"
+          disabled={!tower}
+          onClick={() => add('above')}
+        >
+          Adicionar pavimento
+        </Button>
+        <Button type="button" variant="ghost" size="sm" disabled={!tower} onClick={() => add('basement')}>
+          Adicionar subsolo
+        </Button>
       </div>
-      <div className="flex min-w-0 flex-col gap-4">
-        {tower ? <FloorPerspective floors={tower.floors} /> : null}
-      <Card size="sm">
+      {tower ? (
+        <div className={cn('grid items-start gap-4', diagram && 'lg:grid-cols-[22rem_minmax(0,1fr)]')}>
+          {diagram ? (
+            <FloorPerspective
+              className="lg:sticky lg:top-4"
+              floors={tower.floors}
+              selectedNumber={state.selectedFloorNumber}
+              onSelect={actions.selectFloor}
+            />
+          ) : null}
+          <Card size="sm">
         <CardHeader>
           <CardTitle>{floor ? floorLabel(floor.number) : 'Pavimento'}</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {floor ? (
             <p className="text-sm text-muted-foreground">
-              {floorKindLabel(floor.kind)} · {floor.units.length}{' '}
-              {floor.kind === 'garage' ? 'vagas' : 'unidades'}
+              {floorKindLabel(floor.kind)} · {floor.units.length === 1 ? '1 unidade' : `${floor.units.length} unidades`}
               {floor.customized ? ' · exceção' : ''}
               {tower?.referenceFloor === floor.number ? ' · pavimento-modelo' : ''}
             </p>
           ) : (
             <p className="text-sm text-muted-foreground">Gere o esqueleto e escolha um pavimento.</p>
           )}
-          {floor ? <FloorKindPicker number={floor.number} kind={floor.kind} onChoose={chooseKind} /> : null}
           {floor ? (
             <FloorUnitCounter
               number={floor.number}
@@ -840,7 +1048,7 @@ function StructureEditorFloorWorkspace() {
               onChange={changeCount}
             />
           ) : null}
-          {floor && floor.units.length > 0 ? (
+          {showUnitTable && floor && floor.units.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="text-left text-muted-foreground">
@@ -848,7 +1056,7 @@ function StructureEditorFloorWorkspace() {
                     <th className="py-1 font-medium">Código</th>
                     <th className="py-1 font-medium">Tipo</th>
                     <th className="py-1 font-medium">Área</th>
-                    {floor.kind === 'garage' ? null : <th className="py-1 font-medium">Dormitórios</th>}
+                    <th className="py-1 font-medium">Dormitórios</th>
                     <th className="py-1 font-medium">{meta.priceMode === 'fixed' ? 'Valor' : 'Valor-base'}</th>
                     <th className="py-1">
                       <span className="sr-only">Detalhes</span>
@@ -861,8 +1069,9 @@ function StructureEditorFloorWorkspace() {
                       key={unit.key}
                       unit={unit}
                       kind={floor.kind}
+                      unitType={floor.unitType}
                       open={openUnitKey === unit.key}
-                      columnCount={floor.kind === 'garage' ? 5 : 6}
+                      columnCount={6}
                       onToggle={() =>
                         setOpenUnitKey((current) => (current === unit.key ? null : unit.key))
                       }
@@ -888,14 +1097,24 @@ function StructureEditorFloorWorkspace() {
               type="button"
               variant="outline"
               disabled={!floor || (tower?.floors.length ?? 0) <= 1}
-              onClick={() => remove()}
+              onClick={() => setConfirmingRemoval(true)}
             >
               Remover pavimento
             </Button>
           </div>
         </CardContent>
       </Card>
-      </div>
+        </div>
+      ) : (
+        <Card size="sm">
+          <CardHeader>
+            <CardTitle>Pavimento</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">Gere o esqueleto e escolha um pavimento.</p>
+          </CardContent>
+        </Card>
+      )}
       <Dialog open={cloning} onOpenChange={setCloning}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
@@ -981,7 +1200,7 @@ function StructureEditorFloorWorkspace() {
               <Alert>
                 <AlertTitle>Nenhum pavimento existente será sobrescrito</AlertTitle>
                 <AlertDescription>
-                  Destinos ocupados e de outro tipo ficam protegidos. Térreo, hall e garagem já existentes não são substituídos.
+                  Destinos ocupados e de outro tipo ficam protegidos. Hall e garagem já existentes não são substituídos.
                 </AlertDescription>
               </Alert>
             </div>
@@ -1003,6 +1222,13 @@ function StructureEditorFloorWorkspace() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ConfirmRemovalDialog
+        open={confirmingRemoval}
+        title={floor ? `Remover ${floorLabel(floor.number)}?` : 'Remover pavimento?'}
+        description="O pavimento e as unidades dele saem da estrutura."
+        onOpenChange={setConfirmingRemoval}
+        onConfirm={remove}
+      />
     </div>
   )
 }
@@ -1011,9 +1237,8 @@ export const StructureEditor = {
   Provider: StructureEditorProvider,
   Skeleton: StructureEditorSkeleton,
   TowerTabs: StructureEditorTowerTabs,
-  FloorStack: StructureEditorFloorStack,
   FloorWorkspace: StructureEditorFloorWorkspace,
-  FloorRow: StructureEditorFloorRow,
+  SelectedUnit: StructureEditorSelectedUnit,
   MirrorPanel: StructureEditorMirrorPanel,
   UnitEditor: StructureEditorUnitEditor,
   GaragePanel: StructureEditorGaragePanel,

@@ -1,0 +1,291 @@
+---
+import ModeloCard from '@/components/modelo/ModeloCard.astro'
+import type { PublicBuildingListItem } from '@/lib/api'
+import { formatBrl, type Fact, type LandingGallery, type LandingHighlight } from '@/lib/modelo'
+
+interface Props {
+  name: string
+  slug: string
+  kind: string | null
+  address: string | null
+  builderName: string | null
+  builderPhone: string | null
+  builderPhoneHref: string | null
+  builderEmail: string | null
+  backHref: string
+  backLabel: string
+  restoreBack: boolean
+  heroUrl: string | null
+  paragraphs: string[]
+  facts: Fact[]
+  extras: Fact[]
+  highlights: LandingHighlight[]
+  areas: string[]
+  folderHref: string | null
+  galleries: LandingGallery[]
+  price: number | null
+  similar: PublicBuildingListItem[]
+  cardQuery: string
+}
+
+const {
+  name,
+  slug,
+  kind,
+  address,
+  builderName,
+  builderPhone,
+  builderPhoneHref,
+  builderEmail,
+  backHref,
+  backLabel,
+  restoreBack,
+  heroUrl,
+  paragraphs,
+  facts,
+  extras,
+  highlights,
+  areas,
+  folderHref,
+  galleries,
+  price,
+  similar,
+  cardQuery,
+} = Astro.props
+
+const photoHero = Boolean(heroUrl)
+const whatsapp = whatsappHref(builderPhoneHref)
+const initial = builderName?.trim().slice(0, 1).toUpperCase() ?? 'C'
+
+function whatsappHref(phoneHref: string | null): string | null {
+  if (!phoneHref) {
+    return null
+  }
+
+  const digits = phoneHref.replace(/\D/g, '')
+
+  if (digits.length >= 12) {
+    return `https://wa.me/${digits}`
+  }
+
+  if (digits.length === 10 || digits.length === 11) {
+    return `https://wa.me/55${digits}`
+  }
+
+  return null
+}
+---
+
+<article class="theme-detail" data-modelo-building={slug}>
+  <header
+    class:list={['theme-detail__hero', photoHero && 'theme-detail__hero--photo']}
+    data-modelo-hero={photoHero ? '' : undefined}
+    style={photoHero && heroUrl ? `background-image: url('${heroUrl.replace(/'/g, '%27')}')` : undefined}
+  >
+    <div class="modelo-wrap">
+      <a class="theme-back" href={backHref} data-modelo-back={restoreBack || undefined}>{backLabel}</a>
+      {kind && <p class="modelo-kicker">{kind}</p>}
+      <h1>{name}</h1>
+      {address && <p class="theme-detail__address">{address}</p>}
+      {
+        builderName && (
+          <p class="theme-detail__by">Comercializado por {builderName}</p>
+        )
+      }
+      {
+        price != null && (
+          <p class="theme-detail__price">
+            <span>A partir de</span>
+            <strong>{formatBrl(price)}</strong>
+          </p>
+        )
+      }
+      {
+        facts.length > 0 && (
+          <dl class="theme-facts">
+            {
+              facts.map((fact) => (
+                <div>
+                  <dt>{fact.label}</dt>
+                  <dd>{fact.value}</dd>
+                </div>
+              ))
+            }
+          </dl>
+        )
+      }
+    </div>
+  </header>
+
+  <div class="modelo-wrap theme-detail__layout">
+    <div class="theme-detail__main">
+      {
+        galleries.map((gallery) => (
+          <section id={gallery.id} class="theme-block" aria-label={gallery.title}>
+            <h2 class="theme-display">{gallery.title}</h2>
+            <div class:list={['theme-mosaic', gallery.kind === 'plan' && 'theme-mosaic--plan']}>
+              {
+                gallery.shots.map((shot) => (
+                  <button type="button" data-lightbox-open data-caption={shot.caption}>
+                    <img src={shot.url} alt={shot.caption} width="960" height="640" loading="lazy" />
+                    <span>{shot.caption}</span>
+                  </button>
+                ))
+              }
+            </div>
+          </section>
+        ))
+      }
+
+      {
+        paragraphs.length > 0 && (
+          <section id="apresentacao" class="theme-block">
+            <h2 class="theme-display">Apresentação</h2>
+            {paragraphs.map((paragraph) => <p>{paragraph}</p>)}
+          </section>
+        )
+      }
+
+      {
+        highlights.length > 0 && (
+          <section id="caracteristicas" class="theme-block">
+            <header class="theme-kicker-title">
+              <h2>características</h2>
+              <p>do empreendimento</p>
+            </header>
+            <ul class="theme-traits">
+              {
+                highlights.map((item) => (
+                  <li>
+                    <svg viewBox="0 0 32 32" aria-hidden="true">
+                      {item.icon === 'access' && (
+                        <path d="M6 14.5 16 6l10 8.5V26H6z M12 26v-6h8v6 M4 26h24" />
+                      )}
+                      {item.icon === 'wellness' && (
+                        <path d="M16 26c-6-4.2-9-8-9-12a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 4-3 7.8-9 12z" />
+                      )}
+                      {item.icon === 'mixed' && (
+                        <path d="M6 26V12l5-3v17 M14 26V8l6-3v21 M22 26V14l5-2v14" />
+                      )}
+                      {item.icon === 'pin' && (
+                        <path d="M16 28s8-7.2 8-13a8 8 0 1 0-16 0c0 5.8 8 13 8 13z M16 15.5a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4z" />
+                      )}
+                      {item.icon === 'chart' && (
+                        <path d="M6 26V6 M6 26h20 M10 20v4 M16 14v10 M22 9v15 M10 16l6-5 6-4" />
+                      )}
+                    </svg>
+                    <span>{item.title}</span>
+                  </li>
+                ))
+              }
+            </ul>
+            {
+              folderHref && (
+                <a class="theme-folder" href={folderHref} download>
+                  <svg viewBox="0 0 32 32" aria-hidden="true">
+                    <path d="M8 5h10l6 6v16H8z M18 5v6h6 M12 18h8 M12 22h8" />
+                  </svg>
+                  <span>Baixe o folder deste empreendimento</span>
+                </a>
+              )
+            }
+          </section>
+        )
+      }
+
+      {
+        areas.length > 0 && (
+          <section id="areas" class="theme-areas" aria-labelledby="areas-titulo">
+            <h2 id="areas-titulo">Áreas condominiais:</h2>
+            <ul>
+              {areas.map((area) => <li>{area}</li>)}
+            </ul>
+          </section>
+        )
+      }
+
+      {
+        extras.length > 0 && (
+          <section id="informacoes" class="theme-block">
+            <h2 class="theme-display">Informações adicionais</h2>
+            <dl class="theme-extra">
+              {
+                extras.map((item) => (
+                  <div>
+                    <dt>{item.label}</dt>
+                    <dd>{item.value}</dd>
+                  </div>
+                ))
+              }
+            </dl>
+          </section>
+        )
+      }
+
+      <section class="theme-block" aria-labelledby="financiamento-titulo">
+        <h2 id="financiamento-titulo" class="theme-display">Financiamento estimado</h2>
+        <p class="theme-note">Tabela Price com taxa de exemplo de 0,99% ao mês. Não é proposta de banco.</p>
+        <form class="theme-finance__form" data-finance>
+          <label>
+            <span>Valor do imóvel</span>
+            <input name="valor" inputmode="numeric" value={price != null ? String(Math.round(price)) : ''} autocomplete="off" />
+          </label>
+          <label>
+            <span>Entrada (%)</span>
+            <input name="entrada" inputmode="numeric" value="20" autocomplete="off" />
+          </label>
+          <label>
+            <span>Prazo (meses)</span>
+            <input name="prazo" inputmode="numeric" value="360" autocomplete="off" />
+          </label>
+          <p data-finance-out>Informe o valor do imóvel.</p>
+        </form>
+      </section>
+
+      {
+        similar.length > 0 && (
+          <section class="theme-block" aria-labelledby="similares-titulo">
+            <h2 id="similares-titulo" class="theme-display">Outros lançamentos</h2>
+            <ul class="modelo-grid">
+              {similar.map((building, index) => <ModeloCard building={building} index={index} query={cardQuery} />)}
+            </ul>
+          </section>
+        )
+      }
+    </div>
+
+    <aside class="theme-detail__contact" id="contato">
+      <p class="modelo-kicker">Contato</p>
+      <div class="theme-person">
+        <span aria-hidden="true">{initial}</span>
+        <strong>{builderName ?? 'Construtora'}</strong>
+      </div>
+      <dl>
+        {
+          builderPhone && builderPhoneHref && (
+            <>
+              <dt>Telefone</dt>
+              <dd><a href={builderPhoneHref}>{builderPhone}</a></dd>
+            </>
+          )
+        }
+        {
+          builderEmail && (
+            <>
+              <dt>E-mail</dt>
+              <dd><a href={`mailto:${builderEmail}`}>{builderEmail}</a></dd>
+            </>
+          )
+        }
+      </dl>
+      {
+        whatsapp && (
+          <a class="modelo-button modelo-button--quiet" href={whatsapp} rel="noopener">WhatsApp</a>
+        )
+      }
+      <button type="button" class="modelo-button modelo-button--wrap" data-contact-open>
+        <span>Solicitar acesso para comercializar esse empreendimento</span>
+      </button>
+    </aside>
+  </div>
+</article>

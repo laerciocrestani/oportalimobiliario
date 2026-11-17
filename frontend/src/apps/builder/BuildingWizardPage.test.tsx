@@ -110,8 +110,13 @@ describe('BuildingWizardPage', () => {
     renderWizard('/buildings/10/wizard')
 
     expect(await screen.findByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
-    expect(screen.getAllByText('Continuar cadastro').length).toBeGreaterThan(0)
-    expect(screen.getByRole('button', { name: 'Gerar esqueleto' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Continuar cadastro' })).toBeInTheDocument()
+    expect(screen.getByText('Residencial Aurora')).toBeInTheDocument()
+    expect(screen.getByText('Rascunho')).toBeInTheDocument()
+    expect(screen.queryByText('Empreendimento · São Paulo, SP')).not.toBeInTheDocument()
+    expect(screen.queryByText('Acompanhe os pavimentos e as unidades do empreendimento.')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Criar esqueleto do prédio' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Criar prédio manual' })).toBeInTheDocument()
     expect(screen.queryByText('Padrão do empreendimento')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Suítes')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Lavabos')).not.toBeInTheDocument()
@@ -150,6 +155,7 @@ describe('BuildingWizardPage', () => {
     renderWizard('/buildings/10/wizard')
 
     await screen.findByRole('heading', { name: 'Estrutura' })
+    await user.click(screen.getByRole('button', { name: 'Criar esqueleto do prédio' }))
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
 
@@ -158,10 +164,16 @@ describe('BuildingWizardPage', () => {
         towers: [
           {
             name: 'Torre A',
-            reference_floor: 1,
+            reference_floor: 2,
             floors: [
-              { number: 0, kind: 'commercial' },
-              { number: 1, kind: 'residential' },
+              { number: -2, kind: 'garage', unit_type: null },
+              { number: -1, kind: 'garage', unit_type: null },
+              { number: 1, kind: 'hall', unit_type: null },
+              { number: 2, kind: 'residential', unit_type: 'apartment' },
+              { number: 3, kind: 'residential', unit_type: 'apartment' },
+              { number: 4, kind: 'residential', unit_type: 'apartment' },
+              { number: 5, kind: 'residential', unit_type: 'apartment' },
+              { number: 6, kind: 'residential', unit_type: 'apartment' },
             ],
           },
         ],
@@ -202,6 +214,7 @@ describe('BuildingWizardPage', () => {
     renderWizard('/buildings/10/wizard')
 
     expect(await screen.findByRole('heading', { name: 'Estrutura' })).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Criar esqueleto do prédio' }))
     await user.click(screen.getByRole('button', { name: 'Gerar esqueleto' }))
     await user.click(screen.getByRole('button', { name: 'Salvar e continuar' }))
 
@@ -212,21 +225,34 @@ describe('BuildingWizardPage', () => {
           towers: [
             expect.objectContaining({
               id: '1',
-              floors: [
+              floors: expect.arrayContaining([
                 expect.objectContaining({
-                  number: 0,
-                  kind: 'commercial',
-                  units: expect.arrayContaining([expect.objectContaining({ code: 'L01' })]),
+                  number: -1,
+                  kind: 'garage',
+                  units: expect.arrayContaining([
+                    expect.objectContaining({ code: 'S1-01' }),
+                    expect.objectContaining({ code: 'S1-10' }),
+                  ]),
                 }),
                 expect.objectContaining({
                   number: 1,
+                  kind: 'hall',
+                  units: [],
+                }),
+                expect.objectContaining({
+                  number: 2,
                   kind: 'residential',
                   units: expect.arrayContaining([
-                    expect.objectContaining({ code: '101' }),
-                    expect.objectContaining({ code: '102' }),
+                    expect.objectContaining({ code: '201' }),
+                    expect.objectContaining({ code: '204' }),
                   ]),
                 }),
-              ],
+                expect.objectContaining({
+                  number: 6,
+                  kind: 'residential',
+                  units: expect.arrayContaining([expect.objectContaining({ code: '601' })]),
+                }),
+              ]),
             }),
           ],
         }),

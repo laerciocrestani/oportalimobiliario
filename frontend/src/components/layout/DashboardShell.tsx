@@ -10,11 +10,12 @@ type DashboardShellProps = {
   title: string
   children: ReactNode
   navConfig?: DashboardNavConfig
+  detail?: ReactNode
   actions?: ReactNode
   fill?: boolean
 }
 
-export function DashboardShell({ role, title, children, navConfig, actions, fill = false }: DashboardShellProps) {
+export function DashboardShell({ role, title, children, navConfig, detail, actions, fill = false }: DashboardShellProps) {
   const config = navConfig ?? dashboardNav[role]
 
   return (
@@ -28,12 +29,12 @@ export function DashboardShell({ role, title, children, navConfig, actions, fill
     >
       <AppSidebar variant="inset" config={config} />
       <SidebarInset className={fill ? 'h-svh min-h-0 overflow-hidden md:h-[calc(100svh-1rem)]' : undefined}>
-        <SiteHeader title={title} actions={actions} />
+        <SiteHeader title={title} detail={detail} actions={actions} />
         <div className={cn('flex flex-1 flex-col', fill && 'min-h-0 overflow-hidden')}>
           <div className={cn('@container/main flex flex-1 flex-col gap-2', fill && 'min-h-0')}>
             <div
               className={cn(
-                'flex flex-col gap-4 px-4 py-4 md:gap-6 md:px-6 md:py-6',
+                'flex flex-col gap-2 px-2 py-2 md:gap-3 md:px-3 md:py-3',
                 fill && 'min-h-0 flex-1 overflow-hidden',
               )}
             >

@@ -2,6 +2,10 @@ import { publicMediaUrl, type PublicBuildingListItem, type PublicUnit } from '@/
 
 /** Imagens no HTML precisam de um host que o navegador resolva. No Docker, a API interna é `backend`. */
 export function browserMediaUrl(path: string): string {
+  if (path.startsWith('/modelo/') || path.startsWith('/css/')) {
+    return path
+  }
+
   const absolute = publicMediaUrl(path)
 
   try {
@@ -683,9 +687,14 @@ export function cardMeta(unit: {
   floor: number | null
 }): string {
   const area = toNumber(unit.area_m2)
+  const code = unit.code.trim()
+
+  if (area != null && code) {
+    return `${code} · ${formatArea(area)}`
+  }
 
   if (area != null) {
-    return `${unit.code} · ${formatArea(area)}`
+    return formatArea(area)
   }
 
   if (unit.floor != null) {
@@ -709,4 +718,434 @@ export function nextOrdem(current: string | null, key: 'codigo' | 'andar' | 'are
 
 export function detailHref(path: string, query: DetailQuery, patch: Partial<DetailQuery>): string {
   return `${path}${toDetailSearch({ ...query, ...patch })}`
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  residential: 'Residencial',
+  commercial: 'Comercial',
+  mixed: 'Uso misto',
+}
+
+export type LandingUnitColumn = 'code' | 'floor' | 'area' | 'suites' | 'bathrooms'
+
+export type LandingTypology = {
+  id: string
+  title: string
+  summary: string
+  columns: LandingUnitColumn[]
+  units: Array<Record<LandingUnitColumn, string>>
+}
+
+export function categoryLabel(category: string | null | undefined): string | null {
+  if (!category) {
+    return null
+  }
+
+  return CATEGORY_LABELS[category] ?? null
+}
+
+export function formatBuildingAddress(building: {
+  street?: string | null
+  number?: string | null
+  neighborhood?: string | null
+  city?: string | null
+  state?: string | null
+}): string | null {
+  const streetLine = [building.street?.trim(), building.number?.trim()].filter(Boolean).join(', ')
+  const neighborhood = building.neighborhood?.trim() || null
+  const place = formatPlace(building.city, building.state)
+  const locality = [neighborhood, place].filter(Boolean).join(', ')
+
+  if (streetLine && locality) {
+    return `${streetLine} — ${locality}`
+  }
+
+  return streetLine || locality || null
+}
+
+export function landingHeroUrl(
+  photos: Array<{ url: string; category?: string | null }>,
+  coverUrl: string | null,
+): string | null {
+  return photos.find((photo) => photo.category === 'external')?.url ?? coverUrl ?? photos[0]?.url ?? null
+}
+
+export type LandingShot = {
+  url: string
+  caption: string
+}
+
+export type LandingGallery = {
+  id: string
+  title: string
+  kind: 'photo' | 'plan'
+  shots: LandingShot[]
+}
+
+export type LandingHighlight = {
+  title: string
+  icon: 'access' | 'wellness' | 'mixed' | 'pin' | 'chart'
+}
+
+const FINISH_LABELS: Record<string, string> = {
+  plaster: 'Gesso',
+  pvc: 'PVC',
+  wood: 'Madeira',
+  concrete: 'Concreto',
+  none: 'Sem forro',
+  aluminum: 'Alumínio',
+  steel: 'Aço',
+  porcelain: 'Porcelanato',
+  ceramic: 'Cerâmica',
+  vinyl: 'Vinílico',
+  laminate: 'Laminado',
+  polished_concrete: 'Cimento queimado',
+  north: 'Norte',
+  northeast: 'Nordeste',
+  east: 'Leste',
+  southeast: 'Sudeste',
+  south: 'Sul',
+  southwest: 'Sudoeste',
+  west: 'Oeste',
+  northwest: 'Noroeste',
+  morning: 'Manhã',
+  afternoon: 'Tarde',
+  full_day: 'Dia todo',
+}
+
+export function finishLabel(value: string | null | undefined): string | null {
+  if (!value) {
+    return null
+  }
+
+  return FINISH_LABELS[value] ?? null
+}
+
+export function landingBrief(
+  units: ModeloUnit[],
+  building?: {
+    ceiling_type?: string | null
+    opening_type?: string | null
+    flooring_type?: string | null
+    solar_position?: string | null
+    sun_period?: string | null
+  },
+): { facts: Fact[]; extras: Fact[] } {
+  const facts: Fact[] = []
+  const extras: Fact[] = []
+  const areas = unitAreas(units)
+
+  if (areas.length > 0) {
+    facts.push({
+      label: 'Metragem',
+      value: formatAreaRange(Math.min(...areas), Math.max(...areas)),
+    })
+  }
+
+  const perFloor = unitsPerFloor(units)
+
+  if (perFloor) {
+    facts.push({ label: 'Unidades por andar', value: perFloor })
+  }
+
+  const floors = units.flatMap((unit) => (unit.floor != null && unit.floor > 0 ? [unit.floor] : []))
+  const uniqueFloors = [...new Set(floors)].sort((a, b) => a - b)
+
+  if (uniqueFloors.length > 0) {
+    facts.push({ label: 'Pavimentos', value: String(uniqueFloors.length) })
+
+    const lowest = uniqueFloors[0]
+    const highest = uniqueFloors[uniqueFloors.length - 1]
+
+    if (lowest !== highest) {
+      extras.push({
+        label: 'Andares com unidade',
+        value: `${formatFloor(lowest)} – ${formatFloor(highest)}`,
+      })
+    }
+  }
+
+  const basements = units.flatMap((unit) => (unit.floor != null && unit.floor < 0 ? [unit.floor] : []))
+
+  if (basements.length > 0) {
+    extras.push({ label: 'Subsolos', value: String(new Set(basements).size) })
+  }
+
+  const bedrooms = units.flatMap((unit) => (unit.bedrooms == null ? [] : [unit.bedrooms]))
+
+  if (bedrooms.length > 0) {
+    const min = Math.min(...bedrooms)
+    const max = Math.max(...bedrooms)
+
+    extras.push({
+      label: 'Dormitórios',
+      value: min === max ? String(min) : `${min} a ${max}`,
+    })
+  }
+
+  if (units.length > 0) {
+    extras.push({ label: 'Unidades disponíveis', value: String(units.length) })
+  }
+
+  const ceiling = finishLabel(building?.ceiling_type)
+  const opening = finishLabel(building?.opening_type)
+  const flooring = finishLabel(building?.flooring_type)
+  const solar = finishLabel(building?.solar_position)
+  const sun = finishLabel(building?.sun_period)
+
+  if (ceiling) {
+    extras.push({ label: 'Forro', value: ceiling })
+  }
+
+  if (opening) {
+    extras.push({ label: 'Esquadrias', value: opening })
+  }
+
+  if (flooring) {
+    extras.push({ label: 'Piso', value: flooring })
+  }
+
+  if (solar || sun) {
+    const sunText = sun === 'Dia todo' ? 'sol o dia todo' : sun ? `sol da ${sun.toLowerCase()}` : null
+
+    extras.push({
+      label: 'Orientação',
+      value: [solar, sunText].filter(Boolean).join(', '),
+    })
+  }
+
+  return { facts, extras }
+}
+
+export function landingGalleries(
+  items: Array<{ url: string; caption?: string | null; category?: string | null; name?: string | null }>,
+): LandingGallery[] {
+  const groups: Record<'external' | 'internal' | 'unit' | 'general', LandingShot[]> = {
+    external: [],
+    internal: [],
+    unit: [],
+    general: [],
+  }
+
+  for (const item of items) {
+    const shot = { url: item.url, caption: item.caption?.trim() || item.name?.trim() || 'Imagem' }
+    const category = item.category ?? ''
+
+    if (category === 'external') {
+      groups.external.push(shot)
+    } else if (category === 'internal') {
+      groups.internal.push(shot)
+    } else if (category === 'floor_plan') {
+      const foldedName = fold(`${item.name ?? ''} ${item.caption ?? ''}`)
+      const general = /geral|terreo|implant|cobertura|pavimento|lazer|garagem|rooftop/.test(foldedName)
+
+      ;(general ? groups.general : groups.unit).push(shot)
+    }
+  }
+
+  const galleries: LandingGallery[] = []
+
+  if (groups.external.length > 0) {
+    galleries.push({ id: 'externas', title: 'Imagens externas', kind: 'photo', shots: groups.external })
+  }
+
+  if (groups.internal.length > 0) {
+    galleries.push({ id: 'internas', title: 'Imagens internas', kind: 'photo', shots: groups.internal })
+  }
+
+  if (groups.unit.length > 0) {
+    galleries.push({ id: 'plantas', title: 'Plantas das unidades', kind: 'plan', shots: groups.unit })
+  }
+
+  if (groups.general.length > 0) {
+    galleries.push({ id: 'plantas-gerais', title: 'Plantas gerais', kind: 'plan', shots: groups.general })
+  }
+
+  return galleries
+}
+
+function unitsPerFloor(units: ModeloUnit[]): string | null {
+  const counts = new Map<number, number>()
+
+  for (const unit of units) {
+    if (unit.floor == null || unit.floor <= 0) {
+      continue
+    }
+
+    counts.set(unit.floor, (counts.get(unit.floor) ?? 0) + 1)
+  }
+
+  const values = [...counts.values()]
+
+  if (values.length === 0) {
+    return null
+  }
+
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+
+  return min === max ? String(min) : `${min} a ${max}`
+}
+
+export function landingFacts(units: ModeloUnit[]): Fact[] {
+  const facts: Fact[] = []
+
+  if (units.length > 0) {
+    facts.push({ label: 'Unidades', value: unitCount(units.length) })
+  }
+
+  const areas = unitAreas(units)
+
+  if (areas.length > 0) {
+    facts.push({
+      label: 'Área privativa',
+      value: formatAreaRange(Math.min(...areas), Math.max(...areas)),
+    })
+  }
+
+  const bedrooms = units.flatMap((unit) => (unit.bedrooms == null ? [] : [unit.bedrooms]))
+
+  if (bedrooms.length > 0) {
+    const min = Math.min(...bedrooms)
+    const max = Math.max(...bedrooms)
+
+    facts.push({
+      label: 'Dormitórios',
+      value: min === max ? String(min) : `${min}–${max}`,
+    })
+  }
+
+  const floors = units.flatMap((unit) => (unit.floor == null ? [] : [unit.floor]))
+
+  if (floors.length > 0) {
+    const min = Math.min(...floors)
+    const max = Math.max(...floors)
+
+    facts.push({
+      label: 'Andares',
+      value: min === max ? formatFloor(min) : `${formatFloor(min)} – ${formatFloor(max)}`,
+    })
+  }
+
+  return facts.slice(0, 4)
+}
+
+export function landingCharacteristics(buildingAmenities: string[], units: ModeloUnit[]): string[] {
+  const names = [...buildingAmenities]
+
+  for (const name of distinctAmenities(units)) {
+    if (!names.some((current) => fold(current) === fold(name))) {
+      names.push(name)
+    }
+  }
+
+  return names
+}
+
+export function landingTypologies(units: ModeloUnit[]): LandingTypology[] {
+  if (units.length === 0) {
+    return []
+  }
+
+  const knowsBedrooms = units.some((unit) => unit.bedrooms != null)
+  const groups = new Map<string, { order: number; title: string; units: ModeloUnit[] }>()
+
+  for (const unit of units) {
+    const group = typologyGroup(unit.bedrooms, knowsBedrooms)
+    const current = groups.get(group.id)
+
+    if (current) {
+      current.units.push(unit)
+    } else {
+      groups.set(group.id, { order: group.order, title: group.title, units: [unit] })
+    }
+  }
+
+  return [...groups.entries()]
+    .sort((a, b) => a[1].order - b[1].order || a[1].title.localeCompare(b[1].title, 'pt-BR'))
+    .map(([id, group]) => {
+      const sorted = [...group.units].sort(compareLandingUnits)
+      const areas = unitAreas(sorted)
+      const summary = [unitCount(sorted.length)]
+
+      if (areas.length > 0) {
+        summary.push(formatAreaRange(Math.min(...areas), Math.max(...areas)))
+      }
+
+      const columns: LandingUnitColumn[] = ['code']
+
+      if (sorted.some((unit) => unit.floor != null)) {
+        columns.push('floor')
+      }
+
+      if (areas.length > 0) {
+        columns.push('area')
+      }
+
+      if (sorted.some((unit) => unit.suites != null)) {
+        columns.push('suites')
+      }
+
+      if (sorted.some((unit) => unit.bathrooms != null)) {
+        columns.push('bathrooms')
+      }
+
+      return {
+        id,
+        title: group.title,
+        summary: summary.join(' · '),
+        columns,
+        units: sorted.map((unit) => ({
+          code: unit.code,
+          floor: unit.floor == null ? '' : formatFloor(unit.floor),
+          area: unitArea(unit) == null ? '' : formatArea(unitArea(unit) as number),
+          suites: unit.suites == null ? '' : String(unit.suites),
+          bathrooms: unit.bathrooms == null ? '' : String(unit.bathrooms),
+        })),
+      }
+    })
+}
+
+function unitArea(unit: ModeloUnit): number | null {
+  return unit.privateAreaM2 ?? unit.areaM2
+}
+
+function unitAreas(units: ModeloUnit[]): number[] {
+  return units.flatMap((unit) => {
+    const area = unitArea(unit)
+
+    return area == null ? [] : [area]
+  })
+}
+
+function typologyGroup(
+  bedrooms: number | null,
+  knowsBedrooms: boolean,
+): { id: string; title: string; order: number } {
+  if (!knowsBedrooms) {
+    return { id: 'unidades', title: 'Unidades', order: 0 }
+  }
+
+  if (bedrooms == null) {
+    return { id: 'outras', title: 'Outras unidades', order: 1000 }
+  }
+
+  if (bedrooms === 0) {
+    return { id: 'studio', title: 'Studio', order: 0 }
+  }
+
+  const noun = bedrooms === 1 ? 'dormitório' : 'dormitórios'
+
+  return { id: `dorms-${bedrooms}`, title: `${bedrooms} ${noun}`, order: bedrooms }
+}
+
+function compareLandingUnits(a: ModeloUnit, b: ModeloUnit): number {
+  const floorA = a.floor ?? Number.POSITIVE_INFINITY
+  const floorB = b.floor ?? Number.POSITIVE_INFINITY
+
+  if (floorA !== floorB) {
+    return floorA - floorB
+  }
+
+  return a.code.localeCompare(b.code, 'pt-BR', { numeric: true }) || a.index - b.index
 }

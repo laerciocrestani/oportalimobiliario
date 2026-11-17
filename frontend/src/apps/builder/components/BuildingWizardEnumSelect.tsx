@@ -1,3 +1,4 @@
+import type { LucideIcon } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import {
   Select,
@@ -14,6 +15,7 @@ const EMPTY_VALUE = 'unset'
 type BuildingWizardEnumSelectProps = {
   id: string
   label: string
+  icon?: LucideIcon
   value: string
   emptyLabel: string
   options: ReadonlyArray<{ value: string; label: string }>
@@ -23,6 +25,7 @@ type BuildingWizardEnumSelectProps = {
 export function BuildingWizardEnumSelect({
   id,
   label,
+  icon: Icon,
   value,
   emptyLabel,
   options,
@@ -32,7 +35,10 @@ export function BuildingWizardEnumSelect({
 
   return (
     <div className="flex flex-col gap-1">
-      <Label htmlFor={id}>{label}</Label>
+      <Label htmlFor={id} className="flex items-center gap-1.5">
+        {Icon ? <Icon className="size-3.5 text-muted-foreground" aria-hidden /> : null}
+        {label}
+      </Label>
       <Select
         value={value === '' ? EMPTY_VALUE : value}
         onValueChange={(next) => {

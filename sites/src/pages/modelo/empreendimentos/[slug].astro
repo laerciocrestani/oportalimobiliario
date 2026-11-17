@@ -1,7 +1,7 @@
 ---
+import ModeloDetail from '@/components/modelo/ModeloDetail.astro'
 import ModeloFooter from '@/components/modelo/ModeloFooter.astro'
 import ModeloHeader from '@/components/modelo/ModeloHeader.astro'
-import ModeloUnits from '@/components/modelo/ModeloUnits.astro'
 import ModeloLayout from '@/layouts/ModeloLayout.astro'
 import {
   PublicApiError,
@@ -14,23 +14,40 @@ import {
   type PublicBuildingMedia,
 } from '@/lib/api'
 import {
-  bedroomOptions,
+  activeAmenityNames,
   browserMediaUrl,
-  buildingFacts,
+  categoryLabel,
   descriptionParagraphs,
-  distinctAmenities,
-  formatBrl,
-  formatPlace,
-  lowestPrice,
+  formatBuildingAddress,
+  formatPhone,
+  landingBrief,
+  landingCharacteristics,
+  landingGalleries,
+  landingHeroUrl,
+  listPrice,
   normalizeUnit,
-  parseDetailQuery,
-  visibleColumns,
+  phoneHref,
 } from '@/lib/modelo'
+import {
+  EXEMPLO_SLUG,
+  exemploAddress,
+  exemploAreas,
+  exemploExtras,
+  exemploFacts,
+  exemploFolder,
+  exemploGalleries,
+  exemploHighlights,
+  exemploListItem,
+  exemploParagraphs,
+  exemploPrice,
+} from '@/lib/modelo-exemplo'
 import { modeloBuildingSeo, modeloMessageSeo } from '@/lib/modelo-seo'
+import { withModeloTheme, type ModeloTheme } from '@/lib/modelo-theme'
 
 const slug = Astro.params.slug
 let detail: PublicBuildingDetail | null = null
 let listItem: PublicBuildingListItem | null = null
+let catalog: PublicBuildingListItem[] = []
 let media: PublicBuildingMedia[] | null = null
 let notFound = !slug
 let loadError = false
@@ -50,8 +67,9 @@ if (slug) {
     loadError = true
   }
 
-  if (listResult.status === 'fulfilled' && detail) {
-    listItem = listResult.value.find((item) => item.slug === detail?.slug) ?? null
+  if (listResult.status === 'fulfilled') {
+    catalog = listResult.value
+    listItem = detail ? catalog.find((item) => item.slug === detail?.slug) ?? null : null
   }
 
   if (mediaResult.status === 'fulfilled') {
@@ -63,39 +81,70 @@ const listHref = listBackHref(Astro.request)
 const companyHref = companyBackHref(Astro.request)
 const backHref = companyHref ?? listHref
 const backLabel = companyHref ? 'Empreendimentos' : 'Lançamentos'
-const query = parseDetailQuery(Astro.url.searchParams)
 
 if (notFound) {
   Astro.response.status = 404
+}
+
+const isExample = slug === EXEMPLO_SLUG
+
+if (isExample && !detail) {
+  notFound = false
+  loadError = false
+  Astro.response.status = 200
+  const builder = catalog.find((item) => item.builder?.name)?.builder ?? null
+  const seeded = exemploListItem(builder)
+  detail = {
+    ...seeded,
+    category: 'mixed',
+    street: 'Rua das Acácias',
+    number: '480',
+    neighborhood: 'Jurerê',
+    description: exemploParagraphs().join('\n\n'),
+  }
+  listItem = seeded
 }
 
 if (loadError) {
   Astro.response.status = 503
 }
 
-const units = (detail?.units ?? []).map((unit, index) => normalizeUnit(unit, index))
-const facts = buildingFacts(units)
-const paragraphs = descriptionParagraphs(detail?.description)
-const amenityNames = distinctAmenities(units)
+const units = isExample ? [] : (detail?.units ?? []).map((unit, index) => normalizeUnit(unit, index))
+const paragraphs = isExample ? exemploParagraphs() : descriptionParagraphs(detail?.description)
+const brief = isExample
+  ? { facts: exemploFacts, extras: exemploExtras }
+  : landingBrief(units, detail ?? undefined)
+const highlights = isExample ? exemploHighlights : []
+const areas = isExample ? exemploAreas : landingCharacteristics(activeAmenityNames(detail?.amenities), units)
+const folderHref = isExample ? exemploFolder : null
 const coverPath = detail?.cover_image?.url ?? listItem?.cover_image?.url ?? null
 const coverUrl = coverPath ? browserMediaUrl(coverPath) : null
-const photos =
+const gallery =
   media !== null
     ? media.flatMap((item) =>
-        item.mime_type.startsWith('image/') && item.url ? [browserMediaUrl(item.url)] : [],
+        item.mime_type.startsWith('image/') && item.url
+          ? [{ url: browserMediaUrl(item.url), caption: item.original_name, category: item.category ?? null, name: item.original_name }]
+          : [],
       )
-    : coverUrl
-      ? [coverUrl]
-      : []
-const place = formatPlace(detail?.city, detail?.state)
+    : []
+const galleries = isExample ? exemploGalleries : landingGalleries(gallery)
+const heroUrl = isExample
+  ? exemploGalleries[0]?.shots[0]?.url ?? null
+  : landingHeroUrl(gallery, coverUrl)
+const address = isExample ? exemploAddress() : detail ? formatBuildingAddress(detail) : null
+const kind = isExample ? 'Uso misto' : categoryLabel(detail?.category)
 const builder = detail?.builder ?? listItem?.builder ?? null
-const fromPrice = lowestPrice(units)
-const hasOverview = paragraphs.length > 0 || facts.length > 0 || photos.length > 0
-const toc = [
-  hasOverview ? { href: '#visao-geral', label: 'Visão geral' } : null,
-  { href: '#unidades', label: 'Unidades' },
-  amenityNames.length > 0 ? { href: '#diferenciais', label: 'Diferenciais' } : null,
-].filter((item): item is { href: string; label: string } => item !== null)
+const builderPhone = formatPhone(builder?.phone)
+const builderPhoneHref = builder?.phone ? phoneHref(builder.phone) : null
+const builderEmail = builder?.email?.trim() || null
+const theme: ModeloTheme = 'luxo'
+const homePath = withModeloTheme('/modelo')
+const cardQuery = ''
+const price = isExample ? exemploPrice : listItem ? listPrice(listItem) : null
+const similar = catalog
+  .filter((item) => item.slug !== detail?.slug)
+  .sort((left, right) => Number(right.city === detail?.city) - Number(left.city === detail?.city))
+  .slice(0, 3)
 
 const seo = detail
   ? modeloBuildingSeo(detail, Astro.url)
@@ -107,11 +156,9 @@ const seo = detail
         : 'Não foi possível carregar os lançamentos.',
     )
 
-if (detail && (photos[0] ?? coverUrl)) {
-  seo.ogImage = photos[0] ?? coverUrl
+if (detail && (heroUrl ?? photos[0] ?? coverUrl)) {
+  seo.ogImage = heroUrl ?? photos[0] ?? coverUrl
 }
-
-const path = detail ? `/modelo/empreendimentos/${encodeURIComponent(detail.slug)}` : '/modelo'
 
 function listBackHref(request: Request): string {
   const referer = request.headers.get('referer')
@@ -150,8 +197,8 @@ function companyBackHref(request: Request): string | null {
 }
 ---
 
-<ModeloLayout seo={seo}>
-  <ModeloHeader slot="header" lancamentosHref={listHref} restoreList />
+<ModeloLayout seo={seo} theme={detail ? theme : undefined}>
+  <ModeloHeader slot="header" homeHref={homePath} lancamentosHref={withModeloTheme(listHref)} restoreList />
   {
     notFound ? (
       <section class="modelo-message modelo-wrap">
@@ -168,155 +215,33 @@ function companyBackHref(request: Request): string | null {
       </section>
     ) : (
       <>
-        <article class="modelo-building modelo-wrap modelo-wrap--wide" data-modelo-building data-building-slug={detail.slug}>
-          <a class="modelo-back" href={backHref} data-modelo-back={companyHref ? undefined : true}>{backLabel}</a>
-          <header>
-            <h1>{detail.name}</h1>
-            {place && <p class="modelo-place">{place}</p>}
-            {
-              builder?.name && (
-                <p class="modelo-builder">
-                  <span>Comercializado por</span> {builder.name}
-                </p>
-              )
-            }
-            {
-              builder?.name && (
-                <button type="button" class="modelo-button modelo-button--wrap" data-contact-open>
-                  Solicitar acesso para comercializar esse empreendimento
-                </button>
-              )
-            }
-          </header>
-          <nav class="modelo-anchors" data-modelo-toc aria-label="Nesta página">
-            {toc.map((item, index) => (
-              <a href={item.href} aria-current={index === 0 ? 'location' : undefined}>
-                {item.label}
-              </a>
-            ))}
-          </nav>
-          <div class="modelo-sheet">
-            <aside class="modelo-toc" data-modelo-toc aria-label="Nesta página">
-              {toc.map((item, index) => (
-                <a href={item.href} aria-current={index === 0 ? 'location' : undefined}>
-                  {item.label}
-                </a>
-              ))}
-            </aside>
-            <div>
-              {
-                hasOverview && (
-                  <section id="visao-geral" class="modelo-section">
-                    <h2>Visão geral</h2>
-                    {paragraphs.length > 0 && (
-                      <div class="modelo-prose">
-                        {paragraphs.map((paragraph) => (
-                          <p>{paragraph}</p>
-                        ))}
-                      </div>
-                    )}
-                    {facts.length > 0 && (
-                      <dl class="modelo-facts">
-                        {facts.map((fact) => (
-                          <div>
-                            <dt>{fact.label}</dt>
-                            <dd>{fact.value}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    )}
-                    {photos.length > 0 && (
-                      <ul class="modelo-gallery">
-                        {photos.map((url, index) => (
-                          <li>
-                            <button
-                              type="button"
-                              data-lightbox-open
-                              data-caption={`Foto ${index + 1} de ${photos.length}`}
-                              aria-label={`Ampliar foto ${index + 1} de ${photos.length}`}
-                            >
-                              <img src={url} alt="" width="480" height="480" loading="lazy" />
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </section>
-                )
-              }
-
-              <section id="unidades" class="modelo-section">
-                <h2>Unidades à venda</h2>
-                {
-                  units.length > 0 ? (
-                    <ModeloUnits
-                      units={units}
-                      columns={visibleColumns(units)}
-                      query={query}
-                      path={path}
-                      bedroomChoices={bedroomOptions(units)}
-                      amenityNames={amenityNames}
-                      hasFloor={units.some((unit) => unit.floor != null)}
-                      hasPrice={units.some((unit) => unit.price != null)}
-                    />
-                  ) : (
-                    <p>Nenhuma unidade publicada neste empreendimento.</p>
-                  )
-                }
-              </section>
-
-              {
-                amenityNames.length > 0 && (
-                  <section id="diferenciais" class="modelo-section">
-                    <h2>Diferenciais</h2>
-                    <ul class="modelo-differentials">
-                      {amenityNames.map((name) => (
-                        <li>{name}</li>
-                      ))}
-                    </ul>
-                  </section>
-                )
-              }
-
-              <section class="modelo-close" aria-label="Contato">
-                <p class="modelo-close__name">{detail.name}</p>
-                {
-                  fromPrice != null ? (
-                    <p class="modelo-close__price">
-                      A partir de <strong>{formatBrl(fromPrice)}</strong>
-                    </p>
-                  ) : (
-                    <p class="modelo-close__price">Valor sob consulta</p>
-                  )
-                }
-                {
-                  builder?.name && (
-                    <button type="button" class="modelo-button modelo-button--wrap" data-contact-open>
-                      Solicitar acesso para comercializar esse empreendimento
-                    </button>
-                  )
-                }
-              </section>
-            </div>
-          </div>
-        </article>
-
-        <div class="modelo-compare-bar" data-compare-bar hidden>
-          <ul data-compare-picks />
-          <button type="button" class="modelo-button" data-compare-open hidden>Ver comparação</button>
-          <p data-compare-limit hidden>Compare até 3 unidades.</p>
-        </div>
-
-        <dialog class="modelo-panel" data-compare-dialog aria-labelledby="comparacao-titulo">
-          <div class="modelo-panel__head">
-            <h2 id="comparacao-titulo">Comparação</h2>
-            <button type="button" class="modelo-button modelo-button--quiet" data-close>Fechar</button>
-          </div>
-          <div data-compare-mount />
-        </dialog>
+        <ModeloDetail
+          name={detail.name}
+          slug={detail.slug}
+          kind={kind}
+          address={address}
+          builderName={builder?.name ?? null}
+          builderPhone={builderPhone}
+          builderPhoneHref={builderPhoneHref}
+          builderEmail={builderEmail}
+          backHref={withModeloTheme(backHref)}
+          backLabel={backLabel}
+          restoreBack={!companyHref}
+          heroUrl={heroUrl}
+          paragraphs={paragraphs}
+          facts={brief.facts}
+          extras={brief.extras}
+          highlights={highlights}
+          areas={areas}
+          folderHref={folderHref}
+          galleries={galleries}
+          price={price}
+          similar={similar}
+          cardQuery={cardQuery}
+        />
 
         {
-          photos.length > 0 && (
+          galleries.some((gallery) => gallery.shots.length > 0) && (
             <dialog class="modelo-lightbox" data-lightbox aria-label={`Fotos de ${detail.name}`}>
               <div class="modelo-lightbox__head">
                 <p data-lightbox-caption>{detail.name}</p>
@@ -343,6 +268,26 @@ function companyBackHref(request: Request): string | null {
                 <h2 id="contato-titulo">Solicitar acesso para comercializar esse empreendimento</h2>
                 <button type="button" class="modelo-button modelo-button--quiet" data-close>Fechar</button>
               </div>
+              <dl>
+                <dt>Construtora</dt>
+                <dd>{builder?.name}</dd>
+                {
+                  builderPhone && builderPhoneHref && (
+                    <>
+                      <dt>Telefone</dt>
+                      <dd><a href={builderPhoneHref}>{builderPhone}</a></dd>
+                    </>
+                  )
+                }
+                {
+                  builderEmail && (
+                    <>
+                      <dt>E-mail</dt>
+                      <dd><a href={`mailto:${builderEmail}`}>{builderEmail}</a></dd>
+                    </>
+                  )
+                }
+              </dl>
               <p class="modelo-contact__lead">Entre com sua conta de corretor ou crie uma para pedir este empreendimento.</p>
               <div data-access-session hidden>
                 <p data-access-who></p>
@@ -403,6 +348,8 @@ function companyBackHref(request: Request): string | null {
 
 <script>
   import { initModeloDetail } from '@/scripts/modelo-detail'
+  import { initModeloThemes } from '@/scripts/modelo-themes'
 
   initModeloDetail()
+  initModeloThemes()
 </script>

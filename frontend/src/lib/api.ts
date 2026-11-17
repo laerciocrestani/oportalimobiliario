@@ -155,11 +155,23 @@ export type UnitsSummary = {
 
 export type FloorKind = 'residential' | 'commercial' | 'garage' | 'hall'
 
+export type FloorUnitType =
+  | 'apartment'
+  | 'penthouse'
+  | 'duplex'
+  | 'triplex'
+  | 'garden'
+  | 'loft'
+  | 'studio'
+  | 'flat'
+  | 'store'
+
 export type Floor = {
   id: string
   tower_id: string
   number: number
   kind: FloorKind
+  unit_type?: FloorUnitType | null
   customized?: boolean
 }
 
@@ -181,7 +193,7 @@ export type BuildingStructurePayload = {
     name: string
     floors_count?: number
     reference_floor?: number | null
-    floors?: Array<{ number: number; kind: FloorKind }>
+    floors?: Array<{ number: number; kind: FloorKind; unit_type?: FloorUnitType | null }>
   }>
 }
 
@@ -192,6 +204,7 @@ export type BuildingUnitGridPayload = {
     floors: Array<{
       number: number
       kind: FloorKind
+      unit_type?: FloorUnitType | null
       customized?: boolean
       units: Array<{
         code: string
@@ -964,6 +977,7 @@ export const builderApi = {
     }),
   lookupCep: (cep: string) => apiFetch<CepAddress>(`/builder/cep/${cep}`),
   listAmenities: () => apiFetch<Amenity[]>('/builder/amenities'),
+  listInccIndices: () => apiFetch<Pick<InccIndex, 'competence' | 'value'>[]>('/builder/incc-indices'),
   updateBuilding: (id: string, data: Partial<Building> & { amenity_ids?: number[] }) =>
     apiFetch<Building>(`/builder/buildings/${id}`, {
       method: 'PATCH',

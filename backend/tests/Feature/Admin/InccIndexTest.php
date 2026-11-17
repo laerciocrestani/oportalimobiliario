@@ -199,3 +199,32 @@ it('requires authentication for admin incc routes', function () {
         'value' => 1024,
     ])->assertUnauthorized();
 });
+
+it('lists the incc catalog for a builder', function () {
+    InccIndex::factory()->create(['competence' => '2026-06-01', 'value' => '1010.000000']);
+    InccIndex::factory()->create(['competence' => '2026-07-01', 'value' => '1020.500000']);
+
+    $tenant = Tenant::factory()->create();
+    Sanctum::actingAs(User::factory()->builder()->withBuilderPermissions()->for($tenant)->create());
+
+    $response = $this->getJson('/api/builder/incc-indices')
+        ->assertOk()
+        ->assertJsonCount(2)
+        ->assertJsonPath('0.competence', '2026-07-01')
+        ->assertJsonPath('0.value', '1020.500000');
+
+    expect($response->json('0'))->not->toHaveKey('source');
+});
+
+it('denies the builder incc catalog without buildings.view', function () {
+    $tenant = Tenant::factory()->create();
+    Sanctum::actingAs(
+        User::factory()->builder()->withBuilderPermissions(['invites.send'])->for($tenant)->create(),
+    );
+
+    $this->getJson('/api/builder/incc-indices')->assertForbidden();
+});
+
+it('requires authentication for the builder incc catalog', function () {
+    $this->getJson('/api/builder/incc-indices')->assertUnauthorized();
+});

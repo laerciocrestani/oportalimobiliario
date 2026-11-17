@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { ArrowLeftIcon } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   BuildingWizardIdentityStep,
@@ -10,7 +11,6 @@ import {
   useBuildingWizard,
   type BuildingWizardContextValue,
 } from '@/apps/builder/components/building-wizard-context'
-import { Badge } from '@/components/ui/badge'
 import { BuildingWizardSteps } from '@/apps/builder/components/BuildingWizardSteps'
 import { WizardPublishStep } from '@/apps/builder/components/WizardPublishStep'
 import { WizardReviewStep } from '@/apps/builder/components/WizardReviewStep'
@@ -19,9 +19,10 @@ import { defaultsFromBuilding, defaultsUpdatePayload, identityFromBuilding, iden
 import { emptyBuildingDefaults } from '@/apps/builder/lib/unit-spec'
 import {
   applySavedTowerIds,
+  buildEntranceHall,
   buildSkeleton,
   cloneMirror,
-  copyTowerFromPrevious,
+  appendTower,
   DEFAULT_MIRROR,
   DEFAULT_SKELETON,
   isFloorStackValid,
@@ -169,11 +170,26 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
   }
 
   function generateSkeleton() {
-    const next = buildSkeleton({ ...skeleton, towerCount: 1 })
+    const input: SkeletonInput = {
+      ...skeleton,
+      towerCount: 1,
+      unitsPerFloor: 1,
+      spotsPerBasement: 1,
+    }
+    setSkeletonState(input)
+    const next = buildSkeleton(input)
     setStackTowers(next)
     setSelectedTowerIndex(0)
     setSelectedFloor(preferredFloorNumber(next))
     setMirrorState(mirrorDraftFromTower(next[0]))
+  }
+
+  function startEntranceHall() {
+    const tower = buildEntranceHall()
+    setStackTowers([tower])
+    setSelectedTowerIndex(0)
+    setSelectedFloor(tower.floors[0]?.number ?? 0)
+    setMirrorState(mirrorDraftFromTower(tower))
   }
 
   function updateSelectedTower(tower: StackTower) {
@@ -182,8 +198,21 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
     )
   }
 
-  function addTowerCopy() {
-    const next = copyTowerFromPrevious(stackTowers)
+  function addTower(input: { name: string; sourceKey?: string | null }) {
+    const source = input.sourceKey
+      ? stackTowers.find((tower) => tower.key === input.sourceKey)
+      : undefined
+
+    if (input.sourceKey && !source) {
+      return
+    }
+
+    const next = appendTower(stackTowers, { name: input.name, source, skeleton })
+
+    if (next.length === stackTowers.length) {
+      return
+    }
+
     const index = next.length - 1
     const created = next[index]
 
@@ -407,9 +436,10 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
       setForm,
       setSkeleton,
       generateSkeleton,
+      startEntranceHall,
       updateStackUnit,
       updateSelectedTower,
-      addTowerCopy,
+      addTower,
       removeSelectedTower,
       setMirror,
       cloneMirror: cloneSelectedMirror,
@@ -431,31 +461,15 @@ export function BuildingWizardProvider({ buildingId, children }: ProviderProps) 
 }
 
 function WizardFrame({ children }: { children: ReactNode }) {
-  const { state, actions } = useBuildingWizard()
-  const title = state.updatingExisting
-    ? `Editar ${state.form.name || 'empreendimento'}`
-    : state.buildingId
-      ? 'Continuar cadastro'
-      : 'Novo empreendimento'
+  const { actions } = useBuildingWizard()
 
   return (
     <form
       onSubmit={(event) => {
         void actions.submit(event)
       }}
-      className="mx-auto flex w-full max-w-6xl flex-col gap-6"
+      className="flex h-full min-h-0 w-full flex-1 flex-col gap-6"
     >
-      <header className="flex flex-col gap-6 border-b pb-5">
-        <div className="flex flex-col gap-1.5">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-            {state.updatingExisting ? null : <Badge variant="secondary">Rascunho</Badge>}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Cadastre os dados e monte a estrutura do seu empreendimento.
-          </p>
-        </div>
-      </header>
       {children}
     </form>
   )
@@ -493,60 +507,71 @@ function WizardIdentitySection() {
 function WizardCurrentStep() {
   const { state } = useBuildingWizard()
 
+  let step = <WizardPublishStep />
+
   if (state.loading) {
-    return <p className="text-sm text-muted-foreground">Carregando...</p>
+    step = <p className="text-sm text-muted-foreground">Carregando...</p>
+  } else if (state.currentStep === 1) {
+    step = <WizardIdentitySection />
+  } else if (state.currentStep === 2) {
+    step = <WizardStructureStep />
+  } else if (state.currentStep === 3) {
+    step = <WizardReviewStep />
   }
 
-  if (state.currentStep === 1) {
-    return <WizardIdentitySection />
-  }
-
-  if (state.currentStep === 2) {
-    return <WizardStructureStep />
-  }
-
-  if (state.currentStep === 3) {
-    return <WizardReviewStep />
-  }
-
-  return <WizardPublishStep />
+  return (
+    <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-1 [scrollbar-gutter:stable]">
+      {step}
+    </div>
+  )
 }
 
 function WizardFooter() {
   const { state, actions, meta } = useBuildingWizard()
 
   return (
-    <div className="flex items-center justify-between gap-2">
-      {state.currentStep === 1 ? (
-        <Button variant="outline" nativeButton={false} render={<Link to="/buildings" />}>
-          Cancelar
+    <div className="flex shrink-0 items-center gap-4 border-t pt-4">
+      <div className="min-w-0 flex-1">
+        <WizardStepsNav />
+      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        {state.currentStep === 1 ? (
+          <Button variant="outline" nativeButton={false} render={<Link to="/buildings" />}>
+            Cancelar
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Voltar"
+            onClick={() => actions.setCurrentStep(state.currentStep - 1)}
+          >
+            <ArrowLeftIcon />
+          </Button>
+        )}
+        <Button type="submit" disabled={state.saving || state.loading || !meta.canContinue} aria-label={
+          state.saving
+            ? 'Salvando...'
+            : state.currentStep === WIZARD_LAST_STEP
+              ? state.updatingExisting
+                ? 'Atualizar empreendimento'
+                : state.isDraft
+                  ? 'Salvar rascunho'
+                  : 'Publicar'
+              : 'Salvar e continuar'
+        }>
+          {state.saving
+            ? 'Salvando...'
+            : state.currentStep === WIZARD_LAST_STEP
+              ? state.updatingExisting
+                ? 'Atualizar empreendimento'
+                : state.isDraft
+                  ? 'Salvar rascunho'
+                  : 'Publicar'
+              : 'Continuar'}
         </Button>
-      ) : (
-        <Button type="button" variant="outline" onClick={() => actions.setCurrentStep(state.currentStep - 1)}>
-          Voltar
-        </Button>
-      )}
-      <Button type="submit" disabled={state.saving || state.loading || !meta.canContinue} aria-label={
-        state.saving
-          ? 'Salvando...'
-          : state.currentStep === WIZARD_LAST_STEP
-            ? state.updatingExisting
-              ? 'Atualizar empreendimento'
-              : state.isDraft
-                ? 'Salvar rascunho'
-                : 'Publicar'
-            : 'Salvar e continuar'
-      }>
-        {state.saving
-          ? 'Salvando...'
-          : state.currentStep === WIZARD_LAST_STEP
-            ? state.updatingExisting
-              ? 'Atualizar empreendimento'
-              : state.isDraft
-                ? 'Salvar rascunho'
-                : 'Publicar'
-            : 'Continuar'}
-      </Button>
+      </div>
     </div>
   )
 }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\FloorKind;
+use App\Enums\FloorUnitType;
 use App\Tenancy\Concerns\BelongsToTenant;
 use Database\Factories\FloorFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -17,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'tower_id',
     'number',
     'kind',
+    'unit_type',
     'customized',
 ])]
 class Floor extends Model
@@ -34,6 +36,7 @@ class Floor extends Model
         return [
             'number' => 'integer',
             'kind' => FloorKind::class,
+            'unit_type' => FloorUnitType::class,
             'customized' => 'boolean',
         ];
     }
